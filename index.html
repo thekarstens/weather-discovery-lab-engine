@@ -7,6 +7,7 @@
 
 <link rel="stylesheet" href="./leaflet.css"/>
 <script src="./leaflet.js"></script>
+<script src="./js/lessonLoader.js"></script>
 <script>
   function resolveJetFrameUrl(u){
     if (!u) return u;
@@ -1269,76 +1270,85 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 
 <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops" />
 <script>
-(function(){
-  // ---------- Config ----------
-  var STEP_HOURS = 3;
-
-  // Use the same starting time as your case study controls:
-  // Time window for the time controls (expanded to include earlier GFS forecast frames).
-  var startZ = new Date(Date.UTC(2018, 3, 10, 0, 0, 0));  // 2018-04-10 00Z (include day before for global temp)
-  var endZ   = new Date(Date.UTC(2018, 3, 15, 12, 0, 0)); // 2018-04-15 12Z (storm end window; extend later if needed) // 24h window; extend later if you want
-  var curZ = new Date(startZ.getTime());
-
-  // Composite radar geographic extent (NAD83 geographic). Shifted ~60mi south + ~15mi east for better fit.
-  // Base extent commonly used by IEM mosaics: lon -126..-66, lat 24..50
-  var SHIFT_LAT = -1.09; // south shift (~15mi extra)   // south
-  var SHIFT_LON = 0.49; // east shift (~15mi extra)   // east
-  var RADAR_BOUNDS = L.latLngBounds(
-    L.latLng(24 + SHIFT_LAT, -126 + SHIFT_LON),
-    L.latLng(50 + SHIFT_LAT,  -66 + SHIFT_LON)
-  );
-
-  // Local file pattern in your repo:
-  // radar_frames/n0q_201804141200.png, etc
-  function pad2(n){ return (n<10?'0':'') + n; }
-  function yyyymmdd(d){
-    return d.getUTCFullYear() + pad2(d.getUTCMonth()+1) + pad2(d.getUTCDate());
+(async function(){
+  // ---------- Config (loaded per lesson) ----------
+  function _qs(name){
+    try { return new URLSearchParams(window.location.search).get(name); }
+    catch(e){ return null; }
   }
-  function hhmm(d){
-    return pad2(d.getUTCHours()) + pad2(d.getUTCMinutes());
+
+  var lessonId = _qs("lesson") || "blizzard_apr2018"; // default fallback
+  var CFG = {};
+
+  // Load lesson config via your lessonLoader.js (as defined earlier in this conversation).
+  try{
+    if (window.WDL && typeof window.WDL.loadLessonConfig === "function"){
+      CFG = await window.WDL.loadLessonConfig() || {};
+    } else {
+      console.warn("WDL lesson loader not found; using engine defaults.");
+      CFG = {};
+    }
+  }catch(err){
+    console.warn("Lesson config load failed; using engine defaults.", err);
+    CFG = {};
   }
+
+  // Base for data (lets you point to a separate data repo later)
+  var DATA_BASE = String(CFG.dataBase || "./");
+
+  // Time window + step
+  var STEP_HOURS = Number(CFG.stepHours || 3);
+  var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
+  var endZ   = CFG.endZ   ? new Date(CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
+  var curZ   = new Date(startZ.getTime());
+
+  // Radar bounds (optional per lesson)
+  var SHIFT_LAT = (typeof CFG.shiftLat === "number") ? CFG.shiftLat : -1.09;
+  var SHIFT_LON = (typeof CFG.shiftLon === "number") ? CFG.shiftLon : 0.49;
+
+  var RADAR_BOUNDS = (CFG.radarBounds && CFG.radarBounds.sw && CFG.radarBounds.ne)
+    ? L.latLngBounds(
+        L.latLng(CFG.radarBounds.sw[0], CFG.radarBounds.sw[1]),
+        L.latLng(CFG.radarBounds.ne[0], CFG.radarBounds.ne[1])
+      )
+    : L.latLngBounds(
+        L.latLng(24 + SHIFT_LAT, -126 + SHIFT_LON),
+        L.latLng(50 + SHIFT_LAT,  -66 + SHIFT_LON)
+      );
+
+  // URL builders (templates per lesson, with fallback to your current 2018 defaults)
   function radarUrlFor(d){
-    return "radar_frames/n0q_" + yyyymmdd(d) + hhmm(d) + ".png";
+    // Prefer loader-provided helper if present
+    if (CFG._patternUrl && CFG.layers && CFG.layers.radar && CFG.layers.radar.framePattern){
+      return CFG._patternUrl(CFG.layers.radar.framePattern, d);
+    }
+    // Template fallback (YYYY/MM/DD/HH/mm tokens)
+    var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
+    // If lessonLoader.js provided template resolver, use it
+    if (window.WDL && CFG._resolve && CFG._patternUrl){
+      return CFG._patternUrl(tpl, d);
+    }
+    // Very small fallback: just join base + template
+    return DATA_BASE + tpl;
   }
 
-  // GFS snow forecast PNGs in repo (static frames)
-  // gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png
-  // gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png
-  // gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png
   function gfsSnowUrlFor(d){
-    // Pick the most-relevant static forecast image for the current time.
-    // (We don't animate this yet; we just swap between a few key lead times.)
+    // If a lesson provides a template, use it. Otherwise keep your old 2018 logic.
+    if (CFG.gfsSnowTemplate && CFG._patternUrl){
+      return CFG._patternUrl(CFG.gfsSnowTemplate, d);
+    }
+
     var t = d.getTime();
-    var t13 = Date.UTC(2018,3,13,0,0,0); // Apr 13 00Z
-    var t12 = Date.UTC(2018,3,12,0,0,0); // Apr 12 00Z
-    if (t >= t13) return "gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png";
-    if (t >= t12) return "gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png";
-    return "gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png";
+    var t13 = Date.UTC(2018,3,13,0,0,0);
+    var t12 = Date.UTC(2018,3,12,0,0,0);
+    if (t >= t13) return DATA_BASE + "gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png";
+    if (t >= t12) return DATA_BASE + "gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png";
+    return DATA_BASE + "gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png";
   }
 
-  // Alerts file pattern you already have:
-  // timeline_hourly/alerts_20180414_1500Z.geojson
-  function alertsUrlFor(d){
-    return "timeline_hourly/alerts_" + yyyymmdd(d) + "_" + pad2(d.getUTCHours()) + "00Z.geojson";
-  }
-
-  // "Central time" label (forced) — we just subtract 5 hours and show CST
-  // (Technically CDT for April, but your students don't need DST complexity here.)
-  function formatCentralLabel(dUtc) {
-  // Display in "Central time" without DST complexity for students.
-  // April is technically CDT, but we keep a fixed -5 hour offset for clarity.
-  var central = new Date(dUtc.getTime() - 5*3600*1000); // UTC -> Central (approx)
-  var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  var m = months[central.getUTCMonth()];
-  var day = central.getUTCDate();
-  var year = central.getUTCFullYear();
-  var hr = central.getUTCHours();
-  var ampm = hr >= 12 ? "PM" : "AM";
-  hr = hr % 12; if (hr === 0) hr = 12;
-  return m + " " + day + ", " + year + " " + hr + ampm;
-}
-
-  // ---------- Map ----------
+  // Expose loaded config for debugging
+  window.__WDL_CFG__ = CFG;
+// ---------- Map ----------
   var map = L.map("map", { zoomControl:true }).setView([43.55, -96.73], 6);
 
   // Custom lower-right zoom buttons
