@@ -1,1 +1,11 @@
+{
+  "id": "derecho-2022",
+  "title": "May 2022 Derecho",
+  "initialTime": "2018-04-14T21:15:00Z",
 
+  "radar": {
+    "enabled": true,
+    "image": "lessons/derecho-2022/radar/radar_20180414_2115Z.png",
+    "bounds": [[24, -125], [50, -66]]
+  }
+}
