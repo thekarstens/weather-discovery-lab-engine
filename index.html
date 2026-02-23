@@ -1,0 +1,4604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Apr 2018 Case Study – Radar + Alerts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="./leaflet.css"/>
+<script src="./leaflet.js"></script>
+<script>
+  function resolveJetFrameUrl(u){
+    if (!u) return u;
+    const dir = (typeof JET_ANIM_DIR !== "undefined") ? JET_ANIM_DIR : "jet_anim";
+    if (!u.includes("/") && !u.startsWith("http")) return dir + "/" + u;
+    return u;
+  }
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+<script>
+var storyStarted = false; // do not auto-open storyboard
+</script>
+
+<style>
+html, body { height:100%; margin:0; }
+  #map { height:100%; background:#fff; }
+
+
+  /* Slight boost to make water a touch bluer (subtle, keeps land white/gray) */
+  .basemap-tiles{ filter: saturate(1.12) hue-rotate(-4deg); }
+  /* Top TV-style banner */
+  .tvbanner{
+    position:absolute; top:0; left:0; right:0;
+    z-index:99999;
+    background:rgba(11,28,45,0.94);
+    color:#fff;
+    font:900 26px/1.1 Arial, sans-serif;
+    letter-spacing:0.8px;
+    padding:14px 18px;
+    border-bottom:2px solid rgba(255,255,255,0.12);
+    text-transform:uppercase;
+    pointer-events:none;
+  }
+
+  .panel{
+    position:absolute; top:70px; left:10px; z-index:9999;
+    background:rgba(255,255,255,0.95);
+    border:1px solid #ccc; border-radius:14px;
+    padding:12px;
+    font:700 12px/1.2 Arial, sans-serif;
+    box-shadow: 0 2px 10px rgba(0,0,0,.10);
+    min-width: 340px;
+  }
+  .row{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .btn{
+    border:1px solid #333; background:#fff; border-radius:12px;
+    padding:6px 10px; cursor:pointer; font:800 12px Arial;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .mono{ font-family: ui-monospace, Menlo, Consolas, monospace; font-weight:900; }
+  .tiny { font:700 11px/1.2 Arial, sans-serif; opacity:.78; }
+
+  /* Branding logo (bottom-right, small) */
+  #brandLogo{
+    position:absolute;
+    bottom:6px;
+    right:10px;
+    z-index:100000;
+    width:140px;
+    max-width:24vw;
+    height:auto;
+    opacity:0.95;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+    pointer-events:none;
+  }
+
+  /* Leaflet layer control nudge down below banner */
+  .leaflet-top.leaflet-right { top: 70px; }
+
+  /* Simple town label style */
+  .town-label{
+    background: rgba(255,255,255,0.75);
+    border:1px solid rgba(0,0,0,0.25);
+    padding:2px 6px;
+    border-radius:10px;
+    font:800 11px/1 Arial, sans-serif;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  }
+
+/* --- Banner layout + controls --- */
+.tvbanner{height:76px;padding:10px 14px;pointer-events:auto;}
+.banner-inner{height:100%;display:flex;align-items:center;gap:16px;}
+.banner-title{font-size:34px;font-weight:900;letter-spacing:1px;white-space:nowrap;text-transform:uppercase;}
+.banner-controls{display:flex;align-items:center;gap:10px;margin-left:10px;}
+.bbtn{pointer-events:auto;border:1px solid rgba(255,255,255,0.35);background:rgba(0,0,0,0.25);color:#fff;
+  padding:6px 10px;border-radius:10px;font-weight:800;cursor:pointer;line-height:1;}
+.bbtn:hover{background:rgba(0,0,0,0.4);}
+.btime{min-width:190px;text-align:center;font-weight:800;letter-spacing:.2px;}
+.bsep{width:1px;height:26px;background:rgba(255,255,255,0.25);margin:0 4px;}
+
+  /* Open Lesson button inside banner */
+  .open-lesson-btn{
+    pointer-events:auto;
+    border:1px solid rgba(0,0,0,0.25);
+    background:#fdd835;
+    color:#111;
+    padding:12px 16px;
+    border-radius:14px;
+    font:900 12px/1 Arial, sans-serif;
+    letter-spacing:1px;
+    cursor:pointer;
+    text-transform:uppercase;
+    box-shadow: 0 8px 22px rgba(0,0,0,.22);
+    white-space:nowrap;
+  }
+
+/* ===== Banner button texture (imported) ===== */
+.banner-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  border-radius: 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.18);
+  cursor:pointer;
+  font-family:"Lato", Arial, sans-serif;
+  font-weight:900;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  user-select:none;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  overflow:hidden;
+  white-space:nowrap;
+}
+.banner-btn .bb-ico{ font-size: 16px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+.banner-btn .bb-text{ font-size: 14px; }
+
+/* glossy highlight */
+.banner-btn::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.10) 45%, rgba(0,0,0,0.10));
+  opacity:0.55;
+  pointer-events:none;
+}
+.banner-btn::after{
+  content:"";
+  position:absolute;
+  left:-40%;
+  top:-30%;
+  width: 60%;
+  height: 160%;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.35), rgba(255,255,255,0));
+  transform: rotate(20deg);
+  opacity:0.0;
+  pointer-events:none;
+  transition: opacity 180ms ease;
+}
+.banner-btn:hover::after{ opacity:0.75; }
+.banner-btn:active{ transform: translateY(1px); }
+
+/* gold / blue variants */
+.banner-btn-gold{
+  color:#111;
+  border-color: rgba(0,0,0,0.22);
+  background: linear-gradient(180deg, #ffe66b, #fdd835 45%, #f59e0b);
+}
+.banner-btn-blue{
+  color:#fff;
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8 55%, #0b3b91);
+  border-color: rgba(255,255,255,0.22);
+}
+
+
+  .open-lesson-btn:hover{ filter:brightness(0.98); }
+
+
+  .bzoom{font-weight:800;letter-spacing:.06em;color:#fff;opacity:.92;margin-right:8px}
+.banner-actions{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.bstatus{margin-left:14px;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;
+  font:800 12px/1 Arial, sans-serif;opacity:.9;}
+#brandLogo{
+  position:absolute;right:18px;bottom:6px;width:210px;z-index:900;pointer-events:none;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+}
+
+
+  /* --- layout tweaks --- */
+  .leaflet-top.leaflet-right { margin-top: 140px; }   /* push layer toggles below banner */
+  #brandLogo { bottom: 26px; right: 26px; }          /* nudge logo down a bit */
+
+
+  /* --- Story panel (Google Sheet driven) --- */
+  #storyPanel{
+    position:absolute;
+    top:90px;
+    left:10px;
+    width:390px;
+    max-width:86vw;
+    max-height: calc(100vh - 90px);
+    overflow:auto;
+    z-index:100001;
+    background:rgba(255,255,255,0.97);
+    border:1px solid rgba(0,0,0,0.18);
+    border-radius:16px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    padding:12px 12px 10px 12px;
+    transform: translateX(-110%);
+    transition: transform 180ms ease;
+  }
+  #storyPanel.story-open{ transform: translateX(0); }
+  .story-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .story-title{ font:900 16px/1.15 Arial, sans-serif; letter-spacing:.2px; }
+  .story-close{
+    border:1px solid rgba(0,0,0,.25);
+    background:#fff;
+    border-radius:10px;
+    padding:4px 8px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .story-body{ margin-top:10px; font:700 13px/1.35 Arial, sans-serif; color:#111; }
+  .story-body p{ margin:0 0 10px 0; }
+  .story-media{ margin-top:10px; }
+  .story-media img{ width:100%; border-radius:12px; border:1px solid rgba(0,0,0,0.12); }
+  .story-media iframe{ width:100%; aspect-ratio: 16/9; border:0; border-radius:12px; }
+  .story-nav{ display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
+  .story-nav .btn{ flex:1; }
+  #storyStep{ margin-top:8px; }
+  /* Small story "stations" */
+  .story-dot{
+    width:10px;height:10px;border-radius:50%;
+    background:rgba(30,136,229,0.95);
+    border:2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+
+
+    /* --- Guide collapsed tab (legacy) --- */
+  #storyTab{ display:none !important; }
+
+
+  
+  /* Map controls row (top-right, above layer toggles) */
+  .map-control-row{
+    position:absolute;
+    top:175px;
+    right:10px;
+    z-index:100000;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+    user-select:none;
+    pointer-events:auto;
+  }
+
+  /* Custom zoom box + tools box share styling */
+  .zoom-box, .tool-box{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(11,28,45,0.92);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:14px;
+    padding:8px 10px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.22);
+  }
+
+  .zoom-label, .tool-label{
+    font:900 11px/1 Arial, sans-serif;
+    letter-spacing:.8px;
+    color:#fff;
+    opacity:.92;
+  }
+
+  .zoom-btn{
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(0,0,0,0.25);
+    color:#fff;
+    padding:7px 10px;
+    border-radius:12px;
+    font:900 14px/1 Arial, sans-serif;
+    cursor:pointer;
+    line-height:1;
+  }
+  .zoom-btn:hover{ background:rgba(0,0,0,0.40); }
+
+  .tool-btn{
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(0,0,0,0.25);
+    color:#fff;
+    padding:7px 10px;
+    border-radius:12px;
+    font:900 11px/1 Arial, sans-serif;
+    cursor:pointer;
+    line-height:1;
+    letter-spacing:.4px;
+  }
+  .tool-btn:hover{ background:rgba(0,0,0,0.40); }
+  .tool-btn.active{ background:#fdd835; color:#111; border-color: rgba(0,0,0,0.35); }
+  .tool-btn.disabled{
+    opacity:.35;
+    filter:grayscale(1);
+    cursor:not-allowed;
+  }
+
+  body.measure-active #map{ cursor: crosshair; }
+  body.probe-active #map{ cursor: crosshair; }
+  body.draw-active #map{ cursor: crosshair; }
+
+  /* Remove default Leaflet zoom buttons (we use custom zoom box) */
+  .leaflet-control-zoom{ display:none !important; }
+.story-actions{ display:flex; align-items:center; gap:8px; }
+  .story-action{
+    border:1px solid rgba(0,0,0,.25);
+    background:#fff;
+    border-radius:10px;
+    padding:6px 10px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .story-action.primary{ background:rgba(11,28,45,0.92); color:#fff; border-color: rgba(255,255,255,0.22); }
+
+  /* Guided vs Explore: keep the map clean until Explore */
+  /* allow layer control always */
+  /* opacity always available */
+  /* legend always available */
+  /* legend always available */
+
+  /* Make guide panel a bit slimmer to preserve map area */
+  #storyPanel{ width:340px; }
+  @media (max-width: 900px){
+    #storyPanel{ width:310px; }
+  }
+  @media (max-width: 640px){
+    #storyPanel{ left:6px; right:6px; width:auto; max-width:none; }
+    #storyTab{ top:70px; }
+  }
+
+  /* Simplify banner footprint */
+  .banner-divider{ display:none; }
+  .banner-bottomline{ padding-top:6px !important; padding-bottom:6px !important; }
+  #modeBtn{ display:none !important; } /* retire student/teacher button */
+
+/* --- Banner: simple classroom layout --- */
+.tvbanner{height:auto; padding:10px 14px; pointer-events:auto;}
+.banner-inner{display:flex; align-items:center; gap:14px;}
+.banner-left{display:flex; align-items:center; gap:12px; min-width:340px;}
+.lesson-left{font:900 20px/1.05 Arial, sans-serif; letter-spacing:.6px; text-transform:uppercase; white-space:nowrap;}
+.bbtn-story{font:900 14px/1 Arial, sans-serif; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.10);}
+.bbtn-story:hover{background:rgba(255,255,255,0.18);}
+.banner-mid{display:flex; align-items:center; gap:10px;}
+.btime{min-width:230px; text-align:center; font:900 14px/1 Arial, sans-serif; letter-spacing:.3px;}
+.banner-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+.product-right{font:900 32px/1 Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; padding-left:10px; border-left:1px solid rgba(255,255,255,0.25);}
+.legend-mini{display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.25); background:rgba(0,0,0,0.18);}
+.leg-mini-label{font:900 11px/1 Arial, sans-serif; opacity:.92; text-transform:uppercase; letter-spacing:.4px;}
+.leg-mini-bar{display:inline-block; width:110px; height:10px; border-radius:6px; background: linear-gradient(90deg, #2b83ba, #4ecdc4, #a8e6a3, #ffd166, #ef476f); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);}
+.opacity-wrap{display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.25); background:rgba(0,0,0,0.18);}
+.op-label{font:900 11px/1 Arial, sans-serif; opacity:.92; text-transform:uppercase; letter-spacing:.4px;}
+#radarOpacity{width:120px;}
+.bstatus{margin-top:6px; font:800 12px/1 Arial, sans-serif; opacity:.9; max-width:95vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+/* Make story button obvious */
+#beginStoryBtn{border-color: rgba(255,255,255,0.45); flex:0 0 auto; margin-left:auto;}
+/* --- Driving question line (option 2 style) --- */
+.dq-sub{margin-top:4px;font:800 14px/1 Arial,sans-serif;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dq-label{font-weight:900;opacity:.95}
+.dq-text{font-weight:900;opacity:1}
+
+/* --- Begin story: big + obvious (yellow) --- */
+.bbtn-story{
+  background:#fdd835 !important;
+  color:#111 !important;
+  border-color: rgba(0,0,0,0.35) !important;
+  font:900 14px/1 Arial,sans-serif !important;
+  padding:12px 14px !important;
+  border-radius:14px !important;
+  letter-spacing:.8px !important;
+}
+.bbtn-story:hover{filter:brightness(0.96)}
+
+/* --- Product center --- */
+.banner-product{display:flex;align-items:center;justify-content:center;min-width:240px}
+.product-center{
+  font:900 42px/1 Arial,sans-serif;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  padding:0 10px;
+  white-space:nowrap;
+}
+
+/* Logo down a bit */
+#brandLogo{bottom:6px !important; right:26px !important;}
+
+/* --- Option-2 style driving question block --- */
+.banner-left{display:flex;flex-direction:column;gap:2px;min-width:420px;max-width:44vw}
+.lesson-left{font:900 24px/1 Arial,sans-serif;letter-spacing:.6px;text-transform:uppercase}
+.dq-sub{font:800 14px/1.2 Arial,sans-serif;letter-spacing:.2px;text-transform:none;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dq-label{font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+.dq-text{font-weight:800}
+
+
+/* Stack Begin Story above time controls */
+.story-time-stack{display:flex;flex-direction:column;gap:8px;align-items:center;min-width:210px}
+.banner-mid-stack{gap:10px}
+/* Give the product a little breathing room */
+.banner-product{margin:0 6px}
+
+
+/* --- Banner alignment fix: pull legend/controls back up --- */
+.banner-inner{align-items:flex-start}
+.legend-mini{margin-top:0}
+.opacity-wrap{margin-top:0}
+.story-time-stack{margin-top:0}
+
+
+/* --- Right-side controls pinned upper-right --- */
+.right-controls{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-left:auto;
+  margin-top:0;
+}
+
+
+/* --- Restore "like before" banner geometry --- */
+.banner-inner{position:relative; align-items:center !important;}
+.right-controls{
+  position:absolute;
+  top:10px;
+  right:14px;
+  margin-left:0 !important;
+  align-items:center;
+}
+.legend-mini, .opacity-wrap{margin-top:0 !important;}
+.story-time-stack{margin-top:0 !important;}
+
+/* Logo lower */
+#brandLogo{bottom:0px !important;}
+
+/* --- Two-line banner layout --- */
+.tvbanner{
+  position:absolute; top:0; left:0; right:0;
+  z-index:99999;
+  background:rgba(11,28,45,0.90);
+  color:#fff;
+  border-bottom:2px solid rgba(255,255,255,0.12);
+}
+
+.banner-topline{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:10px 14px 6px 14px;
+  font-family: Arial, sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.7px;
+  text-align:center;
+}
+.topline-center{
+  display:flex;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-width:0;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  max-width:1200px;
+  width:100%;
+}
+.top-lesson{font-weight:900;font-size:26px;text-align:center}
+.top-sep{opacity:.65;font-weight:900}
+.top-question{font-weight:800;font-size:16px;letter-spacing:.2px;text-transform:none;max-width:100%;flex:1 1 100%;text-align:center}
+.top-q-label{font-weight:900;text-transform:uppercase;letter-spacing:.6px}
+
+.banner-bottomline{
+  display:flex;
+  justify-content:center;
+  padding:6px 14px 10px 14px;
+  font-family: Arial, sans-serif;
+}
+.bottomline-center{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  max-width:1200px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+/* Big product word, flexible */
+.banner-product{min-width:200px;display:flex;justify-content:center}
+.product-center{
+  font:900 44px/1 Arial,sans-serif;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.time-controls{display:flex;align-items:center;gap:10px}
+.btime{font:900 16px/1 Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;white-space:nowrap}
+
+/* Begin button */
+.bbtn-story{
+  background:#fdd835 !important;
+  color:#111 !important;
+  border-color: rgba(0,0,0,0.35) !important;
+  font:900 14px/1 Arial,sans-serif !important;
+  padding:12px 16px !important;
+  border-radius:14px !important;
+  letter-spacing:.8px !important;
+}
+
+/* Opacity group */
+.opacity-wrap{display:flex;align-items:center;gap:8px}
+.op-label{font:900 12px/1 Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}
+#radarOpacity{width:180px}
+
+/* Map legend near logo */
+.map-legend{
+  position:absolute;
+  right:190px;
+  bottom:26px;
+  z-index:900;
+  background:rgba(11,28,45,0.80);
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:12px;
+  padding:8px 10px;
+  color:#fff;
+  font-family: Arial, sans-serif;
+}
+.map-legend-row{display:flex;align-items:center;gap:10px}
+.leg-mini-label{font:900 12px/1 Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;opacity:.95}
+.leg-mini-bar{
+  width:140px;height:10px;border-radius:7px;
+  background:linear-gradient(90deg,#2b83ba,#ffd166,#ef476f);
+}
+
+/* Keep logo low */
+#brandLogo{bottom:0px !important; right:26px !important;}
+
+/* --- Brand color stripes (from Weather Workshops logo) --- */
+.tvbanner{ position:absolute; }
+.tvbanner::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:4px;
+  background:#2f4e94;
+}
+.tvbanner{position:absolute; top:0; left:0; right:0; z-index:99999; }
+
+
+.banner-topline{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:14px 14px 8px 14px;
+  font-family: Arial, sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.7px;
+  position:relative;
+}
+.banner-topline .topline-center{
+  flex:1;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  max-width:1200px;
+  justify-content:center;
+  flex-wrap:wrap;
+  padding-right:190px; /* reserve space so button doesn't overlap text */
+}
+.banner-topline .bbtn-story{
+  position:absolute;
+  right:14px;
+  top:10px;
+}
+
+
+.banner-bottomline{padding:6px 14px 12px 14px;}
+
+
+.map-legend{
+  right:10px !important;
+  bottom:70px !important;
+  padding:7px 9px !important;
+  border-radius:12px !important;
+}
+.leg-mini-bar{width:120px !important;}
+
+
+#brandLogo{bottom:0px !important; right:14px !important;}
+
+
+/* Pin START button in top-right of the top banner line */
+.banner-topline{position:relative !important;}
+.banner-topline > .bbtn-story{
+  position:absolute !important;
+  right:14px !important;
+  top:10px !important;
+}
+
+
+/* Orange divider line in the middle (between top line and controls line) */
+.banner-divider{
+  height:3px;
+  width:100%;
+  background:#eab35b; /* brand orange */
+  opacity:0.95;
+}
+
+
+/* Nudge legend tighter into the corner */
+.map-legend{right:10px !important; bottom:62px !important;}
+
+
+/* Center lesson/question text */
+.topline-center{
+  justify-content:center !important;
+  text-align:center !important;
+}
+
+/* Force START button to upper-right corner */
+.banner-topline{
+  position:relative !important;
+}
+.banner-topline .bbtn-story{
+  position:absolute !important;
+  right:16px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+}
+
+
+/* --- FINAL banner alignment fixes --- */
+
+/* True center for top line text */
+.banner-topline{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+.banner-topline .topline-center{
+  margin:0 auto !important;
+  text-align:center !important;
+  padding-right:0 !important;
+}
+
+/* Force START button to true upper-right corner */
+.banner-topline .bbtn-story{
+  position:absolute !important;
+  right:16px !important;
+  top:12px !important;
+  transform:none !important;
+}
+
+/* Center RADAR on second row */
+.banner-bottomline{
+  display:flex !important;
+  justify-content:center !important;
+}
+.banner-product{
+  margin:0 auto !important;
+}
+.product-center{
+  text-align:center !important;
+}
+
+
+/* --- Pin START button to upper-right (top line) --- */
+.banner-topline{position:relative !important;}
+.banner-topline #beginStoryBtn{
+  position:absolute !important;
+  right:16px !important;
+  top:10px !important;
+  transform:none !important;
+}
+
+/* --- Push logo slightly LOWER than the bottom edge (so it "sits lower") --- */
+#brandLogo{
+  bottom:-12px !important;
+  right:10px !important;
+}
+
+
+/* Slightly tighter banner height (small) */
+.banner-topline{padding-top:6px !important; padding-bottom:5px !important;}
+.banner-bottomline{padding-top:3px !important; padding-bottom:7px !important;}
+
+
+/* --- Slight banner shrink (top text + controls) --- */
+.top-lesson{font-size:22px !important;}
+.top-question{font-size:14px !important;}
+.product-center{font-size:38px !important;}
+.bbtn{padding:7px 10px !important; font-size:12px !important;}
+.bbtn-story{padding:10px 14px !important; font-size:13px !important;}
+#radarOpacity{width:160px !important;}
+.banner-topline{padding-top:7px !important; padding-bottom:4px !important;}
+.banner-bottomline{padding-top:2px !important; padding-bottom:6px !important;}
+
+
+/* --- Brand logo: smaller + lower --- */
+#brandLogo{
+  width:120px !important;
+  height:auto !important;
+  max-height:64px !important;
+  bottom:-24px !important;
+  right:10px !important;
+  opacity:0.95 !important;
+}
+
+
+/* TV-style city labels */
+.leaflet-tooltip.tv-city-label{
+  background:rgba(255,255,255,0.94);
+  color:#111;
+  border:0;
+  border-radius:10px;
+  padding:4px 8px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.25);
+  font:800 12px/1 Arial,sans-serif;
+}
+.leaflet-tooltip-top.tv-city-label:before,
+.leaflet-tooltip-right.tv-city-label:before,
+.leaflet-tooltip-left.tv-city-label:before,
+.leaflet-tooltip-bottom.tv-city-label:before{
+  border:0;
+}
+
+
+  /* Ensure popups/tooltips render above boundary lines pane */
+  .leaflet-tooltip-pane { z-index: 1200 !important; }
+  .leaflet-popup-pane   { z-index: 1300 !important; }
+
+  /* HRRR pixel-query popup styling (bigger, bolder for students) */
+  .hrrr-popup .leaflet-popup-content-wrapper{
+    border-radius: 14px;
+    border: 2px solid rgba(0,0,0,0.35);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  }
+  .hrrr-popup .leaflet-popup-content{
+    margin: 12px 14px;
+    font: 900 18px/1.15 Arial, sans-serif;
+    letter-spacing: 0.2px;
+  }
+
+
+  /* Force the layer toggle box to be visible */
+  .leaflet-control-layers{ display:block !important; }
+
+/* Jet probe tooltip styling (match HRRR probe vibe) */
+.leaflet-tooltip.jet-tooltip{
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+.leaflet-tooltip.jet-tooltip:before{ border-top-color: rgba(15,23,42,0.92) !important; }
+.jet-tooltip .jt-title{ font-weight: 800; font-size: 14px; letter-spacing: .3px; }
+.jet-tooltip .jt-sub{ font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+/* --- Storm Science Guide (right-side drawer) --- */
+#stormScienceGuide{
+  position:absolute;
+  top:92px;             /* below your banner */
+  right:10px;
+  width:360px;
+  max-width:92vw;
+  max-height: calc(100vh - 100px);
+  overflow:hidden;
+  z-index: 2600;       /* above map + legend */
+  background:rgba(255,255,255,0.98);
+  border:1px solid rgba(0,0,0,0.18);
+  border-radius:16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.18);
+  transform: translateX(110%);
+  transition: transform 180ms ease;
+  display:flex;
+  flex-direction:column;
+}
+body.ssg-open #stormScienceGuide{ transform: translateX(0); }
+
+.ssg-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 12px 10px 12px;
+  border-bottom:1px solid rgba(0,0,0,0.10);
+}
+.ssg-title{
+  font:900 16px/1.1 Arial, sans-serif;
+  letter-spacing:.2px;
+}
+.ssg-close{
+  border:1px solid rgba(0,0,0,.25);
+  background:#fff;
+  border-radius:10px;
+  padding:4px 8px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.ssg-tabs{
+  display:flex;
+  gap:8px;
+  padding:10px 12px;
+}
+.ssg-tab{
+  flex:1;
+  border:1px solid rgba(0,0,0,0.18);
+  background:#fff;
+  border-radius:12px;
+  padding:8px 10px;
+  font:900 12px/1 Arial, sans-serif;
+  cursor:pointer;
+}
+.ssg-tab.active{
+  background:rgba(11,28,45,0.92);
+  color:#fff;
+  border-color: rgba(11,28,45,0.92);
+}
+
+.ssg-search{ padding:0 12px 10px 12px; }
+#ssgSearch{
+  width:100%;
+  padding:10px 10px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.18);
+  font:800 13px/1 Arial, sans-serif;
+}
+
+.ssg-body{
+  padding:0 12px 12px 12px;
+  overflow:auto;
+}
+
+.ssg-foot{
+  padding:10px 12px 12px 12px;
+  border-top:1px solid rgba(0,0,0,0.08);
+}
+
+/* Term cards */
+.ssg-term{
+  border:1px solid rgba(0,0,0,0.12);
+  border-radius:14px;
+  padding:10px 10px;
+  margin:10px 0;
+  background:#fff;
+}
+.ssg-term h4{
+  margin:0 0 6px 0;
+  font:900 14px/1.1 Arial, sans-serif;
+}
+.ssg-def{ font:800 13px/1.35 Arial, sans-serif; margin:6px 0; }
+.ssg-brian{ font:800 13px/1.35 Arial, sans-serif; margin:6px 0; }
+.ssg-why{ margin:6px 0 0 18px; font:800 13px/1.35 Arial, sans-serif; }
+.ssg-pill{
+  display:inline-block;
+  margin-top:6px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,0.12);
+  font:900 11px/1 Arial, sans-serif;
+  opacity:.85;
+}
+
+/* Mobile: full-screen drawer */
+@media (max-width: 640px){
+  #stormScienceGuide{
+    left:6px;
+    right:6px;
+    width:auto;
+    top:78px;
+    max-height: calc(100vh - 86px);
+  }
+}
+
+
+/* --- Brand logo in top-right of banner (no white box) --- */
+#brandLogo{
+  position:absolute !important;
+  top:6px !important;
+  right:10px !important;
+  bottom:auto !important;
+  width:120px !important;
+  max-width:32vw !important;
+  height:auto !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:none !important;
+  border-radius:12px !important;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.45)) !important;
+  z-index:100005 !important;
+  pointer-events:none !important;
+}
+
+.banner-topline .topline-center{ padding-right: 170px !important; }
+
+
+/* --- Bottom line 3-column grid to keep product label truly centered --- */
+.bottomline-center{
+  display:grid !important;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+  width:100%;
+  max-width:1200px;
+}
+.bl-left{justify-self:start; display:flex; align-items:center; gap:12px;}
+.bl-center{justify-self:center;}
+.bl-right{justify-self:end;}
+
+
+/* ===== Storm Lab Fix Pack (v6) ===== */
+/* True-center the top two banner lines regardless of logo/buttons */
+.banner-topline{ justify-content:center !important; }
+.banner-topline .topline-center{
+  margin:0 auto !important;
+  padding-right:0 !important;
+  max-width:1200px !important;
+  width:100% !important;
+}
+.topline-center{ text-align:center !important; }
+.top-lesson, .top-question{ width:100% !important; text-align:center !important; }
+/* If any legacy START button styles exist, hide it */
+#beginStoryBtn{ display:none !important; }
+
+
+/* === TEMP: hide map tools row (we'll bring back later) === */
+#mapControlRow{ display:none !important; }
+
+/* Re-enable default Leaflet zoom for now */
+.leaflet-control-zoom{ display:block !important; }
+
+/* === Tighten banner vertical spacing === */
+.banner-topline{ padding-top:6px !important; padding-bottom:2px !important; }
+.topline-center{ flex-direction:column !important; gap:2px !important; }
+.top-sep{ display:none !important; }
+.top-lesson{ font-size:22px !important; line-height:1.05 !important; }
+.top-question{ font-size:14px !important; line-height:1.15 !important; }
+
+/* === Subtle premium "cloud" texture (no distraction) === */
+.tvbanner{
+  background:
+    radial-gradient(1200px 220px at 20% -40%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 70%),
+    radial-gradient(900px 200px at 80% -30%, rgba(255,255,255,0.08), rgba(255,255,255,0.00) 70%),
+    radial-gradient(700px 180px at 55% 10%, rgba(255,255,255,0.06), rgba(255,255,255,0.00) 70%),
+    linear-gradient(180deg, rgba(11,28,45,0.94), rgba(11,28,45,0.88));
+}
+
+
+/* ===== Premium banner finish + new layout tweaks (v8) ===== */
+
+/* Subtle premium grain (very faint) */
+.tvbanner::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.035) 0px,
+      rgba(255,255,255,0.035) 1px,
+      rgba(0,0,0,0.00) 2px,
+      rgba(0,0,0,0.00) 6px);
+  opacity:0.22;
+  mix-blend-mode: overlay;
+}
+
+/* Legend under product label (inside banner) */
+.banner-legend-under{
+  margin-top:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:6px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.22);
+  background:rgba(0,0,0,0.16);
+}
+.banner-legend-under .leg-mini-bar{ width:150px; height:10px; border-radius:7px; }
+
+/* Hide old map legend widget (we moved it to the banner) */
+#mapLegend{ display:none !important; }
+
+/* Move terms button down a touch so logo never overlaps */
+#stormScienceGuideBtn{ transform: translateY(14px); position:relative; z-index:100012; }
+
+/* Logo: nudge slightly up-right to clear the terms button */
+#brandLogo{
+  top:4px !important;
+  right:8px !important;
+  width:118px !important;
+}
+
+/* Master clock bubble in map space */
+.clock-bubble{
+  position:absolute;
+  right:10px;
+  top:160px; /* JS will refine this */
+  z-index: 2400;
+  background:rgba(11,28,45,0.92);
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:14px;
+  padding:10px 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.25);
+  color:#fff;
+  font-family: Arial, sans-serif;
+  user-select:none;
+  pointer-events:auto;
+}
+.cb-label{
+  font:900 11px/1 Arial,sans-serif;
+  letter-spacing:.9px;
+  text-transform:uppercase;
+  opacity:.92;
+}
+.cb-time{
+  margin-top:4px;
+  font:900 16px/1.05 Arial,sans-serif;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+.cb-row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+.cb-btn{
+  border:1px solid rgba(255,255,255,0.35);
+  background:rgba(0,0,0,0.25);
+  color:#fff;
+  padding:8px 10px;
+  border-radius:12px;
+  font:900 14px/1 Arial, sans-serif;
+  cursor:pointer;
+  line-height:1;
+}
+.cb-btn:hover{ background:rgba(0,0,0,0.40); }
+.cb-scrubber{
+  width:100%;
+  margin-top:8px;
+  accent-color:#fdd835;
+}
+
+/* Hide the time label inside the banner row (clock lives in the bubble now) */
+#bannerTimeLabel{ display:none !important; }
+.time-controls{ display:none !important; }
+
+/* Custom zoom in lower-right corner */
+.zoom-corner{
+  position:absolute;
+  right:14px;
+  bottom: 24px; /* above attribution & bottom UI */
+  z-index:100003;
+  display:flex;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:14px;
+  background:rgba(11,28,45,0.92);
+  border:1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 10px 26px rgba(0,0,0,.25);
+  pointer-events:auto;
+}
+.zoom-corner-btn{
+  border:1px solid rgba(255,255,255,0.35);
+  background:rgba(0,0,0,0.25);
+  color:#fff;
+  padding:9px 12px;
+  border-radius:12px;
+  font:900 16px/1 Arial, sans-serif;
+  cursor:pointer;
+  line-height:1;
+}
+.zoom-corner-btn:hover{ background:rgba(0,0,0,0.40); }
+.zoom-corner-label{font:900 11px/1 Arial,sans-serif;letter-spacing:.8px;color:#fff;opacity:.92;margin-right:6px;}
+
+/* Use custom zoom; hide Leaflet default zoom */
+.leaflet-control-zoom{ display:none !important; }
+
+/* Tighten bottomline spacing a hair now that legend moved into banner */
+.banner-bottomline{ padding-top:4px !important; padding-bottom:10px !important; }
+
+
+
+/* ===== Premium banner background (opaque + subtle weather texture) ===== */
+.tvbanner{
+  background-color:#0b1c2d !important;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1200'%20height='220'%20viewBox='0%200%201200%20220'%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id='g'%20x1='0'%20x2='1'%20y1='0'%20y2='0'%3E%0A%3Cstop%20offset='0'%20stop-color='%230b1c2d'/%3E%0A%3Cstop%20offset='1'%20stop-color='%23102a44'/%3E%0A%3C/linearGradient%3E%0A%3C/defs%3E%0A%3Crect%20width='1200'%20height='220'%20fill='url(%23g)'/%3E%0A%3Cg%20fill='white'%20opacity='0.07'%3E%0A%3Cpath%20d='M170%20150c-22%200-40-14-40-32%200-17%2016-30%2037-32%207-20%2029-34%2055-34%2030%200%2055%2018%2058%2041%2023%202%2041%2016%2041%2033%200%2018-20%2033-45%2033H170z'/%3E%0A%3Cpath%20d='M520%20120c-28%200-51-17-51-38%200-20%2020-36%2046-38%209-24%2035-41%2066-41%2036%200%2066%2022%2070%2049%2028%203%2049%2020%2049%2040%200%2021-24%2038-54%2038H520z'/%3E%0A%3Cpath%20d='M880%20155c-24%200-44-15-44-34%200-18%2018-32%2041-34%208-21%2031-36%2059-36%2033%200%2060%2020%2063%2045%2024%203%2043%2017%2043%2035%200%2019-21%2034-48%2034H880z'/%3E%0A%3C/g%3E%0A%3Cg%20stroke='white'%20stroke-opacity='0.05'%20stroke-width='2'%3E%0A%3Cpath%20d='M0%20190%20C%20200%20150,%20400%20220,%20600%20180%20S%201000%20210,%201200%20170'%20fill='none'/%3E%0A%3Cpath%20d='M0%2060%20C%20220%2020,%20420%2090,%20650%2055%20S%20980%2095,%201200%2045'%20fill='none'/%3E%0A%3C/g%3E%0A%3C/svg%3E") !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  opacity: 1 !important;
+}
+/* Ensure any previous banner overlay remains subtle but NOT see-through */
+.tvbanner::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: radial-gradient(ellipse at 20% 40%, rgba(255,255,255,0.06), transparent 55%),
+              radial-gradient(ellipse at 80% 30%, rgba(255,255,255,0.05), transparent 60%);
+  pointer-events:none;
+}
+
+/* Keep Open Lesson safely above any story panel */
+#openLessonBtn{
+  position:absolute !important;
+  left:14px !important;
+  top:58px !important;
+  z-index: 4000 !important;
+}
+
+/* Weather discovery terms button: nudge down so logo never overlaps */
+#stormScienceGuideBtn{
+  margin-top: 12px !important;
+}
+
+/* Clock bubble default a bit lower; JS will keep it below banner */
+.clock-bubble{  top: 180px !important; }
+
+</style>
+
+<link rel="stylesheet" href="./leaflet-velocity.min.css"/>
+<script src="./leaflet-velocity.min.js"></script>
+</head>
+
+<body>
+<div id="map"></div>
+<div id="mapLegend" class="map-legend" title="Radar reflectivity" style="display:none;">
+  <div class="map-legend-row">
+    <span class="leg-mini-label">Light</span>
+    <span class="leg-mini-bar" aria-hidden="true"></span>
+    <span class="leg-mini-label">Heavy</span>
+  </div>
+
+</div>
+<div id="goesControls" class="map-legend" style="left:10px; right:auto; bottom:70px; display:none; width:280px;" title="GOES controls">
+  <div class="map-legend-row" style="justify-content:space-between;">
+    <span class="leg-mini-label">GOES</span>
+    <span id="goesFrameLabel" class="leg-mini-label" style="opacity:.85; font-weight:800;">—</span>
+  </div>
+  <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+    <button class="btn" id="goesPlayBtn" style="flex:1;">Play</button>
+    <button class="btn" id="goesPauseBtn" style="flex:1;">Pause</button>
+  </div>
+  <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+    <button class="btn" id="goesFitBtn" style="flex:1;">Fit</button>
+    <button class="btn" id="goesSaveBtn" style="flex:1;">Save</button>
+    <button class="btn" id="goesResetBtn" style="flex:1;">Reset</button>
+  </div>
+  <div class="tiny" style="margin-top:6px; opacity:.85;">
+    Tip: Click <b>Fit</b> then drag SW/NE corners. <b>Save</b> stores the fit on this device.
+  </div>
+</div>
+<div id="storyPanel"
+ aria-label="Story panel">
+  <div class="story-head">
+  <div class="story-title" id="storyTitle">Guide</div>
+  <div class="story-actions">
+    <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
+    <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
+  </div>
+</div>
+  <div class="story-body" id="storyBody">
+    <p class="tiny">Loading story…</p>
+  </div>
+  <div class="story-nav">
+    <button class="btn" id="storyPrevBtn">Back</button>
+    <button class="btn" id="storyNextBtn">Next</button>
+  </div>
+  <div class="tiny" id="storyStep"></div>
+</div>
+<div id="storyTab" aria-label="Open lesson">OPEN LESSON</div>
+<div id="mapControlRow" class="map-control-row" aria-label="Map controls row">
+  <div id="toolBox" class="tool-box" aria-label="Map tools"><span class="tool-label">TOOLS</span><button class="tool-btn" id="toolMeasure" title="Measure distance">RULER</button><button class="tool-btn" id="toolProbe" title="Pixel query / probe">PROBE</button><button class="tool-btn" id="toolDraw" title="Teacher telestrator">DRAW</button><button class="tool-btn" id="toolErase" title="Erase drawings">ERASE</button><button class="tool-btn" id="toolHome" title="Reset view">HOME</button></div>
+  <div id="zoomBox" class="zoom-box" aria-label="Zoom controls"><span class="zoom-label">ZOOM</span><button class="zoom-btn" id="zoomMinus" title="Zoom out">−</button><button class="zoom-btn" id="zoomPlus" title="Zoom in">+</button></div>
+
+</div>
+
+<!-- Custom zoom buttons in lower-right corner -->
+<div id="zoomCorner" class="zoom-corner" aria-label="Zoom controls">
+  <span class="zoom-corner-label">ZOOM</span>
+  <button class="zoom-corner-btn" id="zoomCornerMinus" title="Zoom out">−</button>
+  <button class="zoom-corner-btn" id="zoomCornerPlus" title="Zoom in">+</button>
+</div>
+
+<!-- Master clock bubble (floats above layer toggle box) -->
+<div id="clockBubble" class="clock-bubble" aria-label="Time">
+  <div class="cb-label">TIME</div>
+  <div class="cb-row" aria-label="Time controls">
+    <button class="cb-btn" id="cbBackBtn" title="Back 3 hours">◀</button>
+    <div class="cb-time" id="clockBubbleTime">—</div>
+    <button class="cb-btn" id="cbFwdBtn" title="Forward 3 hours">▶</button>
+  </div>
+  <input id="cbScrubber" class="cb-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Time scrubber" />
+</div>
+<div id="stormScienceGuide" aria-label="Weather Discovery Terms">
+  <div class="ssg-head">
+    <div class="ssg-title">Weather Discovery Terms</div>
+    <button class="ssg-close" id="ssgCloseBtn" title="Close">✕</button>
+  </div>
+
+  <div class="ssg-tabs" role="tablist" aria-label="Weather Discovery Terms tabs">
+    <button class="ssg-tab active" id="ssgTabScene" type="button">This Scene</button>
+    <button class="ssg-tab" id="ssgTabAll" type="button">All Terms</button>
+  </div>
+
+  <div class="ssg-search">
+    <input id="ssgSearch" type="search" placeholder="Search terms… (dew point, jet stream, humidity)" />
+  </div>
+
+  <div class="ssg-body" id="ssgBody"></div>
+
+  <div class="ssg-foot tiny">
+    Tip: Later we can auto-fill “This Scene” by adding a <b>terms</b> column to your story sheet.
+  </div>
+</div>
+<div id="banner" class="tvbanner">
+  <div class="banner-topline" role="banner">
+    <div class="topline-center">
+      <span class="top-lesson">Lesson 1: Driving Question</span>
+      <span class="top-sep">—</span>
+      <span class="top-question"><span class="top-q-label">Question:</span> How can we use real-time weather data to make safer decisions?</span>
+    </div>
+</div>
+  <div class="banner-divider" aria-hidden="true"></div>
+
+  <div class="banner-bottomline">
+    <div class="bottomline-center">
+  <div class="bl-left">
+    <button class="open-lesson-btn" id="openLessonBtn" title="Open or close lesson panel">OPEN LESSON</button>
+    <div class="time-controls" aria-label="Time controls">
+        <button class="bbtn" id="bBackBtn" title="Back 3 hours">◀</button>
+        <div class="btime" id="bannerTimeLabel">April 14, 2018 7AM</div>
+        <button class="bbtn" id="bFwdBtn" title="Forward 3 hours">▶</button>
+      </div>
+  </div>
+  <div class="bl-center">
+    <div class="banner-product" aria-label="Product shown">
+        <div class="product-center" id="productLabel">RADAR</div>
+      </div>
+        <div id="bannerLegend" class="banner-legend-under" aria-label="Radar legend">
+          <span class="leg-mini-label">Light</span>
+          <span class="leg-mini-bar" aria-hidden="true"></span>
+          <span class="leg-mini-label">Heavy</span>
+        </div>
+  </div>
+  <div class="bl-right">
+    <button class="banner-btn banner-btn-blue" id="stormScienceGuideBtn" title="Weather Discovery Terms">WEATHER DISCOVERY TERMS</button>
+  </div>
+</div>
+  </div>
+
+  <div id="status" class="bstatus" style="display:none;"></div>
+</div>
+
+<img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops" />
+<script>
+(function(){
+  // ---------- Config ----------
+  var STEP_HOURS = 3;
+
+  // Use the same starting time as your case study controls:
+  // Time window for the time controls (expanded to include earlier GFS forecast frames).
+  var startZ = new Date(Date.UTC(2018, 3, 10, 0, 0, 0));  // 2018-04-10 00Z (include day before for global temp)
+  var endZ   = new Date(Date.UTC(2018, 3, 15, 12, 0, 0)); // 2018-04-15 12Z (storm end window; extend later if needed) // 24h window; extend later if you want
+  var curZ = new Date(startZ.getTime());
+
+  // Composite radar geographic extent (NAD83 geographic). Shifted ~60mi south + ~15mi east for better fit.
+  // Base extent commonly used by IEM mosaics: lon -126..-66, lat 24..50
+  var SHIFT_LAT = -1.09; // south shift (~15mi extra)   // south
+  var SHIFT_LON = 0.49; // east shift (~15mi extra)   // east
+  var RADAR_BOUNDS = L.latLngBounds(
+    L.latLng(24 + SHIFT_LAT, -126 + SHIFT_LON),
+    L.latLng(50 + SHIFT_LAT,  -66 + SHIFT_LON)
+  );
+
+  // Local file pattern in your repo:
+  // radar_frames/n0q_201804141200.png, etc
+  function pad2(n){ return (n<10?'0':'') + n; }
+  function yyyymmdd(d){
+    return d.getUTCFullYear() + pad2(d.getUTCMonth()+1) + pad2(d.getUTCDate());
+  }
+  function hhmm(d){
+    return pad2(d.getUTCHours()) + pad2(d.getUTCMinutes());
+  }
+  function radarUrlFor(d){
+    return "radar_frames/n0q_" + yyyymmdd(d) + hhmm(d) + ".png";
+  }
+
+  // GFS snow forecast PNGs in repo (static frames)
+  // gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png
+  // gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png
+  // gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png
+  function gfsSnowUrlFor(d){
+    // Pick the most-relevant static forecast image for the current time.
+    // (We don't animate this yet; we just swap between a few key lead times.)
+    var t = d.getTime();
+    var t13 = Date.UTC(2018,3,13,0,0,0); // Apr 13 00Z
+    var t12 = Date.UTC(2018,3,12,0,0,0); // Apr 12 00Z
+    if (t >= t13) return "gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png";
+    if (t >= t12) return "gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png";
+    return "gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png";
+  }
+
+  // Alerts file pattern you already have:
+  // timeline_hourly/alerts_20180414_1500Z.geojson
+  function alertsUrlFor(d){
+    return "timeline_hourly/alerts_" + yyyymmdd(d) + "_" + pad2(d.getUTCHours()) + "00Z.geojson";
+  }
+
+  // "Central time" label (forced) — we just subtract 5 hours and show CST
+  // (Technically CDT for April, but your students don't need DST complexity here.)
+  function formatCentralLabel(dUtc) {
+  // Display in "Central time" without DST complexity for students.
+  // April is technically CDT, but we keep a fixed -5 hour offset for clarity.
+  var central = new Date(dUtc.getTime() - 5*3600*1000); // UTC -> Central (approx)
+  var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var m = months[central.getUTCMonth()];
+  var day = central.getUTCDate();
+  var year = central.getUTCFullYear();
+  var hr = central.getUTCHours();
+  var ampm = hr >= 12 ? "PM" : "AM";
+  hr = hr % 12; if (hr === 0) hr = 12;
+  return m + " " + day + ", " + year + " " + hr + ampm;
+}
+
+  // ---------- Map ----------
+  var map = L.map("map", { zoomControl:true }).setView([43.55, -96.73], 6);
+
+  // Custom lower-right zoom buttons
+  var zoomCornerPlus = document.getElementById('zoomCornerPlus');
+  var zoomCornerMinus = document.getElementById('zoomCornerMinus');
+  if (zoomCornerPlus) zoomCornerPlus.onclick = function(){ map.zoomIn(); };
+  if (zoomCornerMinus) zoomCornerMinus.onclick = function(){ map.zoomOut(); };
+
+  // Keep the clock bubble pinned above the layer control
+  window.addEventListener('resize', function(){ setTimeout(positionClockBubble, 50); });
+  setTimeout(positionClockBubble, 300);
+
+
+  // Custom zoom box buttons (top-right)
+  var zoomPlus = document.getElementById("zoomPlus");
+  var zoomMinus = document.getElementById("zoomMinus");
+  if (zoomPlus) zoomPlus.onclick = function(){ map.zoomIn(); };
+  if (zoomMinus) zoomMinus.onclick = function(){ map.zoomOut(); };
+
+  // Map tools (Ruler / Probe / Draw / Home)
+  var toolMeasureBtn = document.getElementById("toolMeasure");
+  var toolProbeBtn   = document.getElementById("toolProbe");
+  var toolDrawBtn    = document.getElementById("toolDraw");
+  var toolEraseBtn   = document.getElementById("toolErase");
+  var toolHomeBtn    = document.getElementById("toolHome");
+
+  // Teacher/student mode (URL param): ?mode=student to disable teacher tools
+  var isTeacherMode = true;
+  try{
+    var qsMode = new URLSearchParams(window.location.search).get("mode");
+    isTeacherMode = (qsMode !== "student");
+  }catch(e){ isTeacherMode = true; }
+
+  // Wire OPEN LESSON button in banner (replaces the old floating tab)
+  var openLessonBtn = document.getElementById("openLessonBtn");
+
+
+  var measureStart = null;
+  var measureLine = null;
+  var measureStartMarker = null;
+  var measurePopup = null;
+
+  function clearMeasureGraphics(){
+    try{ if (measureLine) map.removeLayer(measureLine); }catch(e){}
+    try{ if (measureStartMarker) map.removeLayer(measureStartMarker); }catch(e){}
+    try{ if (measurePopup) map.closePopup(measurePopup); }catch(e){}
+    measureLine = null; measureStartMarker = null; measurePopup = null;
+    measureStart = null;
+  }
+
+  function setMeasureMode(on){
+    if (on){
+      document.body.classList.add("measure-active");
+      document.body.classList.remove("probe-active");
+      document.body.classList.remove("draw-active");
+    } else {
+      document.body.classList.remove("measure-active");
+      clearMeasureGraphics();
+    }
+
+
+  /* ===== Storm Lab Fix Pack (v6): missing tool functions ===== */
+
+  // Make sure tool buttons show active state
+  function setToolActive(btn, on){
+    if (!btn) return;
+    btn.classList.toggle("active", !!on);
+  }
+
+  // ----- Probe mode (HRRR temp only for now) -----
+  function setProbeMode(on){
+    if (on){
+      document.body.classList.add("probe-active");
+      document.body.classList.remove("measure-active");
+      document.body.classList.remove("draw-active");
+    } else {
+      document.body.classList.remove("probe-active");
+    }
+    setToolActive(toolProbeBtn, on);
+    if (on){
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolDrawBtn, false);
+    }
+  }
+
+  // ----- Measure (ruler) -----
+  function handleMeasureClick(e){
+    if (!e || !e.latlng) return;
+
+    // First click: set start
+    if (!measureStart){
+      clearMeasureGraphics();
+
+      measureStart = e.latlng;
+      measureStartMarker = L.circleMarker(measureStart, {
+        radius: 6, color: "rgba(255,255,255,0.95)", weight: 2,
+        fillColor: "rgba(30,136,229,0.95)", fillOpacity: 0.95
+      }).addTo(map);
+
+      measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
+        .setLatLng(measureStart)
+        .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Ruler</div><div style='font:900 16px/1.1 Arial,sans-serif'>Tap a second point…</div>");
+      measurePopup.openOn(map);
+      return;
+    }
+
+    // Second click: compute distance
+    var end = e.latlng;
+    var meters = map.distance(measureStart, end);
+    var miles = meters / 1609.344;
+    var km = meters / 1000;
+
+    try{ if (measureLine) map.removeLayer(measureLine); }catch(_){}
+    measureLine = L.polyline([measureStart, end], {
+      color: "rgba(30,136,229,0.95)",
+      weight: 4,
+      opacity: 0.95
+    }).addTo(map);
+
+    var content =
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Distance</div>" +
+      "<div style='font:900 26px/1.05 Arial,sans-serif'>" + miles.toFixed(1) + " mi</div>" +
+      "<div style='font:900 16px/1.05 Arial,sans-serif;opacity:.9'>" + km.toFixed(1) + " km</div>";
+
+    measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
+      .setLatLng(end)
+      .setContent(content)
+      .openOn(map);
+
+    // Reset start so the next click starts a new measurement
+    measureStart = null;
+  }
+
+  // Keep measure button "active" styling in sync
+  var _origSetMeasureMode = setMeasureMode;
+  setMeasureMode = function(on){
+    _origSetMeasureMode(on);
+    setToolActive(toolMeasureBtn, on);
+    if (on){
+      setToolActive(toolProbeBtn, false);
+      setToolActive(toolDrawBtn, false);
+    }
+  };
+
+  // ----- Draw / telestrator -----
+  var drawGroup = L.layerGroup().addTo(map);
+  var drawing = false;
+  var currentLine = null;
+
+  function clearDrawings(){
+    try{ drawGroup.clearLayers(); }catch(e){}
+  }
+
+  function setDrawMode(on){
+    if (!isTeacherMode){
+      // student mode: do nothing, keep disabled
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      document.body.classList.remove("draw-active");
+      return;
+    }
+
+    if (on){
+      document.body.classList.add("draw-active");
+      document.body.classList.remove("measure-active");
+      document.body.classList.remove("probe-active");
+      setToolActive(toolDrawBtn, true);
+      setToolActive(toolEraseBtn, true);
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolProbeBtn, false);
+
+      // prevent map panning while drawing
+      try{ map.dragging.disable(); }catch(e){}
+    } else {
+      document.body.classList.remove("draw-active");
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      drawing = false;
+      currentLine = null;
+      try{ map.dragging.enable(); }catch(e){}
+    }
+  }
+
+  function startDraw(e){
+    if (!document.body.classList.contains("draw-active")) return;
+    if (!e || !e.latlng) return;
+    drawing = true;
+
+    currentLine = L.polyline([e.latlng], {
+      color: "#fdd835",
+      weight: 5,
+      opacity: 0.95,
+      lineCap: "round",
+      lineJoin: "round"
+    }).addTo(drawGroup);
+  }
+
+  function moveDraw(e){
+    if (!drawing || !currentLine) return;
+    if (!e || !e.latlng) return;
+    currentLine.addLatLng(e.latlng);
+  }
+
+  function endDraw(){
+    if (!drawing) return;
+    drawing = false;
+    currentLine = null;
+  }
+
+  // Pointer/touch drawing
+  map.on("mousedown", startDraw);
+  map.on("mousemove", moveDraw);
+  map.on("mouseup", endDraw);
+  map.on("touchstart", startDraw);
+  map.on("touchmove", moveDraw);
+  map.on("touchend", endDraw);
+
+  // ----- Probe click handler (HRRR temp nearest point) -----
+  function handleProbeClick(e){
+    if (!e || !e.latlng) return;
+
+    // Require HRRR temp layer + points
+    try{
+      if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng(e.latlng)
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b>.</div>")
+          .openOn(map);
+        return;
+      }
+    }catch(_){}
+
+    var best = null;
+    var bestD = Infinity;
+    for (var i=0; i<hrrrPoints.length; i++){
+      var p = hrrrPoints[i];
+      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+      var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
+      if (d < bestD){ bestD = d; best = p; }
+    }
+    if (!best) return;
+
+    var tf = (typeof best.tF === "number") ? best.tF : null;
+    var content =
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
+      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
+
+    L.popup({ closeButton:true, className:"hrrr-popup" })
+      .setLatLng([best.lat, best.lon])
+      .setContent(content)
+      .openOn(map);
+  }
+
+  }
+
+if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
+    var on = !document.body.classList.contains("measure-active");
+    setMeasureMode(on);
+    if (on) setDrawMode(false);
+  };
+
+  if (toolProbeBtn) toolProbeBtn.onclick = function(){
+    // Keep probe simple: if HRRR layer isn't on, tell the user and don't enable.
+    try{
+      if (!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer))){
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng(map.getCenter())
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> to probe.</div>")
+          .openOn(map);
+        setProbeMode(false);
+        return;
+      }
+    }catch(e){}
+    var on = !document.body.classList.contains("probe-active");
+    setProbeMode(on);
+    if (on) setDrawMode(false);
+  };
+
+  if (toolDrawBtn) toolDrawBtn.onclick = function(){
+    var on = !document.body.classList.contains("draw-active");
+    setDrawMode(on);
+  };
+
+  if (toolEraseBtn) toolEraseBtn.onclick = function(){
+    if (!isTeacherMode) return;
+    clearDrawings();
+  };
+
+  if (toolHomeBtn) toolHomeBtn.onclick = function(){
+    setMeasureMode(false); setProbeMode(false); setDrawMode(false);
+    clearMeasureGraphics();
+    map.setView([43.55, -96.73], 6);
+  };
+
+  // OPEN LESSON button in banner toggles the storyteller panel
+  if (openLessonBtn){
+    openLessonBtn.onclick = function(){
+      try{
+        if (storyPanelEl && storyPanelEl.classList.contains("story-open")) closeGuide();
+        else openGuide();
+      }catch(e){}
+    };
+  }
+
+  // Disable teacher-only tools in student mode
+  if (!isTeacherMode){
+    if (toolDrawBtn){ toolDrawBtn.classList.add("disabled"); }
+    if (toolEraseBtn){ toolEraseBtn.classList.add("disabled"); }
+  }
+
+
+
+
+  // --- State boundaries / outlines (GeoJSON first; tile fallback) ---
+  map.createPane("lines");
+  map.getPane("lines").style.zIndex = 450;         // above dots, below popups         // above dots
+  map.getPane("lines").style.pointerEvents = "none"; // keep clicks working
+
+  var usStatesLayer = null;
+  var usStatesLoaded = false;
+
+  // Fallback: reliable reference tiles (works even if GeoJSON isn't present)
+  var stateLinesTile = L.tileLayer(
+    "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}",
+    { pane: "lines", opacity: 0.95 }
+  );
+
+  function loadUsStatesGeoJSONOnce(){
+    if (usStatesLoaded) return;
+    usStatesLoaded = true;
+
+    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function(geojson){
+        usStatesLayer = L.geoJSON(geojson, {
+          pane: "lines",
+          style: function(){
+            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
+          }
+        });
+// If user already has HRRR temp on, add immediately
+        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
+      })
+      .catch(function(err){
+        // If GeoJSON missing, we just rely on tile fallback
+        console.log("State GeoJSON not loaded (using tile fallback):", err);
+      });
+  }
+
+  function addStateLines(){
+    // Prefer GeoJSON outlines if available; otherwise tile fallback
+    if (usStatesLayer) {
+      if (!map.hasLayer(usStatesLayer)) usStatesLayer.addTo(map);
+      if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+    } else {
+      if (!map.hasLayer(stateLinesTile)) stateLinesTile.addTo(map);
+    }
+  }
+  function removeStateLines(){
+    if (usStatesLayer && map.hasLayer(usStatesLayer)) map.removeLayer(usStatesLayer);
+    if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+  }
+
+  // Kick off loading in the background (won't break anything if missing)
+  loadUsStatesGeoJSONOnce();
+  // Clean base map (no labels) — CARTO Light (white/gray land)
+  var base = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+    { attribution: "© OpenStreetMap © CARTO", subdomains:"abcd", maxZoom: 19, className: "basemap-tiles" }
+  ).addTo(map);
+// (No road overlay)
+
+// --- Extra Midwest city labels (shows more as you zoom in) ---
+  var cityLabelLayer = L.layerGroup().addTo(map);
+
+  // --- Wide-view national city labels (decluttered) ---
+// Shows a handful of major US cities when zoomed out, without crowding.
+var nationalCityLayer = L.layerGroup().addTo(map);
+
+// A curated list of major cities across the US (name, lat, lon)
+// You can add/remove freely.
+var NATIONAL_CITIES = [
+  ["Seattle", 47.6062, -122.3321],
+  ["Portland", 45.5152, -122.6784],
+  ["San Francisco", 37.7749, -122.4194],
+  ["Los Angeles", 34.0522, -118.2437],
+  ["San Diego", 32.7157, -117.1611],
+  ["Las Vegas", 36.1699, -115.1398],
+  ["Phoenix", 33.4484, -112.0740],
+  ["Denver", 39.7392, -104.9903],
+  ["Dallas", 32.7767, -96.7970],
+  ["Houston", 29.7604, -95.3698],
+  ["Minneapolis", 44.9778, -93.2650],
+  ["Chicago", 41.8781, -87.6298],
+  ["St. Louis", 38.6270, -90.1994],
+  ["Nashville", 36.1627, -86.7816],
+  ["Atlanta", 33.7490, -84.3880],
+  ["Miami", 25.7617, -80.1918],
+  ["Washington, DC", 38.9072, -77.0369],
+  ["Philadelphia", 39.9526, -75.1652],
+  ["New York", 40.7128, -74.0060],
+  ["Boston", 42.3601, -71.0589]
+];
+
+function addDeclutteredCityLabels(layer, cityList, minPx){
+  layer.clearLayers();
+  var b = map.getBounds();
+  var placed = []; // container points
+  for (var i=0; i<cityList.length; i++){
+    var name = cityList[i][0], lat = cityList[i][1], lon = cityList[i][2];
+    var ll = L.latLng(lat, lon);
+    if (!b.contains(ll)) continue;
+
+    var pt = map.latLngToContainerPoint(ll);
+    var ok = true;
+    for (var j=0; j<placed.length; j++){
+      var dx = pt.x - placed[j].x;
+      var dy = pt.y - placed[j].y;
+      if (Math.sqrt(dx*dx + dy*dy) < minPx) { ok = false; break; }
+    }
+    if (!ok) continue;
+
+    placed.push(pt);
+    layer.addLayer(makeCityLabel(name, lat, lon));
+  }
+}
+
+
+  function makeCityLabel(name, lat, lon){
+    return L.marker([lat, lon], {
+      interactive: false,
+      icon: L.divIcon({
+        className: "town-label",
+        html: name,
+        iconSize: null
+      })
+    });
+  }
+
+  var CITIES_TIER1 = [
+    ["Sioux Falls", 43.5446, -96.7311],
+    ["Minneapolis", 44.9778, -93.2650],
+    ["Des Moines", 41.5868, -93.6250],
+    ["Omaha", 41.2565, -95.9345],
+    ["Kansas City", 39.0997, -94.5786],
+    ["Rapid City", 44.0805, -103.2310],
+    ["Denver", 39.7392, -104.9903]
+  ];
+  
+  var CITIES_TIER2 = [
+    ["Fargo", 46.8772, -96.7898],
+    ["Bismarck", 46.8083, -100.7837],
+    ["Grand Forks", 47.9253, -97.0329],
+    ["Minot", 48.2325, -101.2963],
+    ["Williston", 48.1469, -103.6180],
+    ["Dickinson", 46.8792, -102.7896],
+    ["Billings", 45.7833, -108.5007],
+    ["Missoula", 46.8721, -113.9940],
+    ["Helena", 46.5884, -112.0245],
+    ["Great Falls", 47.5053, -111.3008],
+    ["Bozeman", 45.6770, -111.0429],
+    ["Kalispell", 48.1958, -114.3129],
+    ["Brookings", 44.3114, -96.7984],
+    ["Watertown", 44.8994, -97.1151],
+    ["Huron", 44.3633, -98.2143],
+    ["Sioux City", 42.4990, -96.4003],
+    ["Mankato", 44.1636, -93.9994],
+    ["Rochester", 44.0121, -92.4802],
+    ["Aberdeen", 45.4647, -98.4865],
+    ["Pierre", 44.3683, -100.3509]
+  ];
+
+var CITIES_TIER3 = [
+    ["Mitchell", 43.7094, -98.0298],
+    ["Yankton", 42.8711, -97.3973],
+    ["Vermillion", 42.7794, -96.9292],
+    ["Worthington", 43.6194, -95.5964],
+    ["Marshall", 44.4469, -95.7880],
+    ["Luverne", 43.6541, -96.2125],
+    ["Pipestone", 43.9970, -96.3175],
+    ["Madison", 44.0061, -97.1133],
+    ["Norfolk", 42.0327, -97.4170]
+  ];
+function updateCityLabels(){
+  var z = map.getZoom();
+
+  // When we're VERY zoomed-in, let the basemap labels do the work (less clutter).
+  if (z >= 11){
+    cityLabelLayer.clearLayers();
+    nationalCityLayer.clearLayers();
+    return;
+  }
+
+  cityLabelLayer.clearLayers();
+
+  // 1) Wide CONUS view: show decluttered major US cities (sparse)
+  if (z <= 4){
+    var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
+    addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
+  } else {
+    nationalCityLayer.clearLayers();
+  }
+
+  // 2) Regional "bubble" cities: phase in gradually + declutter to avoid crowding
+  // Tier 1 (regional anchors) at zoom 5+
+  if (z >= 5){
+    var minPx1 = (z === 5) ? 70 : 55;
+    addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
+  }
+  // Tier 2 (regional fill) at zoom 6+
+  if (z >= 6){
+    var minPx2 = (z === 6) ? 50 : 40;
+    // add on top of existing; do not clear
+    (function(){
+      var b = map.getBounds();
+      var placed = [];
+      // seed placed with existing labels to prevent overlaps
+      cityLabelLayer.eachLayer(function(layer){
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
+      });
+      for (var i=0; i<CITIES_TIER2.length; i++){
+        var c = CITIES_TIER2[i];
+        var ll = L.latLng(c[1], c[2]);
+        if (!b.contains(ll)) continue;
+        var pt = map.latLngToContainerPoint(ll);
+        var ok = true;
+        for (var j=0; j<placed.length; j++){
+          var dx = pt.x - placed[j].x;
+          var dy = pt.y - placed[j].y;
+          if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push(pt);
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+      }
+    })();
+  }
+  // Tier 3 (local 150-mi-ish) at zoom 8+
+  if (z >= 8){
+    var minPx3 = (z === 8) ? 32 : 26;
+    (function(){
+      var b = map.getBounds();
+      var placed = [];
+      cityLabelLayer.eachLayer(function(layer){
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
+      });
+      for (var i=0; i<CITIES_TIER3.length; i++){
+        var c = CITIES_TIER3[i];
+        var ll = L.latLng(c[1], c[2]);
+        if (!b.contains(ll)) continue;
+        var pt = map.latLngToContainerPoint(ll);
+        var ok = true;
+        for (var j=0; j<placed.length; j++){
+          var dx = pt.x - placed[j].x;
+          var dy = pt.y - placed[j].y;
+          if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push(pt);
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+      }
+    })();
+  }
+}
+
+  // Update labels as you zoom/pan
+  map.on("zoomend", updateCityLabels);
+  map.on("moveend", updateCityLabels);
+  updateCityLabels();
+
+// Optional labels
+// Optional labels (kept on top to help students)
+  var labels = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+    { attribution: "", subdomains:"abcd", maxZoom: 19, pane: "overlayPane" }
+  );
+
+  function updateBaseLabels(){
+    var z = map.getZoom();
+    // Only show built-in labels when EXTREMELY zoomed in (local view)
+    if (z >= 11){
+      if (!map.hasLayer(labels)) labels.addTo(map);
+    } else {
+      if (map.hasLayer(labels)) map.removeLayer(labels);
+    }
+  }
+  map.on("zoomend", updateBaseLabels);
+  map.on("moveend", updateBaseLabels);
+  updateBaseLabels();
+
+
+  // ---------- Story (Google Sheet) ----------
+  var SHEET_ID = "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
+  var SHEET_TAB = "April Blizzard Story";
+  var storyItems = [];
+  var storyMarkers = [];
+  var storyIndex = 0;
+  var focusRing = null;
+
+  var storyPanel = document.getElementById("storyPanel");
+  var storyTitleEl = document.getElementById("storyTitle");
+  var storyBodyEl  = document.getElementById("storyBody");
+  var storyStepEl  = document.getElementById("storyStep");
+
+  function storyOpen(){
+    if (!storyPanel) return; storyPanel.classList.add("story-open");
+    var legendPop = document.getElementById("legendPop");
+    if (legendPop) legendPop.classList.add("hidden");
+    setTimeout(function(){ map.invalidateSize(); }, 220);
+  }
+  function storyClose(){
+  collapseGuide();
+  setTimeout(function(){ map.invalidateSize(); }, 220);
+}
+function storyToggle(){
+  if (document.body.classList.contains("guide-collapsed")) openGuide();
+  else collapseGuide();
+}
+
+function safeLink(url){
+    if (!url) return "";
+    return String(url).trim();
+  }
+
+  function renderStory(i, panTo){
+    if (!storyItems.length) return;
+    if (i < 0) i = 0;
+    if (i >= storyItems.length) i = storyItems.length - 1;
+    storyIndex = i;
+
+    var item = storyItems[storyIndex];
+    storyTitleEl.textContent = item.title || "Storm Story";
+
+    var html = "";
+    if (item.text) {
+      // Convert newlines to paragraphs
+      var parts = String(item.text).split(/\n+/).filter(Boolean);
+      parts.forEach(function(p){ html += "<p>" + escapeHtml(p) + "</p>"; });
+    } else {
+      html += "<p class='tiny'>No text for this station yet.</p>";
+    }
+
+    var img = safeLink(item.image);
+    var vid = safeLink(item.video);
+
+    if (img) {
+      html += "<div class='story-media'><img src='" + img + "' alt='Story image'></div>";
+    }
+    if (vid) {
+      // Prefer embed links (youtube embed, vimeo embed, etc.)
+      html += "<div class='story-media'><iframe src='" + vid + "' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe></div>";
+    }
+
+    storyBodyEl.innerHTML = html;
+    storyStepEl.textContent = "Station " + (storyIndex + 1) + " of " + storyItems.length;
+
+    // Highlight markers
+    storyMarkers.forEach(function(m, idx){
+      if (m && m.setStyle) {
+        m.setStyle({
+          radius: (idx===storyIndex? 12 : 8),
+          opacity: 1,
+          fillOpacity: (idx===storyIndex? 1 : 0.9),
+          weight: (idx===storyIndex? 3 : 2)
+        });
+        if (idx===storyIndex && m.bringToFront) m.bringToFront();
+      }
+    });
+
+    // Focus ring around the active station (helps guide attention)
+    if (typeof item.lat === "number" && typeof item.lon === "number") {
+      var ringRadiusM = 22000; // ~14 miles
+      if (!focusRing) {
+        focusRing = L.circle([item.lat, item.lon], {
+          radius: ringRadiusM,
+          color: "rgba(30,136,229,0.95)",
+          weight: 2,
+          opacity: 0.95,
+          fill: false,
+          dashArray: "6 6"
+        }).addTo(map);
+      } else {
+        focusRing.setLatLng([item.lat, item.lon]);
+        focusRing.setRadius(ringRadiusM);
+      }
+      if (focusRing.bringToFront) focusRing.bringToFront();
+    }
+
+    if (storyStarted) { storyOpen(); }
+
+    if (panTo && item.lat != null && item.lon != null) {
+      map.panTo([item.lat, item.lon], { animate:true });
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function buildStoryMarkers(){
+    // Remove existing
+    storyMarkers.forEach(function(m){ try{ map.removeLayer(m); }catch(e){} });
+    storyMarkers = [];
+
+    storyItems.forEach(function(item, idx){
+      if (typeof item.lat !== "number" || typeof item.lon !== "number") return;
+
+      var m = L.circleMarker([item.lat, item.lon], {
+        radius: 8,
+        color: "rgba(255,255,255,0.95)",
+        weight: 2,
+        fillColor: "rgba(30,136,229,0.95)",
+        fillOpacity: 0.9
+      }).addTo(map);
+
+      m.on("click", function(){
+        renderStory(idx, false);
+      });
+
+      // Short hover tooltip
+      if (item.title) {
+        m.bindTooltip(item.title, { direction:"top", offset:[0,-8], opacity:0.9 });
+      }
+
+      storyMarkers.push(m);
+    });
+
+    // Initial highlight
+    renderStory(0, false);
+  }
+
+  function loadStory(){
+    var url = "https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(SHEET_TAB);
+    fetch(url).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function(rows){
+      // Normalize rows
+      storyItems = (rows || []).map(function(r){
+        var lat = parseFloat(r.lat);
+        var lon = parseFloat(r.lon);
+        return {
+          id: r.id,
+          title: r.title || "",
+          text: r.text || "",
+          lat: isFinite(lat) ? lat : null,
+          lon: isFinite(lon) ? lon : null,
+          image: r.image || "",
+          video: r.video || "",
+          terms: r.terms || "",
+          order: parseFloat(r.order)
+        };
+      })
+      .filter(function(x){ return x.title || x.text || (x.lat!=null && x.lon!=null); })
+      .sort(function(a,b){
+        var ao = isFinite(a.order) ? a.order : 9999;
+        var bo = isFinite(b.order) ? b.order : 9999;
+        return ao - bo;
+      });
+
+      if (!storyItems.length) {
+        storyBodyEl.innerHTML = "<p class='tiny'>No rows found in your Google Sheet tab '" + SHEET_TAB + "'.</p>";
+        return;
+      }
+
+      buildStoryMarkers();
+      setStatus("Story: loaded " + storyItems.length + " stations");
+    }).catch(function(err){
+      storyBodyEl.innerHTML = "<p class='tiny'>Could not load story from Google Sheet. Check that the sheet is published, and the tab name is '" + SHEET_TAB + "'.</p>";
+      setStatus("Story load failed");
+    });
+  }
+
+  
+// Banner actions
+// (Start button removed; Open Lesson button now toggles the guide)
+// Guided vs Explore mode
+// Guided: story panel controls layers (clean UI)
+// Explore: show layer toggles + optional opacity slider
+function setExploreMode(isExplore){
+  document.body.classList.toggle("explore-mode", !!isExplore);
+  // In explore mode we usually collapse the guide to maximize map area
+  if (isExplore) collapseGuide();
+}
+
+// Guide open/close (collapsible)
+var storyPanelEl = document.getElementById("storyPanel");
+var storyTabEl   = document.getElementById("storyTab");
+var hideGuideBtn = document.getElementById("hideGuideBtn");
+var exploreBtn   = document.getElementById("exploreBtn");
+
+function openGuide(){
+  if (!storyPanelEl) return;
+  storyPanelEl.classList.add("story-open");
+  document.body.classList.remove("guide-collapsed");
+}
+function collapseGuide(){
+  if (!storyPanelEl) return;
+  storyPanelEl.classList.remove("story-open");
+  document.body.classList.add("guide-collapsed");
+}
+if (hideGuideBtn) hideGuideBtn.onclick = function(){ collapseGuide(); };
+if (storyTabEl) storyTabEl.onclick = function(){ storyStarted = true; storyToggle(); };
+
+// Explore toggle
+if (exploreBtn) exploreBtn.textContent = "Guided";
+if (exploreBtn) exploreBtn.onclick = function(){
+  var now = !document.body.classList.contains("explore-mode");
+  setExploreMode(now);
+  if (exploreBtn) exploreBtn.textContent = now ? "Guided" : "Explore";
+  if (!now) openGuide();
+};
+
+// Default: guided mode
+document.body.classList.add("explore-mode");
+document.body.classList.remove("guide-collapsed");
+// Opacity slider (applies to the currently visible product)
+var radarOpacity = document.getElementById("radarOpacity");
+
+// Remember per-layer opacity so kids can flip products without losing their setting
+var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70 };
+
+function getActiveProductKey(){
+  // Priority: global > snow > temp > radar (matches your product label logic)
+  if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
+  if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
+  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
+  if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
+  return "radar";
+}
+
+function setTempOpacity(op){
+  if (!hrrrTempGeo) return;
+  // base halo is softer, core is stronger
+  var baseOp = Math.max(0.10, Math.min(0.85, op * 0.55));
+  var coreOp = Math.max(0.20, Math.min(1.00, op));
+
+  hrrrTempGeo.eachLayer(function(layerOrGroup){
+    if (layerOrGroup && layerOrGroup.eachLayer){
+      layerOrGroup.eachLayer(function(l){
+        if (!l || !l.setStyle) return;
+        var role = (l.options && l.options._role) ? l.options._role : "core";
+        l.setStyle({ fillOpacity: (role === "base") ? baseOp : coreOp });
+      });
+    }
+  });
+}
+
+function applyActiveOpacity(){
+  if (!radarOpacity) return;
+  var v = parseInt(radarOpacity.value || "70", 10);
+  var op = Math.max(0.2, Math.min(1, v/100));
+
+  var key = getActiveProductKey();
+  productOpacity[key] = op;
+
+  if (key === "radar"){
+    if (obsRadarOverlay && obsRadarEnabled) obsRadarOverlay.setOpacity(op);
+  } else if (key === "snow"){
+    if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
+  } else if (key === "temp"){
+    setTempOpacity(op);
+  } else if (key === "global"){
+    ensureEra5Overlays();
+    if (era5Apr10Overlay) era5Apr10Overlay.setOpacity(op);
+    if (era5Apr11Overlay) era5Apr11Overlay.setOpacity(op);
+  } else if (key === "goes"){
+    if (goesOverlay && goesEnabled) goesOverlay.setOpacity(op);
+  }
+}
+
+function syncOpacitySliderToActive(){
+  if (!radarOpacity) return;
+  var key = getActiveProductKey();
+  radarOpacity.value = Math.round((productOpacity[key] || 0.7) * 100);
+}
+
+// Wire slider
+if (radarOpacity){
+  radarOpacity.oninput = applyActiveOpacity;
+}
+
+
+  
+// GOES control buttons
+var goesPlayBtn  = document.getElementById("goesPlayBtn");
+var goesPauseBtn = document.getElementById("goesPauseBtn");
+var goesFitBtn   = document.getElementById("goesFitBtn");
+var goesSaveBtn  = document.getElementById("goesSaveBtn");
+var goesResetBtn = document.getElementById("goesResetBtn");
+
+if (goesPlayBtn) goesPlayBtn.onclick = function(){
+  // If frames didn't load (CORS), this will just keep the current frame.
+  playGoesAnim(400);
+};
+if (goesPauseBtn) goesPauseBtn.onclick = function(){
+  stopGoesAnim();
+};
+if (goesFitBtn) goesFitBtn.onclick = function(){
+  enableGoesFitMode(!goesFitMode);
+  // Make sure overlay is visible while fitting
+  if (goesEnabled) updateGoes();
+};
+if (goesSaveBtn) goesSaveBtn.onclick = function(){
+  saveBoundsToStorage(GOES_BOUNDS);
+  stopGoesAnim(); // optional, keeps kids from moving it while saving
+};
+if (goesResetBtn) goesResetBtn.onclick = function(){
+  try{ localStorage.removeItem(GOES_STORAGE_KEY); }catch(e){}
+  setGoesBounds(GOES_DEFAULT_BOUNDS);
+  if (goesEnabled) updateGoes();
+};
+// Story UI buttons
+
+  
+  var storyCloseBtn = document.getElementById("storyCloseBtn");
+  if (storyCloseBtn) storyCloseBtn.onclick = storyClose;
+
+  var prevBtn = document.getElementById("storyPrevBtn");
+  var nextBtn = document.getElementById("storyNextBtn");
+  if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
+  if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
+
+  // Load story now
+  loadStory();
+
+
+  map.on("zoomend", function(){
+    var zl = document.getElementById("zoomLabel"); if (zl) zl.textContent = map.getZoom();
+  });
+
+  // Keep HRRR temp blobs sized appropriately as you zoom
+  map.on("zoomend", updateHrrrTempRadius);
+
+
+  map.on("click", function(e){
+    if (document.body.classList.contains("measure-active")) { handleMeasureClick(e); return; }
+    if (document.body.classList.contains("probe-active")) { handleProbeClick(e); return; }
+
+    var lp = document.getElementById("legendPop");
+    if (lp) lp.classList.add("hidden");
+
+    // 1) HRRR temp probe (if that layer is active)
+    if (map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length){
+      var best = null, bestDist = Infinity;
+      for (var i=0; i<hrrrPoints.length; i++){
+        var p = hrrrPoints[i];
+        var d = L.latLng(e.latlng.lat, e.latlng.lng).distanceTo([p.lat, p.lon]);
+        if (d < bestDist){
+          bestDist = d;
+          best = p;
+        }
+      }
+      if (!best) return;
+      var val = (best.tF != null) ? Number(best.tF).toFixed(0) : "—";
+      L.popup({
+        className: "hrrr-popup",
+        closeButton: true,
+        autoPan: true,
+        offset: [0, -10]
+      })
+      .setLatLng([best.lat, best.lon])
+      .setContent(val + "°F")
+      .openOn(map);
+      
+    }
+
+    // 2) EURO snow probe (if that layer is active) — uses the same popup style
+    if (map.hasLayer(euroSnowLayer) && Array.isArray(euroPoints) && euroPoints.length){
+      var bestE = null, bestED = Infinity;
+      for (var k=0; k<euroPoints.length; k++){
+        var ep = euroPoints[k];
+        var dd = L.latLng(e.latlng.lat, e.latlng.lng).distanceTo([ep.lat, ep.lon]);
+        if (dd < bestED){ bestED = dd; bestE = ep; }
+      }
+      if (bestE){
+        var inches = (bestE.value != null) ? Number(bestE.value) : NaN;
+        var txt = isFinite(inches) ? inches.toFixed(2) + '"' : "—";
+        L.popup({
+          className: "hrrr-popup",
+          closeButton: true,
+          autoPan: true,
+          offset: [0, -10]
+        })
+        .setLatLng([bestE.lat, bestE.lon])
+        .setContent('EURO 36h Snow: <span class="mono">' + txt + '</span>')
+        .openOn(map);
+        return;
+      }
+    }
+
+    // 3) Jet dots probe (match the HRRR probe look/feel)
+// 3) Jet dots probe (match the HRRR probe look/feel)
+    if (map.hasLayer(jetPointsLayer)){
+      var bestLayer = null, bestD = Infinity;
+      jetPointsLayer.eachLayer(function(layer){
+        if (!layer || !layer.getLatLng) return;
+        var ll = layer.getLatLng();
+        var d = e.latlng.distanceTo(ll);
+        if (d < bestD){
+          bestD = d;
+          bestLayer = layer;
+        }
+      });
+
+      if (!bestLayer) return;
+
+      var props = (bestLayer.feature && bestLayer.feature.properties) ? bestLayer.feature.properties : {};
+      var spd = getJetSpeedMph(props);
+      var u = Number(props.u);
+      var v = Number(props.v);
+
+      var dirTxt = "";
+      if (isFinite(u) && isFinite(v)){
+        var dir = metDirFromUV(u, v);
+        dirTxt = " • Dir " + dir.toFixed(0) + "°";
+      }
+
+      var html = '<div class="hrrr-popup">' +
+                 '<div class="hrrr-popup-title">Jet (250 mb)</div>' +
+                 '<div class="hrrr-popup-row"><span>Speed</span><span class="hrrr-popup-value">' + (isFinite(spd) ? spd.toFixed(0) : "—") + ' mph</span></div>' +
+                 (dirTxt ? '<div class="hrrr-popup-row"><span>Direction</span><span class="hrrr-popup-value">' + dirTxt.replace(" • Dir ","") + '</span></div>' : '') +
+                 '</div>';
+
+      L.popup({
+        className: "hrrr-popup",
+        closeButton: true,
+        autoPan: true,
+        offset: [0, -10]
+      })
+      .setLatLng(bestLayer.getLatLng())
+      .setContent(html)
+      .openOn(map);
+    }
+  });
+
+  // ---------- Layers ----------
+  var obsRadarOverlay = null;
+  var obsRadarEnabled = true;
+
+  // GFS Snow Forecast overlay (static PNG swapper)
+  var gfsSnowOverlay = null;
+  var gfsSnowEnabled = false;
+
+  // ERA5 Global Temperature PNG overlays (two-frame toggle)
+  var era5Apr10Overlay = null;
+  var era5Apr11Overlay = null;
+  var era5Apr10Enabled = false;
+  var era5Apr11Enabled = false;
+
+  
+  
+  
+  // ---------- GOES (mtarchive JPG loop) ----------
+  // Source directory (GOES-16 ABI band 1, northcentral sector)
+  // We'll fetch 000index.txt for the frame list and animate by swapping the overlay URL.
+  var GOES_BASE_URL = "https://mtarchive.geol.iastate.edu/2018/04/14/cod/sat/goes16/regional/northcentral/abi01/";
+  var GOES_INDEX_URL = GOES_BASE_URL + "000index.txt";
+
+  // Default guess for the "northcentral" sector bounds (you will tune with Fit mode).
+  // Saved bounds (if you hit Save) will override these.
+  var GOES_DEFAULT_BOUNDS = L.latLngBounds(
+    L.latLng(35.0, -110.0), // SW
+    L.latLng(55.0,  -80.0)  // NE
+  );
+
+  var GOES_STORAGE_KEY = "goes_bounds_northcentral_abi01_v1";
+  var GOES_BOUNDS = GOES_DEFAULT_BOUNDS;
+
+  var goesOverlay = null;
+  var goesEnabled = false;
+
+  var goesFrames = [];     // ["northcentral_01_20180414000222.jpg", ...]
+  var goesFrameIdx = 0;
+  var goesTimer = null;
+  var goesFitMode = false;
+
+  var goesFitSW = null; // draggable marker
+  var goesFitNE = null; // draggable marker
+
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+  function parseBoundsFromStorage(){
+    try{
+      var raw = localStorage.getItem(GOES_STORAGE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (!obj || !obj.sw || !obj.ne) return null;
+      var sw = L.latLng(obj.sw[0], obj.sw[1]);
+      var ne = L.latLng(obj.ne[0], obj.ne[1]);
+      return L.latLngBounds(sw, ne);
+    }catch(e){ return null; }
+  }
+
+  function saveBoundsToStorage(bounds){
+    try{
+      var sw = bounds.getSouthWest();
+      var ne = bounds.getNorthEast();
+      localStorage.setItem(GOES_STORAGE_KEY, JSON.stringify({
+        sw: [sw.lat, sw.lng],
+        ne: [ne.lat, ne.lng]
+      }));
+    }catch(e){}
+  }
+
+  function setGoesBounds(bounds){
+    GOES_BOUNDS = bounds;
+    if (goesOverlay) goesOverlay.setBounds(GOES_BOUNDS);
+
+    // Update fit markers, if active
+    if (goesFitSW) goesFitSW.setLatLng(GOES_BOUNDS.getSouthWest());
+    if (goesFitNE) goesFitNE.setLatLng(GOES_BOUNDS.getNorthEast());
+  }
+
+  function getGoesFrameUrl(){
+    if (!goesFrames.length) return null;
+    var fname = goesFrames[goesFrameIdx % goesFrames.length];
+    return GOES_BASE_URL + fname;
+  }
+
+  function setGoesFrame(i){
+    if (!goesFrames.length) return;
+    goesFrameIdx = (i + goesFrames.length) % goesFrames.length;
+    var url = getGoesFrameUrl();
+    if (!url) return;
+    if (!goesOverlay){
+      goesOverlay = L.imageOverlay(url, GOES_BOUNDS, { opacity: productOpacity.goes || 0.70, interactive:false });
+    } else {
+      goesOverlay.setUrl(url);
+      goesOverlay.setBounds(GOES_BOUNDS);
+    }
+
+    // Update UI label
+    var lbl = document.getElementById("goesFrameLabel");
+    if (lbl){
+      lbl.textContent = (goesFrames[goesFrameIdx] || "—").replace(".jpg","");
+    }
+  }
+
+  function stopGoesAnim(){
+    if (goesTimer) clearInterval(goesTimer);
+    goesTimer = null;
+  }
+
+  function playGoesAnim(ms){
+    stopGoesAnim();
+    goesTimer = setInterval(function(){
+      if (!goesEnabled) return;
+      setGoesFrame(goesFrameIdx + 1);
+    }, ms || 400);
+  }
+
+  function ensureGoesFramesLoaded(){
+    if (goesFrames.length) return Promise.resolve(true);
+
+    return fetch(GOES_INDEX_URL + "?v=" + Date.now())
+      .then(function(r){
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(function(txt){
+        goesFrames = (txt || "")
+          .split(/\s+/)
+          .map(function(s){ return String(s).trim(); })
+          .filter(function(s){ return s && s.toLowerCase().endsWith(".jpg"); });
+
+        // If the directory list includes non-frames, keep only "northcentral_01_*.jpg"
+        goesFrames = goesFrames.filter(function(s){ return s.indexOf("northcentral_01_") === 0; });
+
+        if (!goesFrames.length) throw new Error("No JPG frames found in 000index.txt");
+        setGoesFrame(0);
+        return true;
+      })
+      .catch(function(err){
+        console.warn("GOES frames not loaded. If you see CORS errors, download the JPGs into your repo instead.", err);
+        // Fall back to a single known file name pattern (best effort)
+        // You can replace this with your own list later.
+        goesFrames = [];
+        return false;
+      });
+  }
+
+  function ensureGoesOverlay(){
+    // Load saved bounds if present
+    var saved = parseBoundsFromStorage();
+    if (saved) GOES_BOUNDS = saved;
+
+    // Create overlay with first frame (or a placeholder)
+    if (!goesOverlay){
+      var url = getGoesFrameUrl() || (GOES_BASE_URL + "northcentral_01_20180414000222.jpg");
+      goesOverlay = L.imageOverlay(url, GOES_BOUNDS, { opacity: productOpacity.goes || 0.70, interactive:false });
+    }
+  }
+
+  function enableGoesFitMode(on){
+    goesFitMode = !!on;
+
+    if (!goesFitMode){
+      if (goesFitSW){ map.removeLayer(goesFitSW); goesFitSW = null; }
+      if (goesFitNE){ map.removeLayer(goesFitNE); goesFitNE = null; }
+      return;
+    }
+
+    // Create draggable corner markers (SW and NE)
+    var sw = GOES_BOUNDS.getSouthWest();
+    var ne = GOES_BOUNDS.getNorthEast();
+
+    var mkStyle = {
+      draggable: true,
+      autoPan: false,
+      icon: L.divIcon({
+        className: "",
+        html: "<div style='width:14px;height:14px;border-radius:10px;background:#fdd835;border:2px solid rgba(0,0,0,.55);box-shadow:0 6px 16px rgba(0,0,0,.25)'></div>",
+        iconSize: [14,14],
+        iconAnchor: [7,7]
+      })
+    };
+
+    goesFitSW = L.marker(sw, mkStyle).addTo(map).bindTooltip("SW", {permanent:true, direction:"right", className:"tv-city-label"});
+    goesFitNE = L.marker(ne, mkStyle).addTo(map).bindTooltip("NE", {permanent:true, direction:"left", className:"tv-city-label"});
+
+    function onDrag(){
+      if (!goesFitSW || !goesFitNE) return;
+      var sw2 = goesFitSW.getLatLng();
+      var ne2 = goesFitNE.getLatLng();
+
+      // Normalize so SW is truly SW
+      var south = Math.min(sw2.lat, ne2.lat);
+      var north = Math.max(sw2.lat, ne2.lat);
+      var west  = Math.min(sw2.lng, ne2.lng);
+      var east  = Math.max(sw2.lng, ne2.lng);
+
+      setGoesBounds(L.latLngBounds(L.latLng(south, west), L.latLng(north, east)));
+    }
+
+    goesFitSW.on("drag", onDrag);
+    goesFitNE.on("drag", onDrag);
+  }
+
+  function updateGoes(){
+    ensureGoesOverlay();
+
+    var box = document.getElementById("goesControls");
+    if (box) box.style.display = goesEnabled ? "block" : "none";
+
+    if (goesEnabled){
+      ensureGoesFramesLoaded().then(function(){
+        if (!map.hasLayer(goesOverlay)) goesOverlay.addTo(map);
+        // Show a frame immediately (in case frames loaded after enabling)
+        setGoesFrame(goesFrameIdx || 0);
+      });
+    } else {
+      stopGoesAnim();
+      enableGoesFitMode(false);
+      if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+    }
+  }
+
+// Fronts + highs/lows overlay (GeoJSON you upload)
+  // Expected file in repo root: fronts.geojson
+  var frontsEnabled = false;
+  var frontsLayer = null;
+  var frontsLoaded = false;
+
+  // Front symbol decorators (triangles/semicircles)
+  var frontsDecorGroup = null;
+
+  function clearFrontDecorators(){
+    if (frontsDecorGroup){
+      try { map.removeLayer(frontsDecorGroup); } catch(e){}
+      frontsDecorGroup = null;
+    }
+  }
+
+  function buildFrontDecorators(_retry){
+
+    _retry = _retry || 0;
+    // If the PolylineDecorator plugin is still loading, retry a few times.
+    if (!L || typeof L.polylineDecorator !== "function") {
+      if (_retry < 15) {
+        if (_retry === 0) console.warn("leaflet-polylinedecorator not ready yet; retrying…");
+        setTimeout(function(){ buildFrontDecorators(_retry + 1); }, 200);
+        return;
+      }
+      console.warn("leaflet-polylinedecorator did not load: triangles/semicircles disabled.");
+      return;
+    }
+    // Requires leaflet-polylinedecorator
+    if (typeof L === "undefined" || !L.polylineDecorator || !frontsLayer) return;
+
+    clearFrontDecorators();
+
+    var coldLines = [];
+    var warmLines = [];
+    var stationaryLines = [];
+    var dryLines = [];
+
+    frontsLayer.eachLayer(function(layer){
+      if (!layer || !layer.feature || !layer.feature.properties) return;
+      // Only decorate polylines
+      if (!(layer instanceof L.Polyline) || (layer instanceof L.Polygon)) return;
+      var p = layer.feature.properties;
+      var fr = String(p.front || p.FRONT || p.kind || p.type || "").toLowerCase();
+      if (fr.includes("cold")) coldLines.push(layer);
+      if (fr.includes("warm")) warmLines.push(layer);
+      if (fr.includes("stationary")) stationaryLines.push(layer);
+      if (fr.includes("dryline") || fr === "dry") dryLines.push(layer);
+    });
+
+    var patterns = [];
+
+    if (coldLines.length){
+      // Blue triangles (cold front) — base anchored to the line.
+      // We keep the triangle upright in SVG, then rotate relative to the polyline using angleCorrection.
+      var coldIcon = L.divIcon({
+        className: "",
+        html: `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                 <polygon points="8,1 15,15 1,15" fill="#1e88e5"/>
+               </svg>`,
+        iconSize: [16,16],
+        // Put the *base* on the line (slightly below the icon box).
+        iconAnchor: [8,16]
+      });
+
+      patterns.push(L.polylineDecorator(coldLines, {
+        patterns: [{
+          offset: 8,
+          repeat: 34,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: -90,   // 90° LEFT relative to line direction
+            markerOptions: { icon: coldIcon }
+          })
+        }]
+      }));
+    }
+
+    if (warmLines.length){
+      // Red semicircles (warm front) — flat side anchored to the line.
+      // SVG is a half-disk with the flat edge on the bottom; we rotate relative to the polyline.
+      var warmIcon = L.divIcon({
+        className: "",
+        html: `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M1 15 A7 7 0 0 1 15 15 Z" fill="#e53935"/>
+               </svg>`,
+        iconSize: [16,16],
+        // Flat edge sits on the line.
+        iconAnchor: [8,16]
+      });
+
+      patterns.push(L.polylineDecorator(warmLines, {
+        patterns: [{
+          offset: 8,
+          repeat: 34,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            // Flip warm-front symbols to the *other* side of the line.
+            // PolylineDecorator orients symbols based on line direction; shifting by 180° moves
+            // the bumps to the opposite side while keeping the flat edge anchored on the line.
+            angleCorrection: -90,   // 90° right + 180° = 270° (same as -90)
+            markerOptions: { icon: warmIcon }
+          })
+        }]
+      }));
+    }
+
+
+
+    if (stationaryLines.length){
+      // Stationary front: alternating BLUE triangles and RED semicircles on opposite sides of the line.
+      // (Direction of the line controls which side is "left/right". If you draw the line the other way,
+      // the symbols will flip sides.)
+      var statColdIcon = L.divIcon({
+        className: "",
+        html: `<svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                 <polygon points="8,1 15,15 1,15" fill="#1e88e5"/>
+               </svg>`,
+        iconSize: [14,14],
+        iconAnchor: [7,14]
+      });
+
+      var statWarmIcon = L.divIcon({
+        className: "",
+        html: `<svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M1 15 A7 7 0 0 1 15 15 Z" fill="#e53935"/>
+               </svg>`,
+        iconSize: [14,14],
+        iconAnchor: [7,14]
+      });
+
+      // Blue triangles (same as cold) at one cadence…
+      patterns.push(L.polylineDecorator(stationaryLines, {
+        patterns: [{
+          offset: 6,
+          repeat: 40,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: -90,
+            markerOptions: { icon: statColdIcon }
+          })
+        }]
+      }));
+
+      // …and red semicircles interleaved half-way between, flipped to the other side.
+      patterns.push(L.polylineDecorator(stationaryLines, {
+        patterns: [{
+          offset: 26,
+          repeat: 40,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: 90,
+            markerOptions: { icon: statWarmIcon }
+          })
+        }]
+      }));
+    }
+
+    if (dryLines.length){
+      // Dryline: dashed brown line with small brown "bumps" on one side (simple, classroom-friendly symbol).
+      var dryIcon = L.divIcon({
+        className: "",
+        html: `<svg width="12" height="12" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M1 15 A7 7 0 0 1 15 15 Z" fill="#a86f00"/>
+               </svg>`,
+        iconSize: [12,12],
+        iconAnchor: [6,12]
+      });
+
+      patterns.push(L.polylineDecorator(dryLines, {
+        patterns: [{
+          offset: 6,
+          repeat: 32,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: -90,
+            markerOptions: { icon: dryIcon }
+          })
+        }]
+      }));
+    }
+    if (!patterns.length) return;
+
+    frontsDecorGroup = L.layerGroup(patterns);
+    if (frontsEnabled){ frontsDecorGroup.addTo(map); }
+  }
+
+
+  function frontsLineStyle(feature){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var ftype = String(p.front || p.FRONT || p.kind || p.type || "").toLowerCase();
+
+    var color = "#111";
+    var dash = null;
+
+    if (ftype.includes("cold")) color = "#1e88e5";
+    else if (ftype.includes("warm")) color = "#e53935";
+    else if (ftype.includes("occluded")) color = "#8e24aa";
+    else if (ftype.includes("stationary")) color = "#43a047";
+    else if (ftype.includes("dryline") || ftype === "dry") { color = "#a86f00"; dash = "8,8"; }
+
+    var w = parseFloat(p.width);
+    if (!isFinite(w)) w = 4;
+
+    var style = { color: color, weight: w, lineCap:'round', lineJoin:'round', opacity: 0.95 };
+    if (dash) style.dashArray = dash;
+    return style;
+  }
+
+  function makeHLIcon(letter){
+    var isH = String(letter).toUpperCase() === "H";
+    var fg = isH ? "#1e88e5" : "#e53935";
+
+    var svg = `
+      <svg width="52" height="52" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/>
+        </filter>
+        <circle cx="26" cy="26" r="22" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.30)" stroke-width="2" filter="url(#shadow)"/>
+        <text x="26" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="900" fill="${fg}">${isH ? "H" : "L"}</text>
+      </svg>`;
+
+    return L.divIcon({
+      className: "",
+      html: svg,
+      iconSize: [52, 52],
+      iconAnchor: [26, 26]
+    });
+  }
+
+
+  function frontsPointToLayer(feature, latlng){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var sym = String(p.symbol || p.SYMBOL || p.pressure || p.PRESSURE || "").toUpperCase();
+    // Accept either symbol=H/L or pressure=High/Low
+    var letter = "H";
+    if (sym.includes("LOW") || sym === "L") letter = "L";
+    if (sym.includes("HIGH") || sym === "H") letter = "H";
+
+    return L.marker(latlng, { icon: makeHLIcon(letter), pane: "lines" });
+  }
+
+  function frontsOnEach(feature, layer){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    // Light tooltip for teachers/students
+    var txt = "";
+    if (feature.geometry && feature.geometry.type === "Point"){
+      var sym = (p.symbol || p.pressure || "").toString();
+      var val = (p.value || p.press || p.pressure_mb || p.pressure_hpa || "").toString();
+      txt = (sym ? sym : "Pressure") + (val ? (" " + val) : "");
+    } else {
+      var fr = (p.front || p.type || "").toString();
+      txt = fr ? (fr.charAt(0).toUpperCase() + fr.slice(1) + " front") : "Front";
+    }
+    if (txt && layer && layer.bindTooltip){
+      layer.bindTooltip(txt, { direction:"top", opacity:0.9, sticky:true });
+    }
+  }
+
+  function ensureFronts(){
+    if (frontsLayer || frontsLoaded) return;
+    frontsLoaded = true;
+
+    fetch("fronts.geojson?v=" + Date.now())
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function(geo){
+        frontsLayer = L.geoJSON(geo, {
+          pane: "lines",
+          style: frontsLineStyle,
+          pointToLayer: frontsPointToLayer,
+          onEachFeature: frontsOnEach
+        });
+        if (frontsEnabled){ frontsLayer.addTo(map); }
+        buildFrontDecorators();
+      })
+      .catch(function(err){
+        console.warn("Fronts GeoJSON not loaded (expected fronts.geojson in repo root).", err);
+        frontsLayer = null;
+      });
+  }
+
+  function updateFronts(){
+    ensureFronts();
+    if (!frontsLayer) return;
+
+    if (frontsEnabled){
+      if (!map.hasLayer(frontsLayer)) frontsLayer.addTo(map);
+      if (frontsDecorGroup && !map.hasLayer(frontsDecorGroup)) frontsDecorGroup.addTo(map);
+    } else {
+      if (map.hasLayer(frontsLayer)) map.removeLayer(frontsLayer);
+      if (frontsDecorGroup && map.hasLayer(frontsDecorGroup)) map.removeLayer(frontsDecorGroup);
+    }
+  }
+
+// NOTE: Leaflet basemaps (OSM/Carto) are Web Mercator (EPSG:3857).
+// If your ERA5 PNG was rendered in plain lat/lon (Plate Carree), it will look distorted.
+// Use the Colab exporter to "warp to Mercator" and then these bounds will line up.
+var WORLD_BOUNDS = L.latLngBounds(
+  L.latLng(-85.05112878, -180),
+  L.latLng( 85.05112878,  180)
+);
+function ensureEra5Overlays(){
+    if (!era5Apr10Overlay){
+      era5Apr10Overlay = L.imageOverlay(
+        "global/era5_t2m_global_2018-04-10_21Z_F_mercator_overlay.png",
+        WORLD_BOUNDS,
+        { opacity: productOpacity.global || 0.70, interactive:false }
+      );
+    }
+    if (!era5Apr11Overlay){
+      era5Apr11Overlay = L.imageOverlay(
+        "global/era5_t2m_global_2018-04-11_21Z_F_mercator_overlay.png",
+        WORLD_BOUNDS,
+        { opacity: productOpacity.global || 0.70, interactive:false }
+      );
+    }
+  }
+
+  function updateEra5Global(){
+    ensureEra5Overlays();
+
+    if (era5Apr10Enabled){
+      if (!map.hasLayer(era5Apr10Overlay)) era5Apr10Overlay.addTo(map);
+    } else {
+      if (era5Apr10Overlay && map.hasLayer(era5Apr10Overlay)) map.removeLayer(era5Apr10Overlay);
+    }
+
+    if (era5Apr11Enabled){
+      if (!map.hasLayer(era5Apr11Overlay)) era5Apr11Overlay.addTo(map);
+    } else {
+      if (era5Apr11Overlay && map.hasLayer(era5Apr11Overlay)) map.removeLayer(era5Apr11Overlay);
+    }
+  }
+
+  function setCurZToEra5(which){
+    // Sync the banner time controls to the static global images (21Z ~ 4PM Central)
+    if (which === "apr10") curZ = new Date(Date.UTC(2018, 3, 10, 21, 0, 0));
+    if (which === "apr11") curZ = new Date(Date.UTC(2018, 3, 11, 21, 0, 0));
+    clampTime();
+    setTimeLabel();
+  }
+
+  var alertsLayer = L.geoJSON(null, {
+    filter: function(f){
+      const p = (f && f.properties) ? f.properties : {};
+      const ev = String(p.event || p.EVENT || p.headline || p.HEADLINE || "").toLowerCase();
+      const phe = String(p.phenomena || p.PHENOM || p.phenom || "").toLowerCase();
+      const sig = String(p.significance || p.SIG || p.sig || "").toLowerCase();
+
+      // If we have human-readable event text, keep WARNINGS only
+      if (ev){
+        if (ev.includes("statement") || ev.includes("advisory") || ev.includes("watch")) return false;
+        return ev.includes("warning");
+      }
+
+      // If data uses NWS-style codes, keep significance=W (warning)
+      // Examples: phe=sv,to,ff,fl with sig=w
+      if (sig === "w") return true;
+
+      return false;
+    },
+
+    
+    style: function(f){
+      var p = (f && f.properties) ? f.properties : {};
+      var ev = String(p.event || p.EVENT || p.headline || p.phenomena || "").toLowerCase();
+      var phe = String(p.phenomena || p.PHENOM || "").toLowerCase();
+      var sig = String(p.significance || p.SIG || "").toLowerCase();
+
+      // Prefer explicit event text if present
+      var key = ev || (phe && sig ? (phe + "." + sig) : phe || "");
+
+      var stroke = "#333";
+      var fill = "#333";
+
+      var has = function(s){ return key.indexOf(s) !== -1; };
+
+      // Core colors requested
+      if (has("tornado") || phe==="to") { stroke = fill = "#e53935"; }          // red
+      else if (has("severe thunderstorm") || phe==="sv") { stroke = fill = "#fdd835"; } // yellow
+      else if (has("flash flood") || phe==="ff") { stroke = fill = "#00c853"; } // green
+      else if (has("flood") || phe==="fl") { stroke = fill = "#00c853"; }       // green
+      else { stroke = fill = "#42a5f5"; } // fallback blue
+
+      return { color: stroke, weight: 2, opacity: 0.95, fillColor: fill, fillOpacity: 0.22 };
+    },
+    onEachFeature: function(f, layer){
+      var props = f.properties || {};
+      var ev = String(props.event || props.EVENT || props.headline || props.HEADLINE || "").trim();
+      var phe = String(props.phenomena || props.PHENOM || props.phenom || "").trim().toUpperCase();
+      var sig = String(props.significance || props.SIG || props.sig || "").trim().toUpperCase();
+
+      function titleFromCodes(phe, sig){
+        // Try to recover codes from VTEC if present (e.g., ".TO.W.", ".SV.W.")
+        if ((!phe || !sig) && props){
+          var v = String(props.vtec || props.VTEC || props.VTEC_CODE || props.vtec_code || "").toUpperCase();
+          var m = v.match(/\.(TO|SV|FF|FL)\.(W|A|Y)\./);
+          if (m){
+            phe = phe || m[1];
+            sig = sig || m[2];
+          }
+        }
+        var base = "";
+        if (phe === "TO") base = "Tornado";
+        else if (phe === "SV") base = "Severe Thunderstorm";
+        else if (phe === "FF") base = "Flash Flood";
+        else if (phe === "FL") base = "Flood";
+        else if (phe === "MA") base = "Marine";
+        else if (phe) base = phe;
+
+        var level = "";
+        if (sig === "W") level = "Warning";
+        else if (sig === "A") level = "Watch";
+        else if (sig === "Y") level = "Advisory";
+        else if (sig) level = sig;
+
+        return (base && level) ? (base + " " + level) : (ev || "Warning");
+      }
+
+      // Prefer human-readable event/headline if it looks specific
+      var title = ev;
+      if (!title || title.toLowerCase() === "warning" || title.toLowerCase().endswith(" warning") === false && sig === "W"){
+        title = titleFromCodes(phe, sig);
+      }
+
+      // Optional extra details (if present)
+      var onset = props.onset || props.ONSET || props.start || props.START || "";
+      var ends  = props.ends  || props.ENDS  || props.end   || props.END   || "";
+      var area  = props.areaDesc || props.AREADESC || props.area || "";
+
+      var html = "<div style='font:900 16px/1.15 Arial,sans-serif; margin-bottom:6px;'>" + String(title) + "</div>";
+      if (area) html += "<div style='font:800 13px/1.25 Arial,sans-serif; opacity:.9; margin-bottom:6px;'>" + String(area) + "</div>";
+      if (onset || ends){
+        html += "<div style='font:800 12px/1.25 Arial,sans-serif; opacity:.85;'>" +
+                (onset ? ("Begins: " + onset + "<br>") : "") +
+                (ends ? ("Ends: " + ends) : "") +
+                "</div>";
+      }
+      layer.bindPopup(html);
+    }
+  });
+  alertsLayer.addTo(map);
+  var alertsEnabled = true;
+
+  // Layer control (NO extra base layer picker)
+  // State boundary outline handled via GeoJSON (no labels)
+var overlays = {};
+  overlays["Composite Radar (Observed)"] = L.layerGroup(); // placeholder group
+
+  overlays["GFS Snow Forecast"] = L.layerGroup(); // checkbox only; overlay managed manually
+
+  overlays["GOES Satellite"] = L.layerGroup(); // checkbox only; overlay managed manually
+
+  overlays["Global Temp (ERA5) – Apr 10 (21Z)"] = L.layerGroup(); // checkbox only
+  overlays["Global Temp (ERA5) – Apr 11 (21Z)"] = L.layerGroup(); // checkbox only
+
+  overlays["Fronts (Surface Analysis)"] = L.layerGroup(); // checkbox only; loads fronts.geojson
+
+
+
+
+  // HRRR Temp GeoJSON (real layer group; Leaflet handles show/hide)
+  var hrrrTempLayer = L.layerGroup();
+  // ---------- EURO Snow (36h) from NetCDF-derived files ----------
+  // Upload these files to your repo (same folder as this index.html):
+  //  - ecmwf_sf_liq_in_2018041412_f036_grid_stride10.json
+  //  - ecmwf_sf_liq_in_2018041412_f036_contours.geojson
+  //  - (optional) ecmwf_sf_liq_in_2018041412_f036_overlay.png + bounds json if you want TV-style raster overlay
+  var euroSnowLayer = L.layerGroup();
+  var euroSnowContoursLayer = L.layerGroup();
+  overlays["EURO Snow (36h)"] = euroSnowLayer;
+  overlays["EURO Snow Contours"] = euroSnowContoursLayer;
+
+  var euroPoints = []; // [{lat, lon, value}] where value = inches liquid-equivalent
+
+  function euroSnowColor(v){
+    // simple TV-ish ramp (inches liquid eq)
+    if (v >= 6) return "#7b1fa2";
+    if (v >= 4) return "#d81b60";
+    if (v >= 3) return "#f06292";
+    if (v >= 2) return "#ff8a65";
+    if (v >= 1) return "#ffd54f";
+    if (v >= 0.5) return "#a5d6a7";
+    if (v >= 0.25) return "#4fc3f7";
+    if (v >= 0.1) return "#81d4fa";
+    return "transparent";
+  }
+
+  // Load dots grid (for probe + optional dot display)
+  fetch("./ecmwf_sf_liq_in_2018041412_f036_grid_stride10.json")
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){
+      euroPoints = Array.isArray(j.points) ? j.points : [];
+      // build a lightweight dot layer (only shows values > 0.1")
+      euroSnowLayer.clearLayers();
+      euroPoints.forEach(function(p){
+        var v = Number(p.value);
+        if (!isFinite(v) || v <= 0.1) return;
+        L.circleMarker([p.lat, p.lon], {
+          radius: 3,
+          color: "rgba(0,0,0,0.25)",
+          weight: 0.5,
+          fillColor: euroSnowColor(v),
+          fillOpacity: 0.70,
+          opacity: 0.35
+        }).addTo(euroSnowLayer);
+      });
+    })
+    .catch(function(err){
+      console.warn("EURO snow grid not loaded:", err);
+    });
+
+  // Load contour lines (clean TV look)
+  fetch("./ecmwf_sf_liq_in_2018041412_f036_contours.geojson")
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(gj){
+      euroSnowContoursLayer.clearLayers();
+      L.geoJSON(gj, {
+        pane: "lines",
+        style: function(f){
+          var lvl = (f && f.properties) ? Number(f.properties.level_in) : NaN;
+          var w = (lvl >= 3) ? 2.2 : (lvl >= 1 ? 1.6 : 1.1);
+          return { color: "rgba(0,0,0,0.65)", weight: w, opacity: 0.85 };
+        }
+      }).addTo(euroSnowContoursLayer);
+    })
+    .catch(function(err){
+      console.warn("EURO snow contours not loaded:", err);
+    });
+
+  overlays["HRRR Temp (2m)"] = hrrrTempLayer;
+
+  // --- Jet stream (250 hPa) layers: dots + arrows + isotachs ---
+  // These are loaded from GeoJSON files exported from Colab and stored in the repo.
+  // Expected files (same folder as this index.html):
+  //   ./jet_250mb_points.geojson
+  //   ./jet_250mb_arrows.geojson
+  //   ./jet_250mb_isotachs.geojson
+  var jetPointsLayer = L.layerGroup();
+  var jetArrowsLayer = L.layerGroup();
+  var jetIsotachsLayer = L.layerGroup();
+
+  overlays["Jet Stream (250mb) – Dots"] = jetPointsLayer;
+  overlays["Jet Stream (250mb) – Arrows"] = jetArrowsLayer;
+  overlays["Jet Stream (250mb) – Isotachs"] = jetIsotachsLayer;
+
+
+
+
+  // Jet stream particles (Windy-style) from Leaflet-Velocity JSON (same folder)
+  var jetParticlesLayer = L.layerGroup();
+  overlays["Jet Stream (250mb) – Particles"] = jetParticlesLayer;
+// --- HRRR TEMP "blob map" styling helpers (Option 1) ---
+var hrrrTempGeo = null;
+var hrrrPoints = []; // [{lat, lon, tF}] for pixel query
+var hrrrCanvas = L.canvas({ padding: 0.5 });
+
+function lerp(a,b,t){ return a + (b-a)*t; }
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+
+// Smooth color ramp for temperature (F)
+function hexToRgb(hex){
+  hex = hex.replace("#","");
+  if (hex.length===3){ hex = hex.split("").map(c=>c+c).join(""); }
+  var n = parseInt(hex,16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function rgbToCss(c){ return "rgb(" + c.r + "," + c.g + "," + c.b + ")"; }
+function mix(c1,c2,t){
+  return { r: Math.round(lerp(c1.r,c2.r,t)), g: Math.round(lerp(c1.g,c2.g,t)), b: Math.round(lerp(c1.b,c2.b,t)) };
+}
+
+// Smooth, WeatherBell-style temperature ramp (°F)
+// Anchors: 20s deep blue -> 30s lighter blue -> 40s dark green -> 50s light green -> 60s yellow -> 70s orange -> 80s red -> 90s magenta
+var TEMP_STOPS = [
+  // WeatherBell-ish temperature ramp (°F): purples -> blues -> cyans -> greens -> yellows -> oranges -> reds -> pinks
+  {t:-30, c:"#3b0a5e"},
+  {t:-20, c:"#54278f"},
+  {t:-10, c:"#1f3f9a"},
+  {t:  0, c:"#08519c"},
+  {t: 10, c:"#3182bd"},
+  {t: 20, c:"#6baed6"},
+  {t: 30, c:"#41b6c4"},
+  {t: 40, c:"#1a9850"},
+  {t: 50, c:"#66bd63"},
+  {t: 60, c:"#d9ef8b"},
+  {t: 70, c:"#fee08b"},
+  {t: 80, c:"#fdae61"},
+  {t: 90, c:"#f46d43"},
+  {t:100, c:"#d73027"},
+  {t:110, c:"#c51b8a"},
+  {t:120, c:"#7a0177"}
+].map(s => ({ t:s.t, c: hexToRgb(s.c) }));
+
+
+
+function tempColor(tF){
+  if (!isFinite(tF)) return "rgba(0,0,0,0)";
+  // Clamp into range
+  tF = clamp(tF, TEMP_STOPS[0].t, TEMP_STOPS[TEMP_STOPS.length-1].t);
+  // Find bracketing stops
+  for (var i=0; i<TEMP_STOPS.length-1; i++){
+    var a = TEMP_STOPS[i], b = TEMP_STOPS[i+1];
+    if (tF >= a.t && tF <= b.t){
+      var tt = (tF - a.t) / (b.t - a.t);
+      // Slight gamma curve to boost contrast around gradients
+      tt = Math.pow(tt, 0.70);
+      return rgbToCss(mix(a.c, b.c, tt));
+    }
+  }
+  return rgbToCss(TEMP_STOPS[TEMP_STOPS.length-1].c);
+}
+
+function radiusForZoom(z){
+  // Bigger dots as you zoom in (kids can “see the field” without tiny gaps).
+  // Tuned for ~3 km HRRR spacing: overlap at mid-zooms, and get BIG at local zooms.
+  if (z <= 4)  return 22;
+  if (z <= 5)  return 26;
+  if (z <= 6)  return 30;
+  if (z <= 7)  return 34;
+  if (z <= 8)  return 40;
+  if (z <= 9)  return 48;
+  if (z <= 10) return 58;
+  if (z <= 11) return 70;
+  return 82; // z>=12
+}
+
+function updateHrrrTempRadius(){
+  if (!hrrrTempGeo) return;
+
+  var z = map.getZoom();
+  var r = radiusForZoom(z);
+
+  hrrrTempGeo.eachLayer(function(layerOrGroup){
+    // Each feature returns a LayerGroup [base, core]
+    if (layerOrGroup && layerOrGroup.eachLayer){
+      layerOrGroup.eachLayer(function(l){
+        if (!l || !l.setRadius) return;
+        var role = (l.options && l.options._role) ? l.options._role : "base";
+        l.setRadius(role === "base" ? r : Math.max(2, Math.round(r * 0.22)));
+      });
+    } else if (layerOrGroup && layerOrGroup.setRadius){
+      layerOrGroup.setRadius(r);
+    }
+  });
+}
+  // HRRR Temp loader (lazy: loads on startup AND if user toggles it later)
+  var _hrrrLoadedOnce = false;
+  function ensureHrrrTempLoaded(){
+    if (_hrrrLoadedOnce && hrrrTempGeo) return Promise.resolve(true);
+    // prevent duplicate simultaneous loads
+    if (ensureHrrrTempLoaded._p) return ensureHrrrTempLoaded._p;
+
+    var candidates = [
+      "./hrrr_t2m_20180414_12z_f00.geojson"
+      // Add more candidates here if you rename files later.
+    ];
+
+    function tryOne(i){
+      if (i >= candidates.length) throw new Error("No HRRR temp file could be loaded (checked: " + candidates.join(", ") + ")");
+      var url = candidates[i];
+      return fetch(url).then(function(r){
+        if(!r.ok) throw new Error("HTTP " + r.status + " for " + url);
+        return r.json();
+      }).catch(function(err){
+        console.warn("HRRR temp load failed for", url, err);
+        return tryOne(i+1);
+      });
+    }
+
+    ensureHrrrTempLoaded._p = tryOne(0).then(function(gj){
+      _hrrrLoadedOnce = true;
+      hrrrPoints = [];
+      hrrrTempLayer.clearLayers();
+
+      hrrrTempGeo = L.geoJSON(gj, {
+        // IMPORTANT: convert 0..360 longitudes -> -180..180 for Leaflet
+        coordsToLatLng: function(coords){
+          var lon = coords[0], lat = coords[1];
+          if (lon > 180) lon = lon - 360;
+          return L.latLng(lat, lon);
+        },
+
+        pointToLayer: function(feature, latlng){
+          var t = Number(feature.properties && feature.properties.t_f);
+          var r = radiusForZoom(map.getZoom());
+          var c = tempColor(t);
+
+          var base = L.circleMarker(latlng, {
+            renderer: hrrrCanvas,
+            radius: r,
+            weight: 0,
+            fillColor: c,
+            fillOpacity: 0.35,
+            _role: "base"
+          });
+
+          var core = L.circleMarker(latlng, {
+            renderer: hrrrCanvas,
+            radius: Math.max(2, Math.round(r * 0.18)),
+            weight: 0,
+            fillColor: c,
+            fillOpacity: 0.55,
+            _role: "core"
+          });
+
+          var grp = L.layerGroup([base, core]);
+          grp._base = base;
+          grp._core = core;
+          if (isFinite(t)) { hrrrPoints.push({lat: latlng.lat, lon: latlng.lng, tF: t}); }
+          return grp;
+        },
+
+        onEachFeature: function(feature, layer){
+          var t = (feature.properties && feature.properties.t_f != null) ? Number(feature.properties.t_f).toFixed(1) : "NA";
+          if (layer && layer._core && layer._core.bindTooltip){
+            layer._core.bindTooltip(t + "°F", { sticky: true });
+          } else if (layer && layer.bindTooltip){
+            layer.bindTooltip(t + "°F", { sticky: true });
+          }
+        }
+      }).addTo(hrrrTempLayer);
+
+      if (map.hasLayer(hrrrTempLayer)) { addStateLines(); }
+      updateHrrrTempRadius();
+      return true;
+    }).catch(function(err){
+      console.log("HRRR temp load failed:", err);
+      return false;
+    }).finally(function(){
+      ensureHrrrTempLoaded._p = null;
+    });
+
+    return ensureHrrrTempLoaded._p;
+  }
+
+  // Load once at startup
+  ensureHrrrTempLoaded();
+// ---------- Jet stream (250mb) loaders ----------
+var JET_POINTS_URL   = "./jet_250mb_points.geojson";
+var JET_ARROWS_URL   = "./jet_250mb_arrows.geojson";
+var JET_ISOTACHS_URL = "./jet_250mb_isotachs.geojson";
+
+var jetPointsGeo = null;
+var jetArrowsGeo = null;
+var jetIsotachsGeo = null;
+var jetArrowDecor = null;
+
+function lon360to180(lon){
+  lon = Number(lon);
+  return (lon > 180) ? (lon - 360) : lon;
+}
+
+// Simple isotach color ramp (mph or knots) — keep it readable without overwhelming the map
+function jetColorForSpeed(mph){
+  // Discrete "WeatherBell-style-ish" palette for jet speeds (mph)
+  // (kept discrete on purpose: no gradients)
+  if (!isFinite(mph)) return "#ffffff";
+  if (mph >= 200) return "#7a00ff";   // deep purple (extreme)
+  if (mph >= 180) return "#b300ff";   // purple
+  if (mph >= 160) return "#ff00c8";   // magenta
+  if (mph >= 140) return "#ff0040";   // hot red
+  if (mph >= 120) return "#ff5a00";   // orange-red
+  if (mph >= 100) return "#ffb000";   // amber
+  if (mph >=  80) return "#fff000";   // yellow
+  if (mph >=  60) return "#52ff52";   // bright green
+  if (mph >=  40) return "#00d7ff";   // cyan
+  if (mph >=  20) return "#0080ff";   // blue
+  return "#b0b0b0";                   // light gray
+}
+
+// Normalize jet speed to MPH from whatever fields exist in your GeoJSON exports.
+// Supported property names: speed_mph, spd_mph, speed_kt, spd_kt, speed_ms, spd_ms (m/s)
+function getJetSpeedMph(p){
+  p = p || {};
+  var mph = Number(p.speed_mph);
+  if (!isFinite(mph)) mph = Number(p.spd_mph);
+
+  // Knots -> mph
+  if (!isFinite(mph)){
+    var kt = Number(p.speed_kt);
+    if (!isFinite(kt)) kt = Number(p.spd_kt);
+    if (isFinite(kt)) mph = kt * 1.15078;
+  }
+
+  // m/s -> mph
+  if (!isFinite(mph)){
+    var ms = Number(p.speed_ms);
+    if (!isFinite(ms)) ms = Number(p.spd_ms);
+    if (isFinite(ms)) mph = ms * 2.23694;
+  }
+  return mph;
+}
+
+
+
+
+function metDirFromUV(u, v){
+  // meteorological direction (degrees FROM which the wind blows)
+  // u,v in same units
+  var ang = Math.atan2(v, u) * 180/Math.PI; // math angle of vector TO
+  var dir = (270 - ang) % 360;
+  if (dir < 0) dir += 360;
+  return dir;
+}
+
+
+function ensureJetPoints(){
+  // We load once, then dynamically render a decluttered subset based on zoom.
+  if (window._jetPointsLoaded) { renderJetPoints(); return; }
+  window._jetPointsLoaded = true;
+
+  fetch(JET_POINTS_URL + "?v=" + Date.now())
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(gj){
+      // Cache features for fast re-rendering
+      window._jetPointsFeatures = (gj && gj.features) ? gj.features : [];
+      renderJetPoints();
+    })
+    .catch(function(err){ console.log("Jet points load failed:", err); });
+}
+
+// Render a *subset* of the jet dots so it looks sharp (not overwhelming).
+// Strategy:
+//  - Convert speed to MPH using getJetSpeedMph()
+//  - Apply a minimum speed threshold that relaxes as you zoom in
+//  - Grid-thin points: keep the FASTEST point per grid cell (highlights streaks)
+function renderJetPoints(){
+  if (!window._jetPointsFeatures) return;
+
+  // Only render if the layer is currently toggled on
+  if (!map.hasLayer(jetPointsLayer)) return;
+
+  jetPointsLayer.clearLayers();
+
+  var z = map.getZoom();
+
+  // Thresholds (mph): show only the jet streak core when zoomed out
+  var minMph = 120;
+  if (z >= 6) minMph = 100;
+  if (z >= 7) minMph = 85;
+  if (z >= 11) minMph = 70;
+  if (z >= 9) minMph = 55;
+  if (z >= 11) minMph = 40;
+  if (z >= 11) minMph = 25;
+
+  // Grid size (degrees). Smaller cells as you zoom in.
+  // (These values are tuned to "feel right" over CONUS on tablets/laptops.)
+  var cell = 6.0;
+  if (z >= 5)  cell = 4.0;
+  if (z >= 6)  cell = 2.5;
+  if (z >= 7)  cell = 1.6;
+  if (z >= 11)  cell = 1.0;
+  if (z >= 9)  cell = 0.65;
+  if (z >= 11) cell = 0.45;
+  if (z >= 11) cell = 0.30;
+
+  // Dot radius: subtle when zoomed out, more readable when zoomed in.
+  var r = 2.5;
+  if (z >= 6) r = 3.0;
+  if (z >= 7) r = 3.2;
+  if (z >= 11) r = 3.6;
+  if (z >= 9) r = 4.0;
+  if (z >= 11) r = 4.6;
+  if (z >= 11) r = 5.2;
+
+  // Keep the fastest point per grid cell
+  var bestByCell = Object.create(null);
+
+  for (var i=0; i<window._jetPointsFeatures.length; i++){
+    var f = window._jetPointsFeatures[i];
+    if (!f || !f.geometry || f.geometry.type !== "Point") continue;
+    var coords = f.geometry.coordinates;
+    if (!coords || coords.length < 2) continue;
+
+    var lon = lon360to180(coords[0]);
+    var lat = Number(coords[1]);
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+
+    var p = f.properties || {};
+    var mph = getJetSpeedMph(p);
+    if (!isFinite(mph) || mph < minMph) continue;
+
+    // Grid key
+    var gx = Math.floor(lon / cell);
+    var gy = Math.floor(lat / cell);
+    var key = gx + ":" + gy;
+
+    var prev = bestByCell[key];
+    if (!prev || mph > prev.mph){
+      bestByCell[key] = { lat: lat, lon: lon, mph: mph, props: p };
+    }
+  }
+
+  // Now draw markers
+  for (var key in bestByCell){
+    var pt = bestByCell[key];
+    var c = jetColorForSpeed(pt.mph);
+
+    var m = L.circleMarker([pt.lat, pt.lon], {
+      radius: r,
+      weight: 1,
+      color: "rgba(0,0,0,0.35)",
+      fillColor: c,
+      fillOpacity: 0.80
+    });
+
+    // Tooltip (keep it short so it feels like a "probe")
+    if (m.bindTooltip){
+      m.bindTooltip("Jet: " + pt.mph.toFixed(0) + " mph", { sticky:true, direction:"top", opacity:0.95 });
+    }
+    m.addTo(jetPointsLayer);
+  }
+}
+
+
+function ensureJetArrows(){
+  if (jetArrowsGeo) return;
+
+  fetch(JET_ARROWS_URL + "?v=" + Date.now())
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(gj){
+      jetArrowsGeo = L.geoJSON(gj, {
+        coordsToLatLng: function(coords){
+          var lon = lon360to180(coords[0]);
+          return L.latLng(coords[1], lon);
+        },
+        style: function(feature){
+          var p = (feature && feature.properties) ? feature.properties : {};
+          var spd = getJetSpeedMph(p);
+          return { color: jetColorForSpeed(spd), weight: 2, opacity: 0.85 };
+        },
+        onEachFeature: function(feature, layer){
+          var p = (feature && feature.properties) ? feature.properties : {};
+          var spd = getJetSpeedMph(p);
+          if (isFinite(spd) && layer.bindTooltip){
+            layer.bindTooltip("Jet: " + spd.toFixed(0) + " mph", { sticky:true });
+          }
+        }
+      }).addTo(jetArrowsLayer);
+
+      // Add arrowheads using polylineDecorator if present
+      try{
+        if (typeof L.polylineDecorator === "function"){
+          
+        // Add arrowheads per-feature so they inherit the same color as the line.
+        // (One decorator per polyline -> avoids the "everything looks the same" problem.)
+        jetArrowDecors = [];
+        jetArrowsGeo.eachLayer(function(line){
+          var col = (line.options && line.options.color) ? line.options.color : "#00d7ff";
+          var dec = L.polylineDecorator(line, {
+            patterns: [
+              {
+                offset: "60%",
+                repeat: 0,
+                symbol: L.Symbol.arrowHead({
+                  pixelSize: 12,
+                  polygon: true,
+                  pathOptions: { stroke: false, fillOpacity: 0.95, color: col, fillColor: col }
+                })
+              }
+            ]
+          }).addTo(jetArrowsLayer);
+          jetArrowDecors.push(dec);
+        });
+}
+      }catch(e){
+        console.log("Jet arrow decorator failed:", e);
+      }
+    })
+    .catch(function(err){ console.log("Jet arrows load failed:", err); });
+}
+
+function ensureJetIsotachs(){
+  if (jetIsotachsGeo) return;
+
+  fetch(JET_ISOTACHS_URL + "?v=" + Date.now())
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(gj){
+      jetIsotachsGeo = L.geoJSON(gj, {
+        coordsToLatLng: function(coords){
+          var lon = lon360to180(coords[0]);
+          return L.latLng(coords[1], lon);
+        },
+        style: function(feature){
+          var p = (feature && feature.properties) ? feature.properties : {};
+          // Common keys from geojsoncontour: value / level / contour
+          var val = Number(p.value);
+          if (!isFinite(val)) val = Number(p.level);
+          if (!isFinite(val)) val = Number(p.contour);
+          var w = (val>=140)?5:(val>=120)?4:(val>=100)?3:2;
+          return { color: jetColorForSpeed(val), weight: w, opacity: 0.9 };
+        },
+        onEachFeature: function(feature, layer){
+          var p = (feature && feature.properties) ? feature.properties : {};
+          var val = Number(p.value);
+          if (!isFinite(val)) val = Number(p.level);
+          if (!isFinite(val)) val = Number(p.contour);
+          if (isFinite(val) && layer.bindTooltip){
+            layer.bindTooltip("Isotach: " + val.toFixed(0), { className:'jet-tooltip', sticky:true, opacity:0.98, direction:'top', offset:[0,-6] });
+          }
+        }
+      }).addTo(jetIsotachsLayer);
+    })
+    .catch(function(err){ console.log("Jet isotachs load failed:", err); });
+}
+
+function ensureJetParticles(){
+  // Loads ./narr_jet_250mb_20180414_18z_NA_leaflet_velocity.json and creates a Leaflet-Velocity layer.
+  // NOTE: This requires leaflet-velocity.min.js/css to be present locally.
+  if (window._jetVelocityLayer) return;
+
+  var url = window.JET_SNAPSHOT_FILE + "?v=" + Date.now();
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(data){
+      // Normalize header so the grid is oriented correctly for Leaflet-Velocity.
+      // Your exported files are north-first; Leaflet-Velocity expects la1=north and dy negative.
+      try{
+        data.forEach(function(rec){
+          if (!rec.header) return;
+          if (typeof rec.header.dy === "number") rec.header.dy = -Math.abs(rec.header.dy);
+        });
+      }catch(e){}
+
+      // Color ramp: blue -> dark blue -> green -> yellow -> red (0..50 mph)
+      function msToMph(ms){ return ms * 2.23694; }
+      
+  // --- Fix for Leaflet-Velocity grid origin ---
+  // Leaflet-Velocity expects header.la1 to be the SOUTH edge (min lat) with positive dy.
+  // Our JSON was exported "north-first" (la1 = north edge). So we:
+  // 1) set la1 to LAT_MIN
+  // 2) keep dy positive
+  // 3) flip the data rows so row 0 corresponds to the south edge.
+  function normalizeVelocityNorthFirstToSouthFirst(records, latMin){
+    if (!Array.isArray(records) || records.length < 2) return records;
+
+    for (const rec of records){
+      if (!rec || !rec.header || !Array.isArray(rec.data)) continue;
+      const nx = rec.header.nx, ny = rec.header.ny;
+      if (!nx || !ny || rec.data.length !== nx*ny) continue;
+
+      // Patch header to south-first convention
+      rec.header.la1 = latMin;
+      rec.header.dy = Math.abs(rec.header.dy || 0);
+
+      // Flip rows (north-first -> south-first)
+      const flipped = new Array(nx*ny);
+      for (let y=0; y<ny; y++){
+        const srcRow = (ny - 1 - y) * nx;
+        const dstRow = y * nx;
+        for (let x=0; x<nx; x++){
+          flipped[dstRow + x] = rec.data[srcRow + x];
+        }
+      }
+      rec.data = flipped;
+    }
+    return records;
+  }
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+      function lerp(a,b,t){ return a + (b-a)*t; }
+      function lerpColor(c1,c2,t){
+        return [
+          Math.round(lerp(c1[0], c2[0], t)),
+          Math.round(lerp(c1[1], c2[1], t)),
+          Math.round(lerp(c1[2], c2[2], t))
+        ];
+      }
+      function rgbCss(c){ return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
+
+      var MPH_MAX = 50;
+      var c0  = [191,233,255];
+      var c20 = [ 58,160,255];
+      var c30 = [  0, 91,255];
+      var c40 = [  0,200, 83];
+      var c45 = [255,212,  0];
+      var c50 = [255, 45, 45];
+
+      function colorForMph(mph){
+        mph = clamp(mph, 0, MPH_MAX);
+        if (mph <= 20) return rgbCss(lerpColor(c0,  c20, mph/20));
+        if (mph <= 30) return rgbCss(lerpColor(c20, c30, (mph-20)/10));
+        if (mph <= 40) return rgbCss(lerpColor(c30, c40, (mph-30)/10));
+        if (mph <= 45) return rgbCss(lerpColor(c40, c45, (mph-40)/5));
+        return rgbCss(lerpColor(c45, c50, (mph-45)/5));
+      }
+
+      window._jetVelocityLayer = L.velocityLayer({
+        data: data,
+        maxVelocity: 22.35,         // m/s scale inside plugin; just affects legend scaling
+        velocityScale: 0.010,
+        particleAge: 60,
+        lineWidth: 1,
+        opacity: 0.55,
+        displayValues: true,
+        displayOptions: {
+          velocityType: "Jet (250mb)",
+          position: "bottomleft",
+          speedUnit: "mph",
+          emptyString: "No data"
+        },
+        colorScale: ["#bfe9ff","#3aa0ff","#005bff","#00c853","#ffd400","#ff8a00","#ff2d2d","#d500f9","#6a00ff"]});
+
+      // If the checkbox is already on, attach immediately
+      if (typeof map !== "undefined" && map && map.hasLayer(jetParticlesLayer)){
+        jetParticlesLayer.addLayer(window._jetVelocityLayer);
+      }
+    })
+    .catch(function(err){
+      console.log("Jet particles load failed:", err);
+      // Helpful hint in status box if present
+      try{
+        var st = document.getElementById("status");
+        if (st) st.textContent = "Jet particles failed to load. Check leaflet-velocity files + JSON path.";
+      }catch(e){}
+    });
+}
+// Track particles overlay enabled state
+window._jetParticlesOverlayEnabled = false;
+
+map.on("overlayadd", function(e){
+  try{
+    // --- GOES (mtarchive) ---
+    if (e && (e.name === "GOES Satellite" || e.layer === overlays["GOES Satellite"])){
+      goesEnabled = true;
+      updateGoes();
+      syncOpacitySliderToActive();
+      return;
+    }
+
+    // --- HRRR Temp ---
+    if (e && (e.name === "HRRR Temp (2m)" || e.layer === hrrrTempLayer)){
+      // Make sure the GeoJSON is loaded (some versions were losing this on edits)
+      ensureHrrrTempLoaded().then(function(ok){
+        if (ok) {
+          addStateLines();
+          updateHrrrTempRadius();
+        }
+      });
+      syncOpacitySliderToActive();
+      return;
+    }
+    if (e && e.name === "Jet Stream (250mb) – Particles"){
+      window._jetParticlesOverlayEnabled = true;
+      // Prefer animation frame 0 if available; otherwise snapshot
+      if (window._jetAnim && window._jetAnim.frames && window._jetAnim.frames.length){
+        syncJetParticlesToClock().catch(function(e){console.warn('syncJetParticlesToClock failed', e);});
+    } else {
+        ensureJetParticles(); // snapshot
+      }
+    }
+  }catch(err){ console.warn(err); }
+});
+
+map.on("overlayremove", function(e){
+  try{
+    // --- GOES (mtarchive) ---
+    if (e && e.name === "GOES Satellite"){
+      goesEnabled = false;
+      updateGoes();
+      syncOpacitySliderToActive();
+      return;
+    }
+    if (e && e.name === "Jet Stream (250mb) – Particles"){
+      window._jetParticlesOverlayEnabled = false;
+      jetAnimPause();
+      if (window._jetVelocityLayer){
+        try{ jetParticlesLayer.removeLayer(window._jetVelocityLayer); }catch(e){}
+      }
+    }
+  }catch(err){ console.warn(err); }
+});
+
+
+// ============================
+// Jet Animation (Option 2)
+// ============================
+window.JET_SNAPSHOT_FILE = "./narr_jet_250mb_20180414_18z_NA_leaflet_velocity.json";
+window.JET_ANIM_DIR = "jet_anim";
+window.JET_MANIFEST_URL = window.JET_ANIM_DIR + "/frames.json";
+
+window._jetAnim = {
+  frames: [],   // [{url,label}]
+  idx: 0,
+  timer: null,
+  ready: false
+};
+
+function setJetAnimText(id, txt){
+  var el = document.getElementById(id);
+  if (el) el.textContent = txt;
+}
+
+async function loadJetFramesManifest(){
+  try{
+    var r = await fetch(window.JET_MANIFEST_URL + "?v=" + Date.now(), {cache:"no-store"});
+    if (!r.ok) return null;
+    var mj = await r.json();
+    var out = [];
+    for (var i=0;i<mj.length;i++){
+      var it = mj[i];
+      if (typeof it === "string"){ var u = resolveJetFrameUrl(it); out.push({url: u, label: u.split("/").pop()}); }
+      else if (it && typeof it.url === "string"){ var u2 = resolveJetFrameUrl(it.url); out.push({url: u2, label: it.label || u2.split("/").pop()}); }
+    }
+    return out.length ? out : null;
+  }catch(e){
+    return null;
+  }
+}
+
+function normalizeVelocityIfNeeded(data){
+  // Leaflet-velocity expects the grid to be NORTH-first (la1 = north edge) with dy < 0.
+  // Many of our exports are SOUTH-first (la1 = south edge) with dy > 0.
+  // This normalizes header only (no data reordering needed for leaflet-velocity).
+  try{
+    if (!Array.isArray(data)) return data;
+    data.forEach(function(rec){
+      if (!rec || !rec.header) return;
+      var h = rec.header;
+      var la1 = Number(h.la1), dy = Number(h.dy), ny = Number(h.ny);
+      if (Number.isFinite(la1) && Number.isFinite(dy) && Number.isFinite(ny) && ny > 1){
+        var lat2 = la1 + dy*(ny-1); // opposite edge implied by header
+        // If dy is positive, la1 is south edge; convert to north-first
+        if (dy > 0){
+          h.la1 = lat2;   // move origin to north edge
+          h.dy  = -dy;    // step southward
+        }
+        // If lat2 is still out of bounds, force within [-90,90] by swapping
+        var newLat2 = Number(h.la1) + Number(h.dy)*(ny-1);
+        if (newLat2 > 90 || newLat2 < -90){
+          // swap edges
+          h.la1 = newLat2;
+          h.dy  = -Number(h.dy);
+        }
+      }
+
+      // Normalize longitude origin into [-180, 180] if it's 0..360
+      var lo1 = Number(h.lo1);
+      if (Number.isFinite(lo1) && lo1 > 180) h.lo1 = lo1 - 360;
+    });
+  }catch(e){
+    console.warn("[JetAnim] normalizeVelocityIfNeeded failed:", e);
+  }
+  return data;
+}
+
+async function loadJetVelocityFromUrl(url){
+  if (!url) throw new Error("No URL for jet frame.");
+  url = resolveJetFrameUrl(url);
+  setJetAnimText("jetAnimStatus", "Loading: " + url);
+  console.log("[JetAnim] fetch", url);
+
+  var r = await fetch(url + (url.indexOf("?")===-1 ? "?v=" + Date.now() : ""), {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status + " for " + url);
+  var data = await r.json();
+  data = normalizeVelocityIfNeeded(data);
+
+  // Remove old
+  if (window._jetVelocityLayer){
+    try{ jetParticlesLayer.removeLayer(window._jetVelocityLayer); }catch(e){}
+    try{ map.removeLayer(window._jetVelocityLayer); }catch(e){}
+    window._jetVelocityLayer = null;
+  }
+
+  // Build new layer (palette updated with purple at top)
+  window._jetVelocityLayer = L.velocityLayer({
+    data: data,
+    displayValues: true,
+    displayOptions: {
+      position: "bottomleft",
+      emptyString: "No data"
+    },
+    maxVelocity: 70,           // ~157 mph
+    velocityScale: 0.01,
+    particleAge: 60,
+    particleMultiplier: 1/220,
+    lineWidth: 1.6,
+    opacity: 0.62,
+    colorScale: ["#d7f3ff","#6ec6ff","#1e88e5","#00c853","#ffd600","#ff6d00","#e53935","#8e24aa"]
+  });
+
+  // Only show if overlay is enabled
+  if (map && map.hasLayer(jetParticlesLayer)){
+    jetParticlesLayer.addLayer(window._jetVelocityLayer);
+  }
+
+  // Timestamp label
+  var t = "";
+  try{ t = (data[0] && data[0].header && data[0].header.refTime) ? String(data[0].header.refTime) : ""; }catch(e){}
+  setJetAnimText("jetAnimTime", t || "");
+  setJetAnimText("jetAnimStatus", "Loaded: " + url);
+}
+
+async function jetAnimInit(){
+  var frames = await loadJetFramesManifest();
+  if (!frames){
+    // No manifest => keep snapshot-only mode
+    window._jetAnim.frames = [];
+    window._jetAnim.ready = true;
+    var s = document.getElementById("jetAnimSlider");
+    if (s){ s.min = 0; s.max = 0; s.value = 0; }
+    setJetAnimText("jetAnimStatus", "No frames.json found. Using snapshot only.");
+    return;
+  }
+
+  window._jetAnim.frames = frames;
+  window._jetAnim.idx = 0;
+  window._jetAnim.ready = true;
+
+  var slider = document.getElementById("jetAnimSlider");
+  if (slider){
+    slider.min = 0;
+    slider.max = Math.max(0, frames.length - 1);
+    slider.step = 1;
+    slider.value = 0;
+  }
+  setJetAnimText("jetAnimStatus", "Frames ready: " + frames.length);
+}
+
+
+function parseJetFrameTime(str){
+  try{
+    var s = String(str || "");
+    // common patterns: 20180414_18z, 2018041418, 20180414_1800, etc.
+    var m = s.match(/(20\d{2})(\d{2})(\d{2})[_-]?(\d{2})z/i);
+    if (!m) m = s.match(/(20\d{2})(\d{2})(\d{2})[_-]?(\d{2})(?:00)?/);
+    if (!m) return null;
+    var yy=+m[1], mo=+m[2], dd=+m[3], hh=+m[4];
+    if (!isFinite(yy)||!isFinite(mo)||!isFinite(dd)||!isFinite(hh)) return null;
+    return Date.UTC(yy, mo-1, dd, hh, 0, 0);
+  }catch(e){ return null; }
+}
+
+// Pick the closest jet frame to the banner clock, and load it into leaflet-velocity.
+async function syncJetParticlesToClock(){
+  try{
+    if (!window._jetParticlesOverlayEnabled) return;
+    if (!window._jetAnim || !window._jetAnim.ready) return;
+
+    // Snapshot-only mode
+    if (!window._jetAnim.frames || !window._jetAnim.frames.length){
+      ensureJetParticles();
+      return;
+    }
+
+    var t = curZ.getTime();
+    var bestI = 0, bestD = Infinity;
+
+    for (var i=0; i<window._jetAnim.frames.length; i++){
+      var f = window._jetAnim.frames[i];
+      if (!f) continue;
+      var ft = f._time;
+      if (!isFinite(ft)){
+        ft = parseJetFrameTime(f.url) || parseJetFrameTime(f.label);
+        f._time = ft;
+      }
+      if (!isFinite(ft)) continue;
+      var d = Math.abs(ft - t);
+      if (d < bestD){ bestD = d; bestI = i; }
+    }
+
+    // If we couldn't parse any times, just use current idx.
+    if (!isFinite(bestD)){
+      bestI = window._jetAnim.idx || 0;
+    }
+
+    if (bestI !== window._jetAnim.idx || !window._jetAnim._loadedOnce){
+      window._jetAnim.idx = bestI;
+      window._jetAnim._loadedOnce = true;
+      var f2 = window._jetAnim.frames[bestI];
+      if (f2 && f2.url){
+        await loadJetVelocityFromUrl(f2.url);
+      }
+    }
+  }catch(e){
+    console.warn(e);
+  }
+}
+
+
+function jetAnimPause(){
+  if (window._jetAnim.timer){
+    clearInterval(window._jetAnim.timer);
+    window._jetAnim.timer = null;
+    setJetAnimText("jetAnimStatus", "Paused.");
+  }
+}
+
+function jetAnimPlay(){
+  if (!window._jetAnim.ready) return;
+  if (!window._jetAnim.frames.length){
+    setJetAnimText("jetAnimStatus", "No frames loaded (frames.json missing).");
+    return;
+  }
+  if (window._jetAnim.timer) return;
+
+  window._jetAnim.timer = setInterval(async function(){
+    window._jetAnim.idx = (window._jetAnim.idx + 1) % window._jetAnim.frames.length;
+    var slider = document.getElementById("jetAnimSlider");
+    if (slider) slider.value = window._jetAnim.idx;
+    var f = window._jetAnim.frames[window._jetAnim.idx];
+    try{
+      await loadJetVelocityFromUrl(f.url);
+    }catch(e){
+      console.error(e);
+      setJetAnimText("jetAnimStatus", "Frame load failed (see console).");
+      jetAnimPause();
+    }
+  }, 1200);
+  setJetAnimText("jetAnimStatus", "Playing…");
+}
+
+// Initialize animation system on page load (no scrubber UI)
+(function(){
+  try{ jetAnimInit(); }catch(e){}
+})();
+
+function updateJetLayersVisibility(){
+  // Called from overlayadd/overlayremove
+  if (map.hasLayer(jetPointsLayer)) ensureJetPoints();
+  if (map.hasLayer(jetArrowsLayer)) ensureJetArrows();
+  if (map.hasLayer(jetIsotachsLayer)) ensureJetIsotachs();
+  if (map.hasLayer(jetParticlesLayer)) ensureJetParticles();
+}
+
+// We'll manage radar ourselves but still expose a checkbox
+  var lc = L.control.layers(null, overlays, { collapsed:false }).addTo(map);
+
+  // Remove any base-layer radio section if Leaflet created it empty
+  setTimeout(function(){
+    var el = document.querySelector(".leaflet-control-layers-base");
+    if (el) el.style.display = "none";
+  }, 50);
+
+  // Reliable layer toggle handling (Leaflet provides e.layer, not e.name)
+  
+  function enforceSingleOverlay(layerAdded){
+    // Only one of the main products at a time (RADAR, SNOW, TEMP).
+    // State lines are driven by TEMP and are not part of this exclusivity.
+    var mainLayers = [
+      overlays["Composite Radar (Observed)"],
+      overlays["GFS Snow Forecast"],
+      overlays["GOES Satellite"],
+      overlays["Global Temp (ERA5) – Apr 10 (21Z)"],
+      overlays["Global Temp (ERA5) – Apr 11 (21Z)"],
+      hrrrTempLayer
+    ];
+
+    for (var i=0;i<mainLayers.length;i++){
+      var LYR = mainLayers[i];
+      if (!LYR) continue;
+      if (LYR === layerAdded) continue;
+      if (map.hasLayer(LYR)) map.removeLayer(LYR);
+    }
+
+    // Also ensure radar/snow overlays clean up if their checkbox was turned off by us
+    if (!map.hasLayer(overlays["Composite Radar (Observed)"])){
+      obsRadarEnabled = false;
+      if (obsRadarOverlay) map.removeLayer(obsRadarOverlay);
+    }
+    if (!map.hasLayer(overlays["GFS Snow Forecast"])){
+      gfsSnowEnabled = false;
+      if (gfsSnowOverlay) map.removeLayer(gfsSnowOverlay);
+    }
+    if (!map.hasLayer(overlays["GOES Satellite"])){
+      goesEnabled = false;
+      if (goesOverlay) map.removeLayer(goesOverlay);
+    }
+
+    if (!map.hasLayer(overlays["Global Temp (ERA5) – Apr 10 (21Z)"])){
+      era5Apr10Enabled = false;
+    }
+    if (!map.hasLayer(overlays["Global Temp (ERA5) – Apr 11 (21Z)"])){
+      era5Apr11Enabled = false;
+    }
+    updateEra5Global();
+
+  }
+map.on("overlayadd", function(e){
+    
+    // Jet particles: when toggled on, load and attach the velocity layer
+    if (e.layer === jetParticlesLayer){
+      ensureJetParticles();
+      // ensureJetParticles will attach once loaded
+      return;
+    }
+enforceSingleOverlay(e.layer);
+    if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = true; updateRadar(); updateProductLabel(); }
+    if (e.layer === jetPointsLayer || e.layer === jetArrowsLayer || e.layer === jetIsotachsLayer) { updateJetLayersVisibility(); }
+
+    if (e.layer === overlays["GFS Snow Forecast"]) { gfsSnowEnabled = true; updateGfsSnow(); updateProductLabel(); }
+    if (e.layer === overlays["GOES Satellite"]) { goesEnabled = true; updateGoes(); updateProductLabel(); }
+    if (e.layer === overlays["Global Temp (ERA5) – Apr 10 (21Z)"]) {
+      era5Apr10Enabled = true;
+      era5Apr11Enabled = false;
+      setCurZToEra5("apr10");
+      updateEra5Global();
+      updateProductLabel();
+    }
+    if (e.layer === overlays["Global Temp (ERA5) – Apr 11 (21Z)"]) {
+      era5Apr11Enabled = true;
+      era5Apr10Enabled = false;
+      setCurZToEra5("apr11");
+      updateEra5Global();
+      updateProductLabel();
+    }
+    if (e.layer === overlays["HRRR Temp (2m)"]) {
+      addStateLines();
+      updateProductLabel();
+      updateHrrrTempRadius();
+    }
+    if (e.layer === overlays["Fronts (Surface Analysis)"]) { frontsEnabled = true; updateFronts(); }
+  
+    syncOpacitySliderToActive();
+    applyActiveOpacity();
+    updateLegend();
+});
+  map.on("overlayremove", function(e){
+    
+    // Jet particles: remove velocity layer from the toggle group when turned off
+    if (e.layer === jetParticlesLayer){
+      try{ jetParticlesLayer.clearLayers(); }catch(err){}
+      return;
+    }
+if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = false; if (obsRadarOverlay){ map.removeLayer(obsRadarOverlay); } updateProductLabel(); }
+    if (e.layer === jetPointsLayer || e.layer === jetArrowsLayer || e.layer === jetIsotachsLayer) { /* nothing to do; Leaflet removed the group */ }
+
+    if (e.layer === overlays["GFS Snow Forecast"]) { gfsSnowEnabled = false; if (gfsSnowOverlay){ map.removeLayer(gfsSnowOverlay); } updateProductLabel(); }
+    if (e.layer === overlays["GOES Satellite"]) { goesEnabled = false; if (goesOverlay){ map.removeLayer(goesOverlay); } updateProductLabel(); }
+    if (e.layer === overlays["Global Temp (ERA5) – Apr 10 (21Z)"]) { era5Apr10Enabled = false; updateEra5Global(); updateProductLabel(); }
+    if (e.layer === overlays["Global Temp (ERA5) – Apr 11 (21Z)"]) { era5Apr11Enabled = false; updateEra5Global(); updateProductLabel(); }
+    if (e.layer === overlays["HRRR Temp (2m)"]) {
+      removeStateLines();
+      updateProductLabel();
+    }
+    if (e.layer === overlays["Fronts (Surface Analysis)"]) { frontsEnabled = false; updateFronts(); }
+
+    syncOpacitySliderToActive();
+    applyActiveOpacity();
+    updateLegend();
+  });
+
+  // Re-render jet dots as you zoom/pan (keeps them decluttered and readable)
+  map.on("zoomend moveend", function(){
+    if (map.hasLayer(jetPointsLayer) && window._jetPointsLoaded){
+      renderJetPoints();
+    }
+  });
+
+  // Ensure radar checkbox starts ON
+  // Leaflet doesn't automatically check our placeholder group, so we force it:
+  (function forceRadarChecked(){
+    var inputs = document.querySelectorAll(".leaflet-control-layers-overlays input");
+    for (var i=0;i<inputs.length;i++){
+      var label = inputs[i].parentElement && inputs[i].parentElement.textContent || "";
+      if (label.indexOf("Composite Radar") !== -1){
+        inputs[i].checked = true;
+      }
+    }
+  })();
+  // Sync UI for default layer
+  syncOpacitySliderToActive();
+  applyActiveOpacity();
+  updateLegend();
+
+  // ---------- Updaters ----------
+  function setStatus(s){ /* hidden */ }
+
+  function positionClockBubble(){
+    try{
+      var bubble = document.getElementById("clockBubble");
+      if (!bubble) return;
+
+      var ctrl = document.querySelector(".leaflet-control-layers");
+      if (!ctrl) return;
+
+      var rect = ctrl.getBoundingClientRect();
+
+      // Banner bottom (use actual id in this file)
+      var banner = document.getElementById("banner") || document.querySelector(".tvbanner");
+      var bannerBottom = 0;
+      if (banner){
+        var brect = banner.getBoundingClientRect();
+        bannerBottom = brect.bottom || 0;
+      }
+
+      var pad = 6; // keep the clock snug under the banner
+      var desiredTopAboveCtrl = rect.top - bubble.offsetHeight - 10;
+      var minTop = bannerBottom + pad;
+
+      var top = desiredTopAboveCtrl;
+      var placeLeftOfCtrl = false;
+
+      // If we cannot fit above the layers control (because banner is too tall),
+      // keep it just under the banner but shift LEFT so it never covers the toggle box.
+      if (top < minTop){
+        top = minTop;
+        placeLeftOfCtrl = true;
+      } else {
+        top = Math.max(minTop, top);
+      }
+
+      // Right positioning
+      if (placeLeftOfCtrl){
+        // Put bubble to the LEFT of the layers control (10px gap)
+        var right = Math.max(10, window.innerWidth - rect.left + 10);
+        bubble.style.right = right + "px";
+      } else {
+        // Align to the right edge of the layers control
+        var rightGap = Math.max(10, window.innerWidth - rect.right);
+        bubble.style.right = rightGap + "px";
+      }
+
+      bubble.style.top = top + "px";
+    }catch(e){}
+  }
+function setTimeLabel(){
+    var label = formatCentralLabel(curZ);
+    var btl = document.getElementById("bannerTimeLabel");
+    if (btl) btl.textContent = label;
+
+    var cbt = document.getElementById("clockBubbleTime");
+    if (cbt) cbt.textContent = label;
+
+    // Sync scrubber to current time
+    try{
+      var scrub = document.getElementById("cbScrubber");
+      if (scrub){
+        var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_HOURS*3600*1000));
+        if (idx < 0) idx = 0;
+        var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_HOURS*3600*1000));
+        scrub.max = String(max);
+        scrub.value = String(idx);
+      }
+    }catch(e){}
+
+    positionClockBubble();
+  }
+
+  function updateProductLabel(){
+  var pl = document.getElementById("productLabel");
+  if (!pl) return;
+
+  // IMPORTANT: never concatenate labels (it will crowd the middle).
+  // Choose ONE label based on what is currently visible/active.
+  var candidates = [
+    { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
+    { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
+    { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
+    { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
+    { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
+  ];
+
+  var label = "MAP";
+  for (var i=0;i<candidates.length;i++){
+    if (candidates[i].on){ label = candidates[i].label; break; }
+  }
+  pl.textContent = label;
+}
+  function updateLegend(){
+    var el = document.getElementById("mapLegend");
+    if (!el) return;
+    var bar = el.querySelector(".leg-mini-bar");
+    var title = "";
+
+    var key = getActiveProductKey();
+    if (key === "radar"){
+      title = "Radar reflectivity";
+      if (bar) bar.style.background = "linear-gradient(90deg, #2b83ba, #4ecdc4, #a8e6a3, #ffd166, #ef476f)";
+      el.style.display = "";
+    } else if (key === "snow"){
+      title = "Snow (forecast)";
+      if (bar) bar.style.background = "linear-gradient(90deg, #ffffff, #d7ecff, #9ac8ff, #4f7cff)";
+      el.style.display = "";
+    } else if (key === "goes"){
+      title = "GOES Satellite";
+      el.style.display = "none";
+    } else if (key === "global"){
+      title = "Global 2m Temperature (°F) — ERA5";
+      if (bar) bar.style.background = "linear-gradient(90deg, #2d004b 0%, #542788 12%, #2166ac 26%, #67a9cf 40%, #d1e5f0 52%, #fff7bc 62%, #fec44f 72%, #f16913 84%, #d73027 100%)";
+      el.style.display = "";
+    } else { // temp
+      title = "2m Temperature (°F)";
+      // WeatherBell-ish continuous temp ramp (cold blues -> greens -> yellows -> oranges -> reds -> purples)
+      if (bar) bar.style.background = "linear-gradient(90deg, #0b2e83 0%, #1f66d3 15%, #6fb7ff 28%, #1f8a3a 42%, #7fe36d 52%, #ffe14a 63%, #ff9a1f 73%, #e31a1c 82%, #a4007c 92%, #ff66ff 100%)";
+      el.style.display = "";
+    }
+
+    el.title = title;
+  }
+
+
+  function updateRadar(){
+    if (!obsRadarEnabled) return;
+    var url = radarUrlFor(curZ);
+
+    // Test-load the image before swapping overlay (avoids blank overlay on 404)
+    var img = new Image();
+    img.onload = function(){
+      if (obsRadarOverlay){ map.removeLayer(obsRadarOverlay); }
+      var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
+      obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
+      obsRadarOverlay.addTo(map);
+      applyActiveOpacity();
+      setStatus("Radar: " + url);
+    };
+    img.onerror = function(){
+      setStatus("Radar missing: " + url + " (check /radar_frames/)");
+    };
+    img.src = url;
+  }
+
+  
+  function updateGfsSnow(){
+    if (!gfsSnowEnabled) return;
+
+    var url = gfsSnowUrlFor(curZ);
+
+    // Preload to avoid flashing broken images
+    var img = new Image();
+    img.onload = function(){
+      if (gfsSnowOverlay){ map.removeLayer(gfsSnowOverlay); }
+      // Use same bounds as the rest of the CONUS layers for consistent alignment
+      gfsSnowOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: 0.75, interactive: false });
+      gfsSnowOverlay.addTo(map);
+      setStatus("GFS Snow: " + url);
+    };
+    img.onerror = function(){
+      setStatus("GFS Snow missing: " + url + " (check /gfs_snow/)");
+    };
+    img.src = url;
+  }
+
+function updateAlerts(){
+    
+    var url = alertsUrlFor(curZ);
+    fetch(url).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function(gj){
+      alertsLayer.clearLayers();
+      alertsLayer.addData(gj);
+      alertsLayer.addTo(map);
+      setStatus("Alerts: " + url);
+    }).catch(function(err){
+      alertsLayer.clearLayers();
+      setStatus("Alerts missing: " + url);
+    });
+  }
+
+  function updateAll(){
+    setTimeLabel();
+    // Keep jet particles in sync with the master banner clock
+    syncJetParticlesToClock();
+    updateRadar();
+    updateGfsSnow();
+    updateEra5Global();
+    updateAlerts();
+    updateProductLabel();
+  }
+
+  // ---------- Time controls ----------
+  function clampTime(){
+    if (curZ < startZ) curZ = new Date(startZ.getTime());
+    if (curZ > endZ) curZ = new Date(endZ.getTime());
+  }
+
+  var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
+  if (_back) _back.onclick = function(){
+    curZ = new Date(curZ.getTime() - STEP_HOURS*3600*1000);
+    clampTime(); updateAll();
+  };
+  var _fwd = document.getElementById('cbFwdBtn') || document.getElementById('bFwdBtn');
+  if (_fwd) _fwd.onclick = function(){
+    curZ = new Date(curZ.getTime() + STEP_HOURS*3600*1000);
+    clampTime(); updateAll();
+  };
+
+  // Time scrubber (drag to jump through time)
+  var _scrub = document.getElementById("cbScrubber");
+  if (_scrub){
+    _scrub.oninput = function(){
+      var v = parseInt(_scrub.value, 10);
+      if (!isFinite(v)) return;
+      curZ = new Date(startZ.getTime() + v*STEP_HOURS*3600*1000);
+      clampTime(); updateAll();
+    };
+  }
+
+
+  const zIn = document.getElementById("zoomInBtn");
+  const zOut = document.getElementById("zoomOutBtn");
+  if (zIn) zIn.onclick = () => map.zoomIn();
+  if (zOut) zOut.onclick = () => map.zoomOut();
+
+
+  // Initial
+  setTimeLabel();
+  // Add overlays based on default checkboxes
+  // Alerts starts OFF; radar starts ON.
+  updateAll();
+
+})();
+</script>
+
+
+
+<script>
+(function(){
+  // ---------- Glossary Data (starter pack) ----------
+  var GLOSSARY = [
+    {
+      term: "Dew Point",
+      category: "Moisture",
+      definition: "The temperature air must cool to become saturated with water vapor.",
+      brian: "It’s the best quick clue for how ‘humid’ the air really is.",
+      why: ["Higher dew point = stickier air", "Helps predict fog, clouds, and storm fuel"]
+    },
+    {
+      term: "Humidity",
+      category: "Moisture",
+      definition: "A measure of how much water vapor is in the air.",
+      brian: "Humidity tells you how much invisible water is mixed into the air around you.",
+      why: ["Affects comfort", "Impacts cloud and precipitation formation"]
+    },
+    {
+      term: "Relative Humidity",
+      category: "Moisture",
+      definition: "The percentage of water vapor in the air compared to the maximum it could hold at that temperature.",
+      brian: "It’s temperature-dependent — warm air can ‘hold’ more moisture than cold air.",
+      why: ["Explains why RH can rise at night as temps fall", "Useful for fog and cloud timing"]
+    },
+    {
+      term: "Jet Stream",
+      category: "Wind",
+      definition: "A narrow band of strong winds in the upper levels of the atmosphere.",
+      brian: "Think of it like a fast river of air that helps steer storms.",
+      why: ["Guides storm track", "Stronger jet can support stronger storms"]
+    },
+    {
+      term: "Trough",
+      category: "Wind",
+      definition: "An elongated area of lower pressure aloft, often associated with rising air.",
+      brian: "A dip in the flow that often helps storms grow.",
+      why: ["Often increases lift", "Frequently tied to storm development"]
+    },
+    {
+      term: "Ridge",
+      category: "Wind",
+      definition: "An elongated area of higher pressure aloft, often associated with sinking air.",
+      brian: "A bump in the flow that often favors calmer, drier weather.",
+      why: ["Can suppress storm growth", "Often linked with warmer temps"]
+    }
+  ];
+
+  // ---------- Elements ----------
+  var btn = document.getElementById("stormScienceGuideBtn");
+  var panel = document.getElementById("stormScienceGuide");
+  var closeBtn = document.getElementById("ssgCloseBtn");
+  var tabScene = document.getElementById("ssgTabScene");
+  var tabAll = document.getElementById("ssgTabAll");
+  var search = document.getElementById("ssgSearch");
+  var body = document.getElementById("ssgBody");
+
+  if (!btn || !panel || !body) return;
+
+  // ---------- State ----------
+  var mode = "scene"; // "scene" or "all"
+  var q = "";
+
+  function openPanel(){
+    document.body.classList.add("ssg-open");
+    try{ if (typeof map !== "undefined") setTimeout(function(){ map.invalidateSize(); }, 220); }catch(e){}
+    render();
+  }
+  function closePanel(){
+    document.body.classList.remove("ssg-open");
+    try{ if (typeof map !== "undefined") setTimeout(function(){ map.invalidateSize(); }, 220); }catch(e){}
+  }
+  function togglePanel(){
+    if (document.body.classList.contains("ssg-open")) closePanel();
+    else openPanel();
+  }
+
+  btn.addEventListener("click", togglePanel);
+  if (closeBtn) closeBtn.addEventListener("click", closePanel);
+
+  // Tabs
+  function setMode(m){
+    mode = m;
+    tabScene.classList.toggle("active", mode === "scene");
+    tabAll.classList.toggle("active", mode === "all");
+    render();
+  }
+  tabScene.addEventListener("click", function(){ setMode("scene"); });
+  tabAll.addEventListener("click", function(){ setMode("all"); });
+
+  // Search
+  search.addEventListener("input", function(){
+    q = (search.value || "").trim().toLowerCase();
+    render();
+  });
+
+  // Hook into your story: if you later add a "terms" field to the sheet rows,
+  // and you store it in storyItems[storyIndex].terms, this will auto work.
+  function getSceneTerms(){
+    try{
+      if (typeof storyItems !== "undefined" && typeof storyIndex !== "undefined"){
+        var item = storyItems[storyIndex];
+        if (item && item.terms){
+          return String(item.terms).split(",").map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+        }
+      }
+    }catch(e){}
+    return [];
+  }
+
+  function matchesSearch(entry){
+    if (!q) return true;
+    var blob = (entry.term + " " + entry.category + " " + entry.definition + " " + entry.brian).toLowerCase();
+    return blob.indexOf(q) !== -1;
+  }
+
+  function renderTerm(entry){
+    var whyHtml = (entry.why || []).map(function(x){ return "<li>" + escapeHtml(x) + "</li>"; }).join("");
+    return (
+      "<div class='ssg-term'>" +
+        "<h4>" + escapeHtml(entry.term) + "</h4>" +
+        "<div class='ssg-def'><b>Definition:</b> " + escapeHtml(entry.definition) + "</div>" +
+        "<div class='ssg-brian'><b>In Brian’s words:</b> " + escapeHtml(entry.brian) + "</div>" +
+        (whyHtml ? ("<ul class='ssg-why'><b>Why it matters:</b>" + whyHtml + "</ul>") : "") +
+        "<div class='ssg-pill'>" + escapeHtml(entry.category || "Term") + "</div>" +
+      "</div>"
+    );
+  }
+
+  function render(){
+    var html = "";
+
+    if (mode === "scene"){
+      var scene = getSceneTerms();
+
+      html += "<p class='tiny' style='margin:8px 0 0 0; opacity:.85;'>Terms tied to this station.</p>";
+
+      if (!scene.length){
+        html += "<div class='ssg-term'><h4>Coming soon</h4>" +
+                "<div class='ssg-def'>We haven’t tagged terms for this station yet.</div>" +
+                "<div class='ssg-brian'><b>Easy upgrade:</b> add a <span class='mono'>terms</span> column in your story sheet like: <span class='mono'>dew point, jet stream</span></div>" +
+                "</div>";
+      } else {
+        var found = 0;
+        GLOSSARY.forEach(function(e){
+          var key = e.term.toLowerCase();
+          var ok = scene.some(function(t){ return key.indexOf(t) !== -1 || t.indexOf(key) !== -1; });
+          if (ok && matchesSearch(e)){ html += renderTerm(e); found++; }
+        });
+        if (!found){
+          html += "<div class='ssg-term'><h4>No matches</h4><div class='ssg-def'>Try a different search or switch to <b>All Terms</b>.</div></div>";
+        }
+      }
+
+    } else {
+      var any = 0;
+      GLOSSARY.forEach(function(e){
+        if (matchesSearch(e)){ html += renderTerm(e); any++; }
+      });
+      if (!any){
+        html += "<div class='ssg-term'><h4>No matches</h4><div class='ssg-def'>Try searching “dew point” or “jet stream”.</div></div>";
+      }
+    }
+
+    body.innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+})();
+</script>
+
+</body>
+</html>
