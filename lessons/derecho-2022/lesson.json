@@ -1,11 +1,22 @@
 {
   "id": "derecho-2022",
-  "title": "May 2022 Derecho",
-  "initialTime": "2018-04-14T21:15:00Z",
+  "stepHours": 1,
 
-  "radar": {
-    "enabled": true,
-    "image": "lessons/derecho-2022/radar/radar_20180414_2115Z.png",
-    "bounds": [[24, -125], [50, -66]]
+  "startZ": "2018-04-14T21:15:00Z",
+  "endZ": "2018-04-14T21:15:00Z",
+
+  "dataBase": "./lessons/derecho-2022/",
+
+  "banner": {
+    "lessonTitle": "Lesson 1: How does a derecho form?",
+    "drivingQuestion": "How can thunderstorms organize into a long-lasting windstorm (derecho)?",
+    "productWord": "DERECHO"
+  },
+
+  "radarTemplate": "radar/radar_20180414_2115Z.png",
+
+  "radarBounds": {
+    "sw": [24, -126],
+    "ne": [50, -66]
   }
 }
