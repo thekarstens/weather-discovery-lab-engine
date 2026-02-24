@@ -1,65 +1,34 @@
-// js/lessonLoader.js
 (function () {
-  function qs(name) {
-    try { return new URLSearchParams(window.location.search).get(name); }
-    catch (e) { return null; }
+  function getLessonId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("lesson") || "";
   }
 
-  function pad2(n) { return (n < 10 ? "0" : "") + n; }
-
-  function fmtParts(d) {
-    return {
-      YYYY: d.getUTCFullYear(),
-      MM: pad2(d.getUTCMonth() + 1),
-      DD: pad2(d.getUTCDate()),
-      HH: pad2(d.getUTCHours()),
-      mm: pad2(d.getUTCMinutes())
-    };
-  }
-
-  function applyPattern(pattern, dUtc) {
-    const p = fmtParts(dUtc);
-    return pattern
-      .replaceAll("{YYYY}", String(p.YYYY))
-      .replaceAll("{MM}", p.MM)
-      .replaceAll("{DD}", p.DD)
-      .replaceAll("{HH}", p.HH)
-      .replaceAll("{mm}", p.mm);
-  }
-
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-cache" });
-    if (!r.ok) throw new Error("Fetch failed: " + r.status + " " + url);
-    return await r.json();
-  }
-
-  // IMPORTANT: set this once and never duplicate index files again.
-  // You can move this into a manifest later; for now keep it simple.
-  const LESSON_URLS = {
-    "derecho-2022": "https://YOURNAME.github.io/wdl-data-derecho-2022/lesson.json"
-  };
-
-  // Expose a tiny API your existing app code can call
-  window.WDL = window.WDL || {};
-  window.WDL.loadLessonConfig = async function () {
-    const lessonId = qs("lesson");
+  async function loadLessonConfig(lessonId) {
     if (!lessonId) return null;
 
-    const lessonUrl = LESSON_URLS[lessonId];
-    if (!lessonUrl) throw new Error("Unknown lesson: " + lessonId);
+    // IMPORTANT: correct path from site root
+    const url = `./lessons/${lessonId}/lesson.json?v=${Date.now()}`;
 
-    const cfg = await fetchJson(lessonUrl);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Lesson config HTTP ${res.status}: ${url}`);
+    return await res.json();
+  }
 
-    // helpers for the rest of your app:
-    cfg._resolve = function (relativeUrl) {
-      // resolve relative to the lesson.json directory
-      const base = lessonUrl.substring(0, lessonUrl.lastIndexOf("/") + 1);
-      return new URL(relativeUrl, base).toString();
-    };
-    cfg._patternUrl = function (pattern, dUtc) {
-      return cfg._resolve(applyPattern(pattern, dUtc));
-    };
+  // expose for index.html to call if needed
+  window.lessonLoader = { loadLessonConfig };
 
-    return cfg;
-  };
+  // auto-load on page load
+  window.addEventListener("DOMContentLoaded", async () => {
+    const lessonId = getLessonId();
+    if (!lessonId) return;
+
+    try {
+      const cfg = await loadLessonConfig(lessonId);
+      console.log("✅ Loaded lesson:", lessonId, cfg);
+      window.__LESSON_CFG__ = cfg; // your index can read from this
+    } catch (e) {
+      console.error("❌ Lesson load failed:", e);
+    }
+  });
 })();
