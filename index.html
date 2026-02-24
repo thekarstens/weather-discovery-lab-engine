@@ -1299,9 +1299,16 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   // Time window + step
   var STEP_HOURS = Number(CFG.stepHours || 3);
   var STEP_MINUTES = (CFG.stepMinutes != null) ? Number(CFG.stepMinutes) : null;
-  var STEP_MS = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0) ? (STEP_MINUTES*60*1000) : (STEP_MS);
-  var STEP_LABEL = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0) ? (STEP_MINUTES + " min") : (STEP_HOURS + " hours");
-  var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
+
+  // Use minutes step if provided; otherwise fall back to hours step.
+  var STEP_MS = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0)
+    ? (STEP_MINUTES * 60 * 1000)
+    : (STEP_HOURS * 60 * 60 * 1000);
+
+  var STEP_LABEL = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0)
+    ? (STEP_MINUTES + " min")
+    : (STEP_HOURS + " hours");
+var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
   var endZ   = CFG.endZ   ? new Date(CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
   var curZ   = new Date(startZ.getTime());
 
