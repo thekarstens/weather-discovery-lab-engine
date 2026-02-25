@@ -1,11 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8"/>
 <title>Apr 2018 Case Study – Radar + Alerts</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="./leaflet.css"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="./leaflet.css" rel="stylesheet"/>
 <script src="./leaflet.js"></script>
 <script src="./js/lessonLoader.js?v=20260225"></script>
 <script>
@@ -22,7 +22,6 @@
 <script>
 var storyStarted = false; // do not auto-open storyboard
 </script>
-
 <style>
 html, body { height:100%; margin:0; }
   #map { height:100%; background:#fff; }
@@ -1133,142 +1132,128 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 .clock-bubble{  top: 180px !important; }
 
 </style>
-
-<link rel="stylesheet" href="./leaflet-velocity.min.css"/>
+<link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
 </head>
-
 <body>
 <div id="map"></div>
-<div id="mapLegend" class="map-legend" title="Radar reflectivity" style="display:none;">
-  <div class="map-legend-row">
-    <span class="leg-mini-label">Light</span>
-    <span class="leg-mini-bar" aria-hidden="true"></span>
-    <span class="leg-mini-label">Heavy</span>
-  </div>
-
+<div class="map-legend" id="mapLegend" style="display:none;" title="Radar reflectivity">
+<div class="map-legend-row">
+<span class="leg-mini-label">Light</span>
+<span aria-hidden="true" class="leg-mini-bar"></span>
+<span class="leg-mini-label">Heavy</span>
 </div>
-<div id="goesControls" class="map-legend" style="left:10px; right:auto; bottom:70px; display:none; width:280px;" title="GOES controls">
-  <div class="map-legend-row" style="justify-content:space-between;">
-    <span class="leg-mini-label">GOES</span>
-    <span id="goesFrameLabel" class="leg-mini-label" style="opacity:.85; font-weight:800;">—</span>
-  </div>
-  <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
-    <button class="btn" id="goesPlayBtn" style="flex:1;">Play</button>
-    <button class="btn" id="goesPauseBtn" style="flex:1;">Pause</button>
-  </div>
-  <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
-    <button class="btn" id="goesFitBtn" style="flex:1;">Fit</button>
-    <button class="btn" id="goesSaveBtn" style="flex:1;">Save</button>
-    <button class="btn" id="goesResetBtn" style="flex:1;">Reset</button>
-  </div>
-  <div class="tiny" style="margin-top:6px; opacity:.85;">
+</div>
+<div class="map-legend" id="goesControls" style="left:10px; right:auto; bottom:70px; display:none; width:280px;" title="GOES controls">
+<div class="map-legend-row" style="justify-content:space-between;">
+<span class="leg-mini-label">GOES</span>
+<span class="leg-mini-label" id="goesFrameLabel" style="opacity:.85; font-weight:800;">—</span>
+</div>
+<div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+<button class="btn" id="goesPlayBtn" style="flex:1;">Play</button>
+<button class="btn" id="goesPauseBtn" style="flex:1;">Pause</button>
+</div>
+<div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+<button class="btn" id="goesFitBtn" style="flex:1;">Fit</button>
+<button class="btn" id="goesSaveBtn" style="flex:1;">Save</button>
+<button class="btn" id="goesResetBtn" style="flex:1;">Reset</button>
+</div>
+<div class="tiny" style="margin-top:6px; opacity:.85;">
     Tip: Click <b>Fit</b> then drag SW/NE corners. <b>Save</b> stores the fit on this device.
   </div>
 </div>
-<div id="storyPanel"
- aria-label="Story panel">
-  <div class="story-head">
-  <div class="story-title" id="storyTitle">Guide</div>
-  <div class="story-actions">
-    <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
-    <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
-  </div>
+<div aria-label="Story panel" id="storyPanel">
+<div class="story-head">
+<div class="story-title" id="storyTitle">Guide</div>
+<div class="story-actions">
+<button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
+<button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
 </div>
-  <div class="story-body" id="storyBody">
-    <p class="tiny">Loading story…</p>
-  </div>
-  <div class="story-nav">
-    <button class="btn" id="storyPrevBtn">Back</button>
-    <button class="btn" id="storyNextBtn">Next</button>
-  </div>
-  <div class="tiny" id="storyStep"></div>
 </div>
-<div id="storyTab" aria-label="Open lesson">OPEN LESSON</div>
-<div id="mapControlRow" class="map-control-row" aria-label="Map controls row">
-  <div id="toolBox" class="tool-box" aria-label="Map tools"><span class="tool-label">TOOLS</span><button class="tool-btn" id="toolMeasure" title="Measure distance">RULER</button><button class="tool-btn" id="toolProbe" title="Pixel query / probe">PROBE</button><button class="tool-btn" id="toolDraw" title="Teacher telestrator">DRAW</button><button class="tool-btn" id="toolErase" title="Erase drawings">ERASE</button><button class="tool-btn" id="toolHome" title="Reset view">HOME</button></div>
-  <div id="zoomBox" class="zoom-box" aria-label="Zoom controls"><span class="zoom-label">ZOOM</span><button class="zoom-btn" id="zoomMinus" title="Zoom out">−</button><button class="zoom-btn" id="zoomPlus" title="Zoom in">+</button></div>
-
+<div class="story-body" id="storyBody">
+<p class="tiny">Loading story…</p>
 </div>
-
+<div class="story-nav">
+<button class="btn" id="storyPrevBtn">Back</button>
+<button class="btn" id="storyNextBtn">Next</button>
+</div>
+<div class="tiny" id="storyStep"></div>
+</div>
+<div aria-label="Open lesson" id="storyTab">OPEN LESSON</div>
+<div aria-label="Map controls row" class="map-control-row" id="mapControlRow">
+<div aria-label="Map tools" class="tool-box" id="toolBox"><span class="tool-label">TOOLS</span><button class="tool-btn" id="toolMeasure" title="Measure distance">RULER</button><button class="tool-btn" id="toolProbe" title="Pixel query / probe">PROBE</button><button class="tool-btn" id="toolDraw" title="Teacher telestrator">DRAW</button><button class="tool-btn" id="toolErase" title="Erase drawings">ERASE</button><button class="tool-btn" id="toolHome" title="Reset view">HOME</button></div>
+<div aria-label="Zoom controls" class="zoom-box" id="zoomBox"><span class="zoom-label">ZOOM</span><button class="zoom-btn" id="zoomMinus" title="Zoom out">−</button><button class="zoom-btn" id="zoomPlus" title="Zoom in">+</button></div>
+</div>
 <!-- Custom zoom buttons in lower-right corner -->
-<div id="zoomCorner" class="zoom-corner" aria-label="Zoom controls">
-  <span class="zoom-corner-label">ZOOM</span>
-  <button class="zoom-corner-btn" id="zoomCornerMinus" title="Zoom out">−</button>
-  <button class="zoom-corner-btn" id="zoomCornerPlus" title="Zoom in">+</button>
+<div aria-label="Zoom controls" class="zoom-corner" id="zoomCorner">
+<span class="zoom-corner-label">ZOOM</span>
+<button class="zoom-corner-btn" id="zoomCornerMinus" title="Zoom out">−</button>
+<button class="zoom-corner-btn" id="zoomCornerPlus" title="Zoom in">+</button>
 </div>
-
 <!-- Master clock bubble (floats above layer toggle box) -->
-<div id="clockBubble" class="clock-bubble" aria-label="Time">
-  <div class="cb-label">TIME</div>
-  <div class="cb-row" aria-label="Time controls">
-    <button class="cb-btn" id="cbBackBtn" title="Back 3 hours">◀</button>
-    <div class="cb-time" id="clockBubbleTime">—</div>
-    <button class="cb-btn" id="cbFwdBtn" title="Forward 3 hours">▶</button>
-  </div>
-  <input id="cbScrubber" class="cb-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Time scrubber" />
+<div aria-label="Time" class="clock-bubble" id="clockBubble">
+<div class="cb-label">TIME</div>
+<div aria-label="Time controls" class="cb-row">
+<button class="cb-btn" id="cbBackBtn" title="Back 3 hours">◀</button>
+<div class="cb-time" id="clockBubbleTime">—</div>
+<button class="cb-btn" id="cbFwdBtn" title="Forward 3 hours">▶</button>
 </div>
-<div id="stormScienceGuide" aria-label="Weather Discovery Terms">
-  <div class="ssg-head">
-    <div class="ssg-title">Weather Discovery Terms</div>
-    <button class="ssg-close" id="ssgCloseBtn" title="Close">✕</button>
-  </div>
-
-  <div class="ssg-tabs" role="tablist" aria-label="Weather Discovery Terms tabs">
-    <button class="ssg-tab active" id="ssgTabScene" type="button">This Scene</button>
-    <button class="ssg-tab" id="ssgTabAll" type="button">All Terms</button>
-  </div>
-
-  <div class="ssg-search">
-    <input id="ssgSearch" type="search" placeholder="Search terms… (dew point, jet stream, humidity)" />
-  </div>
-
-  <div class="ssg-body" id="ssgBody"></div>
-
-  <div class="ssg-foot tiny">
+<input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
+</div>
+<div aria-label="Weather Discovery Terms" id="stormScienceGuide">
+<div class="ssg-head">
+<div class="ssg-title">Weather Discovery Terms</div>
+<button class="ssg-close" id="ssgCloseBtn" title="Close">✕</button>
+</div>
+<div aria-label="Weather Discovery Terms tabs" class="ssg-tabs" role="tablist">
+<button class="ssg-tab active" id="ssgTabScene" type="button">This Scene</button>
+<button class="ssg-tab" id="ssgTabAll" type="button">All Terms</button>
+</div>
+<div class="ssg-search">
+<input id="ssgSearch" placeholder="Search terms… (dew point, jet stream, humidity)" type="search"/>
+</div>
+<div class="ssg-body" id="ssgBody"></div>
+<div class="ssg-foot tiny">
     Tip: Later we can auto-fill “This Scene” by adding a <b>terms</b> column to your story sheet.
   </div>
 </div>
-<div id="banner" class="tvbanner">
-  <div class="banner-topline" role="banner">
-    <div class="topline-center">
-      <span class="top-lesson">Lesson 1: Driving Question</span>
-      <span class="top-sep">—</span>
-      <span class="top-question"><span class="top-q-label">Question:</span> How can we use real-time weather data to make safer decisions?</span>
-    </div>
+<div class="tvbanner" id="banner">
+<div class="banner-topline" role="banner">
+<div class="topline-center">
+<span class="top-lesson">Lesson 1: Driving Question</span>
+<span class="top-sep">—</span>
+<span class="top-question"><span class="top-q-label">Question:</span> How can we use real-time weather data to make safer decisions?</span>
 </div>
-  <div class="banner-divider" aria-hidden="true"></div>
-
-  <div class="banner-bottomline">
-    <div class="bottomline-center">
-  <div class="bl-left">
-    <button class="open-lesson-btn" id="openLessonBtn" title="Open or close lesson panel">OPEN LESSON</button>
-    <div class="time-controls" aria-label="Time controls">
-        <button class="bbtn" id="bBackBtn" title="Back 3 hours">◀</button>
-        <div class="btime" id="bannerTimeLabel">April 14, 2018 7AM</div>
-        <button class="bbtn" id="bFwdBtn" title="Forward 3 hours">▶</button>
-      </div>
-  </div>
-  <div class="bl-center">
-    <div class="banner-product" aria-label="Product shown">
-        <div class="product-center" id="productLabel">RADAR</div>
-      </div>
-        <div id="bannerLegend" class="banner-legend-under" aria-label="Radar legend">
-          <span class="leg-mini-label">Light</span>
-          <span class="leg-mini-bar" aria-hidden="true"></span>
-          <span class="leg-mini-label">Heavy</span>
-        </div>
-  </div>
-  <div class="bl-right">
-    <button class="banner-btn banner-btn-blue" id="stormScienceGuideBtn" title="Weather Discovery Terms">WEATHER DISCOVERY TERMS</button>
-  </div>
 </div>
-  </div>
-
-  <div id="status" class="bstatus" style="display:none;"></div>
+<div aria-hidden="true" class="banner-divider"></div>
+<div class="banner-bottomline">
+<div class="bottomline-center">
+<div class="bl-left">
+<button class="open-lesson-btn" id="openLessonBtn" title="Open or close lesson panel">OPEN LESSON</button>
+<div aria-label="Time controls" class="time-controls">
+<button class="bbtn" id="bBackBtn" title="Back 3 hours">◀</button>
+<div class="btime" id="bannerTimeLabel">April 14, 2018 7AM</div>
+<button class="bbtn" id="bFwdBtn" title="Forward 3 hours">▶</button>
 </div>
-
-<img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops" />
+</div>
+<div class="bl-center">
+<div aria-label="Product shown" class="banner-product">
+<div class="product-center" id="productLabel">RADAR</div>
+</div>
+<div aria-label="Radar legend" class="banner-legend-under" id="bannerLegend">
+<span class="leg-mini-label">Light</span>
+<span aria-hidden="true" class="leg-mini-bar"></span>
+<span class="leg-mini-label">Heavy</span>
+</div>
+</div>
+<div class="bl-right">
+<button class="banner-btn banner-btn-blue" id="stormScienceGuideBtn" title="Weather Discovery Terms">WEATHER DISCOVERY TERMS</button>
+</div>
+</div>
+</div>
+<div class="bstatus" id="status" style="display:none;"></div>
+</div>
+<img alt="Weather Workshops" id="brandLogo" src="./storm_science_lab_logo.png"/>
 <script>
 (async function(){
   // ---------- Config (loaded per lesson) ----------
@@ -4481,9 +4466,6 @@ function updateAlerts(){
 
 })();
 </script>
-
-
-
 <script>
 (function(){
   // ---------- Glossary Data (starter pack) ----------
@@ -4662,17 +4644,5 @@ function updateAlerts(){
 
 })();
 </script>
-
 </body>
-</html
-function applyLessonBanner(cfg){
-  if (!cfg || !cfg.banner) return;
-  var titleEl = document.querySelector(".top-lesson");
-  var qEl = document.querySelector(".top-question");
-  var prodEl = document.querySelector(".banner-product");
-  if (titleEl && cfg.banner.lessonTitle) titleEl.textContent = cfg.banner.lessonTitle.toUpperCase();
-  if (qEl && cfg.banner.drivingQuestion) qEl.textContent = "QUESTION: " + cfg.banner.drivingQuestion;
-  if (prodEl && cfg.banner.productWord) prodEl.textContent = cfg.banner.productWord.toUpperCase();
-}
-
->
+</html>
