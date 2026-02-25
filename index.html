@@ -7,7 +7,7 @@
 
 <link rel="stylesheet" href="./leaflet.css"/>
 <script src="./leaflet.js"></script>
-<script src="./js/lessonLoader.js"></script>
+<script src="./js/lessonLoader.js?v=20260225"></script>
 <script>
   function resolveJetFrameUrl(u){
     if (!u) return u;
@@ -1280,16 +1280,28 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var lessonId = _qs("lesson") || "blizzard_apr2018"; // default fallback
   var CFG = {};
 
-  // Load lesson config via your lessonLoader.js (as defined earlier in this conversation).
+  // Load lesson config from /lessons/<lessonId>/lesson.json using js/lessonLoader.js
+  // Use: ?lesson=derecho-2022  (or your lesson folder name)
   try{
-    if (window.WDL && typeof window.WDL.loadLessonConfig === "function"){
-      CFG = await window.WDL.loadLessonConfig() || {};
+    const params = new URLSearchParams(window.location.search);
+    const lessonId = params.get("lesson") || "";
+
+    if (lessonId && window.lessonLoader && typeof window.lessonLoader.loadLessonConfig === "function"){
+      const cfg = await window.lessonLoader.loadLessonConfig(lessonId);
+      if (cfg && typeof cfg === "object"){
+        CFG = cfg;
+        window.__LESSON_CFG__ = cfg;
+        console.log("✅ Loaded lesson config:", lessonId, cfg);
+      }
+    } else if (!lessonId){
+      console.warn("⚠️ No ?lesson=... provided; using engine defaults.");
+      CFG = {};
     } else {
-      console.warn("WDL lesson loader not found; using engine defaults.");
+      console.warn("⚠️ lessonLoader not found; using engine defaults.");
       CFG = {};
     }
   }catch(err){
-    console.warn("Lesson config load failed; using engine defaults.", err);
+    console.warn("⚠️ Lesson config load failed; using engine defaults.", err);
     CFG = {};
   }
 
@@ -1335,7 +1347,7 @@ var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 
     // Template fallback (YYYY/MM/DD/HH/mm tokens)
     var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
     // If lessonLoader.js provided template resolver, use it
-    if (window.WDL && CFG._resolve && CFG._patternUrl){
+    if (window.lessonLoader && CFG._resolve && CFG._patternUrl){
       return CFG._patternUrl(tpl, d);
     }
     // Very small fallback: just join base + template
@@ -4249,6 +4261,25 @@ if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = fals
       bubble.style.top = top + "px";
     }catch(e){}
   }
+
+  function formatCentralLabel(ts){
+    try{
+      const d = new Date(ts);
+      const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+      const m = months[d.getMonth()];
+      const day = d.getDate();
+      const yr = d.getFullYear();
+      let hr = d.getHours();
+      const min = d.getMinutes();
+      const ampm = hr >= 12 ? "PM" : "AM";
+      hr = hr % 12; if (hr === 0) hr = 12;
+      const mm = (min && min !== 0) ? (":" + String(min).padStart(2,"0")) : "";
+      return `${m} ${day}, ${yr} ${hr}${mm}${ampm}`;
+    }catch(e){
+      return "";
+    }
+  }
+
 function setTimeLabel(){
     var label = formatCentralLabel(curZ);
     var btl = document.getElementById("bannerTimeLabel");
