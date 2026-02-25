@@ -1277,18 +1277,18 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     catch(e){ return null; }
   }
 
-  var lessonId = _qs("lesson") || ""; // must be provided via URL: ?lesson=...
+  var lessonId = _qs("lesson") || _qs("Lesson") || _qs("LESSON") || ""; // must be provided via URL: ?lesson=...
   var CFG = {};
 
   // Load lesson config (optional) from ./js/lessonLoader.js
   // Supports either:
   //  - window.lessonLoader.loadLessonConfig(lessonId)
-  //  - window.lessonLoader.loadLessonConfig(lessonId)
+  //  - window.WDL.loadLessonConfig(lessonId)
   // If no ?lesson=... is provided, engine defaults are used.
   try{
-    const loader = (window.lessonLoader || window.lessonLoader || {});
-    // Back-compat: some builds expect window.lessonLoader
-    if (!window.lessonLoader && window.lessonLoader) window.lessonLoader = window.lessonLoader;
+    const loader = (window.lessonLoader || window.WDL || {});
+    // Back-compat: some builds expect window.WDL
+    if (!window.WDL && window.lessonLoader) window.WDL = window.lessonLoader;
 
     if (!lessonId){
       console.warn("⚠️ No ?lesson=... provided; using engine defaults.");
@@ -1312,26 +1312,6 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   // if (!lessonId) lessonId = "derecho-2022";
   var DATA_BASE = String(CFG.dataBase || "./");
 
-
-  // --- Template URL helper: supports {YYYY}{MM}{DD}{HH}{mm}{YYYYMMDD}{HHMM} tokens ---
-  function patternUrl(tpl, d){
-    const pad2 = (n)=> String(n).padStart(2,"0");
-    const YYYY = d.getUTCFullYear();
-    const MM = pad2(d.getUTCMonth()+1);
-    const DD = pad2(d.getUTCDate());
-    const HH = pad2(d.getUTCHours());
-    const mm = pad2(d.getUTCMinutes());
-    const YYYYMMDD = `${YYYY}${MM}${DD}`;
-    const HHMM = `${HH}${mm}`;
-    return (DATA_BASE + tpl)
-      .replaceAll("{YYYYMMDD}", YYYYMMDD)
-      .replaceAll("{HHMM}", HHMM)
-      .replaceAll("{YYYY}", String(YYYY))
-      .replaceAll("{MM}", MM)
-      .replaceAll("{DD}", DD)
-      .replaceAll("{HH}", HH)
-      .replaceAll("{mm}", mm);
-  }
   // Time window + step
   var STEP_HOURS = Number(CFG.stepHours || 3);
   var STEP_MINUTES = (CFG.stepMinutes != null) ? Number(CFG.stepMinutes) : null;
@@ -1371,7 +1351,7 @@ var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 
     // Template fallback (YYYY/MM/DD/HH/mm tokens)
     var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
     // If lessonLoader.js provided template resolver, use it
-    if (window.lessonLoader && CFG._resolve && CFG._patternUrl){
+    if (window.WDL && CFG._resolve && CFG._patternUrl){
       return CFG._patternUrl(tpl, d);
     }
     // Very small fallback: just join base + template
@@ -4285,22 +4265,6 @@ if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = fals
       bubble.style.top = top + "px";
     }catch(e){}
   }
-  // --- Time label formatter (prevents ReferenceError) ---
-  function formatCentralLabel(d){
-    // Display in local time, e.g. "APR 9, 2018 7PM"
-    try{
-      const mo = d.toLocaleString(undefined, { month: "short" }).toUpperCase();
-      const day = d.getDate();
-      const yr = d.getFullYear();
-      let hr = d.getHours();
-      const ampm = hr >= 12 ? "PM" : "AM";
-      hr = hr % 12; if (hr === 0) hr = 12;
-      return `${mo} ${day}, ${yr} ${hr}${ampm}`;
-    }catch(e){
-      return d.toISOString().replace("T"," ").replace("Z","Z");
-    }
-  }
-
 function setTimeLabel(){
     var label = formatCentralLabel(curZ);
     var btl = document.getElementById("bannerTimeLabel");
@@ -4418,12 +4382,6 @@ function setTimeLabel(){
     };
     img.src = url;
   }
-  // --- Alerts URL helper (prevents ReferenceError if alerts are not configured) ---
-  function alertsUrlFor(d){
-    if (!CFG || !CFG.alertsTemplate) return null;
-    return CFG._patternUrl ? CFG._patternUrl(CFG.alertsTemplate, d) : (DATA_BASE + CFG.alertsTemplate);
-  }
-
 
 function updateAlerts(){
     
@@ -4681,4 +4639,17 @@ function updateAlerts(){
 </script>
 
 </body>
-</html>
+</html
+  function applyBannerFromCFG() {
+    try {
+      if (CFG && CFG.banner) {
+        var elTitle = document.getElementById("bannerLessonTitle");
+        var elQ = document.getElementById("bannerDrivingQuestion");
+        var elWord = document.getElementById("bannerProductWord");
+        if (elTitle && CFG.banner.lessonTitle) elTitle.textContent = CFG.banner.lessonTitle;
+        if (elQ && CFG.banner.drivingQuestion) elQ.textContent = "QUESTION: " + CFG.banner.drivingQuestion;
+        if (elWord && CFG.banner.productWord) elWord.textContent = CFG.banner.productWord;
+      }
+    } catch (e) { /* no-op */ }
+  }
+>
