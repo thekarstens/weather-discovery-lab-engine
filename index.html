@@ -1296,6 +1296,8 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     } else if (typeof loader.loadLessonConfig === "function"){
       CFG = await loader.loadLessonConfig(lessonId) || {};
       console.log("✅ Loaded lesson config for:", lessonId, CFG);
+    applyLessonBanner(CFG);
+
     } else if (window.__LESSON_CFG__){
       CFG = window.__LESSON_CFG__ || {};
       console.log("✅ Using window.__LESSON_CFG__ for:", lessonId, CFG);
@@ -1343,33 +1345,467 @@ var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 
       );
 
   // URL builders (templates per lesson, with fallback to your current 2018 defaults)
-  function radarUrlFor(dt){
-  // Prefer a single-file lesson radarTemplate if provided
-  if (CFG && CFG.radarTemplate){
-    const tpl = CFG.radarTemplate;
-    if (tpl.includes("{YYYY}") || tpl.includes("{MM}") || tpl.includes("{DD}") || tpl.includes("{HH}") || tpl.includes("{mm}")){
-      // tokenized template
-      return DATA_BASE + tpl
-        .replaceAll("{YYYY}", dt.YYYY)
-        .replaceAll("{MM}", dt.MM)
-        .replaceAll("{DD}", dt.DD)
-        .replaceAll("{HH}", dt.HH)
-        .replaceAll("{mm}", dt.mm);
+  function radarUrlFor(d){
+    // Prefer loader-provided helper if present
+    if (CFG._patternUrl && CFG.layers && CFG.layers.radar && CFG.layers.radar.framePattern){
+      return CFG._patternUrl(CFG.layers.radar.framePattern, d);
     }
+    // Template fallback (YYYY/MM/DD/HH/mm tokens)
+    var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
+    // If lessonLoader.js provided template resolver, use it
+    if (window.WDL && CFG._resolve && CFG._patternUrl){
+      return CFG._patternUrl(tpl, d);
+    }
+    // Very small fallback: just join base + template
     return DATA_BASE + tpl;
   }
-  // Otherwise fall back to pattern-based engine radar
-  if (CFG && CFG._patternUrl && CFG.layers && CFG.layers.radar && CFG.layers.radar.framePattern){
-    return CFG._patternUrl
-      .replaceAll("{YYYY}", dt.YYYY)
-      .replaceAll("{MM}", dt.MM)
-      .replaceAll("{DD}", dt.DD)
-      .replaceAll("{HH}", dt.HH)
-      .replaceAll("{mm}", dt.mm);
-  }
-  return "";
-}
 
+  function gfsSnowUrlFor(d){
+    // If a lesson provides a template, use it. Otherwise keep your old 2018 logic.
+    if (CFG.gfsSnowTemplate && CFG._patternUrl){
+      return CFG._patternUrl(CFG.gfsSnowTemplate, d);
+    }
+
+    var t = d.getTime();
+    var t13 = Date.UTC(2018,3,13,0,0,0);
+    var t12 = Date.UTC(2018,3,12,0,0,0);
+    if (t >= t13) return DATA_BASE + "gfs_snow/gfs_20180413_00z_f48_snow_weatherbell.png";
+    if (t >= t12) return DATA_BASE + "gfs_snow/gfs_20180412_00z_f72_snow_weatherbell.png";
+    return DATA_BASE + "gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png";
+  }
+
+  // Expose loaded config for debugging
+  window.__WDL_CFG__ = CFG;
+// ---------- Map ----------
+  var map = L.map("map", { zoomControl:true }).setView([43.55, -96.73], 6);
+
+  // Custom lower-right zoom buttons
+  var zoomCornerPlus = document.getElementById('zoomCornerPlus');
+  var zoomCornerMinus = document.getElementById('zoomCornerMinus');
+  if (zoomCornerPlus) zoomCornerPlus.onclick = function(){ map.zoomIn(); };
+  if (zoomCornerMinus) zoomCornerMinus.onclick = function(){ map.zoomOut(); };
+
+  // Keep the clock bubble pinned above the layer control
+  window.addEventListener('resize', function(){ setTimeout(positionClockBubble, 50); });
+  setTimeout(positionClockBubble, 300);
+
+
+  // Custom zoom box buttons (top-right)
+  var zoomPlus = document.getElementById("zoomPlus");
+  var zoomMinus = document.getElementById("zoomMinus");
+  if (zoomPlus) zoomPlus.onclick = function(){ map.zoomIn(); };
+  if (zoomMinus) zoomMinus.onclick = function(){ map.zoomOut(); };
+
+  // Map tools (Ruler / Probe / Draw / Home)
+  var toolMeasureBtn = document.getElementById("toolMeasure");
+  var toolProbeBtn   = document.getElementById("toolProbe");
+  var toolDrawBtn    = document.getElementById("toolDraw");
+  var toolEraseBtn   = document.getElementById("toolErase");
+  var toolHomeBtn    = document.getElementById("toolHome");
+
+  // Teacher/student mode (URL param): ?mode=student to disable teacher tools
+  var isTeacherMode = true;
+  try{
+    var qsMode = new URLSearchParams(window.location.search).get("mode");
+    isTeacherMode = (qsMode !== "student");
+  }catch(e){ isTeacherMode = true; }
+
+  // Wire OPEN LESSON button in banner (replaces the old floating tab)
+  var openLessonBtn = document.getElementById("openLessonBtn");
+
+
+  var measureStart = null;
+  var measureLine = null;
+  var measureStartMarker = null;
+  var measurePopup = null;
+
+  function clearMeasureGraphics(){
+    try{ if (measureLine) map.removeLayer(measureLine); }catch(e){}
+    try{ if (measureStartMarker) map.removeLayer(measureStartMarker); }catch(e){}
+    try{ if (measurePopup) map.closePopup(measurePopup); }catch(e){}
+    measureLine = null; measureStartMarker = null; measurePopup = null;
+    measureStart = null;
+  }
+
+  function setMeasureMode(on){
+    if (on){
+      document.body.classList.add("measure-active");
+      document.body.classList.remove("probe-active");
+      document.body.classList.remove("draw-active");
+    } else {
+      document.body.classList.remove("measure-active");
+      clearMeasureGraphics();
+    }
+
+  }
+
+
+  /* ===== Storm Lab Fix Pack (v6): missing tool functions ===== */
+
+  // Make sure tool buttons show active state
+  function setToolActive(btn, on){
+    if (!btn) return;
+    btn.classList.toggle("active", !!on);
+  }
+
+  // ----- Probe mode (HRRR temp only for now) -----
+  function setProbeMode(on){
+    if (on){
+      document.body.classList.add("probe-active");
+      document.body.classList.remove("measure-active");
+      document.body.classList.remove("draw-active");
+    } else {
+      document.body.classList.remove("probe-active");
+    }
+    setToolActive(toolProbeBtn, on);
+    if (on){
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolDrawBtn, false);
+    }
+  }
+
+  // ----- Measure (ruler) -----
+  function handleMeasureClick(e){
+    if (!e || !e.latlng) return;
+
+    // First click: set start
+    if (!measureStart){
+      clearMeasureGraphics();
+
+      measureStart = e.latlng;
+      measureStartMarker = L.circleMarker(measureStart, {
+        radius: 6, color: "rgba(255,255,255,0.95)", weight: 2,
+        fillColor: "rgba(30,136,229,0.95)", fillOpacity: 0.95
+      }).addTo(map);
+
+      measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
+        .setLatLng(measureStart)
+        .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Ruler</div><div style='font:900 16px/1.1 Arial,sans-serif'>Tap a second point…</div>");
+      measurePopup.openOn(map);
+      return;
+    }
+
+    // Second click: compute distance
+    var end = e.latlng;
+    var meters = map.distance(measureStart, end);
+    var miles = meters / 1609.344;
+    var km = meters / 1000;
+
+    try{ if (measureLine) map.removeLayer(measureLine); }catch(_){}
+    measureLine = L.polyline([measureStart, end], {
+      color: "rgba(30,136,229,0.95)",
+      weight: 4,
+      opacity: 0.95
+    }).addTo(map);
+
+    var content =
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Distance</div>" +
+      "<div style='font:900 26px/1.05 Arial,sans-serif'>" + miles.toFixed(1) + " mi</div>" +
+      "<div style='font:900 16px/1.05 Arial,sans-serif;opacity:.9'>" + km.toFixed(1) + " km</div>";
+
+    measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
+      .setLatLng(end)
+      .setContent(content)
+      .openOn(map);
+
+    // Reset start so the next click starts a new measurement
+    measureStart = null;
+  }
+
+  // Keep measure button "active" styling in sync
+  var _origSetMeasureMode = setMeasureMode;
+  setMeasureMode = function(on){
+    _origSetMeasureMode(on);
+    setToolActive(toolMeasureBtn, on);
+    if (on){
+      setToolActive(toolProbeBtn, false);
+      setToolActive(toolDrawBtn, false);
+    }
+  };
+
+  // ----- Draw / telestrator -----
+  var drawGroup = L.layerGroup().addTo(map);
+  var drawing = false;
+  var currentLine = null;
+
+  function clearDrawings(){
+    try{ drawGroup.clearLayers(); }catch(e){}
+  }
+
+  function setDrawMode(on){
+    if (!isTeacherMode){
+      // student mode: do nothing, keep disabled
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      document.body.classList.remove("draw-active");
+      return;
+    }
+
+    if (on){
+      document.body.classList.add("draw-active");
+      document.body.classList.remove("measure-active");
+      document.body.classList.remove("probe-active");
+      setToolActive(toolDrawBtn, true);
+      setToolActive(toolEraseBtn, true);
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolProbeBtn, false);
+
+      // prevent map panning while drawing
+      try{ map.dragging.disable(); }catch(e){}
+    } else {
+      document.body.classList.remove("draw-active");
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      drawing = false;
+      currentLine = null;
+      try{ map.dragging.enable(); }catch(e){}
+    }
+  }
+
+  function startDraw(e){
+    if (!document.body.classList.contains("draw-active")) return;
+    if (!e || !e.latlng) return;
+    drawing = true;
+
+    currentLine = L.polyline([e.latlng], {
+      color: "#fdd835",
+      weight: 5,
+      opacity: 0.95,
+      lineCap: "round",
+      lineJoin: "round"
+    }).addTo(drawGroup);
+  }
+
+  function moveDraw(e){
+    if (!drawing || !currentLine) return;
+    if (!e || !e.latlng) return;
+    currentLine.addLatLng(e.latlng);
+  }
+
+  function endDraw(){
+    if (!drawing) return;
+    drawing = false;
+    currentLine = null;
+  }
+
+  // Pointer/touch drawing
+  map.on("mousedown", startDraw);
+  map.on("mousemove", moveDraw);
+  map.on("mouseup", endDraw);
+  map.on("touchstart", startDraw);
+  map.on("touchmove", moveDraw);
+  map.on("touchend", endDraw);
+
+  // ----- Probe click handler (HRRR temp nearest point) -----
+  function handleProbeClick(e){
+    if (!e || !e.latlng) return;
+
+    // Require HRRR temp layer + points
+    try{
+      if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng(e.latlng)
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b>.</div>")
+          .openOn(map);
+        return;
+      }
+    }catch(_){}
+
+    var best = null;
+    var bestD = Infinity;
+    for (var i=0; i<hrrrPoints.length; i++){
+      var p = hrrrPoints[i];
+      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+      var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
+      if (d < bestD){ bestD = d; best = p; }
+    }
+    if (!best) return;
+
+    var tf = (typeof best.tF === "number") ? best.tF : null;
+    var content =
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
+      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
+
+    L.popup({ closeButton:true, className:"hrrr-popup" })
+      .setLatLng([best.lat, best.lon])
+      .setContent(content)
+      .openOn(map);
+  }
+
+if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
+    var on = !document.body.classList.contains("measure-active");
+    setMeasureMode(on);
+    if (on) setDrawMode(false);
+  };
+
+  if (toolProbeBtn) toolProbeBtn.onclick = function(){
+    // Keep probe simple: if HRRR layer isn't on, tell the user and don't enable.
+    try{
+      if (!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer))){
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng(map.getCenter())
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> to probe.</div>")
+          .openOn(map);
+        setProbeMode(false);
+        return;
+      }
+    }catch(e){}
+    var on = !document.body.classList.contains("probe-active");
+    setProbeMode(on);
+    if (on) setDrawMode(false);
+  };
+
+  if (toolDrawBtn) toolDrawBtn.onclick = function(){
+    var on = !document.body.classList.contains("draw-active");
+    setDrawMode(on);
+  };
+
+  if (toolEraseBtn) toolEraseBtn.onclick = function(){
+    if (!isTeacherMode) return;
+    clearDrawings();
+  };
+
+  if (toolHomeBtn) toolHomeBtn.onclick = function(){
+    setMeasureMode(false); setProbeMode(false); setDrawMode(false);
+    clearMeasureGraphics();
+    map.setView([43.55, -96.73], 6);
+  };
+
+  // OPEN LESSON button in banner toggles the storyteller panel
+  if (openLessonBtn){
+    openLessonBtn.onclick = function(){
+      try{
+        if (storyPanelEl && storyPanelEl.classList.contains("story-open")) closeGuide();
+        else openGuide();
+      }catch(e){}
+    };
+  }
+
+  // Disable teacher-only tools in student mode
+  if (!isTeacherMode){
+    if (toolDrawBtn){ toolDrawBtn.classList.add("disabled"); }
+    if (toolEraseBtn){ toolEraseBtn.classList.add("disabled"); }
+  }
+
+
+
+
+  // --- State boundaries / outlines (GeoJSON first; tile fallback) ---
+  map.createPane("lines");
+  map.getPane("lines").style.zIndex = 450;         // above dots, below popups         // above dots
+  map.getPane("lines").style.pointerEvents = "none"; // keep clicks working
+
+  var usStatesLayer = null;
+  var usStatesLoaded = false;
+
+  // Fallback: reliable reference tiles (works even if GeoJSON isn't present)
+  var stateLinesTile = L.tileLayer(
+    "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}",
+    { pane: "lines", opacity: 0.95 }
+  );
+
+  function loadUsStatesGeoJSONOnce(){
+    if (usStatesLoaded) return;
+    usStatesLoaded = true;
+
+    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function(geojson){
+        usStatesLayer = L.geoJSON(geojson, {
+          pane: "lines",
+          style: function(){
+            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
+          }
+        });
+// If user already has HRRR temp on, add immediately
+        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
+      })
+      .catch(function(err){
+        // If GeoJSON missing, we just rely on tile fallback
+        console.log("State GeoJSON not loaded (using tile fallback):", err);
+      });
+  }
+
+  function addStateLines(){
+    // Prefer GeoJSON outlines if available; otherwise tile fallback
+    if (usStatesLayer) {
+      if (!map.hasLayer(usStatesLayer)) usStatesLayer.addTo(map);
+      if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+    } else {
+      if (!map.hasLayer(stateLinesTile)) stateLinesTile.addTo(map);
+    }
+  }
+  function removeStateLines(){
+    if (usStatesLayer && map.hasLayer(usStatesLayer)) map.removeLayer(usStatesLayer);
+    if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+  }
+
+  // Kick off loading in the background (won't break anything if missing)
+  loadUsStatesGeoJSONOnce();
+  // Clean base map (no labels) — CARTO Light (white/gray land)
+  var base = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+    { attribution: "© OpenStreetMap © CARTO", subdomains:"abcd", maxZoom: 19, className: "basemap-tiles" }
+  ).addTo(map);
+// (No road overlay)
+
+// --- Extra Midwest city labels (shows more as you zoom in) ---
+  var cityLabelLayer = L.layerGroup().addTo(map);
+
+  // --- Wide-view national city labels (decluttered) ---
+// Shows a handful of major US cities when zoomed out, without crowding.
+var nationalCityLayer = L.layerGroup().addTo(map);
+
+// A curated list of major cities across the US (name, lat, lon)
+// You can add/remove freely.
+var NATIONAL_CITIES = [
+  ["Seattle", 47.6062, -122.3321],
+  ["Portland", 45.5152, -122.6784],
+  ["San Francisco", 37.7749, -122.4194],
+  ["Los Angeles", 34.0522, -118.2437],
+  ["San Diego", 32.7157, -117.1611],
+  ["Las Vegas", 36.1699, -115.1398],
+  ["Phoenix", 33.4484, -112.0740],
+  ["Denver", 39.7392, -104.9903],
+  ["Dallas", 32.7767, -96.7970],
+  ["Houston", 29.7604, -95.3698],
+  ["Minneapolis", 44.9778, -93.2650],
+  ["Chicago", 41.8781, -87.6298],
+  ["St. Louis", 38.6270, -90.1994],
+  ["Nashville", 36.1627, -86.7816],
+  ["Atlanta", 33.7490, -84.3880],
+  ["Miami", 25.7617, -80.1918],
+  ["Washington, DC", 38.9072, -77.0369],
+  ["Philadelphia", 39.9526, -75.1652],
+  ["New York", 40.7128, -74.0060],
+  ["Boston", 42.3601, -71.0589]
+];
+
+function addDeclutteredCityLabels(layer, cityList, minPx){
+  layer.clearLayers();
+  var b = map.getBounds();
+  var placed = []; // container points
+  for (var i=0; i<cityList.length; i++){
+    var name = cityList[i][0], lat = cityList[i][1], lon = cityList[i][2];
+    var ll = L.latLng(lat, lon);
+    if (!b.contains(ll)) continue;
+
+    var pt = map.latLngToContainerPoint(ll);
+    var ok = true;
+    for (var j=0; j<placed.length; j++){
+      var dx = pt.x - placed[j].x;
+      var dy = pt.y - placed[j].y;
+      if (Math.sqrt(dx*dx + dy*dy) < minPx) { ok = false; break; }
+    }
+    if (!ok) continue;
+
+    placed.push(pt);
+    layer.addLayer(makeCityLabel(name, lat, lon));
+  }
+}
 
 
   function makeCityLabel(name, lat, lon){
@@ -3832,14 +4268,19 @@ if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = fals
     }catch(e){}
   }
 
-function formatCentralLabel(zISO, stepMinutes){
-  try {
-    const d = new Date(zISO);
-    const opts = { month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true, timeZone:"America/Chicago" };
-    let s = new Intl.DateTimeFormat("en-US", opts).format(d);
-    s = s.replace(/:00\s/, " ");
-    return s.toUpperCase();
-  } catch(e) { return zISO; }
+function formatCentralLabel(d){
+  try{
+    // Display in Central Time if possible (falls back to local)
+    var optsDate = { month: "short", day: "numeric", year: "numeric" };
+    var optsTime = { hour: "numeric", minute: "2-digit", hour12: true };
+    var dateStr = d.toLocaleDateString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsDate));
+    var timeStr = d.toLocaleTimeString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsTime));
+    // normalize "7:00 PM" -> "7PM"
+    timeStr = timeStr.replace(":00", "").replace(" ", "");
+    return (dateStr + " " + timeStr).toUpperCase().replace("AM", "AM").replace("PM", "PM");
+  }catch(e){
+    return d.toISOString();
+  }
 }
 
 function setTimeLabel(){
@@ -3960,9 +4401,16 @@ function setTimeLabel(){
     img.src = url;
   }
 
+
+function alertsUrlFor(d){
+  // Optional: provide a URL to a GeoJSON feed of warnings. Return null to disable.
+  return null;
+}
+
 function updateAlerts(){
     
     var url = alertsUrlFor(curZ);
+    if (!url) { alertsLayer.clearLayers(); return; }
     fetch(url).then(function(r){
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
@@ -4216,4 +4664,15 @@ function updateAlerts(){
 </script>
 
 </body>
-</html>
+</html
+function applyLessonBanner(cfg){
+  if (!cfg || !cfg.banner) return;
+  var titleEl = document.querySelector(".top-lesson");
+  var qEl = document.querySelector(".top-question");
+  var prodEl = document.querySelector(".banner-product");
+  if (titleEl && cfg.banner.lessonTitle) titleEl.textContent = cfg.banner.lessonTitle.toUpperCase();
+  if (qEl && cfg.banner.drivingQuestion) qEl.textContent = "QUESTION: " + cfg.banner.drivingQuestion;
+  if (prodEl && cfg.banner.productWord) prodEl.textContent = cfg.banner.productWord.toUpperCase();
+}
+
+>
