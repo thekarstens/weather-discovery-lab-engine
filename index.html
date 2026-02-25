@@ -1263,41 +1263,59 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 
   var lessonId = _qs("lesson") || ""; // must be provided via URL: ?lesson=...
-  var CFG = {};
+  
+  // ------------------------------------------------------------
+  // Lesson loading (optional): ?lesson=<folderName>
+  // Loads: ./lessons/<lessonId>/lesson.json
+  // ------------------------------------------------------------
+  var CFG = {}; // may be populated by lesson.json
 
-  // Load lesson config (optional) from ./js/lessonLoader.js
-  // Supports either:
-  //  - window.lessonLoader.loadLessonConfig(lessonId)
-  //  - window.WDL.loadLessonConfig(lessonId)
-  // If no ?lesson=... is provided, engine defaults are used.
-  try{
-    const loader = (window.lessonLoader || window.WDL || {});
-    // Back-compat: some builds expect window.WDL
-    if (!window.WDL && window.lessonLoader) window.WDL = window.lessonLoader;
+  function applyLessonBanner(cfg) {
+    if (!cfg || !cfg.banner) return;
 
-    if (!lessonId){
-      console.warn("⚠️ No ?lesson=... provided; using engine defaults.");
-      CFG = {};
-    } else if (typeof loader.loadLessonConfig === "function"){
-      CFG = await loader.loadLessonConfig(lessonId) || {};
-      console.log("✅ Loaded lesson config for:", lessonId, CFG);
-    applyLessonBanner(CFG);
+    const b = cfg.banner;
 
-    } else if (window.__LESSON_CFG__){
-      CFG = window.__LESSON_CFG__ || {};
-      console.log("✅ Using window.__LESSON_CFG__ for:", lessonId, CFG);
-    } else {
-      console.warn("⚠️ Lesson loader not found; using engine defaults.");
-      CFG = {};
-    }
-  }catch(err){
-    console.warn("⚠️ Lesson config load failed; using engine defaults.", err);
-    CFG = {};
+    // Top left lesson/title line
+    const elLesson = document.querySelector('.top-lesson');
+    if (elLesson && b.lessonTitle) elLesson.textContent = b.lessonTitle;
+
+    // "QUESTION: ..." line
+    const elQ = document.querySelector('.top-question');
+    if (elQ && b.drivingQuestion) elQ.textContent = `QUESTION: ${b.drivingQuestion}`;
+
+    // Big product word (RADAR / DERECHO / etc.)
+    const elProd = document.getElementById('productLabel');
+    if (elProd && b.productWord) elProd.textContent = b.productWord;
   }
 
-  // If you'd like a default lesson during development, uncomment:
-  // if (!lessonId) lessonId = "derecho-2022";
-  var DATA_BASE = String(CFG.dataBase || "./");
+  const lessonId = (_qs("lesson") || "").trim();
+
+  if (!lessonId) {
+    console.log("ℹ️ No ?lesson=... provided; using engine defaults.");
+  } else {
+    try {
+      // Prefer the shared loader if present (js/lessonLoader.js)
+      if (window.lessonLoader && typeof window.lessonLoader.loadLessonConfig === "function") {
+        CFG = await window.lessonLoader.loadLessonConfig(lessonId);
+      } else {
+        // Fallback: fetch directly
+        const url = `./lessons/${encodeURIComponent(lessonId)}/lesson.json?v=${Date.now()}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Lesson config HTTP ${res.status}: ${url}`);
+        CFG = await res.json();
+      }
+
+      window.__LESSON_CFG__ = CFG;
+      console.log("✅ Loaded lesson config for:", lessonId, CFG);
+
+      // Apply banner overrides immediately
+      applyLessonBanner(CFG);
+    } catch (e) {
+      console.warn("⚠️ Lesson config load failed; using engine defaults.", e);
+    }
+  }
+
+var DATA_BASE = String(CFG.dataBase || "./");
 
   // Time window + step
   var STEP_HOURS = Number(CFG.stepHours || 3);
