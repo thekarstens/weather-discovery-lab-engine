@@ -1267,6 +1267,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   // Loads: ./lessons/<lessonId>/lesson.json
   // ------------------------------------------------------------
   var CFG = {}; // may be populated by lesson.json
+  var LESSON_LOADED = false;
 
   function applyLessonBanner(cfg) {
     if (!cfg || !cfg.banner) return;
@@ -1306,14 +1307,18 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
       window.__LESSON_CFG__ = CFG;
       console.log("✅ Loaded lesson config for:", lessonId, CFG);
 
-      // Apply banner overrides immediately
-      applyLessonBanner(CFG);
+      LESSON_LOADED = true;
+      // Banner will be applied after lesson loading completes
     } catch (e) {
       console.warn("⚠️ Lesson config load failed; using engine defaults.", e);
     }
   }
 
-var DATA_BASE = String(CFG.dataBase || "./");
+  if (LESSON_LOADED) {
+    applyLessonBanner(CFG);
+  }
+
+  var DATA_BASE = String(CFG.dataBase || "./");
 
   // Time window + step
   var STEP_HOURS = Number(CFG.stepHours || 3);
