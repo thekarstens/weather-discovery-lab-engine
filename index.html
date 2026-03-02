@@ -1298,10 +1298,17 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
         CFG = await window.lessonLoader.loadLessonConfig(lessonId);
       } else {
         // Fallback: fetch directly
-        const url = `./lessons/${encodeURIComponent(lessonId)}/lesson.json?v=${Date.now()}`;
+        const DATA_PACK_BASE = (_qs('data') || 'https://thekarstens.github.io/wdl-data-derecho-2022/');
+        const base = DATA_PACK_BASE.endsWith('/') ? DATA_PACK_BASE : (DATA_PACK_BASE + '/');
+        const url = `${base}lessons/${encodeURIComponent(lessonId)}/lesson.json?v=${Date.now()}`;
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`Lesson config HTTP ${res.status}: ${url}`);
         CFG = await res.json();
+        if (!CFG.dataBase){
+          const base = ( _qs('data') || 'https://thekarstens.github.io/wdl-data-derecho-2022/' );
+          const b = base.endsWith('/') ? base : (base + '/');
+          CFG.dataBase = `${b}lessons/${encodeURIComponent(lessonId)}/`;
+        }
       }
 
       window.__LESSON_CFG__ = CFG;
@@ -1318,11 +1325,45 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     applyLessonBanner(CFG);
   }
 
-  var DATA_BASE = String(CFG.dataBase || "./");
+  // Data pack base (GitHub Pages). Can be overridden by lesson.json via cfg.dataBase
+  var DATA_PACK_BASE = "https://thekarstens.github.io/wdl-data-derecho-2022/";
+  // Base for assets: prefer cfg.dataBase; otherwise default to data pack lesson folder when ?lesson= is used
+  var DATA_BASE = String((CFG && CFG.dataBase)
+    ? CFG.dataBase
+    : (lessonId ? (DATA_PACK_BASE + "lessons/" + encodeURIComponent(lessonId) + "/") : "./")
+  );
 
-  // Time window + step
-  var STEP_HOURS = Number(CFG.stepHours || 3);
-  var STEP_MINUTES = (CFG.stepMinutes != null) ? Number(CFG.stepMinutes) : null;
+  // Provide a simple token replacer if lessonLoader didn't supply one
+  if (!CFG._patternUrl){
+    CFG._patternUrl = function(tpl, d){
+      function pad(n){ return String(n).padStart(2,"0"); }
+      var YYYY = String(d.getUTCFullYear());
+      var MM = pad(d.getUTCMonth()+1);
+      var DD = pad(d.getUTCDate());
+      var HH = pad(d.getUTCHours());
+      var mm = pad(d.getUTCMinutes());
+      var HHMM = HH + mm;
+      var YYYYMMDD = YYYY + MM + DD;
+      var out = String(tpl)
+        .replaceAll("{YYYY}", YYYY)
+        .replaceAll("{MM}", MM)
+        .replaceAll("{DD}", DD)
+        .replaceAll("{HH}", HH)
+        .replaceAll("{mm}", mm)
+        .replaceAll("{HHMM}", HHMM)
+        .replaceAll("{YYYYMMDD}", YYYYMMDD);
+
+      // If it's already absolute, return it; otherwise prefix DATA_BASE
+      if (/^https?:\/\//i.test(out)) return out;
+      return DATA_BASE + out.replace(/^\.\//,"");
+    };
+  }
+
+  // -------------------- Time window + step (supports nested cfg.time) --------------------
+  var TIME_CFG = (CFG && CFG.time) ? CFG.time : CFG;
+
+  var STEP_HOURS = Number(TIME_CFG.stepHours || 3);
+  var STEP_MINUTES = (TIME_CFG.stepMinutes != null) ? Number(TIME_CFG.stepMinutes) : null;
 
   // Use minutes step if provided; otherwise fall back to hours step.
   var STEP_MS = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0)
@@ -1332,8 +1373,9 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var STEP_LABEL = (isFinite(STEP_MINUTES) && STEP_MINUTES > 0)
     ? (STEP_MINUTES + " min")
     : (STEP_HOURS + " hours");
-var startZ = CFG.startZ ? new Date(CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
-  var endZ   = CFG.endZ   ? new Date(CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
+
+  var startZ = TIME_CFG.startZ ? new Date(TIME_CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
+  var endZ   = TIME_CFG.endZ   ? new Date(TIME_CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
   var curZ   = new Date(startZ.getTime());
 
   // Radar bounds (optional per lesson)
@@ -2939,6 +2981,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   }
 
   function updateFronts(){
+    if (!frontsEnabled) return;
     ensureFronts();
     if (!frontsLayer) return;
 
@@ -3146,7 +3189,9 @@ var overlays = {};
   }
 
   // Load dots grid (for probe + optional dot display)
-  fetch("./ecmwf_sf_liq_in_2018041412_f036_grid_stride10.json")
+    if (!LESSON_LOADED) {
+
+fetch("./ecmwf_sf_liq_in_2018041412_f036_grid_stride10.json")
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
     .then(function(j){
       euroPoints = Array.isArray(j.points) ? j.points : [];
@@ -3186,6 +3231,8 @@ var overlays = {};
     .catch(function(err){
       console.warn("EURO snow contours not loaded:", err);
     });
+
+  }
 
   overlays["HRRR Temp (2m)"] = hrrrTempLayer;
 
@@ -3393,8 +3440,8 @@ function updateHrrrTempRadius(){
     return ensureHrrrTempLoaded._p;
   }
 
-  // Load once at startup
-  ensureHrrrTempLoaded();
+  // Load once at startup (engine defaults only)
+  if (!LESSON_LOADED) ensureHrrrTempLoaded();
 // ---------- Jet stream (250mb) loaders ----------
 var JET_POINTS_URL   = "./jet_250mb_points.geojson";
 var JET_ARROWS_URL   = "./jet_250mb_arrows.geojson";
