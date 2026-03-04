@@ -59,7 +59,6 @@
   const nextBtn = document.getElementById("nextBtn");
 
   let CFG, map, radarOverlay, metarsLayer;
-  let RADAR_FRAMES = null;
   let overlays = {};
   let radarFrames = null; // optional {timeZ, file/url}
   let timeSteps = []; // Date objects in UTC
@@ -121,13 +120,8 @@
     // Radar frames manifest (recommended for 5–10 min radar loops)
     if (CFG.layers?.radar?.type === "imageSequence" && CFG.layers.radar.framesFile) {
       const framesUrl = CFG._resolved.lessonBase + CFG.layers.radar.framesFile;
-      const mf = await safeFetchJson(framesUrl);
-      if (mf && Array.isArray(mf.frames)) {
-        RADAR_FRAMES = mf.frames.map(f => ({t: new Date(f.t), file: f.file})).filter(f => !isNaN(f.t));
-        if (RADAR_FRAMES.length) {
-          steps = RADAR_FRAMES.map(f => f.t);
-        }
-      }
+              const framesDir = framesUrl.substring(0, framesUrl.lastIndexOf("/") + 1);
+const mf = await safeFetchJson(framesUrl);
       if (!mf) {
         console.warn("Radar frames manifest not found:", framesUrl);
       } else {
@@ -139,8 +133,8 @@
         // Pre-resolve URL for convenience (allow file-only entries)
         for (const f of radarFrames){
           const rel = f.url || f.file || "";
-          f.__url = rel.startsWith("http") ? rel : (CFG._resolved.lessonBase + (rel.startsWith("/") ? rel.slice(1) : rel));
-        }
+          f.__url = rel.startsWith("http") ? rel : (framesDir + (rel.startsWith("/") ? rel.slice(1) : rel));
+}
         // If timeZ missing, try to parse from filename like radar_YYYYMMDD_HHMMZ.png
         for (const f of radarFrames){
           if (!f.timeZ && f.file){
@@ -175,16 +169,27 @@
     if (CFG.layers?.radar?.type === "imageSequence") {
       const boundsUrl = CFG._resolved.lessonBase + CFG.layers.radar.boundsFile;
       const bounds = await safeFetchJson(boundsUrl);
-      if (!bounds) {
-        console.warn("Radar bounds not found:", boundsUrl);
-      } else {
-        const sw = bounds.southWest || bounds.southwest || bounds.SouthWest || bounds.SW || bounds.sw;
-        const ne = bounds.northEast || bounds.northeast || bounds.NorthEast || bounds.NE || bounds.ne;
-        if (!sw || !ne || (sw.lat === undefined && !Array.isArray(sw))) {
-          console.error("Radar bounds JSON shape not recognized. Expected {southWest:{lat,lon}, northEast:{lat,lon}} (or southwest/northeast). Got:", bounds);
+
+        // bounds can be either:
+        //  1) Leaflet array form: [[southLat, westLon],[northLat, eastLon]]
+        //  2) object form: { southwest:{lat,lon}, northeast:{lat,lon} } (or sw/ne arrays)
+        let sw = null, ne = null;
+
+        if (Array.isArray(bounds) && bounds.length === 2) {
+          sw = bounds[0];
+          ne = bounds[1];
+        } else if (bounds && typeof bounds === "object") {
+          sw = bounds.southwest || bounds.sw || null;
+          ne = bounds.northeast || bounds.ne || null;
         }
-        const swLL = Array.isArray(sw) ? sw : [sw.lat, sw.lon ?? sw.lng];
-        const neLL = Array.isArray(ne) ? ne : [ne.lat, ne.lon ?? ne.lng];
+
+        if (!sw || !ne) {
+          console.error("Radar bounds missing southwest/northeast:", bounds);
+          throw new Error("Invalid radar_bounds.json: missing bounds");
+        }
+
+        const swLL = Array.isArray(sw) ? L.latLng(sw[0], sw[1]) : L.latLng(sw.lat, sw.lon ?? sw.lng);
+        const neLL = Array.isArray(ne) ? L.latLng(ne[0], ne[1]) : L.latLng(ne.lat, ne.lon ?? ne.lng);
         const b = L.latLngBounds(swLL, neLL);
         // If frames manifest exists, use the first explicit file; else fall back to pattern.
         const firstUrl = (radarFrames && radarFrames[0] && radarFrames[0].__url)
