@@ -65,16 +65,16 @@
 
     function buildTimeSteps() {
     // If we have an explicit radar frame manifest, drive the slider from that (exact timestamps).
-    if (CFG.layers?.radar?.frames && Array.isArray(CFG.layers.radar.frames) && CFG.layers.radar.frames.length) {
-      return CFG.layers.radar.frames.map(f => new Date(f.timeZ));
+    if (CFG?.layers?.radar?.frames && Array.isArray(CFG?.layers?.radar.frames) && CFG?.layers?.radar.frames.length) {
+      return CFG?.layers?.radar.frames.map(f => new Date(f.timeZ));
     }
 
-    const start = new Date(CFG.time.startZ);
-    const end = new Date(CFG.time.endZ);
+    const start = new Date(CFG?.time.startZ);
+    const end = new Date(CFG?.time.endZ);
 
     // Prefer minute stepping (derecho / radar loops), fall back to hours
-    const stepMin = Number(CFG.time.stepMinutes || 0);
-    const stepH = Number(CFG.time.stepHours || 1);
+    const stepMin = Number(CFG?.time.stepMinutes || 0);
+    const stepH = Number(CFG?.time.stepHours || 1);
 
     const stepMs = stepMin > 0 ? stepMin * 60 * 1000 : stepH * 3600 * 1000;
 
@@ -94,6 +94,7 @@
   async function init() {
     try {
       CFG = await loadLessonConfig({ dataPackBase: DATA_PACK_BASE, lessonId });
+      if (!CFG || typeof CFG !== "object") { throw new Error("Lesson config missing or invalid"); }
       console.log("Loaded lesson config:", CFG);
     } catch (e) {
       console.error(e);
@@ -102,14 +103,14 @@
       return;
     }
 
-    titleEl.textContent = CFG.titleTop || CFG.id || lessonId;
-    dqEl.textContent = CFG.drivingQuestion || "";
-    productEl.textContent = CFG.productLabel ? String(CFG.productLabel).toUpperCase() : "";
+    titleEl.textContent = CFG?.titleTop || CFG?.id || lessonId;
+    dqEl.textContent = CFG?.drivingQuestion || "";
+    productEl.textContent = CFG?.productLabel ? String(CFG.productLabel).toUpperCase() : "";
 
     // Map
     map = L.map("map", { zoomControl: true }).setView(
-      [CFG.map?.initialView?.lat ?? 43.55, CFG.map?.initialView?.lon ?? -96.73],
-      CFG.map?.initialView?.zoom ?? 6
+      [CFG?.map?.initialView?.lat ?? 43.55, CFG?.map?.initialView?.lon ?? -96.73],
+      CFG?.map?.initialView?.zoom ?? 6
     );
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -118,8 +119,8 @@
     }).addTo(map);
 
     // Radar frames manifest (recommended for 5–10 min radar loops)
-    if (CFG.layers?.radar?.type === "imageSequence" && CFG.layers.radar.framesFile) {
-      const framesUrl = CFG._resolved.lessonBase + CFG.layers.radar.framesFile;
+    if (CFG?.layers?.radar?.type === "imageSequence" && CFG?.layers?.radar.framesFile) {
+      const framesUrl = CFG?._resolved.lessonBase + CFG?.layers?.radar.framesFile;
               const framesDir = framesUrl.substring(0, framesUrl.lastIndexOf("/") + 1);
 const mf = await safeFetchJson(framesUrl);
       if (!mf) {
@@ -148,7 +149,7 @@ const mf = await safeFetchJson(framesUrl);
         }
         // Drive time from manifest if it has usable timestamps
         if (radarFrames.length && radarFrames.every(f=>f.timeZ)){
-          CFG.layers.radar.frames = radarFrames.map(f=>({timeZ:f.timeZ}));
+          CFG?.layers?.radar.frames = radarFrames.map(f=>({timeZ:f.timeZ}));
         } else {
           console.warn("Radar frames manifest loaded, but missing timeZ on one or more entries. Slider will use pattern stepping.");
         }
@@ -166,8 +167,8 @@ const mf = await safeFetchJson(framesUrl);
     const overlayLayers = {};
 
     // Radar (image sequence)
-    if (CFG.layers?.radar?.type === "imageSequence") {
-      const boundsUrl = CFG._resolved.lessonBase + CFG.layers.radar.boundsFile;
+    if (CFG?.layers?.radar?.type === "imageSequence") {
+      const boundsUrl = CFG?._resolved.lessonBase + CFG?.layers?.radar.boundsFile;
       const bounds = await safeFetchJson(boundsUrl);
 
         // bounds can be either:
@@ -194,8 +195,8 @@ const mf = await safeFetchJson(framesUrl);
         // If frames manifest exists, use the first explicit file; else fall back to pattern.
         const firstUrl = (radarFrames && radarFrames[0] && radarFrames[0].__url)
           ? radarFrames[0].__url
-          : (CFG._resolved.lessonBase + buildUrlFromPattern(CFG.layers.radar.framePattern, timeSteps[0]));
-        radarOverlay = L.imageOverlay(firstUrl, b, { opacity: CFG.layers.radar.opacityDefault ?? 0.75 });
+          : (CFG?._resolved.lessonBase + buildUrlFromPattern(CFG?.layers?.radar.framePattern, timeSteps[0]));
+        radarOverlay = L.imageOverlay(firstUrl, b, { opacity: CFG?.layers?.radar.opacityDefault ?? 0.75 });
         radarOverlay.addTo(map);
         overlayLayers["Radar"] = radarOverlay;
         map.fitBounds(b, { padding: [10,10] });
@@ -203,7 +204,7 @@ const mf = await safeFetchJson(framesUrl);
     }
 
     // METARs (snapshot GeoJSON)
-    if (CFG.layers?.metars?.type === "snapshotGeoJSON") {
+    if (CFG?.layers?.metars?.type === "snapshotGeoJSON") {
       metarsLayer = L.geoJSON(null, {
         pointToLayer: (feat, latlng) => L.circleMarker(latlng, { radius: 3 }),
       });
@@ -212,10 +213,10 @@ const mf = await safeFetchJson(framesUrl);
     }
 
     // Generic overlays
-    if (Array.isArray(CFG.layers?.overlays)) {
-      for (const o of CFG.layers.overlays) {
+    if (Array.isArray(CFG?.layers?.overlays)) {
+      for (const o of CFG?.layers?.overlays) {
         if (!o?.url || !o?.name) continue;
-        const full = CFG._resolved.lessonBase + o.url;
+        const full = CFG?._resolved.lessonBase + o.url;
         const gj = await safeFetchJson(full);
         if (!gj) { console.warn("Overlay not found:", full); continue; }
         overlays[o.name] = L.geoJSON(gj);
@@ -228,23 +229,23 @@ const mf = await safeFetchJson(framesUrl);
     // Wire time controls
     const applyTimeIndex = async (idx) => {
       const dt = timeSteps[idx];
-      timeEl.textContent = formatZToLocal(dt.toISOString(), CFG.time.displayTimezone);
+      timeEl.textContent = formatZToLocal(dt.toISOString(), CFG?.time.displayTimezone);
 
       // radar
       if (radarOverlay) {
         let url = null;
         if (radarFrames && radarFrames[idx] && radarFrames[idx].__url) {
           url = radarFrames[idx].__url;
-        } else if (CFG.layers?.radar?.framePattern) {
-          url = CFG._resolved.lessonBase + buildUrlFromPattern(CFG.layers.radar.framePattern, dt);
+        } else if (CFG?.layers?.radar?.framePattern) {
+          url = CFG?._resolved.lessonBase + buildUrlFromPattern(CFG?.layers?.radar.framePattern, dt);
         }
         if (url) radarOverlay.setUrl(url);
       }
 
       // metars
-      if (metarsLayer && CFG.layers?.metars?.snapshotPattern) {
-        const rel = buildUrlFromPattern(CFG.layers.metars.snapshotPattern, dt);
-        const url = CFG._resolved.lessonBase + rel;
+      if (metarsLayer && CFG?.layers?.metars?.snapshotPattern) {
+        const rel = buildUrlFromPattern(CFG?.layers?.metars.snapshotPattern, dt);
+        const url = CFG?._resolved.lessonBase + rel;
         const gj = await safeFetchJson(url);
         metarsLayer.clearLayers();
         if (gj) metarsLayer.addData(gj);
