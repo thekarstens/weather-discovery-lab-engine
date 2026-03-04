@@ -204,7 +204,7 @@ const mf = await safeFetchJson(framesUrl);
         overlayLayers["Radar"] = radarOverlay;
         map.fitBounds(b, { padding: [10,10] });
       }
-    }
+    
 
     // METARs (snapshot GeoJSON)
     if (CFG?.layers?.metars?.type === "snapshotGeoJSON") {
@@ -261,6 +261,8 @@ const mf = await safeFetchJson(framesUrl);
 
     // initial time
     await applyTimeIndex(0);
+
+}
 
   init();
 </script>
