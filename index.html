@@ -92,7 +92,10 @@
   }
 
   async function init() {
-    try {
+    
+    let baseLayers = {};
+    let overlayLayers = {};
+try {
       CFG = await loadLessonConfig({ dataPackBase: DATA_PACK_BASE, lessonId });
       if (!CFG || typeof CFG !== "object") { throw new Error("Lesson config missing or invalid"); }
       console.log("Loaded lesson config:", CFG);
@@ -163,8 +166,8 @@ const mf = await safeFetchJson(framesUrl);
     slider.value = 0;
 
     // Layers control
-    const baseLayers = {};
-    const overlayLayers = {};
+    baseLayers = {};
+    overlayLayers = {};
 
     // Radar (image sequence)
     if (CFG?.layers?.radar?.type === "imageSequence") {
