@@ -59,6 +59,7 @@
   const nextBtn = document.getElementById("nextBtn");
 
   let CFG, map, radarOverlay, metarsLayer;
+  let RADAR_FRAMES = null;
   let overlays = {};
   let radarFrames = null; // optional {timeZ, file/url}
   let timeSteps = []; // Date objects in UTC
@@ -121,6 +122,12 @@
     if (CFG.layers?.radar?.type === "imageSequence" && CFG.layers.radar.framesFile) {
       const framesUrl = CFG._resolved.lessonBase + CFG.layers.radar.framesFile;
       const mf = await safeFetchJson(framesUrl);
+      if (mf && Array.isArray(mf.frames)) {
+        RADAR_FRAMES = mf.frames.map(f => ({t: new Date(f.t), file: f.file})).filter(f => !isNaN(f.t));
+        if (RADAR_FRAMES.length) {
+          steps = RADAR_FRAMES.map(f => f.t);
+        }
+      }
       if (!mf) {
         console.warn("Radar frames manifest not found:", framesUrl);
       } else {
