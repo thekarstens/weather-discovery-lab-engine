@@ -122,7 +122,7 @@
       if (!bounds) {
         console.warn("Radar bounds not found:", boundsUrl);
       } else {
-        const b = L.latLngBounds(bounds.southWest, bounds.northEast);
+        const b = L.latLngBounds(bounds.southwest, bounds.northeast);
         const firstUrl = CFG._resolved.lessonBase + buildUrlFromPattern(CFG.layers.radar.framePattern, timeSteps[0]);
         radarOverlay = L.imageOverlay(firstUrl, b, { opacity: CFG.layers.radar.opacityDefault ?? 0.75 });
         radarOverlay.addTo(map);
