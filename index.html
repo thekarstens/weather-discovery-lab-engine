@@ -149,7 +149,7 @@ const mf = await safeFetchJson(framesUrl);
         }
         // Drive time from manifest if it has usable timestamps
         if (radarFrames.length && radarFrames.every(f=>f.timeZ)){
-          CFG?.layers?.radar.frames = radarFrames.map(f=>({timeZ:f.timeZ}));
+          if (CFG && CFG.layers && CFG.layers.radar) { CFG.layers.radar.frames = radarFrames.map(f=>({timeZ:f.timeZ})); }
         } else {
           console.warn("Radar frames manifest loaded, but missing timeZ on one or more entries. Slider will use pattern stepping.");
         }
