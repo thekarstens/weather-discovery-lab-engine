@@ -140,10 +140,7 @@
   // --- Radar site marker (defaults to manifest radar_latlon, Sioux Falls area)
   let radarLatLng = L.latLng(center[0], center[1]);
   const marker = L.circleMarker(radarLatLng, { radius: 6, color: '#ffd84d', fillColor: '#ffd84d', fillOpacity: 1 }).addTo(map);
-  // (disabled) click-to-move radar site marker removed to keep KFsD anchored
-    // reset sweep so kids see the painting start from the new radar site
-    resetSweep(true, true);
-  });
+  // (locked) Radar site is fixed at manifest radar_latlon.
 
   // --- Canvases on a dedicated pane
   const paneName = "radarPaintPane";
