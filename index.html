@@ -89,7 +89,8 @@
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) return null;
     return await r.json();
-  
+  }
+
   // Sweep-reveal helper for radar: draws a wedge and fades in the first frame.
   // This is a lightweight "radar sweep" illusion (not a true sector mask of the image),
   // but it communicates the scanning concept and looks good in-class.
@@ -101,13 +102,11 @@
       const radiusPx = opts.radiusPx ?? 900;
       const finalOpacity = opts.finalOpacity ?? 0.7;
 
-      // If overlay is already visible, nothing to do.
       radarOverlay.setOpacity(0);
 
       let angle = 0;
-      const start = performance.now();
+      const t0 = performance.now();
 
-      // Create a wedge polygon (3 points) that we update each frame.
       const wedge = L.polygon([center, center, center], {
         stroke: false,
         fill: true,
@@ -125,19 +124,15 @@
         wedge.setLatLngs([center, map.layerPointToLatLng(p1), map.layerPointToLatLng(p2)]);
       };
 
-      // Keep wedge correct on zoom/pan
       const onMove = () => updateWedge(angle);
       map.on("zoom move", onMove);
 
       return await new Promise((resolve) => {
         const tick = (now) => {
-          const t = Math.min(1, (now - start) / durationMs);
+          const t = Math.min(1, (now - t0) / durationMs);
           angle = 360 * t;
           updateWedge(angle);
-
-          // Fade radar in during sweep
           radarOverlay.setOpacity(finalOpacity * t);
-
           if (t < 1) {
             requestAnimationFrame(tick);
           } else {
@@ -156,8 +151,29 @@
     }
   }
 
-}
-
+  function parseRadarBounds(obj) {
+    // Accept either:
+    // 1) { southwest:{lat,lon}, northeast:{lat,lon} }
+    // 2) [[swLat, swLon],[neLat, neLon]]  (Leaflet LatLngBounds literal)
+    if (!obj) return null;
+    try {
+      if (Array.isArray(obj) && obj.length === 2 && Array.isArray(obj[0]) && Array.isArray(obj[1])) {
+        const sw = { lat: Number(obj[0][0]), lon: Number(obj[0][1]) };
+        const ne = { lat: Number(obj[1][0]), lon: Number(obj[1][1]) };
+        if ([sw.lat, sw.lon, ne.lat, ne.lon].every((v) => Number.isFinite(v))) {
+          return { southwest: sw, northeast: ne };
+        }
+      }
+      if (obj.southwest && obj.northeast) {
+        const sw = { lat: Number(obj.southwest.lat), lon: Number(obj.southwest.lon) };
+        const ne = { lat: Number(obj.northeast.lat), lon: Number(obj.northeast.lon) };
+        if ([sw.lat, sw.lon, ne.lat, ne.lon].every((v) => Number.isFinite(v))) {
+          return { southwest: sw, northeast: ne };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
   async function init() {
     
     let baseLayers = {};
@@ -245,10 +261,9 @@ try {
 
           const mfBounds = (mf && mf.leaflet_bounds) ? mf.leaflet_bounds : null;
           const applyBoundsObj = (b) => {
-            if (b && b.southwest && b.northeast &&
-                isFinite(b.southwest.lat) && isFinite(b.southwest.lon) &&
-                isFinite(b.northeast.lat) && isFinite(b.northeast.lon)) {
-              bounds = L.latLngBounds([[b.southwest.lat, b.southwest.lon],[b.northeast.lat, b.northeast.lon]]);
+            const parsed = parseRadarBounds(b);
+            if (parsed) {
+              bounds = L.latLngBounds([[parsed.southwest.lat, parsed.southwest.lon],[parsed.northeast.lat, parsed.northeast.lon]]);
               return true;
             }
             return false;
