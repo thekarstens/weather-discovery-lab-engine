@@ -46,6 +46,79 @@ async function fetchJson(url) {
   }
 }
 
+
+
+// --- Colab radar manifest support ---
+// Normalizes your Colab manifest into a predictable structure the engine can consume.
+function normalizeColabRadarManifest(m, cfg, radarLayer) {
+  if (!m || typeof m !== "object") return null;
+
+  const boundsArr = m.leaflet_bounds || m.bounds || null; // expected [[south, west],[north, east]]
+  const centerArr = m.radar_latlon || m.center || null;  // expected [lat, lon]
+  const framesIn = Array.isArray(m.frames) ? m.frames : [];
+
+  const frames = framesIn.map((f) => {
+    if (typeof f === "string") return { utc: null, png: f };
+    const utc = f.utc || f.t || f.time || null;
+    const png = f.png || f.file || f.filename || f.name || null;
+    return { utc, png };
+  }).filter(x => !!x.png);
+
+  // Resolve png paths relative to the manifest location when they are relative.
+  const manifestUrl = resolveAssetUrl(cfg, radarLayer?.manifestFile || "");
+  const manifestFolder = manifestUrl ? manifestUrl.split("/").slice(0, -1).join("/") + "/" : "";
+  const resolveFromManifestFolder = (p) => {
+    if (!p) return "";
+    if (isAbsoluteUrl(p)) return p;
+    return manifestFolder + (p.startsWith("/") ? p.slice(1) : p);
+  };
+
+  const framesResolved = frames.map(fr => ({
+    utc: fr.utc,
+    png: resolveFromManifestFolder(fr.png)
+  }));
+
+  return {
+    radar: m.radar || null,
+    field: m.field || null,
+    sweep: m.sweep ?? null,
+    start_utc: m.start_utc || null,
+    end_utc: m.end_utc || null,
+    step_minutes: m.step_minutes ?? null,
+    radar_latlon: centerArr,
+    leaflet_bounds: boundsArr,
+    frames: framesResolved
+  };
+}
+
+async function maybeLoadRadarManifest(cfg) {
+  const radarLayer = cfg?.layers?.radar;
+  const manifestFile = radarLayer?.manifestFile || radarLayer?.framesManifest || radarLayer?.framesManifestFile;
+  if (!manifestFile) return cfg;
+
+  // Store back on cfg so engine can use it directly
+  radarLayer.manifestFile = manifestFile;
+
+  const url = resolveAssetUrl(cfg, manifestFile);
+  const m = await fetchJson(url);
+
+  const normalized = normalizeColabRadarManifest(m, cfg, radarLayer);
+  radarLayer._manifest = normalized;
+
+  // Optional: if lesson time is missing, derive from manifest
+  if (normalized?.frames?.length) {
+    const firstUtc = normalized.frames[0].utc;
+    const lastUtc = normalized.frames[normalized.frames.length - 1].utc;
+    cfg.time = cfg.time || {};
+    if (!cfg.time.startZ && firstUtc) cfg.time.startZ = firstUtc.replace("+00:00", "Z");
+    if (!cfg.time.endZ && lastUtc) cfg.time.endZ = lastUtc.replace("+00:00", "Z");
+    if (cfg.time.stepMinutes == null && normalized.step_minutes != null) cfg.time.stepMinutes = normalized.step_minutes;
+  }
+
+  return cfg;
+}
+
+
 function applyLegacyShims(cfg) {
   // Legacy engine expects top-level startZ/endZ/stepHours, etc.
   const t = cfg.time || {};
@@ -99,6 +172,13 @@ export async function loadLessonConfig({ dataPackBase, lessonId }) {
   // If lesson.json doesn't define dataBase, set it so every relative path resolves correctly
   if (!cfg.dataBase) cfg.dataBase = lessonBase;
 
+  // Preload Colab radar manifest if configured (optional, but makes radar bulletproof)
+  try {
+    await maybeLoadRadarManifest(cfg);
+  } catch (e) {
+    console.warn('[lessonLoader] radar manifest load failed:', e);
+  }
+
   // Compatibility for your existing full engine UI
   applyLegacyShims(cfg);
 
@@ -148,4 +228,9 @@ export function buildUrlFromPattern(pattern, dt, cfg = null) {
   // If the pattern is relative, resolve it off dataBase/lessonBase
   if (cfg) out = resolveAssetUrl(cfg, out);
   return out;
+}
+
+
+export function getRadarManifest(cfg) {
+  return cfg?.layers?.radar?._manifest || null;
 }
