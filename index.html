@@ -89,7 +89,74 @@
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) return null;
     return await r.json();
+  
+  // Sweep-reveal helper for radar: draws a wedge and fades in the first frame.
+  // This is a lightweight "radar sweep" illusion (not a true sector mask of the image),
+  // but it communicates the scanning concept and looks good in-class.
+  async function sweepRevealFirstRadarFrame(map, radarOverlay, opts) {
+    try {
+      const center = opts.center;
+      const durationMs = opts.durationMs ?? 1800;
+      const beamWidthDeg = opts.beamWidthDeg ?? 14;
+      const radiusPx = opts.radiusPx ?? 900;
+      const finalOpacity = opts.finalOpacity ?? 0.7;
+
+      // If overlay is already visible, nothing to do.
+      radarOverlay.setOpacity(0);
+
+      let angle = 0;
+      const start = performance.now();
+
+      // Create a wedge polygon (3 points) that we update each frame.
+      const wedge = L.polygon([center, center, center], {
+        stroke: false,
+        fill: true,
+        fillColor: "#ff0",
+        fillOpacity: 0.25,
+        interactive: false
+      }).addTo(map);
+
+      const updateWedge = (deg) => {
+        const a1 = (deg - beamWidthDeg / 2) * Math.PI / 180;
+        const a2 = (deg + beamWidthDeg / 2) * Math.PI / 180;
+        const c = map.latLngToLayerPoint(center);
+        const p1 = L.point(c.x + radiusPx * Math.cos(a1), c.y + radiusPx * Math.sin(a1));
+        const p2 = L.point(c.x + radiusPx * Math.cos(a2), c.y + radiusPx * Math.sin(a2));
+        wedge.setLatLngs([center, map.layerPointToLatLng(p1), map.layerPointToLatLng(p2)]);
+      };
+
+      // Keep wedge correct on zoom/pan
+      const onMove = () => updateWedge(angle);
+      map.on("zoom move", onMove);
+
+      return await new Promise((resolve) => {
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / durationMs);
+          angle = 360 * t;
+          updateWedge(angle);
+
+          // Fade radar in during sweep
+          radarOverlay.setOpacity(finalOpacity * t);
+
+          if (t < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            map.off("zoom move", onMove);
+            try { map.removeLayer(wedge); } catch (e) {}
+            radarOverlay.setOpacity(finalOpacity);
+            resolve(true);
+          }
+        };
+        requestAnimationFrame(tick);
+      });
+    } catch (e) {
+      console.warn("[radar] sweepRevealFirstRadarFrame failed; continuing without sweep.", e);
+      try { radarOverlay.setOpacity(opts.finalOpacity ?? 0.7); } catch (e2) {}
+      return false;
+    }
   }
+
+}
 
   async function init() {
     
@@ -169,24 +236,44 @@ try {
           radarCfg.frames = framesList.map(f => ({ timeZ: f.timeZ, file: f.file }));
 
           // Bounds: default to Sioux Falls-ish domain; override via radar_bounds.json if present.
+          // Priority:
+          //  1) frames manifest can carry bounds (recommended) as:
+          //       { leaflet_bounds: { southwest:{lat,lon}, northeast:{lat,lon} } }
+          //  2) explicit radarCfg.boundsFile (legacy) containing the same shape
+          //  3) fallback default
           let bounds = L.latLngBounds([[42.0, -99.5], [46.0, -92.0]]);
-          if (radarCfg.boundsFile) {
+
+          const mfBounds = (mf && mf.leaflet_bounds) ? mf.leaflet_bounds : null;
+          const applyBoundsObj = (b) => {
+            if (b && b.southwest && b.northeast &&
+                isFinite(b.southwest.lat) && isFinite(b.southwest.lon) &&
+                isFinite(b.northeast.lat) && isFinite(b.northeast.lon)) {
+              bounds = L.latLngBounds([[b.southwest.lat, b.southwest.lon],[b.northeast.lat, b.northeast.lon]]);
+              return true;
+            }
+            return false;
+          };
+
+          if (mfBounds && applyBoundsObj(mfBounds)) {
+            console.log("[radar] using bounds from frames manifest (leaflet_bounds)");
+          } else if (radarCfg.boundsFile) {
             const boundsUrl = lessonBase + radarCfg.boundsFile.replace(/^\//, "");
             console.log("[radar] boundsUrl:", boundsUrl);
             const b = await safeFetchJson(boundsUrl);
-            if (b && b.southwest && b.northeast && isFinite(b.southwest.lat) && isFinite(b.southwest.lon) && isFinite(b.northeast.lat) && isFinite(b.northeast.lon)) {
-              bounds = L.latLngBounds(
-                [ [b.southwest.lat, b.southwest.lon], [b.northeast.lat, b.northeast.lon] ]
-              );
-            } else {
+            if (!applyBoundsObj(b)) {
               console.warn("[radar] boundsFile present but invalid JSON shape. Using default bounds.");
             }
           }
 
-          // Build overlay and add first frame immediately
+          // Build overlay
+ and add first frame immediately
           const first = framesList[0];
           if (first && first.__url) {
-            radarOverlay = L.imageOverlay(first.__url, bounds, { opacity: radarCfg.opacity ?? 0.7, interactive: false });
+            const targetOpacity = (radarCfg.opacity ?? 0.7);
+
+            // Start with 0 opacity; we will "sweep-reveal" the first frame, then
+            // hand off to the normal animation/loop.
+            radarOverlay = L.imageOverlay(first.__url, bounds, { opacity: 0, interactive: false });
             radarOverlay.addTo(map);
             overlayLayers[radarCfg.label || "Radar"] = radarOverlay;
 
@@ -195,6 +282,17 @@ try {
               map.fitBounds(bounds);
               map.setMaxBounds(bounds.pad(0.2));
             }
+
+            // Sweep-reveal effect for the first frame.
+            // This draws a rotating wedge centered near Sioux Falls while we fade in the first image.
+            // If you want a different center, set radarCfg.sweepCenter = { lat: ..., lon: ... } in lesson.json.
+            await sweepRevealFirstRadarFrame(map, radarOverlay, {
+              center: radarCfg.sweepCenter ? L.latLng(radarCfg.sweepCenter.lat, radarCfg.sweepCenter.lon) : L.latLng(43.5446, -96.7311),
+              durationMs: radarCfg.sweepDurationMs ?? 1800,
+              beamWidthDeg: radarCfg.sweepBeamWidthDeg ?? 14,
+              radiusPx: radarCfg.sweepRadiusPx ?? 900,
+              finalOpacity: targetOpacity
+            });
           } else {
             console.warn("[radar] frames manifest loaded but first frame missing.");
           }
