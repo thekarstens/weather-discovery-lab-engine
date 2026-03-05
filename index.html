@@ -265,7 +265,7 @@
 
   // Initial load
   if (frames.length) {
-    try { await loadFrame(0); } catch (e) { console.warn(e); }
+    loadFrame(0).catch((e) => console.warn(e));
   }
 
   // Redraw on move/zoom so alignment stays perfect
