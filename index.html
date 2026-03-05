@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>KFSD Radar Sweep Painter • Apr 14, 2018</title>
+  <title>Weather Discovery Lab • Radar Sweep</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -105,42 +105,77 @@
   <small>Tip: click map to move the “radar site” if you want.</small>
 </div>
 
-<script>
+
+<script type="module">
+import { getLessonIdFromURL, loadLessonConfig, resolveAssetUrl, formatZToLocal, getRadarManifest } from "./js/lessonLoader.js";
+
 (async function () {
-  // Load your existing manifest.json (same as your original index)
-  const m = await (await fetch('./manifest.json', { cache: "no-store" })).json();
+  const lessonId = getLessonIdFromURL("derecho-2022");
+  const cfg = await loadLessonConfig({ lessonId });
 
-  const boundsArr = m.leaflet_bounds;     // expected: [[south, west],[north, east]]
-  const center = m.radar_latlon;         // [lat, lon]
-  const VERSION = "sweep1";              // bump to break cache if needed
+  // Use lesson metadata if present
+  if (cfg?.titleTop) document.title = cfg.titleTop + " • Radar";
 
-  const frames = (m.frames || []).map(f => {
-    const name = (typeof f === 'string') ? f : (f.file || f.png || f.filename || f.name);
-    return (name || '') + "?v=" + VERSION;
-  });
-  const utcList = (m.frames || []).map(f => (typeof f === 'string') ? null : (f.utc || f.t || null));
+  const radarLayer = cfg?.layers?.radar || {};
+  const tz = cfg?.time?.displayTimezone || cfg?.displayTimezone || "UTC";
 
-  const map = L.map('map', { attributionControl:true }).setView(center, 8);
+  // Radar manifest: prefer preloaded manifest from lessonLoader, otherwise fetch it here
+  let manifest = getRadarManifest(cfg);
+  if (!manifest) {
+    const mf = radarLayer.manifestFile || radarLayer.framesManifest || radarLayer.framesManifestFile;
+    if (!mf) throw new Error("Radar is configured without a manifestFile.");
+    const url = resolveAssetUrl(cfg, mf);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to load radar manifest: ${url} (${res.status})`);
+    manifest = await res.json();
+  }
 
-  // Light gray “TV” basemap (CARTO Positron)
+  // Normalize (support both normalized + raw Colab)
+  const boundsArr = manifest.leaflet_bounds || manifest.bounds || null;
+  const center = manifest.radar_latlon || manifest.center || null;
+  const framesIn = Array.isArray(manifest.frames) ? manifest.frames : [];
+
+  const frames = framesIn.map(f => {
+    if (typeof f === "string") return { utc: null, png: f };
+    return { utc: f.utc || f.t || f.time || null, png: f.png || f.file || f.filename || f.name || null };
+  }).filter(x => !!x.png);
+
+  // Resolve PNG URLs relative to manifest file folder if they are relative
+  const manifestUrl = resolveAssetUrl(cfg, radarLayer.manifestFile || "");
+  const manifestFolder = manifestUrl ? manifestUrl.split("/").slice(0, -1).join("/") + "/" : (cfg.dataBase || "");
+  const isAbs = (u) => /^https?:\/\//i.test(u) || u.startsWith("data:") || u.startsWith("blob:");
+
+  const frameUrls = frames.map(fr => (isAbs(fr.png) ? fr.png : manifestFolder + fr.png.replace(/^\//,"")));
+  const utcList = frames.map(fr => fr.utc);
+
+  if (!boundsArr || !Array.isArray(boundsArr) || boundsArr.length !== 2) {
+    throw new Error("Manifest missing leaflet_bounds. Expected [[south, west],[north, east]].");
+  }
+  if (!center || !Array.isArray(center) || center.length !== 2) {
+    console.warn("Manifest missing radar_latlon; using map initialView instead.");
+  }
+
+  const bounds = L.latLngBounds(boundsArr);
+  const mapCenter = center ? [center[0], center[1]] : [cfg?.map?.initialView?.lat || 43.55, cfg?.map?.initialView?.lon || -96.73];
+
+  const map = L.map('map', { attributionControl:true }).setView(mapCenter, 8);
+
+  // Basemap (light gray like TV)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     subdomains: 'abcd',
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
   }).addTo(map);
 
-  const bounds = L.latLngBounds(boundsArr);
   map.fitBounds(bounds);
 
-  // Lock the map to the radar mosaic area (prevents panning away)
+  // Lock map to radar mosaic area (prevents panning away)
   map.setMaxBounds(bounds.pad(0.25));
   map.options.maxBoundsViscosity = 1.0;
 
-
-  // --- Radar site marker (defaults to manifest radar_latlon, Sioux Falls area)
-  let radarLatLng = L.latLng(center[0], center[1]);
-  const marker = L.circleMarker(radarLatLng, { radius: 6, color: '#ffd84d', fillColor: '#ffd84d', fillOpacity: 1 }).addTo(map);
-  // (locked) Radar site is fixed at manifest radar_latlon.
+  // --- Radar site marker (fixed at manifest radar_latlon)
+  const radarLatLng = L.latLng(mapCenter[0], mapCenter[1]);
+  L.circleMarker(radarLatLng, { radius: 6, color: '#ffd84d', fillColor: '#ffd84d', fillOpacity: 1 }).addTo(map);
 
   // --- Canvases on a dedicated pane
   const paneName = "radarPaintPane";
@@ -170,7 +205,7 @@
   sizeCanvases();
   map.on('resize', sizeCanvases);
 
-  // --- UI
+  // --- UI wiring
   const rpmEl = document.getElementById("rpm");
   const beamPxEl = document.getElementById("beamPx");
   const persistEl = document.getElementById("persist");
@@ -193,31 +228,34 @@
   syncUI();
 
   const timeEl = document.getElementById("time");
-  const fmt = (u) => u ? u.replace("T"," ").replace("+00:00"," UTC") : "";
 
   // --- Frame loading
   let frameIndex = 0;
-  let sourceImg = new Image();
+  const sourceImg = new Image();
   sourceImg.decoding = "async";
   sourceImg.loading = "eager";
-  sourceImg.crossOrigin = "anonymous"; // safe if you ever host from elsewhere
+  sourceImg.crossOrigin = "anonymous";
 
-  // offscreen canvas holds the current radar frame (for fast drawImage)
   const srcCanvas = document.createElement("canvas");
   const srcCtx = srcCanvas.getContext("2d");
 
+  function setTimeLabel(i) {
+    const z = utcList[i];
+    if (z) timeEl.textContent = formatZToLocal(z, tz) + " (" + z.replace("+00:00","Z") + ")";
+    else timeEl.textContent = frameUrls[i] || "";
+  }
+
   async function loadFrame(i) {
     frameIndex = i;
-    const url = frames[frameIndex];
-    timeEl.textContent = fmt(utcList[frameIndex]) || url;
+    const url = frameUrls[frameIndex];
+    setTimeLabel(frameIndex);
 
     await new Promise((resolve, reject) => {
       sourceImg.onload = () => resolve();
-      sourceImg.onerror = (e) => reject(new Error("Failed to load frame: " + url));
+      sourceImg.onerror = () => reject(new Error("Failed to load frame: " + url));
       sourceImg.src = url;
     });
 
-    // draw into offscreen buffer
     srcCanvas.width = sourceImg.naturalWidth || sourceImg.width;
     srcCanvas.height = sourceImg.naturalHeight || sourceImg.height;
     srcCtx.clearRect(0,0,srcCanvas.width, srcCanvas.height);
@@ -226,7 +264,6 @@
     resetSweep(true, true);
   }
 
-  // --- Convert Leaflet bounds to on-screen rectangle
   function overlayRect() {
     const nw = bounds.getNorthWest();
     const se = bounds.getSouthEast();
@@ -238,12 +275,13 @@
   }
 
   // --- Sweep state
-  let angle = 0; // radians, 0 = east
-  let swept = 0; // total radians swept since reset
-  const DWELL_MS = 600; // pause briefly after a full scan
+  let angle = 0;
+  let swept = 0;
+  const DWELL_MS = 600;
   let pendingAdvance = false;
   let lastTs = performance.now();
   let paused = false;
+
   function resetSweep(clearReturns, resume = true) {
     angle = 0;
     swept = 0;
@@ -253,27 +291,20 @@
     }
     if (clearReturns) rctx.clearRect(0,0,returnsCanvas.width, returnsCanvas.height);
   }
+
   document.getElementById("resetSweep").addEventListener("click", () => resetSweep(true));
   document.getElementById("pause").addEventListener("click", () => {
     paused = !paused;
     document.getElementById("pause").textContent = paused ? "Play" : "Pause";
   });
-  // Frame advancement is tied to completing one full revolution (see tick()).
 
   // Initial load
-  if (frames.length) {
-    loadFrame(0).catch((e) => console.warn(e));
-  }
+  if (frameUrls.length) loadFrame(0).catch((e) => console.warn(e));
 
-  // Redraw on move/zoom so alignment stays perfect
-  map.on("move zoom", () => {
-    // keep what has been painted so far, just let it move with the map
-    // easiest approach: clear and restart the sweep on map changes
-    resetSweep(true, true);
-  });
+  // Redraw on map changes: restart sweep to keep alignment consistent
+  map.on("move zoom", () => resetSweep(true, true));
 
   function paintBeam(rect, cx, cy, theta, beamPx) {
-    // Thin "beam" polygon (a long skinny rectangle)
     const maxRange = Math.max(returnsCanvas.width, returnsCanvas.height) * 1.4;
     const ex = cx + Math.cos(theta) * maxRange;
     const ey = cy + Math.sin(theta) * maxRange;
@@ -287,18 +318,16 @@
     const p3x = ex - px, p3y = ey - py;
     const p4x = cx - px, p4y = cy - py;
 
-    // (1) gently fade old returns (persistence)
-    const persist = Number(persistEl.value); // 0..100
-    const fadeAlpha = (100 - persist) / 100; // 0..1
+    const persist = Number(persistEl.value);
+    const fadeAlpha = (100 - persist) / 100;
     if (fadeAlpha > 0) {
       rctx.save();
       rctx.globalCompositeOperation = "source-over";
-      rctx.fillStyle = `rgba(255,255,255,${fadeAlpha * 0.06})`; // fade toward white to match your image bg
+      rctx.fillStyle = `rgba(255,255,255,${fadeAlpha * 0.06})`;
       rctx.fillRect(0, 0, returnsCanvas.width, returnsCanvas.height);
       rctx.restore();
     }
 
-    // (2) clip to beam polygon and paint source image *only within* the beam
     rctx.save();
     rctx.beginPath();
     rctx.moveTo(p1x, p1y);
@@ -308,33 +337,27 @@
     rctx.closePath();
     rctx.clip();
 
-    // Draw source image into the georeferenced rectangle
     if (rect.w > 0 && rect.h > 0 && srcCanvas.width && srcCanvas.height) {
       rctx.drawImage(srcCanvas, rect.x, rect.y, rect.w, rect.h);
     }
-
     rctx.restore();
 
-    // (3) draw beam line & rings on top (sweep canvas)
+    // Sweep overlay
     sctx.clearRect(0,0,sweepCanvas.width, sweepCanvas.height);
-
-    // Beam line (bright)
     sctx.save();
     sctx.globalCompositeOperation = "source-over";
     sctx.beginPath();
     sctx.moveTo(cx, cy);
     sctx.lineTo(ex, ey);
     sctx.lineWidth = Math.max(1, beamPx);
-    sctx.strokeStyle = "rgba(255, 215, 0, 0.90)"; // yellow sweep
+    sctx.strokeStyle = "rgba(255, 215, 0, 0.90)";
     sctx.stroke();
 
-    // Small "hit" sparkle at leading edge (subtle)
     sctx.beginPath();
     sctx.arc(cx + Math.cos(theta)*220, cy + Math.sin(theta)*220, 10, 0, Math.PI*2);
-    sctx.fillStyle = "rgba(255, 236, 148, 0.45)"; // warm yellow sparkle
+    sctx.fillStyle = "rgba(255, 236, 148, 0.45)";
     sctx.fill();
 
-    // Range rings (simple)
     sctx.strokeStyle = "rgba(0,0,0,0.10)";
     sctx.lineWidth = 1;
     for (let r=150; r<=600; r+=150) {
@@ -342,7 +365,6 @@
       sctx.arc(cx, cy, r, 0, Math.PI*2);
       sctx.stroke();
     }
-
     sctx.restore();
   }
 
@@ -358,29 +380,30 @@
       const dTheta = angVel * dt;
       swept += dTheta;
       angle = angle + dTheta;
-      // When we complete one full revolution, optionally advance to the next archived frame.
+
       if (swept >= Math.PI * 2) {
-        angle = Math.PI * 2; // end position (same direction as 0)
+        angle = Math.PI * 2;
         paused = true;
         document.getElementById("pause").textContent = "Play";
-        // Prevent rapid restarts: wait a moment, then advance frame and start a fresh revolution.
-        if (!pendingAdvance && frames.length > 1) {
+
+        if (!pendingAdvance && frameUrls.length > 1) {
           pendingAdvance = true;
           setTimeout(() => {
-            loadFrame((frameIndex + 1) % frames.length).catch(err => console.warn(err)).finally(() => {
-              pendingAdvance = false;
-              // Start a fresh revolution on the new frame (do not auto-clear unless you want)
-              resetSweep(true, true);
-            });
+            loadFrame((frameIndex + 1) % frameUrls.length)
+              .catch(err => console.warn(err))
+              .finally(() => {
+                pendingAdvance = false;
+                resetSweep(true, true);
+              });
           }, DWELL_MS);
         }
       }
       angle = angle % (Math.PI * 2);
     }
+
     const rect = overlayRect();
     const p = map.latLngToContainerPoint(radarLatLng);
     const beamPx = Number(beamPxEl.value);
-
     paintBeam(rect, p.x, p.y, angle, beamPx);
 
     requestAnimationFrame(tick);
@@ -388,5 +411,6 @@
   requestAnimationFrame(tick);
 })();
 </script>
+
 </body>
 </html>
