@@ -1,384 +1,395 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
   <meta charset="utf-8" />
-  <title>Weather Discovery Lab – Engine</title>
+  <title>KFSD Radar Sweep Painter • Apr 14, 2018</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="./leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    html, body { height: 100%; margin: 0; }
-    #app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-    #banner { padding: 10px 14px; background: #0b2237; color: white; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
-    #banner h1 { margin:0; font-size: 18px; letter-spacing: .5px;}
-    #banner .sub { font-size: 13px; opacity: .95; }
-    #controls { display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap;}
-    #controls button { cursor:pointer; border:0; border-radius: 8px; padding: 8px 10px; }
-    #timeLabel { font-weight: 600; }
-    #map { height: 100%; }
-    #timeBar { display:flex; align-items:center; gap:10px; padding: 8px 12px; background:#f3f5f7; border-top:1px solid #dde3ea;}
-    #timeSlider { width: min(680px, 60vw); }
+    html, body, #map { height: 100%; margin: 0; }
+    #map { background: #d9d9d9; }
+
+    .stamp {
+      position: absolute; z-index: 1000; left: 12px; bottom: 12px;
+      font: 14px/1.2 Arial, sans-serif;
+      background: rgba(255,255,255,0.88);
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+      max-width: 380px;
+    }
+    .stamp b { display:block; margin-bottom: 4px; }
+    .stamp small { opacity: 0.85; }
+
+    .panel {
+      position: absolute;
+      top: 12px; left: 12px;
+      z-index: 1200;
+      background: rgba(0,0,0,0.70);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size: 13px;
+      width: 280px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; }
+    .row label { flex: 1; }
+    .row input[type="range"] { flex: 1.2; }
+    .row output { width: 54px; text-align:right; opacity:0.9; }
+    .btnrow { display:flex; gap:8px; margin-top: 10px; }
+    button {
+      flex: 1;
+      cursor: pointer;
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+    button:hover { background: rgba(255,255,255,0.18); }
+
+    /* Ensure canvases overlay the map and do not steal clicks */
+    canvas.radarCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+    }
   </style>
-  <script src="./leaflet.js"></script>
 </head>
 <body>
-<div id="app">
-  <div id="banner">
-    <div>
-      <h1 id="titleTop">Loading lesson…</h1>
-      <div class="sub" id="drivingQuestion"></div>
-    </div>
-    <div id="controls">
-      <span id="productLabel"></span>
-      <span id="timeLabel"></span>
-    </div>
+<div id="map"></div>
+
+<div class="panel">
+  <div style="font-weight: 700; font-size: 14px;">Radar “paints” returns as it spins</div>
+
+  <div class="row">
+    <label for="rpm">Spin speed</label>
+    <input id="rpm" type="range" min="1" max="30" value="6" step="1">
+    <output id="rpmOut">6 rpm</output>
   </div>
-  <div style="display:grid; grid-template-rows: 1fr auto;">
-    <div id="map"></div>
-    <div id="timeBar">
-      <button id="prevBtn">◀</button>
-      <input id="timeSlider" type="range" min="0" max="0" value="0" step="1" />
-      <button id="nextBtn">▶</button>
-      <span style="margin-left:auto; font-size:12px; opacity:.8;">Tip: open DevTools → Network to see exact 404 paths.</span>
-    </div>
+
+  <div class="row">
+    <label for="beamPx">Beam thickness</label>
+    <input id="beamPx" type="range" min="1" max="18" value="4" step="1">
+    <output id="beamPxOut">4 px</output>
+  </div>
+
+  <div class="row">
+    <label for="persist">Persistence</label>
+    <input id="persist" type="range" min="0" max="100" value="88" step="1">
+    <output id="persistOut">88</output>
+  </div>
+
+  <div class="row">
+    <label for="teach">Teaching slow-mode</label>
+    <input id="teach" type="checkbox" checked>
+  </div>
+
+  <div class="btnrow">
+    <button id="resetSweep">Reset sweep</button>
+    <button id="pause">Pause</button>
+  </div>
+
+  <div style="margin-top:8px; font-size:12px; opacity:0.85; line-height:1.35;">
+    This “beam” is a thin line (not a wedge). It reveals the archived radar image only where the beam has scanned.
   </div>
 </div>
 
-<script type="module">
-  import { getLessonIdFromURL, loadLessonConfig, formatZToLocal, buildUrlFromPattern } from "./js/lessonLoader.js";
+<div class="stamp">
+  <b>KFSD Reflectivity (NWS colors)</b>
+  <div>Apr 14, 2018 • archived frames</div>
+  <div id="time" style="opacity:0.85"></div>
+  <small>Tip: click map to move the “radar site” if you want.</small>
+</div>
 
-  const DATA_PACK_BASE = "https://thekarstens.github.io/wdl-data-derecho-2022/";
-  const lessonId = getLessonIdFromURL("derecho-2022");
+<script>
+(async function () {
+  // Load your existing manifest.json (same as your original index)
+  const m = await (await fetch('./manifest.json', { cache: "no-store" })).json();
 
-  const titleEl = document.getElementById("titleTop");
-  const dqEl = document.getElementById("drivingQuestion");
-  const productEl = document.getElementById("productLabel");
-  const timeEl = document.getElementById("timeLabel");
+  const boundsArr = m.leaflet_bounds;     // expected: [[south, west],[north, east]]
+  const center = m.radar_latlon;         // [lat, lon]
+  const VERSION = "sweep1";              // bump to break cache if needed
 
-  const slider = document.getElementById("timeSlider");
-  const prevBtn = document.getElementById("prevBtn");
-  const nextBtn = document.getElementById("nextBtn");
+  const frames = (m.frames || []).map(f => {
+    const name = (typeof f === 'string') ? f : (f.file || f.png || f.filename || f.name);
+    return (name || '') + "?v=" + VERSION;
+  });
+  const utcList = (m.frames || []).map(f => (typeof f === 'string') ? null : (f.utc || f.t || null));
 
-  let CFG, map, radarOverlay, metarsLayer;
-  let overlays = {};
-  let radarFrames = null; // optional {timeZ, file/url}
-  let timeSteps = []; // Date objects in UTC
+  const map = L.map('map', { attributionControl:true }).setView(center, 8);
 
-    function buildTimeSteps() {
-    // If we have an explicit radar frame manifest, drive the slider from that (exact timestamps).
-    if (CFG?.layers?.radar?.frames && Array.isArray(CFG?.layers?.radar.frames) && CFG?.layers?.radar.frames.length) {
-      return CFG?.layers?.radar.frames.map(f => new Date(f.timeZ));
-    }
+  // Light gray “TV” basemap (CARTO Positron)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+  }).addTo(map);
 
-    const start = new Date(CFG?.time.startZ);
-    const end = new Date(CFG?.time.endZ);
+  const bounds = L.latLngBounds(boundsArr);
+  map.fitBounds(bounds);
 
-    // Prefer minute stepping (derecho / radar loops), fall back to hours
-    const stepMin = Number(CFG?.time.stepMinutes || 0);
-    const stepH = Number(CFG?.time.stepHours || 1);
+  // Lock the map to the radar mosaic area (prevents panning away)
+  map.setMaxBounds(bounds.pad(0.25));
+  map.options.maxBoundsViscosity = 1.0;
 
-    const stepMs = stepMin > 0 ? stepMin * 60 * 1000 : stepH * 3600 * 1000;
 
-    const steps = [];
-    for (let d = new Date(start); d <= end; d = new Date(d.getTime() + stepMs)) {
-      steps.push(new Date(d));
-    }
-    return steps;
+  // --- Radar site marker (defaults to manifest radar_latlon, Sioux Falls area)
+  let radarLatLng = L.latLng(center[0], center[1]);
+  const marker = L.circleMarker(radarLatLng, { radius: 6, color: '#ffd84d', fillColor: '#ffd84d', fillOpacity: 1 }).addTo(map);
+  // (disabled) click-to-move radar site marker removed to keep KFsD anchored
+    // reset sweep so kids see the painting start from the new radar site
+    resetSweep(true, true);
+  });
+
+  // --- Canvases on a dedicated pane
+  const paneName = "radarPaintPane";
+  map.createPane(paneName);
+  map.getPane(paneName).style.zIndex = 650;
+
+  function makeCanvas() {
+    const c = document.createElement('canvas');
+    c.className = "radarCanvas";
+    map.getPane(paneName).appendChild(c);
+    return c;
+  }
+  const returnsCanvas = makeCanvas();
+  const sweepCanvas = makeCanvas();
+  const rctx = returnsCanvas.getContext('2d');
+  const sctx = sweepCanvas.getContext('2d');
+
+  function sizeCanvases() {
+    const size = map.getSize();
+    [returnsCanvas, sweepCanvas].forEach(c => {
+      c.width = size.x;
+      c.height = size.y;
+      c.style.width = size.x + "px";
+      c.style.height = size.y + "px";
+    });
+  }
+  sizeCanvases();
+  map.on('resize', sizeCanvases);
+
+  // --- UI
+  const rpmEl = document.getElementById("rpm");
+  const beamPxEl = document.getElementById("beamPx");
+  const persistEl = document.getElementById("persist");
+  const teachEl = document.getElementById("teach");
+  const rpmOut = document.getElementById("rpmOut");
+  const beamPxOut = document.getElementById("beamPxOut");
+  const persistOut = document.getElementById("persistOut");
+
+  function syncUI() {
+    rpmOut.textContent = rpmEl.value + " rpm";
+    beamPxOut.textContent = beamPxEl.value + " px";
+    persistOut.textContent = persistEl.value;
+  }
+  ["input","change"].forEach(evt => {
+    rpmEl.addEventListener(evt, syncUI);
+    beamPxEl.addEventListener(evt, syncUI);
+    persistEl.addEventListener(evt, syncUI);
+    teachEl.addEventListener(evt, syncUI);
+  });
+  syncUI();
+
+  const timeEl = document.getElementById("time");
+  const fmt = (u) => u ? u.replace("T"," ").replace("+00:00"," UTC") : "";
+
+  // --- Frame loading
+  let frameIndex = 0;
+  let sourceImg = new Image();
+  sourceImg.decoding = "async";
+  sourceImg.loading = "eager";
+  sourceImg.crossOrigin = "anonymous"; // safe if you ever host from elsewhere
+
+  // offscreen canvas holds the current radar frame (for fast drawImage)
+  const srcCanvas = document.createElement("canvas");
+  const srcCtx = srcCanvas.getContext("2d");
+
+  async function loadFrame(i) {
+    frameIndex = i;
+    const url = frames[frameIndex];
+    timeEl.textContent = fmt(utcList[frameIndex]) || url;
+
+    await new Promise((resolve, reject) => {
+      sourceImg.onload = () => resolve();
+      sourceImg.onerror = (e) => reject(new Error("Failed to load frame: " + url));
+      sourceImg.src = url;
+    });
+
+    // draw into offscreen buffer
+    srcCanvas.width = sourceImg.naturalWidth || sourceImg.width;
+    srcCanvas.height = sourceImg.naturalHeight || sourceImg.height;
+    srcCtx.clearRect(0,0,srcCanvas.width, srcCanvas.height);
+    srcCtx.drawImage(sourceImg, 0, 0);
+
+    resetSweep(true, true);
   }
 
-  async function safeFetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) return null;
-    return await r.json();
+  // --- Convert Leaflet bounds to on-screen rectangle
+  function overlayRect() {
+    const nw = bounds.getNorthWest();
+    const se = bounds.getSouthEast();
+    const pNW = map.latLngToContainerPoint(nw);
+    const pSE = map.latLngToContainerPoint(se);
+    const x = pNW.x, y = pNW.y;
+    const w = (pSE.x - pNW.x), h = (pSE.y - pNW.y);
+    return { x, y, w, h };
   }
 
-  // Sweep-reveal helper for radar: draws a wedge and fades in the first frame.
-  // This is a lightweight "radar sweep" illusion (not a true sector mask of the image),
-  // but it communicates the scanning concept and looks good in-class.
-  async function sweepRevealFirstRadarFrame(map, radarOverlay, opts) {
-    try {
-      const center = opts.center;
-      const durationMs = opts.durationMs ?? 1800;
-      const beamWidthDeg = opts.beamWidthDeg ?? 14;
-      const radiusPx = opts.radiusPx ?? 900;
-      const finalOpacity = opts.finalOpacity ?? 0.7;
-
-      radarOverlay.setOpacity(0);
-
-      let angle = 0;
-      const t0 = performance.now();
-
-      const wedge = L.polygon([center, center, center], {
-        stroke: false,
-        fill: true,
-        fillColor: "#ff0",
-        fillOpacity: 0.25,
-        interactive: false
-      }).addTo(map);
-
-      const updateWedge = (deg) => {
-        const a1 = (deg - beamWidthDeg / 2) * Math.PI / 180;
-        const a2 = (deg + beamWidthDeg / 2) * Math.PI / 180;
-        const c = map.latLngToLayerPoint(center);
-        const p1 = L.point(c.x + radiusPx * Math.cos(a1), c.y + radiusPx * Math.sin(a1));
-        const p2 = L.point(c.x + radiusPx * Math.cos(a2), c.y + radiusPx * Math.sin(a2));
-        wedge.setLatLngs([center, map.layerPointToLatLng(p1), map.layerPointToLatLng(p2)]);
-      };
-
-      const onMove = () => updateWedge(angle);
-      map.on("zoom move", onMove);
-
-      return await new Promise((resolve) => {
-        const tick = (now) => {
-          const t = Math.min(1, (now - t0) / durationMs);
-          angle = 360 * t;
-          updateWedge(angle);
-          radarOverlay.setOpacity(finalOpacity * t);
-          if (t < 1) {
-            requestAnimationFrame(tick);
-          } else {
-            map.off("zoom move", onMove);
-            try { map.removeLayer(wedge); } catch (e) {}
-            radarOverlay.setOpacity(finalOpacity);
-            resolve(true);
-          }
-        };
-        requestAnimationFrame(tick);
-      });
-    } catch (e) {
-      console.warn("[radar] sweepRevealFirstRadarFrame failed; continuing without sweep.", e);
-      try { radarOverlay.setOpacity(opts.finalOpacity ?? 0.7); } catch (e2) {}
-      return false;
+  // --- Sweep state
+  let angle = 0; // radians, 0 = east
+  let swept = 0; // total radians swept since reset
+  const DWELL_MS = 600; // pause briefly after a full scan
+  let pendingAdvance = false;
+  let lastTs = performance.now();
+  let paused = false;
+  function resetSweep(clearReturns, resume = true) {
+    angle = 0;
+    swept = 0;
+    if (resume) {
+      paused = false;
+      document.getElementById("pause").textContent = "Pause";
     }
+    if (clearReturns) rctx.clearRect(0,0,returnsCanvas.width, returnsCanvas.height);
+  }
+  document.getElementById("resetSweep").addEventListener("click", () => resetSweep(true));
+  document.getElementById("pause").addEventListener("click", () => {
+    paused = !paused;
+    document.getElementById("pause").textContent = paused ? "Play" : "Pause";
+  });
+  // Frame advancement is tied to completing one full revolution (see tick()).
+
+  // Initial load
+  if (frames.length) {
+    try { await loadFrame(0); } catch (e) { console.warn(e); }
   }
 
-  function parseRadarBounds(obj) {
-    // Accept either:
-    // 1) { southwest:{lat,lon}, northeast:{lat,lon} }
-    // 2) [[swLat, swLon],[neLat, neLon]]  (Leaflet LatLngBounds literal)
-    if (!obj) return null;
-    try {
-      if (Array.isArray(obj) && obj.length === 2 && Array.isArray(obj[0]) && Array.isArray(obj[1])) {
-        const sw = { lat: Number(obj[0][0]), lon: Number(obj[0][1]) };
-        const ne = { lat: Number(obj[1][0]), lon: Number(obj[1][1]) };
-        if ([sw.lat, sw.lon, ne.lat, ne.lon].every((v) => Number.isFinite(v))) {
-          return { southwest: sw, northeast: ne };
-        }
-      }
-      if (obj.southwest && obj.northeast) {
-        const sw = { lat: Number(obj.southwest.lat), lon: Number(obj.southwest.lon) };
-        const ne = { lat: Number(obj.northeast.lat), lon: Number(obj.northeast.lon) };
-        if ([sw.lat, sw.lon, ne.lat, ne.lon].every((v) => Number.isFinite(v))) {
-          return { southwest: sw, northeast: ne };
-        }
-      }
-    } catch (e) {}
-    return null;
-  }
-  async function init() {
-    
-    let baseLayers = {};
-    let overlayLayers = {};
-try {
-      CFG = await loadLessonConfig({ dataPackBase: DATA_PACK_BASE, lessonId });
-      if (!CFG || typeof CFG !== "object") { throw new Error("Lesson config missing or invalid"); }
-      console.log("Loaded lesson config:", CFG);
-    } catch (e) {
-      console.error(e);
-      titleEl.textContent = "Failed to load lesson.json";
-      dqEl.textContent = String(e);
-      return;
+  // Redraw on move/zoom so alignment stays perfect
+  map.on("move zoom", () => {
+    // keep what has been painted so far, just let it move with the map
+    // easiest approach: clear and restart the sweep on map changes
+    resetSweep(true, true);
+  });
+
+  function paintBeam(rect, cx, cy, theta, beamPx) {
+    // Thin "beam" polygon (a long skinny rectangle)
+    const maxRange = Math.max(returnsCanvas.width, returnsCanvas.height) * 1.4;
+    const ex = cx + Math.cos(theta) * maxRange;
+    const ey = cy + Math.sin(theta) * maxRange;
+
+    const half = beamPx / 2;
+    const px = -Math.sin(theta) * half;
+    const py =  Math.cos(theta) * half;
+
+    const p1x = cx + px, p1y = cy + py;
+    const p2x = ex + px, p2y = ey + py;
+    const p3x = ex - px, p3y = ey - py;
+    const p4x = cx - px, p4y = cy - py;
+
+    // (1) gently fade old returns (persistence)
+    const persist = Number(persistEl.value); // 0..100
+    const fadeAlpha = (100 - persist) / 100; // 0..1
+    if (fadeAlpha > 0) {
+      rctx.save();
+      rctx.globalCompositeOperation = "source-over";
+      rctx.fillStyle = `rgba(255,255,255,${fadeAlpha * 0.06})`; // fade toward white to match your image bg
+      rctx.fillRect(0, 0, returnsCanvas.width, returnsCanvas.height);
+      rctx.restore();
     }
 
-    titleEl.textContent = CFG?.titleTop || CFG?.id || lessonId;
-    dqEl.textContent = CFG?.drivingQuestion || "";
-    productEl.textContent = CFG?.productLabel ? String(CFG.productLabel).toUpperCase() : "";
+    // (2) clip to beam polygon and paint source image *only within* the beam
+    rctx.save();
+    rctx.beginPath();
+    rctx.moveTo(p1x, p1y);
+    rctx.lineTo(p2x, p2y);
+    rctx.lineTo(p3x, p3y);
+    rctx.lineTo(p4x, p4y);
+    rctx.closePath();
+    rctx.clip();
 
+    // Draw source image into the georeferenced rectangle
+    if (rect.w > 0 && rect.h > 0 && srcCanvas.width && srcCanvas.height) {
+      rctx.drawImage(srcCanvas, rect.x, rect.y, rect.w, rect.h);
+    }
 
-      // Resolve lessonBase (where data files live). Prefer CFG.database from lesson.json.
-      const lessonBase = (CFG?.database || CFG?.dataBase || "").toString().replace(/\/?$/, "/");
-      if (!lessonBase) {
-        console.warn("[config] No database/dataBase set in lesson.json; radar/SPC paths may fail.");
-      }
+    rctx.restore();
 
-    // Map
-    map = L.map("map", { zoomControl: true }).setView(
-      [CFG?.map?.initialView?.lat ?? 43.55, CFG?.map?.initialView?.lon ?? -96.73],
-      CFG?.map?.initialView?.zoom ?? 6
-    );
+    // (3) draw beam line & rings on top (sweep canvas)
+    sctx.clearRect(0,0,sweepCanvas.width, sweepCanvas.height);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: "© OpenStreetMap"
-    }).addTo(map);
+    // Beam line (bright)
+    sctx.save();
+    sctx.globalCompositeOperation = "source-over";
+    sctx.beginPath();
+    sctx.moveTo(cx, cy);
+    sctx.lineTo(ex, ey);
+    sctx.lineWidth = Math.max(1, beamPx);
+    sctx.strokeStyle = "rgba(255, 215, 0, 0.90)"; // yellow sweep
+    sctx.stroke();
 
-    // Time
-    timeSteps = buildTimeSteps();
-    slider.min = 0;
-    slider.max = Math.max(0, timeSteps.length - 1);
-    slider.value = 0;
+    // Small "hit" sparkle at leading edge (subtle)
+    sctx.beginPath();
+    sctx.arc(cx + Math.cos(theta)*220, cy + Math.sin(theta)*220, 10, 0, Math.PI*2);
+    sctx.fillStyle = "rgba(255, 236, 148, 0.45)"; // warm yellow sparkle
+    sctx.fill();
 
-    // Layers control
-    baseLayers = {};
-    overlayLayers = {};
+    // Range rings (simple)
+    sctx.strokeStyle = "rgba(0,0,0,0.10)";
+    sctx.lineWidth = 1;
+    for (let r=150; r<=600; r+=150) {
+      sctx.beginPath();
+      sctx.arc(cx, cy, r, 0, Math.PI*2);
+      sctx.stroke();
+    }
 
-    // Radar (image sequence)
-    let radarOverlay = null;
-    if (CFG?.layers?.radar?.framesFile) {
-      // Prefer manifest-driven frames (frames.json) so filenames don't need to be computed.
-      try {
-        const radarCfg = CFG.layers.radar;
-        const framesUrl = lessonBase + radarCfg.framesFile.replace(/^\//, "");
-        console.log("[radar] framesUrl:", framesUrl);
+    sctx.restore();
+  }
 
-        const mf = await safeFetchJson(framesUrl);
-        if (mf && Array.isArray(mf.frames) && mf.frames.length) {
-          // Normalize to { timeZ, file, __url }
-          const framesList = mf.frames
-            .filter(f => f && (f.timeZ || f.t) && (f.file || f.f))
-            .map(f => {
-              const timeZ = f.timeZ || f.t;
-              const file = f.file || f.f;
-              return {
-                timeZ,
-                file,
-                __url: lessonBase + "radar/" + String(file).replace(/^\//, "")
-              };
+  function tick() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastTs) / 1000);
+    lastTs = now;
+
+    if (!paused) {
+      const rpm = Number(rpmEl.value);
+      const speedFactor = teachEl.checked ? 0.35 : 1.0;
+      const angVel = (rpm * 2 * Math.PI / 60) * speedFactor;
+      const dTheta = angVel * dt;
+      swept += dTheta;
+      angle = angle + dTheta;
+      // When we complete one full revolution, optionally advance to the next archived frame.
+      if (swept >= Math.PI * 2) {
+        angle = Math.PI * 2; // end position (same direction as 0)
+        paused = true;
+        document.getElementById("pause").textContent = "Play";
+        // Prevent rapid restarts: wait a moment, then advance frame and start a fresh revolution.
+        if (!pendingAdvance && frames.length > 1) {
+          pendingAdvance = true;
+          setTimeout(() => {
+            loadFrame((frameIndex + 1) % frames.length).catch(err => console.warn(err)).finally(() => {
+              pendingAdvance = false;
+              // Start a fresh revolution on the new frame (do not auto-clear unless you want)
+              resetSweep(true, true);
             });
-
-          radarFrames = framesList;
-
-          // Store for clock/slider
-          CFG.layers.radar._frames = framesList;
-          radarCfg.frames = framesList.map(f => ({ timeZ: f.timeZ, file: f.file }));
-
-          // Bounds: default to Sioux Falls-ish domain; override via radar_bounds.json if present.
-          // Priority:
-          //  1) frames manifest can carry bounds (recommended) as:
-          //       { leaflet_bounds: { southwest:{lat,lon}, northeast:{lat,lon} } }
-          //  2) explicit radarCfg.boundsFile (legacy) containing the same shape
-          //  3) fallback default
-          let bounds = L.latLngBounds([[42.0, -99.5], [46.0, -92.0]]);
-
-          const mfBounds = (mf && mf.leaflet_bounds) ? mf.leaflet_bounds : null;
-          const applyBoundsObj = (b) => {
-            const parsed = parseRadarBounds(b);
-            if (parsed) {
-              bounds = L.latLngBounds([[parsed.southwest.lat, parsed.southwest.lon],[parsed.northeast.lat, parsed.northeast.lon]]);
-              return true;
-            }
-            return false;
-          };
-
-          if (mfBounds && applyBoundsObj(mfBounds)) {
-            console.log("[radar] using bounds from frames manifest (leaflet_bounds)");
-          } else if (radarCfg.boundsFile) {
-            const boundsUrl = lessonBase + radarCfg.boundsFile.replace(/^\//, "");
-            console.log("[radar] boundsUrl:", boundsUrl);
-            const b = await safeFetchJson(boundsUrl);
-            if (!applyBoundsObj(b)) {
-              console.warn("[radar] boundsFile present but invalid JSON shape. Using default bounds.");
-            }
-          }
-
-          // Build overlay
-      // and add first frame immediately
-          const first = framesList[0];
-          if (first && first.__url) {
-            const targetOpacity = (radarCfg.opacity ?? 0.7);
-
-            // Start with 0 opacity; we will "sweep-reveal" the first frame, then
-            // hand off to the normal animation/loop.
-            radarOverlay = L.imageOverlay(first.__url, bounds, { opacity: 0, interactive: false });
-            radarOverlay.addTo(map);
-            overlayLayers[radarCfg.label || "Radar"] = radarOverlay;
-
-            // Optionally lock the map view to the radar domain
-            if (radarCfg.lockView === true) {
-              map.fitBounds(bounds);
-              map.setMaxBounds(bounds.pad(0.2));
-            }
-
-            // Sweep-reveal effect for the first frame.
-            // This draws a rotating wedge centered near Sioux Falls while we fade in the first image.
-            // If you want a different center, set radarCfg.sweepCenter = { lat: ..., lon: ... } in lesson.json.
-            await sweepRevealFirstRadarFrame(map, radarOverlay, {
-              center: radarCfg.sweepCenter ? L.latLng(radarCfg.sweepCenter.lat, radarCfg.sweepCenter.lon) : L.latLng(43.5446, -96.7311),
-              durationMs: radarCfg.sweepDurationMs ?? 1800,
-              beamWidthDeg: radarCfg.sweepBeamWidthDeg ?? 14,
-              radiusPx: radarCfg.sweepRadiusPx ?? 900,
-              finalOpacity: targetOpacity
-            });
-          } else {
-            console.warn("[radar] frames manifest loaded but first frame missing.");
-          }
-        } else {
-          console.warn("[radar] frames.json loaded but has no frames array.");
+          }, DWELL_MS);
         }
-      } catch (e) {
-        console.warn("[radar] failed to initialize radar overlay:", e);
       }
+      angle = angle % (Math.PI * 2);
     }
+    const rect = overlayRect();
+    const p = map.latLngToContainerPoint(radarLatLng);
+    const beamPx = Number(beamPxEl.value);
 
-    // METARs (snapshot GeoJSON)
-    if (CFG?.layers?.metars?.type === "snapshotGeoJSON") {
-      metarsLayer = L.geoJSON(null, {
-        pointToLayer: (feat, latlng) => L.circleMarker(latlng, { radius: 3 }),
-      });
-      overlayLayers["METARs"] = metarsLayer;
-      metarsLayer.addTo(map);
-    }
+    paintBeam(rect, p.x, p.y, angle, beamPx);
 
-    // Generic overlays
-    if (Array.isArray(CFG?.layers?.overlays)) {
-      for (const o of CFG?.layers?.overlays) {
-        if (!o?.url || !o?.name) continue;
-        const full = lessonBase + o.url;
-        const gj = await safeFetchJson(full);
-        if (!gj) { console.warn("Overlay not found:", full); continue; }
-        overlays[o.name] = L.geoJSON(gj);
-        overlayLayers[o.name] = overlays[o.name];
-      }
-    }
-
-    L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
-
-    // Wire time controls
-    const applyTimeIndex = async (idx) => {
-      const dt = timeSteps[idx];
-      timeEl.textContent = formatZToLocal(dt.toISOString(), CFG?.time.displayTimezone);
-
-      // radar
-      if (radarOverlay) {
-        let url = null;
-        const rf = CFG?.layers?.radar?._frames || null;
-        if (rf && rf[idx] && rf[idx].__url) {
-          url = rf[idx].__url;
-        } else if (CFG?.layers?.radar?.framePattern) {
-          url = lessonBase + buildUrlFromPattern(CFG?.layers?.radar.framePattern, dt);
-        }
-        if (url) radarOverlay.setUrl(url);
-      }
-
-      // metars
-      if (metarsLayer && CFG?.layers?.metars?.snapshotPattern) {
-        const rel = buildUrlFromPattern(CFG?.layers?.metars.snapshotPattern, dt);
-        const url = lessonBase + rel;
-        const gj = await safeFetchJson(url);
-        metarsLayer.clearLayers();
-        if (gj) metarsLayer.addData(gj);
-      }
-    };
-
-    slider.addEventListener("input", ()=> applyTimeIndex(Number(slider.value)));
-    prevBtn.addEventListener("click", ()=> { slider.value = Math.max(0, Number(slider.value)-1); slider.dispatchEvent(new Event("input")); });
-    nextBtn.addEventListener("click", ()=> { slider.value = Math.min(Number(slider.max), Number(slider.value)+1); slider.dispatchEvent(new Event("input")); });
-
-    // initial time
-    await applyTimeIndex(0);
-
-}
-
-  init();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
 </script>
 </body>
 </html>
