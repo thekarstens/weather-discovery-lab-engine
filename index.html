@@ -57,9 +57,119 @@
       top: 0; left: 0;
       pointer-events: none;
     }
-  </style>
+  
+
+/* --- Imported banner/layout from index35 --- */
+  /* Top TV-style banner */
+  .tvbanner{
+  /* Leaflet layer control nudge down below banner */
+.tvbanner{height:76px;padding:10px 14px;pointer-events:auto;}
+.banner-inner{height:100%;display:flex;align-items:center;gap:16px;}
+.banner-title{font-size:34px;font-weight:900;letter-spacing:1px;white-space:nowrap;text-transform:uppercase;}
+.banner-controls{display:flex;align-items:center;gap:10px;margin-left:10px;}
+  /* Open Lesson button inside banner */
+.banner-btn{
+.banner-btn .bb-ico{ font-size: 16px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+.banner-btn .bb-text{ font-size: 14px; }
+.banner-btn::before{
+.banner-btn::after{
+.banner-btn:hover::after{ opacity:0.75; }
+.banner-btn:active{ transform: translateY(1px); }
+.banner-btn-gold{
+.banner-btn-blue{
+.banner-actions{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .leaflet-top.leaflet-right { margin-top: 140px; }   /* push layer toggles below banner */
+  /* Simplify banner footprint */
+  .banner-divider{ display:none; }
+  .banner-bottomline{ padding-top:6px !important; padding-bottom:6px !important; }
+.tvbanner{height:auto; padding:10px 14px; pointer-events:auto;}
+.banner-inner{display:flex; align-items:center; gap:14px;}
+.banner-left{display:flex; align-items:center; gap:12px; min-width:340px;}
+.banner-mid{display:flex; align-items:center; gap:10px;}
+.banner-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+.banner-product{display:flex;align-items:center;justify-content:center;min-width:240px}
+.banner-left{display:flex;flex-direction:column;gap:2px;min-width:420px;max-width:44vw}
+.banner-mid-stack{gap:10px}
+.banner-product{margin:0 6px}
+.banner-inner{align-items:flex-start}
+/* --- Restore "like before" banner geometry --- */
+.banner-inner{position:relative; align-items:center !important;}
+/* --- Two-line banner layout --- */
+.tvbanner{
+.banner-topline{
+.banner-bottomline{
+.banner-product{min-width:200px;display:flex;justify-content:center}
+.tvbanner{ position:absolute; }
+.tvbanner::before{
+.tvbanner{position:absolute; top:0; left:0; right:0; z-index:99999; }
+.banner-topline{
+.banner-topline .topline-center{
+.banner-topline .bbtn-story{
+.banner-bottomline{padding:6px 14px 12px 14px;}
+/* Pin START button in top-right of the top banner line */
+.banner-topline{position:relative !important;}
+.banner-topline > .bbtn-story{
+.banner-divider{
+.banner-topline{
+.banner-topline .bbtn-story{
+/* --- FINAL banner alignment fixes --- */
+.banner-topline{
+.banner-topline .topline-center{
+.banner-topline .bbtn-story{
+.banner-bottomline{
+.banner-product{
+.banner-topline{position:relative !important;}
+.banner-topline #beginStoryBtn{
+/* Slightly tighter banner height (small) */
+.banner-topline{padding-top:6px !important; padding-bottom:5px !important;}
+.banner-bottomline{padding-top:3px !important; padding-bottom:7px !important;}
+/* --- Slight banner shrink (top text + controls) --- */
+.banner-topline{padding-top:7px !important; padding-bottom:4px !important;}
+.banner-bottomline{padding-top:2px !important; padding-bottom:6px !important;}
+  top:92px;             /* below your banner */
+/* --- Brand logo in top-right of banner (no white box) --- */
+.banner-topline .topline-center{ padding-right: 170px !important; }
+/* True-center the top two banner lines regardless of logo/buttons */
+.banner-topline{ justify-content:center !important; }
+.banner-topline .topline-center{
+/* === Tighten banner vertical spacing === */
+.banner-topline{ padding-top:6px !important; padding-bottom:2px !important; }
+.tvbanner{
+/* ===== Premium banner finish + new layout tweaks (v8) ===== */
+.tvbanner::after{
+/* Legend under product label (inside banner) */
+.banner-legend-under{
+.banner-legend-under .leg-mini-bar{ width:150px; height:10px; border-radius:7px; }
+/* Hide old map legend widget (we moved it to the banner) */
+/* Hide the time label inside the banner row (clock lives in the bubble now) */
+#bannerTimeLabel{ display:none !important; }
+/* Tighten bottomline spacing a hair now that legend moved into banner */
+.banner-bottomline{ padding-top:4px !important; padding-bottom:10px !important; }
+/* ===== Premium banner background (opaque + subtle weather texture) ===== */
+.tvbanner{
+/* Ensure any previous banner overlay remains subtle but NOT see-through */
+.tvbanner::before{
+/* Clock bubble default a bit lower; JS will keep it below banner */
+html, body { height:100%; margin:0; }
+body { height:100%; margin:0; }
+#map { height:100%; background:#fff; }
+
+
+/* Ensure map sits below banner */
+#map { position: absolute; left: 0; right: 0; bottom: 0; top: 70px; }
+#banner { position: absolute; left:0; right:0; top:0; height:70px; z-index: 1000; }
+</style>
 </head>
 <body>
+
+<div class="tvbanner" id="banner">
+<div class="banner-topline" role="banner">
+<div class="topline-center">
+<span class="top-lesson">Lesson 1: Driving Question</span>
+<span class="top-sep">—</span>
+<span class="top-question"><span class="top-q-label">Question:</span> How can we use real-time weather data to make safer decisions?</span>
+</div>
+
 <div id="map"></div>
 
 <div class="panel">
@@ -113,7 +223,16 @@ import { getLessonIdFromURL, loadLessonConfig, resolveAssetUrl, formatZToLocal, 
   const lessonId = getLessonIdFromURL("derecho-2022");
   const cfg = await loadLessonConfig({ lessonId });
 
-  // Use lesson metadata if present
+  
+// --- Banner text wiring (from index35 banner) ---
+try {
+  const elLesson = document.querySelector('.top-lesson');
+  const elQ = document.querySelector('.top-question');
+  if (elLesson && cfg.titleTop) elLesson.textContent = cfg.titleTop;
+  if (elQ && cfg.drivingQuestion) elQ.textContent = cfg.drivingQuestion;
+} catch (e) { console.warn('banner update failed', e); }
+
+// Use lesson metadata if present
   if (cfg?.titleTop) document.title = cfg.titleTop + " • Radar";
 
   const radarLayer = cfg?.layers?.radar || {};
