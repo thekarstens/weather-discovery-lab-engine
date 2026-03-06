@@ -1131,6 +1131,45 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 /* Clock bubble default a bit lower; JS will keep it below banner */
 .clock-bubble{  top: 180px !important; }
 
+
+/* --- Bottom-docked time control + sweep toggle --- */
+#clockBubble{
+  left:50% !important;
+  right:auto !important;
+  top:auto !important;
+  bottom:14px !important;
+  transform:translateX(-50%) !important;
+  width:min(980px, calc(100vw - 34px)) !important;
+  padding:12px 14px !important;
+  border-radius:18px !important;
+  z-index:100004 !important;
+}
+#clockBubble .cb-label{ display:none !important; }
+#clockBubble .cb-row{
+  justify-content:center !important;
+  gap:12px !important;
+  margin-top:0 !important;
+  flex-wrap:wrap;
+}
+#clockBubble .cb-time{
+  margin-top:0 !important;
+  min-width:240px;
+  text-align:center;
+}
+#clockBubble .cb-scrubber{
+  width:100% !important;
+  margin-top:10px !important;
+}
+#sweepToggleBtn{
+  min-width:120px;
+}
+.radar-sweep-canvas{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:360;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -1197,6 +1236,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <button class="cb-btn" id="cbBackBtn" title="Back 3 hours">◀</button>
 <div class="cb-time" id="clockBubbleTime">—</div>
 <button class="cb-btn" id="cbFwdBtn" title="Forward 3 hours">▶</button>
+<button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP ON</button>
 </div>
 <input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
 </div>
@@ -2372,6 +2412,7 @@ function applyActiveOpacity(){
 
   if (key === "radar"){
     if (obsRadarOverlay && obsRadarEnabled) obsRadarOverlay.setOpacity(op);
+    if (radarSweepCanvas) radarSweepCanvas.style.opacity = String(op);
   } else if (key === "snow"){
     if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
   } else if (key === "temp"){
@@ -2553,6 +2594,116 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   // ---------- Layers ----------
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
+  var radarSweepEnabled = true;
+  var radarSweepCanvas = null;
+  var radarSweepCtx = null;
+  var radarSweepImage = null;
+  var radarSweepImageUrl = "";
+  var radarSweepAnim = 0;
+  var radarSweepAngle = 0;
+  var radarSweepLastTs = 0;
+
+  function stopRadarSweep(){
+    if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
+  }
+
+  function ensureRadarSweepCanvas(){
+    if (radarSweepCanvas) return radarSweepCanvas;
+    var pane = map.getPanes().overlayPane;
+    radarSweepCanvas = L.DomUtil.create('canvas', 'radar-sweep-canvas', pane);
+    radarSweepCanvas.width = map.getSize().x;
+    radarSweepCanvas.height = map.getSize().y;
+    radarSweepCtx = radarSweepCanvas.getContext('2d');
+    radarSweepCanvas.style.opacity = String((productOpacity && productOpacity.radar) || 0.7);
+    return radarSweepCanvas;
+  }
+
+  function resizeRadarSweepCanvas(){
+    if (!radarSweepCanvas || !map) return;
+    var s = map.getSize();
+    if (radarSweepCanvas.width !== s.x) radarSweepCanvas.width = s.x;
+    if (radarSweepCanvas.height !== s.y) radarSweepCanvas.height = s.y;
+  }
+
+  function hideRadarSweepCanvas(){
+    if (radarSweepCanvas){
+      stopRadarSweep();
+      radarSweepCanvas.style.display = 'none';
+      if (radarSweepCtx) radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
+    }
+  }
+
+  function getRadarSweepCenterPoint(){
+    try{
+      if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.radar_latlon) && RADAR_MANIFEST.radar_latlon.length === 2){
+        return map.latLngToContainerPoint([RADAR_MANIFEST.radar_latlon[0], RADAR_MANIFEST.radar_latlon[1]]);
+      }
+    }catch(e){}
+    return map.latLngToContainerPoint(RADAR_BOUNDS.getCenter());
+  }
+
+  function startRadarSweep(){
+    if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
+    ensureRadarSweepCanvas();
+    resizeRadarSweepCanvas();
+    radarSweepCanvas.style.display = 'block';
+    stopRadarSweep();
+    radarSweepLastTs = 0;
+
+    function frame(ts){
+      if (!radarSweepEnabled || !radarSweepImage || !obsRadarEnabled || !radarSweepCtx) return;
+      if (!radarSweepLastTs) radarSweepLastTs = ts;
+      var dt = Math.min(50, ts - radarSweepLastTs);
+      radarSweepLastTs = ts;
+      radarSweepAngle += (dt / 1000) * Math.PI * 0.7; // ~1 rotation every ~2.85 s
+
+      resizeRadarSweepCanvas();
+      var ctx = radarSweepCtx;
+      var canvas = radarSweepCanvas;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      var nw = map.latLngToContainerPoint(RADAR_BOUNDS.getNorthWest());
+      var se = map.latLngToContainerPoint(RADAR_BOUNDS.getSouthEast());
+      var x = nw.x;
+      var y = nw.y;
+      var w = se.x - nw.x;
+      var h = se.y - nw.y;
+      var c = getRadarSweepCenterPoint();
+      var radius = Math.max(
+        Math.hypot(c.x - x, c.y - y),
+        Math.hypot(c.x - (x+w), c.y - y),
+        Math.hypot(c.x - x, c.y - (y+h)),
+        Math.hypot(c.x - (x+w), c.y - (y+h))
+      ) + 10;
+      var beamWidth = 0.42;
+      var a0 = radarSweepAngle - beamWidth;
+      var a1 = radarSweepAngle;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.arc(c.x, c.y, radius, a0, a1, false);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(radarSweepImage, x, y, w, h);
+      ctx.restore();
+
+      // bright leading beam
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.lineTo(c.x + Math.cos(a1) * radius, c.y + Math.sin(a1) * radius);
+      ctx.strokeStyle = 'rgba(255, 230, 90, 0.95)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      radarSweepAnim = requestAnimationFrame(frame);
+    }
+
+    radarSweepAnim = requestAnimationFrame(frame);
+  }
+
 
   // GFS Snow Forecast overlay (static PNG swapper)
   var gfsSnowOverlay = null;
@@ -4353,48 +4504,11 @@ if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = fals
     try{
       var bubble = document.getElementById("clockBubble");
       if (!bubble) return;
-
-      var ctrl = document.querySelector(".leaflet-control-layers");
-      if (!ctrl) return;
-
-      var rect = ctrl.getBoundingClientRect();
-
-      // Banner bottom (use actual id in this file)
-      var banner = document.getElementById("banner") || document.querySelector(".tvbanner");
-      var bannerBottom = 0;
-      if (banner){
-        var brect = banner.getBoundingClientRect();
-        bannerBottom = brect.bottom || 0;
-      }
-
-      var pad = 6; // keep the clock snug under the banner
-      var desiredTopAboveCtrl = rect.top - bubble.offsetHeight - 10;
-      var minTop = bannerBottom + pad;
-
-      var top = desiredTopAboveCtrl;
-      var placeLeftOfCtrl = false;
-
-      // If we cannot fit above the layers control (because banner is too tall),
-      // keep it just under the banner but shift LEFT so it never covers the toggle box.
-      if (top < minTop){
-        top = minTop;
-        placeLeftOfCtrl = true;
-      } else {
-        top = Math.max(minTop, top);
-      }
-
-      // Right positioning
-      if (placeLeftOfCtrl){
-        // Put bubble to the LEFT of the layers control (10px gap)
-        var right = Math.max(10, window.innerWidth - rect.left + 10);
-        bubble.style.right = right + "px";
-      } else {
-        // Align to the right edge of the layers control
-        var rightGap = Math.max(10, window.innerWidth - rect.right);
-        bubble.style.right = rightGap + "px";
-      }
-
-      bubble.style.top = top + "px";
+      bubble.style.left = "50%";
+      bubble.style.right = "auto";
+      bubble.style.top = "auto";
+      bubble.style.bottom = "14px";
+      bubble.style.transform = "translateX(-50%)";
     }catch(e){}
   }
 
@@ -4491,21 +4605,38 @@ function setTimeLabel(){
 
 
   function updateRadar(){
-    if (!obsRadarEnabled) return;
+    if (!obsRadarEnabled){
+      hideRadarSweepCanvas();
+      if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+      return;
+    }
     var url = radarUrlFor(curZ);
 
-    // Test-load the image before swapping overlay (avoids blank overlay on 404)
     var img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = function(){
-      if (obsRadarOverlay){ map.removeLayer(obsRadarOverlay); }
+      radarSweepImage = img;
+      radarSweepImageUrl = url;
       var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
-      obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
-      obsRadarOverlay.addTo(map);
-      applyActiveOpacity();
-      setStatus("Radar: " + url);
+
+      if (radarSweepEnabled){
+        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+        ensureRadarSweepCanvas();
+        radarSweepCanvas.style.opacity = String(op);
+        startRadarSweep();
+        setStatus("Radar sweep: " + url);
+      } else {
+        hideRadarSweepCanvas();
+        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
+        obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
+        obsRadarOverlay.addTo(map);
+        applyActiveOpacity();
+        setStatus("Radar: " + url);
+      }
     };
     img.onerror = function(){
-      setStatus("Radar missing: " + url + " (check /radar_frames/)");
+      hideRadarSweepCanvas();
+      setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
     img.src = url;
   }
@@ -4595,6 +4726,24 @@ function updateAlerts(){
       clampTime(); updateAll();
     };
   }
+  var _sweepBtn = document.getElementById("sweepToggleBtn");
+  function syncSweepButton(){
+    if (_sweepBtn) _sweepBtn.textContent = radarSweepEnabled ? "SWEEP ON" : "SWEEP OFF";
+  }
+  if (_sweepBtn){
+    _sweepBtn.onclick = function(){
+      radarSweepEnabled = !radarSweepEnabled;
+      syncSweepButton();
+      updateRadar();
+    };
+    syncSweepButton();
+  }
+
+  map.on('zoom move resize', function(){
+    resizeRadarSweepCanvas();
+    if (radarSweepEnabled && radarSweepImage) startRadarSweep();
+  });
+
 
 
   const zIn = document.getElementById("zoomInBtn");
