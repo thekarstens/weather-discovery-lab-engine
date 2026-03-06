@@ -7,7 +7,11 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <link href="./leaflet.css" rel="stylesheet"/>
 <script src="./leaflet.js"></script>
-<script src="./js/lessonLoader.js?v=20260225"></script>
+<script type="module">
+import * as lessonLoader from "./js/lessonLoader.js?v=20260225";
+window.lessonLoader = lessonLoader;
+window.dispatchEvent(new CustomEvent("lessonLoaderReady"));
+</script>
 <script>
   function resolveJetFrameUrl(u){
     if (!u) return u;
@@ -1325,6 +1329,29 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     applyLessonBanner(CFG);
   }
 
+  // Manifest-driven radar support (preferred for long-term stability)
+  var RADAR_MANIFEST = null;
+  try {
+    if (window.lessonLoader && typeof window.lessonLoader.getRadarManifest === "function") {
+      RADAR_MANIFEST = window.lessonLoader.getRadarManifest(CFG) || null;
+    }
+  } catch(e){ RADAR_MANIFEST = null; }
+
+  function findNearestRadarFrame(d){
+    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return null;
+    var target = d.getTime();
+    var best = null;
+    var bestDelta = Infinity;
+    for (var i=0;i<RADAR_MANIFEST.frames.length;i++){
+      var f = RADAR_MANIFEST.frames[i];
+      if (!f || !f.png) continue;
+      var t = f.utc ? Date.parse(f.utc) : NaN;
+      var delta = isFinite(t) ? Math.abs(t - target) : i;
+      if (delta < bestDelta){ bestDelta = delta; best = f; }
+    }
+    return best;
+  }
+
   // Data pack base (GitHub Pages). Can be overridden by lesson.json via cfg.dataBase
   var DATA_PACK_BASE = "https://thekarstens.github.io/wdl-data-derecho-2022/";
   // Base for assets: prefer cfg.dataBase; otherwise default to data pack lesson folder when ?lesson= is used
@@ -1382,7 +1409,12 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var SHIFT_LAT = (typeof CFG.shiftLat === "number") ? CFG.shiftLat : -1.09;
   var SHIFT_LON = (typeof CFG.shiftLon === "number") ? CFG.shiftLon : 0.49;
 
-  var RADAR_BOUNDS = (CFG.radarBounds && CFG.radarBounds.sw && CFG.radarBounds.ne)
+  var RADAR_BOUNDS = (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length===2)
+    ? L.latLngBounds(
+        L.latLng(RADAR_MANIFEST.leaflet_bounds[0][0], RADAR_MANIFEST.leaflet_bounds[0][1]),
+        L.latLng(RADAR_MANIFEST.leaflet_bounds[1][0], RADAR_MANIFEST.leaflet_bounds[1][1])
+      )
+    : ((CFG.radarBounds && CFG.radarBounds.sw && CFG.radarBounds.ne)
     ? L.latLngBounds(
         L.latLng(CFG.radarBounds.sw[0], CFG.radarBounds.sw[1]),
         L.latLng(CFG.radarBounds.ne[0], CFG.radarBounds.ne[1])
@@ -1390,21 +1422,18 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     : L.latLngBounds(
         L.latLng(24 + SHIFT_LAT, -126 + SHIFT_LON),
         L.latLng(50 + SHIFT_LAT,  -66 + SHIFT_LON)
-      );
+      ));
 
   // URL builders (templates per lesson, with fallback to your current 2018 defaults)
   function radarUrlFor(d){
+    var mf = findNearestRadarFrame(d);
+    if (mf && mf.png) return mf.png;
     // Prefer loader-provided helper if present
     if (CFG._patternUrl && CFG.layers && CFG.layers.radar && CFG.layers.radar.framePattern){
       return CFG._patternUrl(CFG.layers.radar.framePattern, d);
     }
     // Template fallback (YYYY/MM/DD/HH/mm tokens)
     var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
-    // If lessonLoader.js provided template resolver, use it
-    if (window.WDL && CFG._resolve && CFG._patternUrl){
-      return CFG._patternUrl(tpl, d);
-    }
-    // Very small fallback: just join base + template
     return DATA_BASE + tpl;
   }
 
@@ -4495,7 +4524,7 @@ function setTimeLabel(){
       lastUrl = url;
       clear();
 
-      img = new Image();
+      img = _radarPreloadCache[url] || new Image();
       img.crossOrigin = "anonymous";
       img.onload = function(){
         // start animation on successful load
@@ -4506,7 +4535,7 @@ function setTimeLabel(){
         stop();
         setStatus("Radar missing: " + url);
       };
-      img.src = url;
+      if (!img.src) img.src = url;
     }
 
     function start(){
@@ -4604,9 +4633,14 @@ function setTimeLabel(){
     }
 
     // Use sweep canvas instead of swapping imageOverlay (prevents flicker + looks "painted")
+    preloadNearbyRadarFrames(curZ);
     radarSweep.setOpacity(op);
     radarSweep.show(true);
     radarSweep.load(url, RADAR_BOUNDS);
+    if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.radar_latlon) && !window.__radarManifestViewSet){
+      try { map.setView(RADAR_MANIFEST.radar_latlon, map.getZoom()); } catch(e){}
+      window.__radarManifestViewSet = true;
+    }
     applyActiveOpacity();
   }
 
