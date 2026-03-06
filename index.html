@@ -1,534 +1,149 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Weather Discovery Lab • Radar Sweep</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    html, body, #map { height: 100%; margin: 0; }
-    #map { background: #d9d9d9; }
+<meta charset="utf-8"/>
+<title>Weather Discovery Lab</title>
 
-    .stamp {
-      position: absolute; z-index: 1000; left: 12px; bottom: 12px;
-      font: 14px/1.2 Arial, sans-serif;
-      background: rgba(255,255,255,0.88);
-      padding: 10px 12px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
-      max-width: 380px;
-    }
-    .stamp b { display:block; margin-bottom: 4px; }
-    .stamp small { opacity: 0.85; }
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-    .panel {
-      position: absolute;
-      top: 12px; left: 12px;
-      z-index: 1200;
-      background: rgba(0,0,0,0.70);
-      color: #fff;
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      font-size: 13px;
-      width: 280px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-    }
-    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; }
-    .row label { flex: 1; }
-    .row input[type="range"] { flex: 1.2; }
-    .row output { width: 54px; text-align:right; opacity:0.9; }
-    .btnrow { display:flex; gap:8px; margin-top: 10px; }
-    button {
-      flex: 1;
-      cursor: pointer;
-      border: 0;
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-    }
-    button:hover { background: rgba(255,255,255,0.18); }
+<link
+ rel="stylesheet"
+ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
-    /* Ensure canvases overlay the map and do not steal clicks */
-    canvas.radarCanvas {
-      position: absolute;
-      top: 0; left: 0;
-      pointer-events: none;
-    }
-  
+<style>
 
-/* --- Imported banner/layout from index35 --- */
-  /* Top TV-style banner */
-  .tvbanner{
-  /* Leaflet layer control nudge down below banner */
-.tvbanner{height:76px;padding:10px 14px;pointer-events:auto;}
-.banner-inner{height:100%;display:flex;align-items:center;gap:16px;}
-.banner-title{font-size:34px;font-weight:900;letter-spacing:1px;white-space:nowrap;text-transform:uppercase;}
-.banner-controls{display:flex;align-items:center;gap:10px;margin-left:10px;}
-  /* Open Lesson button inside banner */
-.banner-btn{
-.banner-btn .bb-ico{ font-size: 16px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
-.banner-btn .bb-text{ font-size: 14px; }
-.banner-btn::before{
-.banner-btn::after{
-.banner-btn:hover::after{ opacity:0.75; }
-.banner-btn:active{ transform: translateY(1px); }
-.banner-btn-gold{
-.banner-btn-blue{
-.banner-actions{margin-left:auto;display:flex;align-items:center;gap:10px;}
-  .leaflet-top.leaflet-right { margin-top: 140px; }   /* push layer toggles below banner */
-  /* Simplify banner footprint */
-  .banner-divider{ display:none; }
-  .banner-bottomline{ padding-top:6px !important; padding-bottom:6px !important; }
-.tvbanner{height:auto; padding:10px 14px; pointer-events:auto;}
-.banner-inner{display:flex; align-items:center; gap:14px;}
-.banner-left{display:flex; align-items:center; gap:12px; min-width:340px;}
-.banner-mid{display:flex; align-items:center; gap:10px;}
-.banner-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
-.banner-product{display:flex;align-items:center;justify-content:center;min-width:240px}
-.banner-left{display:flex;flex-direction:column;gap:2px;min-width:420px;max-width:44vw}
-.banner-mid-stack{gap:10px}
-.banner-product{margin:0 6px}
-.banner-inner{align-items:flex-start}
-/* --- Restore "like before" banner geometry --- */
-.banner-inner{position:relative; align-items:center !important;}
-/* --- Two-line banner layout --- */
+html, body {
+  margin:0;
+  padding:0;
+  height:100%;
+  font-family: system-ui, Arial, sans-serif;
+}
+
+/* Banner */
+
 .tvbanner{
-.banner-topline{
-.banner-bottomline{
-.banner-product{min-width:200px;display:flex;justify-content:center}
-.tvbanner{ position:absolute; }
-.tvbanner::before{
-.tvbanner{position:absolute; top:0; left:0; right:0; z-index:99999; }
-.banner-topline{
-.banner-topline .topline-center{
-.banner-topline .bbtn-story{
-.banner-bottomline{padding:6px 14px 12px 14px;}
-/* Pin START button in top-right of the top banner line */
-.banner-topline{position:relative !important;}
-.banner-topline > .bbtn-story{
-.banner-divider{
-.banner-topline{
-.banner-topline .bbtn-story{
-/* --- FINAL banner alignment fixes --- */
-.banner-topline{
-.banner-topline .topline-center{
-.banner-topline .bbtn-story{
-.banner-bottomline{
-.banner-product{
-.banner-topline{position:relative !important;}
-.banner-topline #beginStoryBtn{
-/* Slightly tighter banner height (small) */
-.banner-topline{padding-top:6px !important; padding-bottom:5px !important;}
-.banner-bottomline{padding-top:3px !important; padding-bottom:7px !important;}
-/* --- Slight banner shrink (top text + controls) --- */
-.banner-topline{padding-top:7px !important; padding-bottom:4px !important;}
-.banner-bottomline{padding-top:2px !important; padding-bottom:6px !important;}
-  top:92px;             /* below your banner */
-/* --- Brand logo in top-right of banner (no white box) --- */
-.banner-topline .topline-center{ padding-right: 170px !important; }
-/* True-center the top two banner lines regardless of logo/buttons */
-.banner-topline{ justify-content:center !important; }
-.banner-topline .topline-center{
-/* === Tighten banner vertical spacing === */
-.banner-topline{ padding-top:6px !important; padding-bottom:2px !important; }
-.tvbanner{
-/* ===== Premium banner finish + new layout tweaks (v8) ===== */
-.tvbanner::after{
-/* Legend under product label (inside banner) */
-.banner-legend-under{
-.banner-legend-under .leg-mini-bar{ width:150px; height:10px; border-radius:7px; }
-/* Hide old map legend widget (we moved it to the banner) */
-/* Hide the time label inside the banner row (clock lives in the bubble now) */
-#bannerTimeLabel{ display:none !important; }
-/* Tighten bottomline spacing a hair now that legend moved into banner */
-.banner-bottomline{ padding-top:4px !important; padding-bottom:10px !important; }
-/* ===== Premium banner background (opaque + subtle weather texture) ===== */
-.tvbanner{
-/* Ensure any previous banner overlay remains subtle but NOT see-through */
-.tvbanner::before{
-/* Clock bubble default a bit lower; JS will keep it below banner */
-html, body { height:100%; margin:0; }
-body { height:100%; margin:0; }
-#map { height:100%; background:#fff; }
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:76px;
+  background:#0b2d4a;
+  color:white;
+  display:flex;
+  align-items:center;
+  z-index:1000;
+  box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
 
+.banner-inner{
+  padding-left:16px;
+}
 
-/* Ensure map sits below banner */
-#map { position: absolute; left: 0; right: 0; bottom: 0; top: 70px; }
-#banner { position: absolute; left:0; right:0; top:0; height:70px; z-index: 1000; }
+.banner-title{
+  font-size:22px;
+  font-weight:600;
+}
+
+.banner-question{
+  font-size:14px;
+  opacity:.9;
+}
+
+/* Map */
+
+#map{
+  position:absolute;
+  top:76px;
+  bottom:0;
+  width:100%;
+}
+
 </style>
 </head>
+
 <body>
 
-<div class="tvbanner" id="banner">
-<div class="banner-topline" role="banner">
-<div class="topline-center">
-<span class="top-lesson">Lesson 1: Driving Question</span>
-<span class="top-sep">—</span>
-<span class="top-question"><span class="top-q-label">Question:</span> How can we use real-time weather data to make safer decisions?</span>
+<div class="tvbanner">
+  <div class="banner-inner">
+    <div class="banner-title" id="titleTop"></div>
+    <div class="banner-question" id="drivingQuestion"></div>
+  </div>
 </div>
 
 <div id="map"></div>
 
-<div class="panel">
-  <div style="font-weight: 700; font-size: 14px;">Radar “paints” returns as it spins</div>
-
-  <div class="row">
-    <label for="rpm">Spin speed</label>
-    <input id="rpm" type="range" min="1" max="30" value="6" step="1">
-    <output id="rpmOut">6 rpm</output>
-  </div>
-
-  <div class="row">
-    <label for="beamPx">Beam thickness</label>
-    <input id="beamPx" type="range" min="1" max="18" value="4" step="1">
-    <output id="beamPxOut">4 px</output>
-  </div>
-
-  <div class="row">
-    <label for="persist">Persistence</label>
-    <input id="persist" type="range" min="0" max="100" value="88" step="1">
-    <output id="persistOut">88</output>
-  </div>
-
-  <div class="row">
-    <label for="teach">Teaching slow-mode</label>
-    <input id="teach" type="checkbox" checked>
-  </div>
-
-  <div class="btnrow">
-    <button id="resetSweep">Reset sweep</button>
-    <button id="pause">Pause</button>
-  </div>
-
-  <div style="margin-top:8px; font-size:12px; opacity:0.85; line-height:1.35;">
-    This “beam” is a thin line (not a wedge). It reveals the archived radar image only where the beam has scanned.
-  </div>
-</div>
-
-<div class="stamp">
-  <b>KFSD Reflectivity (NWS colors)</b>
-  <div>Apr 14, 2018 • archived frames</div>
-  <div id="time" style="opacity:0.85"></div>
-  <small>Tip: click map to move the “radar site” if you want.</small>
-</div>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script type="module">
-import { getLessonIdFromURL, loadLessonConfig, resolveAssetUrl, formatZToLocal, getRadarManifest } from "./js/lessonLoader.js";
 
-(async function () {
-  const lessonId = getLessonIdFromURL("derecho-2022");
-  const cfg = await loadLessonConfig({ lessonId });
+import {
+  getLessonIdFromURL,
+  loadLessonConfig,
+  getRadarManifest
+} from "./js/lessonLoader.js";
 
-  
-// --- Banner text wiring (from index35 banner) ---
-try {
-  const elLesson = document.querySelector('.top-lesson');
-  const elQ = document.querySelector('.top-question');
-  if (elLesson && cfg.titleTop) elLesson.textContent = cfg.titleTop;
-  if (elQ && cfg.drivingQuestion) elQ.textContent = cfg.drivingQuestion;
-} catch (e) { console.warn('banner update failed', e); }
+const lessonId = getLessonIdFromURL();
 
-// Use lesson metadata if present
-  if (cfg?.titleTop) document.title = cfg.titleTop + " • Radar";
+const cfg = await loadLessonConfig({ lessonId });
 
-  const radarLayer = cfg?.layers?.radar || {};
-  const tz = cfg?.time?.displayTimezone || cfg?.displayTimezone || "UTC";
+document.getElementById("titleTop").innerText = cfg.titleTop || "";
+document.getElementById("drivingQuestion").innerText = cfg.drivingQuestion || "";
 
-  // Radar manifest: prefer preloaded manifest from lessonLoader, otherwise fetch it here
-  let manifest = getRadarManifest(cfg);
-  if (!manifest) {
-    const mf = radarLayer.manifestFile || radarLayer.framesManifest || radarLayer.framesManifestFile;
-    if (!mf) throw new Error("Radar is configured without a manifestFile.");
-    const url = resolveAssetUrl(cfg, mf);
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Failed to load radar manifest: ${url} (${res.status})`);
-    manifest = await res.json();
+/* Map */
+
+const map = L.map("map").setView(
+  [cfg.map.initialView.lat, cfg.map.initialView.lon],
+  cfg.map.initialView.zoom
+);
+
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom:19,
+    attribution:"© OpenStreetMap"
   }
+).addTo(map);
 
-  // Normalize (support both normalized + raw Colab)
-  const boundsArr = manifest.leaflet_bounds || manifest.bounds || null;
-  const center = manifest.radar_latlon || manifest.center || null;
-  const framesIn = Array.isArray(manifest.frames) ? manifest.frames : [];
 
-  const frames = framesIn.map(f => {
-    if (typeof f === "string") return { utc: null, png: f };
-    return { utc: f.utc || f.t || f.time || null, png: f.png || f.file || f.filename || f.name || null };
-  }).filter(x => !!x.png);
+/* Radar */
 
-  // Resolve PNG URLs relative to manifest file folder if they are relative
-  const manifestUrl = resolveAssetUrl(cfg, radarLayer.manifestFile || "");
-  const manifestFolder = manifestUrl ? manifestUrl.split("/").slice(0, -1).join("/") + "/" : (cfg.dataBase || "");
-  const isAbs = (u) => /^https?:\/\//i.test(u) || u.startsWith("data:") || u.startsWith("blob:");
+const radarManifest = getRadarManifest(cfg);
 
-  const frameUrls = frames.map(fr => (isAbs(fr.png) ? fr.png : manifestFolder + fr.png.replace(/^\//,"")));
-  const utcList = frames.map(fr => fr.utc);
+if (radarManifest) {
 
-  if (!boundsArr || !Array.isArray(boundsArr) || boundsArr.length !== 2) {
-    throw new Error("Manifest missing leaflet_bounds. Expected [[south, west],[north, east]].");
-  }
-  if (!center || !Array.isArray(center) || center.length !== 2) {
-    console.warn("Manifest missing radar_latlon; using map initialView instead.");
-  }
+  const bounds = radarManifest.leaflet_bounds;
 
-  const bounds = L.latLngBounds(boundsArr);
-  const mapCenter = center ? [center[0], center[1]] : [cfg?.map?.initialView?.lat || 43.55, cfg?.map?.initialView?.lon || -96.73];
+  const frames = radarManifest.frames;
 
-  const map = L.map('map', { attributionControl:true }).setView(mapCenter, 8);
+  let currentFrame = 0;
 
-  // Basemap (light gray like TV)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-  }).addTo(map);
+  let overlay = null;
 
-  map.fitBounds(bounds);
+  function showFrame(i){
 
-  // Lock map to radar mosaic area (prevents panning away)
-  map.setMaxBounds(bounds.pad(0.25));
-  map.options.maxBoundsViscosity = 1.0;
-
-  // --- Radar site marker (fixed at manifest radar_latlon)
-  const radarLatLng = L.latLng(mapCenter[0], mapCenter[1]);
-  L.circleMarker(radarLatLng, { radius: 6, color: '#ffd84d', fillColor: '#ffd84d', fillOpacity: 1 }).addTo(map);
-
-  // --- Canvases on a dedicated pane
-  const paneName = "radarPaintPane";
-  map.createPane(paneName);
-  map.getPane(paneName).style.zIndex = 650;
-
-  function makeCanvas() {
-    const c = document.createElement('canvas');
-    c.className = "radarCanvas";
-    map.getPane(paneName).appendChild(c);
-    return c;
-  }
-  const returnsCanvas = makeCanvas();
-  const sweepCanvas = makeCanvas();
-  const rctx = returnsCanvas.getContext('2d');
-  const sctx = sweepCanvas.getContext('2d');
-
-  function sizeCanvases() {
-    const size = map.getSize();
-    [returnsCanvas, sweepCanvas].forEach(c => {
-      c.width = size.x;
-      c.height = size.y;
-      c.style.width = size.x + "px";
-      c.style.height = size.y + "px";
-    });
-  }
-  sizeCanvases();
-  map.on('resize', sizeCanvases);
-
-  // --- UI wiring
-  const rpmEl = document.getElementById("rpm");
-  const beamPxEl = document.getElementById("beamPx");
-  const persistEl = document.getElementById("persist");
-  const teachEl = document.getElementById("teach");
-  const rpmOut = document.getElementById("rpmOut");
-  const beamPxOut = document.getElementById("beamPxOut");
-  const persistOut = document.getElementById("persistOut");
-
-  function syncUI() {
-    rpmOut.textContent = rpmEl.value + " rpm";
-    beamPxOut.textContent = beamPxEl.value + " px";
-    persistOut.textContent = persistEl.value;
-  }
-  ["input","change"].forEach(evt => {
-    rpmEl.addEventListener(evt, syncUI);
-    beamPxEl.addEventListener(evt, syncUI);
-    persistEl.addEventListener(evt, syncUI);
-    teachEl.addEventListener(evt, syncUI);
-  });
-  syncUI();
-
-  const timeEl = document.getElementById("time");
-
-  // --- Frame loading
-  let frameIndex = 0;
-  const sourceImg = new Image();
-  sourceImg.decoding = "async";
-  sourceImg.loading = "eager";
-  sourceImg.crossOrigin = "anonymous";
-
-  const srcCanvas = document.createElement("canvas");
-  const srcCtx = srcCanvas.getContext("2d");
-
-  function setTimeLabel(i) {
-    const z = utcList[i];
-    if (z) timeEl.textContent = formatZToLocal(z, tz) + " (" + z.replace("+00:00","Z") + ")";
-    else timeEl.textContent = frameUrls[i] || "";
-  }
-
-  async function loadFrame(i) {
-    frameIndex = i;
-    const url = frameUrls[frameIndex];
-    setTimeLabel(frameIndex);
-
-    await new Promise((resolve, reject) => {
-      sourceImg.onload = () => resolve();
-      sourceImg.onerror = () => reject(new Error("Failed to load frame: " + url));
-      sourceImg.src = url;
-    });
-
-    srcCanvas.width = sourceImg.naturalWidth || sourceImg.width;
-    srcCanvas.height = sourceImg.naturalHeight || sourceImg.height;
-    srcCtx.clearRect(0,0,srcCanvas.width, srcCanvas.height);
-    srcCtx.drawImage(sourceImg, 0, 0);
-
-    resetSweep(true, true);
-  }
-
-  function overlayRect() {
-    const nw = bounds.getNorthWest();
-    const se = bounds.getSouthEast();
-    const pNW = map.latLngToContainerPoint(nw);
-    const pSE = map.latLngToContainerPoint(se);
-    const x = pNW.x, y = pNW.y;
-    const w = (pSE.x - pNW.x), h = (pSE.y - pNW.y);
-    return { x, y, w, h };
-  }
-
-  // --- Sweep state
-  let angle = 0;
-  let swept = 0;
-  const DWELL_MS = 600;
-  let pendingAdvance = false;
-  let lastTs = performance.now();
-  let paused = false;
-
-  function resetSweep(clearReturns, resume = true) {
-    angle = 0;
-    swept = 0;
-    if (resume) {
-      paused = false;
-      document.getElementById("pause").textContent = "Pause";
-    }
-    if (clearReturns) rctx.clearRect(0,0,returnsCanvas.width, returnsCanvas.height);
-  }
-
-  document.getElementById("resetSweep").addEventListener("click", () => resetSweep(true));
-  document.getElementById("pause").addEventListener("click", () => {
-    paused = !paused;
-    document.getElementById("pause").textContent = paused ? "Play" : "Pause";
-  });
-
-  // Initial load
-  if (frameUrls.length) loadFrame(0).catch((e) => console.warn(e));
-
-  // Redraw on map changes: restart sweep to keep alignment consistent
-  map.on("move zoom", () => resetSweep(true, true));
-
-  function paintBeam(rect, cx, cy, theta, beamPx) {
-    const maxRange = Math.max(returnsCanvas.width, returnsCanvas.height) * 1.4;
-    const ex = cx + Math.cos(theta) * maxRange;
-    const ey = cy + Math.sin(theta) * maxRange;
-
-    const half = beamPx / 2;
-    const px = -Math.sin(theta) * half;
-    const py =  Math.cos(theta) * half;
-
-    const p1x = cx + px, p1y = cy + py;
-    const p2x = ex + px, p2y = ey + py;
-    const p3x = ex - px, p3y = ey - py;
-    const p4x = cx - px, p4y = cy - py;
-
-    const persist = Number(persistEl.value);
-    const fadeAlpha = (100 - persist) / 100;
-    if (fadeAlpha > 0) {
-      rctx.save();
-      rctx.globalCompositeOperation = "source-over";
-      rctx.fillStyle = `rgba(255,255,255,${fadeAlpha * 0.06})`;
-      rctx.fillRect(0, 0, returnsCanvas.width, returnsCanvas.height);
-      rctx.restore();
+    if(overlay){
+      map.removeLayer(overlay);
     }
 
-    rctx.save();
-    rctx.beginPath();
-    rctx.moveTo(p1x, p1y);
-    rctx.lineTo(p2x, p2y);
-    rctx.lineTo(p3x, p3y);
-    rctx.lineTo(p4x, p4y);
-    rctx.closePath();
-    rctx.clip();
+    overlay = L.imageOverlay(
+      frames[i].png,
+      bounds,
+      {opacity:0.75}
+    ).addTo(map);
 
-    if (rect.w > 0 && rect.h > 0 && srcCanvas.width && srcCanvas.height) {
-      rctx.drawImage(srcCanvas, rect.x, rect.y, rect.w, rect.h);
-    }
-    rctx.restore();
-
-    // Sweep overlay
-    sctx.clearRect(0,0,sweepCanvas.width, sweepCanvas.height);
-    sctx.save();
-    sctx.globalCompositeOperation = "source-over";
-    sctx.beginPath();
-    sctx.moveTo(cx, cy);
-    sctx.lineTo(ex, ey);
-    sctx.lineWidth = Math.max(1, beamPx);
-    sctx.strokeStyle = "rgba(255, 215, 0, 0.90)";
-    sctx.stroke();
-
-    sctx.beginPath();
-    sctx.arc(cx + Math.cos(theta)*220, cy + Math.sin(theta)*220, 10, 0, Math.PI*2);
-    sctx.fillStyle = "rgba(255, 236, 148, 0.45)";
-    sctx.fill();
-
-    sctx.strokeStyle = "rgba(0,0,0,0.10)";
-    sctx.lineWidth = 1;
-    for (let r=150; r<=600; r+=150) {
-      sctx.beginPath();
-      sctx.arc(cx, cy, r, 0, Math.PI*2);
-      sctx.stroke();
-    }
-    sctx.restore();
   }
 
-  function tick() {
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - lastTs) / 1000);
-    lastTs = now;
+  showFrame(0);
 
-    if (!paused) {
-      const rpm = Number(rpmEl.value);
-      const speedFactor = teachEl.checked ? 0.35 : 1.0;
-      const angVel = (rpm * 2 * Math.PI / 60) * speedFactor;
-      const dTheta = angVel * dt;
-      swept += dTheta;
-      angle = angle + dTheta;
+  setInterval(()=>{
+    currentFrame++;
+    if(currentFrame >= frames.length) currentFrame = 0;
+    showFrame(currentFrame);
+  }, 1000);
 
-      if (swept >= Math.PI * 2) {
-        angle = Math.PI * 2;
-        paused = true;
-        document.getElementById("pause").textContent = "Play";
+}
 
-        if (!pendingAdvance && frameUrls.length > 1) {
-          pendingAdvance = true;
-          setTimeout(() => {
-            loadFrame((frameIndex + 1) % frameUrls.length)
-              .catch(err => console.warn(err))
-              .finally(() => {
-                pendingAdvance = false;
-                resetSweep(true, true);
-              });
-          }, DWELL_MS);
-        }
-      }
-      angle = angle % (Math.PI * 2);
-    }
-
-    const rect = overlayRect();
-    const p = map.latLngToContainerPoint(radarLatLng);
-    const beamPx = Number(beamPxEl.value);
-    paintBeam(rect, p.x, p.y, angle, beamPx);
-
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-})();
 </script>
 
 </body>
