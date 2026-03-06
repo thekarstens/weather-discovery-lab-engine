@@ -4441,6 +4441,27 @@ function setTimeLabel(){
     el.title = title;
   }
 
+  // Radar frame preloader (safe no-op helper to support sweep mode)
+  var _radarPreloadCache = Object.create(null);
+  function preloadNearbyRadarFrames(centerTime){
+    try {
+      if (!centerTime || !(centerTime instanceof Date) || isNaN(centerTime.getTime())) return;
+      var offsets = [-2, -1, 0, 1, 2];
+      for (var i = 0; i < offsets.length; i++) {
+        var d = new Date(centerTime.getTime() + offsets[i] * STEP_MS);
+        var url = radarUrlFor(d);
+        if (!url || _radarPreloadCache[url]) continue;
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = url;
+        _radarPreloadCache[url] = img;
+      }
+    } catch (e) {
+      // Never let preloading break radar rendering
+      console.warn('Radar preload skipped:', e);
+    }
+  }
+
   // ---------------- RADAR SWEEP OVERLAY (canvas) ----------------
   var radarSweep = (function(){
     var canvas = null;
