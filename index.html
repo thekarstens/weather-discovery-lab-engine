@@ -1331,11 +1331,45 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 
   // Manifest-driven radar support (preferred for long-term stability)
   var RADAR_MANIFEST = null;
-  try {
-    if (window.lessonLoader && typeof window.lessonLoader.getRadarManifest === "function") {
-      RADAR_MANIFEST = window.lessonLoader.getRadarManifest(CFG) || null;
+  var RADAR_MANIFEST_URL = "";
+  var RADAR_MANIFEST_FOLDER = "";
+
+  function _isAbsUrl(u){
+    return /^https?:\/\//i.test(String(u||"")) || String(u||"").startsWith("data:") || String(u||"").startsWith("blob:");
+  }
+
+  function _joinUrl(base, rel){
+    if (!rel) return base || "";
+    if (_isAbsUrl(rel)) return rel;
+    var b = String(base || "");
+    var r = String(rel).replace(/^\.\//, "");
+    return (b.endsWith("/") ? b : (b + "/")) + r;
+  }
+
+  async function loadRadarManifestIfNeeded(){
+    try{
+      var radarCfg = (CFG && CFG.radar) ? CFG.radar : {};
+      var mfPath =
+        radarCfg.manifest ||
+        radarCfg.manifestFile ||
+        radarCfg.framesManifest ||
+        radarCfg.framesManifestFile ||
+        ((radarCfg.mode === "manifest") ? "radar/manifest.json" : "");
+
+      if (!mfPath) return;
+
+      RADAR_MANIFEST_URL = _joinUrl(DATA_BASE, mfPath);
+      RADAR_MANIFEST_FOLDER = RADAR_MANIFEST_URL.split("/").slice(0, -1).join("/") + "/";
+
+      var res = await fetch(RADAR_MANIFEST_URL + (RADAR_MANIFEST_URL.includes("?") ? "&" : "?") + "v=" + Date.now(), { cache:"no-store" });
+      if (!res.ok) throw new Error("Radar manifest HTTP " + res.status + ": " + RADAR_MANIFEST_URL);
+      RADAR_MANIFEST = await res.json();
+      console.log("✅ Loaded radar manifest:", RADAR_MANIFEST_URL, RADAR_MANIFEST);
+    } catch(e){
+      console.warn("⚠️ Radar manifest load failed:", e);
+      RADAR_MANIFEST = null;
     }
-  } catch(e){ RADAR_MANIFEST = null; }
+  }
 
   function findNearestRadarFrame(d){
     if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return null;
@@ -1344,8 +1378,11 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     var bestDelta = Infinity;
     for (var i=0;i<RADAR_MANIFEST.frames.length;i++){
       var f = RADAR_MANIFEST.frames[i];
-      if (!f || !f.png) continue;
-      var t = f.utc ? Date.parse(f.utc) : NaN;
+      if (!f) continue;
+      var png = f.png || f.file || f.filename || f.name || null;
+      if (!png) continue;
+      var rawT = f.utc || f.t || f.time || null;
+      var t = rawT ? Date.parse(rawT) : NaN;
       var delta = isFinite(t) ? Math.abs(t - target) : i;
       if (delta < bestDelta){ bestDelta = delta; best = f; }
     }
@@ -1427,14 +1464,22 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   // URL builders (templates per lesson, with fallback to your current 2018 defaults)
   function radarUrlFor(d){
     var mf = findNearestRadarFrame(d);
-    if (mf && mf.png) return mf.png;
+    if (mf){
+      var png = mf.png || mf.file || mf.filename || mf.name || null;
+      if (png){
+        return _isAbsUrl(png) ? png : _joinUrl(RADAR_MANIFEST_FOLDER || DATA_BASE, png);
+      }
+    }
     // Prefer loader-provided helper if present
     if (CFG._patternUrl && CFG.layers && CFG.layers.radar && CFG.layers.radar.framePattern){
       return CFG._patternUrl(CFG.layers.radar.framePattern, d);
     }
-    // Template fallback (YYYY/MM/DD/HH/mm tokens)
-    var tpl = (CFG.radarTemplate || "radar_frames/n0q_{YYYYMMDD}{HHMM}.png");
-    return DATA_BASE + tpl;
+    // Lesson template fallback
+    if (CFG.radarTemplate){
+      return _isAbsUrl(CFG.radarTemplate) ? CFG.radarTemplate : _joinUrl(DATA_BASE, CFG.radarTemplate);
+    }
+    // Legacy fallback
+    return _joinUrl(DATA_BASE, "radar_frames/n0q_" + yyyymmdd(d) + hhmm(d) + ".png");
   }
 
   function gfsSnowUrlFor(d){
@@ -1453,6 +1498,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 
   // Expose loaded config for debugging
   window.__WDL_CFG__ = CFG;
+  await loadRadarManifestIfNeeded();
 // ---------- Map ----------
   var map = L.map("map", { zoomControl:true }).setView([43.55, -96.73], 6);
 
