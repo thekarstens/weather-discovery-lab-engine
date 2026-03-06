@@ -141,8 +141,8 @@ export async function loadLessonConfig({ dataPackBase, lessonId }) {
   const override = getDataBaseOverride();
 
   // Default: jsDelivr (works even if data repo GitHub Pages is off)
-  const DEFAULT_PACK_BASE =
-    "https://cdn.jsdelivr.net/gh/thekarstens/wdl-data-derecho-2022@main/";
+const DEFAULT_PACK_BASE =
+  "https://thekarstens.github.io/wdl-data-derecho-2022/";
 
   const base = normalizeBase(override || dataPackBase || DEFAULT_PACK_BASE);
 
