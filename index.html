@@ -1137,37 +1137,72 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   left:50% !important;
   right:auto !important;
   top:auto !important;
-  bottom:14px !important;
+  bottom:12px !important;
   transform:translateX(-50%) !important;
-  width:min(980px, calc(100vw - 34px)) !important;
-  padding:12px 14px !important;
+  width:min(1160px, calc(100vw - 26px)) !important;
+  padding:10px 12px !important;
   border-radius:18px !important;
   z-index:100004 !important;
 }
 #clockBubble .cb-label{ display:none !important; }
 #clockBubble .cb-row{
-  justify-content:center !important;
-  gap:12px !important;
+  display:grid !important;
+  grid-template-columns:auto auto auto 1fr auto;
+  align-items:center !important;
+  gap:10px !important;
   margin-top:0 !important;
-  flex-wrap:wrap;
 }
 #clockBubble .cb-time{
   margin-top:0 !important;
-  min-width:240px;
-  text-align:center;
+  min-width:190px;
+  text-align:right;
+  font-size:15px !important;
+  white-space:nowrap;
 }
 #clockBubble .cb-scrubber{
   width:100% !important;
-  margin-top:10px !important;
+  margin-top:0 !important;
 }
 #sweepToggleBtn{
-  min-width:120px;
+  min-width:118px;
 }
+#radarSweepControls{
+  position:absolute;
+  left:50%;
+  bottom:82px;
+  transform:translateX(-50%);
+  z-index:100005;
+  display:none;
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(11,28,45,0.95);
+  border:1px solid rgba(255,255,255,0.18);
+  box-shadow:0 10px 26px rgba(0,0,0,.25);
+  color:#fff;
+  font:800 12px/1 Arial,sans-serif;
+}
+#radarSweepControls.open{ display:flex; }
+#radarSweepControls label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  white-space:nowrap;
+}
+#radarSweepControls input[type=range]{ width:140px; }
 .radar-sweep-canvas{
   position:absolute;
   inset:0;
   pointer-events:none;
   z-index:360;
+}
+@media (max-width: 900px){
+  #clockBubble .cb-row{
+    grid-template-columns:auto auto 1fr auto;
+  }
+  #sweepToggleBtn{ grid-column:1 / span 2; }
+  #clockBubble .cb-time{ grid-column:4; }
 }
 
 </style>
@@ -1229,16 +1264,24 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <button class="zoom-corner-btn" id="zoomCornerMinus" title="Zoom out">−</button>
 <button class="zoom-corner-btn" id="zoomCornerPlus" title="Zoom in">+</button>
 </div>
-<!-- Master clock bubble (floats above layer toggle box) -->
+<!-- Master clock bubble docked to bottom -->
+<div aria-label="Radar sweep controls" id="radarSweepControls">
+  <label>Speed
+    <input id="sweepSpeedSlider" max="0.35" min="0.05" step="0.01" type="range" value="0.12"/>
+  </label>
+  <label>Beam
+    <input id="sweepBeamSlider" max="0.60" min="0.12" step="0.02" type="range" value="0.28"/>
+  </label>
+</div>
 <div aria-label="Time" class="clock-bubble" id="clockBubble">
 <div class="cb-label">TIME</div>
 <div aria-label="Time controls" class="cb-row">
-<button class="cb-btn" id="cbBackBtn" title="Back 3 hours">◀</button>
-<div class="cb-time" id="clockBubbleTime">—</div>
-<button class="cb-btn" id="cbFwdBtn" title="Forward 3 hours">▶</button>
-<button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP ON</button>
-</div>
+<button class="cb-btn" id="cbBackBtn" title="Step backward">◀</button>
+<button class="cb-btn" id="cbFwdBtn" title="Step forward">▶</button>
+<button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP OFF</button>
 <input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
+<div class="cb-time" id="clockBubbleTime">—</div>
+</div>
 </div>
 <div aria-label="Weather Discovery Terms" id="stormScienceGuide">
 <div class="ssg-head">
@@ -1310,21 +1353,21 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var LESSON_LOADED = false;
 
   function applyLessonBanner(cfg) {
-    if (!cfg || !cfg.banner) return;
+    if (!cfg) return;
 
-    const b = cfg.banner;
+    const b = cfg.banner || {};
+    const lessonTitle = b.lessonTitle || cfg.titleTop || cfg.lessonTitle || "";
+    const dq = b.drivingQuestion || cfg.drivingQuestion || "";
+    const productWord = b.productWord || cfg.productLabel || cfg.productWord || "";
 
-    // Top left lesson/title line
     const elLesson = document.querySelector('.top-lesson');
-    if (elLesson && b.lessonTitle) elLesson.textContent = b.lessonTitle;
+    if (elLesson && lessonTitle) elLesson.textContent = lessonTitle;
 
-    // "QUESTION: ..." line
     const elQ = document.querySelector('.top-question');
-    if (elQ && b.drivingQuestion) elQ.textContent = `QUESTION: ${b.drivingQuestion}`;
+    if (elQ && dq) elQ.innerHTML = '<span class="top-q-label">Question:</span> ' + dq;
 
-    // Big product word (RADAR / DERECHO / etc.)
     const elProd = document.getElementById('productLabel');
-    if (elProd && b.productWord) elProd.textContent = b.productWord;
+    if (elProd && productWord) elProd.textContent = productWord;
   }
 
   const lessonId = (_qs("lesson") || "").trim();
@@ -2478,6 +2521,14 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
   if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
 
+  var sweepToggleBtn = document.getElementById("sweepToggleBtn");
+  bindSweepControls();
+  if (sweepToggleBtn) sweepToggleBtn.onclick = function(){
+    radarSweepEnabled = !radarSweepEnabled;
+    updateSweepUi();
+    updateRadar();
+  };
+
   // Load story now
   loadStory();
 
@@ -2633,6 +2684,31 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     }
   }
 
+  function updateSweepUi(){
+    var btn = document.getElementById('sweepToggleBtn');
+    if (btn) btn.textContent = radarSweepEnabled ? 'SWEEP ON' : 'SWEEP OFF';
+    var panel = document.getElementById('radarSweepControls');
+    if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
+  }
+
+  function bindSweepControls(){
+    var speed = document.getElementById('sweepSpeedSlider');
+    if (speed) {
+      speed.value = String(radarSweepTurnsPerSec);
+      speed.oninput = function(){
+        radarSweepTurnsPerSec = Math.max(0.05, Math.min(0.35, parseFloat(this.value || '0.12')));
+      };
+    }
+    var beam = document.getElementById('sweepBeamSlider');
+    if (beam) {
+      beam.value = String(radarSweepBeamWidth);
+      beam.oninput = function(){
+        radarSweepBeamWidth = Math.max(0.12, Math.min(0.60, parseFloat(this.value || '0.28')));
+      };
+    }
+    updateSweepUi();
+  }
+
   function getRadarSweepCenterPoint(){
     try{
       if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.radar_latlon) && RADAR_MANIFEST.radar_latlon.length === 2){
@@ -2655,7 +2731,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       if (!radarSweepLastTs) radarSweepLastTs = ts;
       var dt = Math.min(50, ts - radarSweepLastTs);
       radarSweepLastTs = ts;
-      radarSweepAngle += (dt / 1000) * Math.PI * 0.7; // ~1 rotation every ~2.85 s
+      radarSweepAngle += (dt / 1000) * (Math.PI * 2 * radarSweepTurnsPerSec);
 
       resizeRadarSweepCanvas();
       var ctx = radarSweepCtx;
@@ -2675,7 +2751,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
         Math.hypot(c.x - x, c.y - (y+h)),
         Math.hypot(c.x - (x+w), c.y - (y+h))
       ) + 10;
-      var beamWidth = 0.42;
+      var beamWidth = radarSweepBeamWidth;
       var a0 = radarSweepAngle - beamWidth;
       var a1 = radarSweepAngle;
 
@@ -4514,14 +4590,12 @@ if (e.layer === overlays["Composite Radar (Observed)"]) { obsRadarEnabled = fals
 
 function formatCentralLabel(d){
   try{
-    // Display in Central Time if possible (falls back to local)
-    var optsDate = { month: "short", day: "numeric", year: "numeric" };
+    var optsDate = { month: "short", day: "numeric" };
     var optsTime = { hour: "numeric", minute: "2-digit", hour12: true };
     var dateStr = d.toLocaleDateString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsDate));
     var timeStr = d.toLocaleTimeString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsTime));
-    // normalize "7:00 PM" -> "7PM"
     timeStr = timeStr.replace(":00", "").replace(" ", "");
-    return (dateStr + " " + timeStr).toUpperCase().replace("AM", "AM").replace("PM", "PM");
+    return (dateStr + " " + timeStr).toUpperCase();
   }catch(e){
     return d.toISOString();
   }
@@ -4624,9 +4698,11 @@ function setTimeLabel(){
         ensureRadarSweepCanvas();
         radarSweepCanvas.style.opacity = String(op);
         startRadarSweep();
+        updateSweepUi();
         setStatus("Radar sweep: " + url);
       } else {
         hideRadarSweepCanvas();
+        updateSweepUi();
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
         obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
         obsRadarOverlay.addTo(map);
