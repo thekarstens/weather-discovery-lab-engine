@@ -7,7 +7,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <link href="./leaflet.css" rel="stylesheet"/>
 <script src="./leaflet.js"></script>
-<script src="./js/lessonLoader.js?v=20260225"></script>
+<!-- lessonLoader disabled here; this page uses its own inline lesson loading -->
 <script>
   function resolveJetFrameUrl(u){
     if (!u) return u;
@@ -2690,6 +2690,9 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     var panel = document.getElementById('radarSweepControls');
     if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
   }
+
+  if (typeof radarSweepTurnsPerSec === "undefined") var radarSweepTurnsPerSec = 0.12;
+  if (typeof radarSweepBeamWidth === "undefined") var radarSweepBeamWidth = 0.28;
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
