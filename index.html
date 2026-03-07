@@ -1267,10 +1267,10 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <!-- Master clock bubble docked to bottom -->
 <div aria-label="Radar sweep controls" id="radarSweepControls">
   <label>Speed
-    <input id="sweepSpeedSlider" max="0.35" min="0.05" step="0.01" type="range" value="0.12"/>
+    <input id="sweepSpeedSlider" max="0.20" min="0.02" step="0.01" type="range" value="0.06"/>
   </label>
   <label>Beam
-    <input id="sweepBeamSlider" max="0.60" min="0.12" step="0.02" type="range" value="0.28"/>
+    <input id="sweepBeamSlider" max="0.40" min="0.08" step="0.01" type="range" value="0.18"/>
   </label>
 </div>
 <div aria-label="Time" class="clock-bubble" id="clockBubble">
@@ -2691,22 +2691,22 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
   }
 
-  if (typeof radarSweepTurnsPerSec === "undefined") var radarSweepTurnsPerSec = 0.12;
-  if (typeof radarSweepBeamWidth === "undefined") var radarSweepBeamWidth = 0.28;
+  if (typeof radarSweepTurnsPerSec === "undefined") var radarSweepTurnsPerSec = 0.06;
+  if (typeof radarSweepBeamWidth === "undefined") var radarSweepBeamWidth = 0.18;
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
     if (speed) {
       speed.value = String(radarSweepTurnsPerSec);
       speed.oninput = function(){
-        radarSweepTurnsPerSec = Math.max(0.05, Math.min(0.35, parseFloat(this.value || '0.12')));
+        radarSweepTurnsPerSec = Math.max(0.02, Math.min(0.20, parseFloat(this.value || '0.06')));
       };
     }
     var beam = document.getElementById('sweepBeamSlider');
     if (beam) {
       beam.value = String(radarSweepBeamWidth);
       beam.oninput = function(){
-        radarSweepBeamWidth = Math.max(0.12, Math.min(0.60, parseFloat(this.value || '0.28')));
+        radarSweepBeamWidth = Math.max(0.08, Math.min(0.40, parseFloat(this.value || '0.18')));
       };
     }
     updateSweepUi();
@@ -2729,6 +2729,10 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     stopRadarSweep();
     radarSweepLastTs = 0;
 
+    var startAngle = -Math.PI / 2; // start from north
+    var drawnUntil = startAngle;
+    radarSweepAngle = startAngle;
+
     function frame(ts){
       if (!radarSweepEnabled || !radarSweepImage || !obsRadarEnabled || !radarSweepCtx) return;
       if (!radarSweepLastTs) radarSweepLastTs = ts;
@@ -2739,7 +2743,6 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       resizeRadarSweepCanvas();
       var ctx = radarSweepCtx;
       var canvas = radarSweepCanvas;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
 
       var nw = map.latLngToContainerPoint(RADAR_BOUNDS.getNorthWest());
       var se = map.latLngToContainerPoint(RADAR_BOUNDS.getSouthEast());
@@ -2754,28 +2757,43 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
         Math.hypot(c.x - x, c.y - (y+h)),
         Math.hypot(c.x - (x+w), c.y - (y+h))
       ) + 10;
-      var beamWidth = radarSweepBeamWidth;
-      var a0 = radarSweepAngle - beamWidth;
-      var a1 = radarSweepAngle;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.arc(c.x, c.y, radius, a0, a1, false);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(radarSweepImage, x, y, w, h);
-      ctx.restore();
+      // clear only once at the start, then paint and leave echoes in place
+      if (drawnUntil === startAngle) ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      var nextAngle = Math.min(radarSweepAngle, startAngle + Math.PI * 2);
+
+      // paint only the newly swept sector
+      if (nextAngle > drawnUntil){
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.arc(c.x, c.y, radius, drawnUntil, nextAngle, false);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(radarSweepImage, x, y, w, h);
+        ctx.restore();
+      }
 
       // bright leading beam
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(c.x, c.y);
-      ctx.lineTo(c.x + Math.cos(a1) * radius, c.y + Math.sin(a1) * radius);
+      ctx.lineTo(c.x + Math.cos(nextAngle) * radius, c.y + Math.sin(nextAngle) * radius);
       ctx.strokeStyle = 'rgba(255, 230, 90, 0.95)';
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
+
+      drawnUntil = nextAngle;
+
+      // after one full revolution, leave the painted echoes on screen and stop
+      if (nextAngle >= startAngle + Math.PI * 2 - 0.0001){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(radarSweepImage, x, y, w, h);
+        stopRadarSweep();
+        return;
+      }
 
       radarSweepAnim = requestAnimationFrame(frame);
     }
