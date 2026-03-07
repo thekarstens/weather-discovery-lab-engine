@@ -1266,11 +1266,11 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 </div>
 <!-- Master clock bubble docked to bottom -->
 <div aria-label="Radar sweep controls" id="radarSweepControls">
-  <label>Speed
-    <input id="sweepSpeedSlider" max="0.20" min="0.02" step="0.01" type="range" value="0.06"/>
+  <label>Sweep speed
+    <input id="sweepSpeedSlider" max="0.10" min="0.015" step="0.005" type="range" value="0.035"/>
   </label>
-  <label>Beam
-    <input id="sweepBeamSlider" max="0.40" min="0.08" step="0.01" type="range" value="0.18"/>
+  <label>Beam width
+    <input id="sweepBeamSlider" max="0.40" min="0.08" step="0.01" type="range" value="0.035"/>
   </label>
 </div>
 <div aria-label="Time" class="clock-bubble" id="clockBubble">
@@ -2691,22 +2691,22 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
   }
 
-  if (typeof radarSweepTurnsPerSec === "undefined") var radarSweepTurnsPerSec = 0.06;
-  if (typeof radarSweepBeamWidth === "undefined") var radarSweepBeamWidth = 0.18;
+  if (typeof radarSweepTurnsPerSec === "undefined") var radarSweepTurnsPerSec = 0.035;
+  if (typeof radarSweepBeamWidth === "undefined") var radarSweepBeamWidth = 0.035;
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
     if (speed) {
       speed.value = String(radarSweepTurnsPerSec);
       speed.oninput = function(){
-        radarSweepTurnsPerSec = Math.max(0.02, Math.min(0.20, parseFloat(this.value || '0.06')));
+        radarSweepTurnsPerSec = Math.max(0.015, Math.min(0.10, parseFloat(this.value || '0.035')));
       };
     }
     var beam = document.getElementById('sweepBeamSlider');
     if (beam) {
       beam.value = String(radarSweepBeamWidth);
       beam.oninput = function(){
-        radarSweepBeamWidth = Math.max(0.08, Math.min(0.40, parseFloat(this.value || '0.18')));
+        radarSweepBeamWidth = Math.max(0.015, Math.min(0.10, parseFloat(this.value || '0.035')));
       };
     }
     updateSweepUi();
@@ -2763,25 +2763,28 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 
       var nextAngle = Math.min(radarSweepAngle, startAngle + Math.PI * 2);
 
-      // paint only the newly swept sector
+      // paint only a narrow newly swept sector, leaving echoes behind
       if (nextAngle > drawnUntil){
+        var revealStart = Math.max(drawnUntil, nextAngle - radarSweepBeamWidth);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(c.x, c.y);
-        ctx.arc(c.x, c.y, radius, drawnUntil, nextAngle, false);
+        ctx.arc(c.x, c.y, radius, revealStart, nextAngle, false);
         ctx.closePath();
         ctx.clip();
         ctx.drawImage(radarSweepImage, x, y, w, h);
         ctx.restore();
       }
 
-      // bright leading beam
+      // TV-style narrow yellow sweep line (no filled wedge)
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(c.x, c.y);
       ctx.lineTo(c.x + Math.cos(nextAngle) * radius, c.y + Math.sin(nextAngle) * radius);
-      ctx.strokeStyle = 'rgba(255, 230, 90, 0.95)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 221, 70, 0.98)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'rgba(255, 221, 70, 0.85)';
+      ctx.shadowBlur = 6;
       ctx.stroke();
       ctx.restore();
 
