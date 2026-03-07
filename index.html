@@ -1267,7 +1267,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <!-- Master clock bubble docked to bottom -->
 <div aria-label="Radar sweep controls" id="radarSweepControls">
   <label>Spin speed
-    <input id="sweepSpeedSlider" max="30" min="1" step="1" type="range" value="6"/>
+    <input id="sweepSpeedSlider" max="30" min="1" step="1" type="range" value="1"/>
   </label>
   <label>Beam thickness
     <input id="sweepBeamSlider" max="8" min="1" step="1" type="range" value="2"/>
@@ -1479,6 +1479,8 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var RADAR_MANIFEST = null;
   var RADAR_MANIFEST_URL = "";
   var RADAR_MANIFEST_FOLDER = "";
+  var currentRadarFrameIndex = 0;
+  var useManifestFrameScrubber = false;
 
   function _isAbsUrl(u){
     return /^https?:\/\//i.test(String(u||"")) || String(u||"").startsWith("data:") || String(u||"").startsWith("blob:");
@@ -1516,6 +1518,13 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
         if (!(TIME_CFG && TIME_CFG.startZ)) startZ = new Date(RADAR_MANIFEST.start_utc);
         if (!(TIME_CFG && TIME_CFG.endZ)) endZ = new Date(RADAR_MANIFEST.end_utc);
       }
+
+      if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+        useManifestFrameScrubber = true;
+        currentRadarFrameIndex = 0;
+        var firstUtc = RADAR_MANIFEST.frames[0].utc || RADAR_MANIFEST.frames[0].t || RADAR_MANIFEST.frames[0].time || null;
+        if (firstUtc) curZ = new Date(firstUtc);
+      }
     }catch(e){
       console.warn('⚠️ Radar manifest load failed:', e);
       RADAR_MANIFEST = null;
@@ -1541,8 +1550,39 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 
   // URL builders (templates per lesson, with fallback to your current 2018 defaults)
+  function getManifestFrameAtIndex(idx){
+    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return null;
+    idx = Math.max(0, Math.min(RADAR_MANIFEST.frames.length - 1, idx|0));
+    return RADAR_MANIFEST.frames[idx] || null;
+  }
+
+  function getManifestFrameUtc(f){
+    return f ? (f.utc || f.t || f.time || null) : null;
+  }
+
+  function setCurrentRadarFrameIndex(idx){
+    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return;
+    currentRadarFrameIndex = Math.max(0, Math.min(RADAR_MANIFEST.frames.length - 1, idx|0));
+    var f = getManifestFrameAtIndex(currentRadarFrameIndex);
+    var rawUtc = getManifestFrameUtc(f);
+    if (rawUtc) curZ = new Date(rawUtc);
+  }
+
+  function stepRadarFrame(delta){
+    if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+      setCurrentRadarFrameIndex(currentRadarFrameIndex + delta);
+      updateAll();
+      return true;
+    }
+    return false;
+  }
+
   function radarUrlFor(d){
-    var mf = findNearestRadarFrame(d);
+    var mf = null;
+    if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+      mf = getManifestFrameAtIndex(currentRadarFrameIndex);
+    }
+    if (!mf) mf = findNearestRadarFrame(d);
     if (mf){
       var png = mf.png || mf.file || mf.filename || mf.name || null;
       if (png){
@@ -1585,7 +1625,11 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   window.__WDL_CFG__ = CFG;
   await loadRadarManifestIfNeeded();
 // ---------- Map ----------
-  var map = L.map("map", { zoomControl:true }).setView([43.55, -96.73], 6);
+  var initView = (CFG && CFG.map && CFG.map.initialView) ? CFG.map.initialView : { lat: 43.55, lon: -96.73, zoom: 6 };
+  var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.55, initView.lon || -96.73], initView.zoom || 6);
+  if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
+    try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
+  }
 
   // Custom lower-right zoom buttons
   var zoomCornerPlus = document.getElementById('zoomCornerPlus');
@@ -2709,8 +2753,8 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
   }
 
-  if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 6;
-  if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 2;
+  if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 2;
+  if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 1;
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
@@ -2809,7 +2853,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       var dt = Math.min(0.05, (ts - radarSweepLastTs) / 1000);
       radarSweepLastTs = ts;
 
-      var angVel = (radarSweepRPM * 2 * Math.PI / 60);
+      var angVel = (Math.max(1, radarSweepRPM) * 2 * Math.PI / 60);
       var dTheta = angVel * dt;
       swept += dTheta;
       radarSweepAngle += dTheta;
@@ -2870,11 +2914,18 @@ function setTimeLabel(){
     try{
       var scrub = document.getElementById("cbScrubber");
       if (scrub){
-        var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
-        if (idx < 0) idx = 0;
-        var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
-        scrub.max = String(max);
-        scrub.value = String(idx);
+        if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+          scrub.min = "0";
+          scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
+          scrub.step = "1";
+          scrub.value = String(currentRadarFrameIndex);
+        } else {
+          var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
+          if (idx < 0) idx = 0;
+          var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
+          scrub.max = String(max);
+          scrub.value = String(idx);
+        }
       }
     }catch(e){}
 
@@ -3039,12 +3090,14 @@ function updateAlerts(){
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
   if (_back) _back.onclick = function(){
+    if (stepRadarFrame(-1)) return;
     curZ = new Date(curZ.getTime() - STEP_MS);
     clampTime(); updateAll();
   };
   var _fwd = document.getElementById('cbFwdBtn') || document.getElementById('bFwdBtn');
   if (_fwd) _fwd.title = "Forward " + STEP_LABEL;
   if (_fwd) _fwd.onclick = function(){
+    if (stepRadarFrame(1)) return;
     curZ = new Date(curZ.getTime() + STEP_MS);
     clampTime(); updateAll();
   };
@@ -3055,6 +3108,11 @@ function updateAlerts(){
     _scrub.oninput = function(){
       var v = parseInt(_scrub.value, 10);
       if (!isFinite(v)) return;
+      if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+        setCurrentRadarFrameIndex(v);
+        updateAll();
+        return;
+      }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
       clampTime(); updateAll();
     };
