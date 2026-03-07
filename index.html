@@ -2648,6 +2648,8 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var radarSweepEnabled = true;
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
+  var radarSweepBeamCanvas = null;
+  var radarSweepBeamCtx = null;
   var radarSweepImage = null;
   var radarSweepImageUrl = "";
   var radarSweepAnim = 0;
@@ -2694,7 +2696,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       radarSweepCanvas.style.display = 'none';
       if (radarSweepCtx) radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
     }
-    if (radarSweepBeamCanvas){
+    if (typeof radarSweepBeamCanvas !== "undefined" && radarSweepBeamCanvas){
       radarSweepBeamCanvas.style.display = 'none';
       if (radarSweepBeamCtx) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width,radarSweepBeamCanvas.height);
     }
@@ -2838,6 +2840,10 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       bubble.style.transform = "translateX(-50%)";
     }catch(e){}
   }
+
+function updateHrrrTempRadius(){
+  return;
+}
 
 function formatCentralLabel(d){
   try{
