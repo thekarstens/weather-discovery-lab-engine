@@ -522,7 +522,7 @@ html, body { height:100%; margin:0; }
 
 /* Opacity group */
 .opacity-wrap{display:flex;align-items:center;gap:8px}
-.op-label{font:900 12px/1 'Lato',Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}
+.op-label{font:900 12px/1 \"Lato\",Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}
 #radarOpacity{width:180px}
 
 /* Map legend near logo */
@@ -539,7 +539,7 @@ html, body { height:100%; margin:0; }
   font-family: Arial, sans-serif;
 }
 .map-legend-row{display:flex;align-items:center;gap:10px}
-.leg-mini-label{font:900 12px/1 'Lato',Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;opacity:.95}
+.leg-mini-label{font:900 12px/1 \"Lato\",Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;opacity:.95}
 .leg-mini-bar{
   width:140px;height:10px;border-radius:7px;
   background:linear-gradient(90deg,#2b83ba,#ffd166,#ef476f);
@@ -1246,7 +1246,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   background:transparent;
   color:rgba(255,255,255,0.86);
   padding:12px 10px;
-  font:900 12px/1 'Lato',Arial,sans-serif;
+  font:900 12px/1 \"Lato\",Arial,sans-serif;
   letter-spacing:.7px;
   cursor:pointer;
   border-right:1px solid rgba(255,255,255,0.08);
@@ -1285,7 +1285,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   color:#fff;
   border-radius:999px;
   padding:8px 12px;
-  font:900 12px/1 'Lato',Arial,sans-serif;
+  font:900 12px/1 \"Lato\",Arial,sans-serif;
   cursor:pointer;
 }
 .inv-chip:hover{ background:rgba(255,255,255,0.14); }
@@ -3198,8 +3198,8 @@ function setTimeLabel(){
   }
 
   function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 'Lato',Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 'Lato',Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
     var parts = [];
     parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
     parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
