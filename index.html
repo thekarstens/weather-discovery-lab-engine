@@ -3125,6 +3125,7 @@ function setTimeLabel(){
     try{
       if (!CFG || !CFG.metars) return null;
       var f = CFG.metars.file || CFG.metars.url || null;
+      if (!f && CFG.metars.enabled) f = 'metars/metars.json';
       if (!f) return null;
       return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
     }catch(e){
@@ -3154,14 +3155,17 @@ function setTimeLabel(){
     if (metarLoadPromise) return metarLoadPromise;
     var url = getMetarUrl();
     if (!url) throw new Error('No METAR file configured in lesson.json');
+    setStatus('Loading METARs…');
     metarLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
-      if (!r.ok) throw new Error('METAR HTTP ' + r.status);
+      if (!r.ok) throw new Error('METAR HTTP ' + r.status + ' :: ' + url);
       return r.json();
     }).then(function(rows){
       metarData = Array.isArray(rows) ? rows : [];
+      setStatus('METARs loaded: ' + metarData.length + ' stations');
       return metarData;
     }).catch(function(err){
       metarLoadPromise = null;
+      setStatus('METAR load failed');
       throw err;
     });
     return metarLoadPromise;
@@ -3212,6 +3216,8 @@ function setTimeLabel(){
   async function toggleMetars(){
     await setMetarsEnabled(!metarVisible);
   }
+  window.toggleMetars = toggleMetars;
+  window.setMetarsEnabled = setMetarsEnabled;
 
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
@@ -3481,7 +3487,15 @@ function updateAlerts(){
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
-        try{ if (typeof toggleMetars === 'function') toggleMetars(); }catch(e){}
+        try{
+          if (typeof window.toggleMetars === 'function') {
+            Promise.resolve(window.toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else if (typeof toggleMetars === 'function') {
+            Promise.resolve(toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else {
+            setStatus('METAR toggle not available');
+          }
+        }catch(e){ console.error(e); setStatus('METAR toggle error'); }
       }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
@@ -3729,7 +3743,15 @@ function updateAlerts(){
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
-        try{ if (typeof toggleMetars === 'function') toggleMetars(); }catch(e){}
+        try{
+          if (typeof window.toggleMetars === 'function') {
+            Promise.resolve(window.toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else if (typeof toggleMetars === 'function') {
+            Promise.resolve(toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else {
+            setStatus('METAR toggle not available');
+          }
+        }catch(e){ console.error(e); setStatus('METAR toggle error'); }
       }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
