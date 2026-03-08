@@ -303,6 +303,7 @@ html, body { height:100%; margin:0; }
   }
   .tool-btn:hover{ background:rgba(0,0,0,0.40); }
   .tool-btn.active{ background:#fdd835; color:#111; border-color: rgba(0,0,0,0.35); }
+  #spcToggleBtn.active{ background:#fdd835 !important; color:#111 !important; border-color: rgba(0,0,0,0.35) !important; }
   .tool-btn.disabled{
     opacity:.35;
     filter:grayscale(1);
@@ -1330,6 +1331,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 </div>
 </div>
 <div class="bl-right">
+<button class="banner-btn banner-btn-blue" id="spcToggleBtn" title="Toggle SPC Day 1 Outlook">SPC DAY 1</button>
 <button class="banner-btn banner-btn-blue" id="stormScienceGuideBtn" title="Weather Discovery Terms">WEATHER DISCOVERY TERMS</button>
 </div>
 </div>
@@ -2573,6 +2575,11 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     updateRadar();
   };
 
+  var spcToggleBtn = document.getElementById("spcToggleBtn");
+  if (spcToggleBtn) spcToggleBtn.onclick = function(){
+    setSpcDay1Enabled(!spcDay1Enabled);
+  };
+
   // Load story now
   loadStory();
 
@@ -2685,6 +2692,135 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       .openOn(map);
     }
   });
+
+  // ---------- SPC Day 1 overlay ----------
+  var spcDay1Layer = null;
+  var spcDay1Enabled = false;
+  var spcDay1LoadedUrl = "";
+
+  var SPC_COLORS = {
+    TSTM: { fill: "#C1E9C1", stroke: "#55AA55" },
+    MRGL: { fill: "#55BB55", stroke: "#005500" },
+    SLGT: { fill: "#F5D800", stroke: "#D6B000" },
+    ENH:  { fill: "#FF8C00", stroke: "#CC6600" },
+    MDT:  { fill: "#FF0000", stroke: "#CC0000" },
+    HIGH: { fill: "#FF00FF", stroke: "#CC00CC" }
+  };
+
+  function normalizeSpcCategory(props){
+    if (!props) return "TSTM";
+
+    var raw =
+      props.CATEGORICAL || props.category || props.CAT || props.LABEL || props.label ||
+      props.risk || props.RISK || props.DN_LABEL || props.dn_label || "";
+
+    raw = String(raw).trim().toUpperCase();
+
+    if (raw.includes("HIGH")) return "HIGH";
+    if (raw.includes("MDT") || raw.includes("MODERATE")) return "MDT";
+    if (raw.includes("ENH") || raw.includes("ENHANCED")) return "ENH";
+    if (raw.includes("SLGT") || raw.includes("SLIGHT")) return "SLGT";
+    if (raw.includes("MRGL") || raw.includes("MARGINAL")) return "MRGL";
+    if (raw.includes("TSTM") || raw.includes("THUNDER") || raw.includes("GENERAL")) return "TSTM";
+
+    var dn = Number(props.DN ?? props.dn ?? props.VALUE ?? props.value ?? props.level ?? props.LEVEL ?? NaN);
+    if (dn === 6) return "HIGH";
+    if (dn === 5) return "MDT";
+    if (dn === 4) return "ENH";
+    if (dn === 3) return "SLGT";
+    if (dn === 2) return "MRGL";
+    if (dn === 1) return "TSTM";
+
+    return "TSTM";
+  }
+
+  function spcCategoryLabel(cat){
+    return ({ TSTM:"General Thunder", MRGL:"Marginal", SLGT:"Slight", ENH:"Enhanced", MDT:"Moderate", HIGH:"High" })[cat] || cat;
+  }
+
+  function spcDay1Style(feature){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    var c = SPC_COLORS[cat] || SPC_COLORS.TSTM;
+    return {
+      pane: "spcPane",
+      color: c.stroke,
+      weight: cat === "TSTM" ? 1.5 : 2,
+      opacity: 0.95,
+      fillColor: c.fill,
+      fillOpacity: cat === "TSTM" ? 0.18 : 0.28
+    };
+  }
+
+  function spcDay1Popup(feature){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    return "<div style='font:900 14px/1.2 Arial,sans-serif'>SPC Day 1 Outlook</div>" +
+           "<div style='font:800 13px/1.25 Arial,sans-serif;margin-top:4px'>" + spcCategoryLabel(cat) + "</div>";
+  }
+
+  function getSpcDay1Url(){
+    try{
+      if (CFG && Array.isArray(CFG.overlays)){
+        for (var i = 0; i < CFG.overlays.length; i++){
+          var o = CFG.overlays[i] || {};
+          var name = String(o.name || "").toLowerCase();
+          if (name.includes("day 1") || name.includes("spc")){
+            return _joinUrl(DATA_BASE, o.url || "overlays/Day1.json");
+          }
+        }
+      }
+    }catch(e){}
+    return _joinUrl(DATA_BASE, "overlays/Day1.json");
+  }
+
+  async function ensureSpcDay1Layer(){
+    var url = getSpcDay1Url();
+    if (spcDay1Layer && spcDay1LoadedUrl === url) return spcDay1Layer;
+
+    var res = await fetch(url + (url.includes("?") ? "&" : "?") + "v=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("SPC Day 1 HTTP " + res.status + ": " + url);
+    var gj = await res.json();
+
+    if (!map.getPane("spcPane")){
+      map.createPane("spcPane");
+      map.getPane("spcPane").style.zIndex = 410;
+      map.getPane("spcPane").style.pointerEvents = "auto";
+    }
+
+    spcDay1LoadedUrl = url;
+    spcDay1Layer = L.geoJSON(gj, {
+      pane: "spcPane",
+      style: spcDay1Style,
+      onEachFeature: function(feature, layer){
+        layer.bindPopup(spcDay1Popup(feature));
+      }
+    });
+    return spcDay1Layer;
+  }
+
+  async function setSpcDay1Enabled(on){
+    spcDay1Enabled = !!on;
+    var btn = document.getElementById("spcToggleBtn");
+
+    if (spcDay1Enabled){
+      try{
+        var layer = await ensureSpcDay1Layer();
+        if (!map.hasLayer(layer)) layer.addTo(map);
+        if (btn) btn.classList.add("active");
+        setStatus("SPC Day 1 outlook on");
+      }catch(err){
+        console.error(err);
+        spcDay1Enabled = false;
+        if (btn) btn.classList.remove("active");
+        setStatus("SPC Day 1 outlook failed to load");
+      }
+    } else {
+      if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
+      if (btn) btn.classList.remove("active");
+      setStatus("SPC Day 1 outlook off");
+    }
+
+    updateProductLabel();
+  }
 
   // ---------- Layers ----------
   var obsRadarOverlay = null;
@@ -2944,6 +3080,7 @@ function setTimeLabel(){
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
+    { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -3078,6 +3215,7 @@ function updateAlerts(){
     updateGfsSnow();
     updateEra5Global();
     updateAlerts();
+    if (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled) setSpcDay1Enabled(true);
     updateProductLabel();
   }
 
