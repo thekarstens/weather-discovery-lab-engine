@@ -1315,6 +1315,18 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 }
 
+
+.metar-id-tip{
+  background: rgba(18,32,51,0.88);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  font: 800 11px/1 Arial,sans-serif;
+  padding: 2px 6px;
+}
+.metar-id-tip:before{ display:none; }
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -3133,12 +3145,35 @@ function setTimeLabel(){
     }
   }
 
+  function metarTempColorF(tmpf){
+    var t = Number(tmpf);
+    if (!isFinite(t)) return '#f4e8a3';
+    if (t <= 20) return '#b39ddb';
+    if (t <= 32) return '#90caf9';
+    if (t <= 45) return '#80deea';
+    if (t <= 60) return '#a5d6a7';
+    if (t <= 70) return '#dce775';
+    if (t <= 80) return '#ffd54f';
+    if (t <= 90) return '#ffb74d';
+    return '#ef5350';
+  }
+
+  function metarOutlineColor(tmpf){
+    var t = Number(tmpf);
+    if (!isFinite(t)) return '#243447';
+    if (t <= 32) return '#1d4f91';
+    if (t <= 60) return '#2e5d34';
+    if (t <= 80) return '#8a5a00';
+    return '#8b1e1e';
+  }
+
   function metarPopupHtml(r){
+    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
     var parts = [];
     parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
-    parts.push('<div class="hrrr-popup-row"><span>Time</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Temp</span><span class="hrrr-popup-value">' + ((r.tmpf ?? '—')) + '°F</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Dewpoint</span><span class="hrrr-popup-value">' + ((r.dwpf ?? '—')) + '°F</span></div>');
+    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
+    parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
     var windTxt = '—';
     if (r.drct != null || r.sknt != null){
       windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
@@ -3175,15 +3210,27 @@ function setTimeLabel(){
     var layers = (Array.isArray(metarData) ? metarData : []).filter(function(r){
       return r && isFinite(Number(r.lat)) && isFinite(Number(r.lon));
     }).map(function(r){
-      var marker = L.circleMarker([Number(r.lat), Number(r.lon)], {
-        radius: 4,
-        weight: 1,
-        color: '#0b1c2d',
-        fillColor: '#fdd835',
-        fillOpacity: 0.92,
+      var lat = Number(r.lat), lon = Number(r.lon);
+      var fill = metarTempColorF(r.tmpf);
+      var stroke = metarOutlineColor(r.tmpf);
+      var marker = L.circleMarker([lat, lon], {
+        radius: 6,
+        weight: 2,
+        color: stroke,
+        fillColor: fill,
+        fillOpacity: 0.95,
         pane: 'markerPane'
       });
-      marker.bindPopup(metarPopupHtml(r));
+      marker.bindPopup(metarPopupHtml(r), { maxWidth: 260 });
+      try{
+        marker.bindTooltip(String(r.id || ''), {
+          permanent: map && map.getZoom && map.getZoom() >= 7,
+          direction: 'top',
+          offset: [0, -8],
+          opacity: 0.9,
+          className: 'metar-id-tip'
+        });
+      }catch(e){}
       return marker;
     });
     return L.layerGroup(layers);
