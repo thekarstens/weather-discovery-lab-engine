@@ -6,6 +6,7 @@
 <title>Apr 2018 Case Study – Radar + Alerts</title>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <link href="./leaflet.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet"/>
 <script src="./leaflet.js"></script>
 <!-- lessonLoader disabled here; this page uses its own inline lesson loading -->
 <script>
@@ -521,7 +522,7 @@ html, body { height:100%; margin:0; }
 
 /* Opacity group */
 .opacity-wrap{display:flex;align-items:center;gap:8px}
-.op-label{font:900 12px/1 Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}
+.op-label{font:900 12px/1 'Lato',Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase}
 #radarOpacity{width:180px}
 
 /* Map legend near logo */
@@ -538,7 +539,7 @@ html, body { height:100%; margin:0; }
   font-family: Arial, sans-serif;
 }
 .map-legend-row{display:flex;align-items:center;gap:10px}
-.leg-mini-label{font:900 12px/1 Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;opacity:.95}
+.leg-mini-label{font:900 12px/1 'Lato',Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;opacity:.95}
 .leg-mini-bar{
   width:140px;height:10px;border-radius:7px;
   background:linear-gradient(90deg,#2b83ba,#ffd166,#ef476f);
@@ -1245,7 +1246,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   background:transparent;
   color:rgba(255,255,255,0.86);
   padding:12px 10px;
-  font:900 12px/1 Arial,sans-serif;
+  font:900 12px/1 'Lato',Arial,sans-serif;
   letter-spacing:.7px;
   cursor:pointer;
   border-right:1px solid rgba(255,255,255,0.08);
@@ -1284,7 +1285,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   color:#fff;
   border-radius:999px;
   padding:8px 12px;
-  font:900 12px/1 Arial,sans-serif;
+  font:900 12px/1 'Lato',Arial,sans-serif;
   cursor:pointer;
 }
 .inv-chip:hover{ background:rgba(255,255,255,0.14); }
@@ -1315,6 +1316,35 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 }
 
+
+
+.metar-temp-wrap{
+  background: transparent !important;
+  border: 0 !important;
+}
+.metar-temp-dot{
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  border:2px solid rgba(0,0,0,0.30);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.28);
+  color:#122033;
+  font-family:'Lato', Arial, sans-serif;
+  font-weight:900;
+  font-size:17px;
+  line-height:1;
+  letter-spacing:-0.2px;
+  text-align:center;
+}
+.metar-temp-dot.is-missing{
+  color:#5b6470;
+  background:#e9eef3 !important;
+  border-color:#9aa5b1 !important;
+}
 
 .metar-id-tip{
   background: rgba(18,32,51,0.88);
@@ -3168,8 +3198,8 @@ function setTimeLabel(){
   }
 
   function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 'Lato',Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 'Lato',Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
     var parts = [];
     parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
     parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
@@ -3206,11 +3236,35 @@ function setTimeLabel(){
     return metarLoadPromise;
   }
 
+  function metarMinSepForZoom(z){
+    if (z <= 5) return 42;
+    if (z <= 6) return 32;
+    if (z <= 7) return 24;
+    if (z <= 8) return 18;
+    return 12;
+  }
+
   function buildMetarLayer(){
-    var layers = (Array.isArray(metarData) ? metarData : []).filter(function(r){
+    var rows = (Array.isArray(metarData) ? metarData : []).filter(function(r){
       return r && isFinite(Number(r.lat)) && isFinite(Number(r.lon));
-    }).map(function(r){
+    });
+    var group = L.layerGroup();
+    var z = map.getZoom ? map.getZoom() : 6;
+    var bounds = map.getBounds ? map.getBounds().pad(0.22) : null;
+    var minSep = metarMinSepForZoom(z);
+    var placed = [];
+
+    rows.forEach(function(r){
       var lat = Number(r.lat), lon = Number(r.lon);
+      if (bounds && !bounds.contains([lat, lon])) return;
+      var pt = map.latLngToContainerPoint([lat, lon]);
+      for (var i = 0; i < placed.length; i++){
+        var dx = pt.x - placed[i].x;
+        var dy = pt.y - placed[i].y;
+        if ((dx*dx + dy*dy) < (minSep * minSep)) return;
+      }
+      placed.push(pt);
+
       var fill = metarTempColorF(r.tmpf);
       var stroke = metarOutlineColor(r.tmpf);
       var tempText = (r.tmpf == null || r.tmpf === '') ? '—' : String(Math.round(Number(r.tmpf)));
@@ -3220,17 +3274,26 @@ function setTimeLabel(){
         icon: L.divIcon({
           className: 'metar-temp-wrap',
           html: html,
-          iconSize: [34, 34],
-          iconAnchor: [17, 17],
-          popupAnchor: [0, -16]
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          popupAnchor: [0, -18]
         }),
         pane: 'markerPane',
         keyboard: false
       });
-      marker.bindPopup(metarPopupHtml(r), { maxWidth: 260 });
-      return marker;
+      marker.bindPopup(metarPopupHtml(r), { maxWidth: 280 });
+      group.addLayer(marker);
     });
-    return L.layerGroup(layers);
+
+    setStatus('METARs shown: ' + placed.length + '/' + rows.length + ' (zoom ' + z + ')');
+    return group;
+  }
+
+  function refreshMetarLayer(){
+    if (!metarVisible) return;
+    if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
+    metarLayer = buildMetarLayer();
+    if (metarLayer) metarLayer.addTo(map);
   }
 
   async function setMetarsEnabled(on){
@@ -3241,7 +3304,7 @@ function setTimeLabel(){
           if (!metarData.length) await loadMetars();
           metarLayer = buildMetarLayer();
         }
-        if (metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
+        refreshMetarLayer();
         metarVisible = true;
         setStatus('METARs on');
       }catch(err){
@@ -3260,6 +3323,10 @@ function setTimeLabel(){
   async function toggleMetars(){
     await setMetarsEnabled(!metarVisible);
   }
+
+  map.on('zoomend moveend', function(){
+    if (metarVisible) refreshMetarLayer();
+  });
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
 
