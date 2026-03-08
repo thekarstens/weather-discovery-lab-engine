@@ -3213,24 +3213,21 @@ function setTimeLabel(){
       var lat = Number(r.lat), lon = Number(r.lon);
       var fill = metarTempColorF(r.tmpf);
       var stroke = metarOutlineColor(r.tmpf);
-      var marker = L.circleMarker([lat, lon], {
-        radius: 6,
-        weight: 2,
-        color: stroke,
-        fillColor: fill,
-        fillOpacity: 0.95,
-        pane: 'markerPane'
+      var tempText = (r.tmpf == null || r.tmpf === '') ? '—' : String(Math.round(Number(r.tmpf)));
+      var cls = 'metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '');
+      var html = '<div class="' + cls + '" style="background:' + fill + ';border-color:' + stroke + ';">' + tempText + '</div>';
+      var marker = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'metar-temp-wrap',
+          html: html,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -16]
+        }),
+        pane: 'markerPane',
+        keyboard: false
       });
       marker.bindPopup(metarPopupHtml(r), { maxWidth: 260 });
-      try{
-        marker.bindTooltip(String(r.id || ''), {
-          permanent: map && map.getZoom && map.getZoom() >= 7,
-          direction: 'top',
-          offset: [0, -8],
-          opacity: 0.9,
-          className: 'metar-id-tip'
-        });
-      }catch(e){}
       return marker;
     });
     return L.layerGroup(layers);
