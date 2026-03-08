@@ -1464,7 +1464,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
         <div class="inv-chips">
           <button class="inv-chip active" type="button" data-action="radar">RADAR</button>
           <button class="inv-chip" type="button" data-action="terms">TERMS</button>
-          <button class="inv-chip" type="button" disabled>METARS</button>
+          <button class="inv-chip" type="button" data-action="metars">METARS</button>
           <button class="inv-chip" type="button" disabled>SATELLITE</button>
         </div>
       </div>
@@ -2642,7 +2642,7 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70 };
+var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
 
 function getActiveProductKey(){
   // Priority: global > snow > temp > radar (matches your product label logic)
@@ -2650,6 +2650,7 @@ function getActiveProductKey(){
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
+  if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
 }
 
@@ -2880,6 +2881,12 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var radarSweepAnim = 0;
   var radarSweepAngle = 0;
   var radarSweepLastTs = 0;
+
+  // ---------- Static METAR layer ----------
+  var metarLayer = null;
+  var metarVisible = false;
+  var metarData = [];
+  var metarLoadPromise = null;
 
   function stopRadarSweep(){
     if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
@@ -3113,6 +3120,99 @@ function setTimeLabel(){
     positionClockBubble();
   }
 
+
+  function getMetarUrl(){
+    try{
+      if (!CFG || !CFG.metars) return null;
+      var f = CFG.metars.file || CFG.metars.url || null;
+      if (!f) return null;
+      return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
+    }catch(e){
+      return null;
+    }
+  }
+
+  function metarPopupHtml(r){
+    var parts = [];
+    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
+    parts.push('<div class="hrrr-popup-row"><span>Time</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Temp</span><span class="hrrr-popup-value">' + ((r.tmpf ?? '—')) + '°F</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Dewpoint</span><span class="hrrr-popup-value">' + ((r.dwpf ?? '—')) + '°F</span></div>');
+    var windTxt = '—';
+    if (r.drct != null || r.sknt != null){
+      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
+      if (r.gust != null) windTxt += ' G' + String(r.gust);
+    }
+    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
+    if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
+    return '<div class="hrrr-popup">' + parts.join('') + '</div>';
+  }
+
+  async function loadMetars(){
+    if (metarLoadPromise) return metarLoadPromise;
+    var url = getMetarUrl();
+    if (!url) throw new Error('No METAR file configured in lesson.json');
+    metarLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
+      if (!r.ok) throw new Error('METAR HTTP ' + r.status);
+      return r.json();
+    }).then(function(rows){
+      metarData = Array.isArray(rows) ? rows : [];
+      return metarData;
+    }).catch(function(err){
+      metarLoadPromise = null;
+      throw err;
+    });
+    return metarLoadPromise;
+  }
+
+  function buildMetarLayer(){
+    var layers = (Array.isArray(metarData) ? metarData : []).filter(function(r){
+      return r && isFinite(Number(r.lat)) && isFinite(Number(r.lon));
+    }).map(function(r){
+      var marker = L.circleMarker([Number(r.lat), Number(r.lon)], {
+        radius: 4,
+        weight: 1,
+        color: '#0b1c2d',
+        fillColor: '#fdd835',
+        fillOpacity: 0.92,
+        pane: 'markerPane'
+      });
+      marker.bindPopup(metarPopupHtml(r));
+      return marker;
+    });
+    return L.layerGroup(layers);
+  }
+
+  async function setMetarsEnabled(on){
+    var want = !!on;
+    if (want){
+      try{
+        if (!metarLayer){
+          if (!metarData.length) await loadMetars();
+          metarLayer = buildMetarLayer();
+        }
+        if (metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
+        metarVisible = true;
+        setStatus('METARs on');
+      }catch(err){
+        metarVisible = false;
+        setStatus('METARs failed to load');
+        console.error(err);
+      }
+    } else {
+      if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
+      metarVisible = false;
+      setStatus('METARs off');
+    }
+    try{ updateProductLabel(); }catch(e){}
+  }
+
+  async function toggleMetars(){
+    await setMetarsEnabled(!metarVisible);
+  }
+
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
   if (!pl) return;
@@ -3123,6 +3223,7 @@ function setTimeLabel(){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
@@ -3259,6 +3360,7 @@ function updateAlerts(){
     updateGfsSnow();
     updateEra5Global();
     updateAlerts();
+    if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
 
@@ -3358,7 +3460,12 @@ function updateAlerts(){
     var sweepOn = false;
     try{ sweepOn = !!(window.radarSweepEnabled); }catch(e){}
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
-    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !spcOn); });
+    var metarsOn = false;
+    try{ metarsOn = !!metarVisible; }catch(e){}
+    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
+    var radarOn = false;
+    try{ radarOn = !!obsRadarEnabled; }catch(e){}
+    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
   }
 
   function clickIf(id){
@@ -3373,8 +3480,12 @@ function updateAlerts(){
       else if (action === 'spc') clickIf('spcToggleBtn');
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
+      else if (action === 'metars') {
+        try{ if (typeof toggleMetars === 'function') toggleMetars(); }catch(e){}
+      }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
       setTimeout(refreshDockStates, 30);
@@ -3597,7 +3708,12 @@ function updateAlerts(){
     var sweepOn = false;
     try{ sweepOn = !!(window.radarSweepEnabled); }catch(e){}
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
-    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !spcOn); });
+    var metarsOn = false;
+    try{ metarsOn = !!metarVisible; }catch(e){}
+    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
+    var radarOn = false;
+    try{ radarOn = !!obsRadarEnabled; }catch(e){}
+    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
   }
 
   function clickIf(id){
@@ -3612,8 +3728,12 @@ function updateAlerts(){
       else if (action === 'spc') clickIf('spcToggleBtn');
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
+      else if (action === 'metars') {
+        try{ if (typeof toggleMetars === 'function') toggleMetars(); }catch(e){}
+      }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
       setTimeout(refreshDockStates, 30);
