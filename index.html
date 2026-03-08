@@ -175,75 +175,6 @@ html, body { height:100%; margin:0; }
 }
 
 
-/* ===== Floating product dock ===== */
-#productDock{
-  position:absolute;
-  top:86px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  background:rgba(20,30,45,0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border:1px solid rgba(255,255,255,0.18);
-  border-radius:18px;
-  box-shadow:0 10px 26px rgba(0,0,0,0.28);
-  z-index:100020;
-}
-.product-btn{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  min-height:42px;
-  border:none;
-  border-radius:12px;
-  padding:10px 14px;
-  background:rgba(255,255,255,0.10);
-  color:#fff;
-  font:900 12px/1 Arial,sans-serif;
-  letter-spacing:.5px;
-  text-transform:uppercase;
-  cursor:pointer;
-  transition:background .18s ease, transform .18s ease, box-shadow .18s ease;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
-  white-space:nowrap;
-}
-.product-btn:hover{ background:rgba(255,255,255,0.16); }
-.product-btn:active{ transform:translateY(1px); }
-.product-btn.active{
-  background:#fdd835;
-  color:#111;
-  box-shadow: 0 6px 16px rgba(0,0,0,.24), inset 0 0 0 1px rgba(0,0,0,.18);
-}
-.product-pill{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:42px;
-  padding:10px 16px;
-  border-radius:12px;
-  background:rgba(255,255,255,0.08);
-  color:#fff;
-  font:900 12px/1 Arial,sans-serif;
-  letter-spacing:.9px;
-  text-transform:uppercase;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
-}
-@media (max-width: 900px){
-  #productDock{
-    top:96px;
-    max-width:calc(100vw - 20px);
-    overflow-x:auto;
-    justify-content:flex-start;
-  }
-}
-
-
   .open-lesson-btn:hover{ filter:brightness(0.98); }
 
 
@@ -690,8 +621,19 @@ html, body { height:100%; margin:0; }
 }
 
 
-/* Nudge legend tighter into the corner */
-.map-legend{right:10px !important; bottom:62px !important;}
+/* Compact map legend (moved out of banner to save map space) */
+.map-legend{
+  left:12px !important;
+  right:auto !important;
+  bottom:92px !important;
+  padding:5px 8px !important;
+  border-radius:10px !important;
+  background:rgba(11,28,45,0.86) !important;
+  z-index:100003 !important;
+}
+.leg-mini-label{font-size:10px !important;}
+.leg-mini-bar{width:88px !important; height:8px !important;}
+#bannerLegend{display:none !important;}
 
 
 /* Center lesson/question text */
@@ -1208,7 +1150,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   top:auto !important;
   bottom:12px !important;
   transform:translateX(-50%) !important;
-  width:min(1160px, calc(100vw - 26px)) !important;
+  width:min(980px, calc(100vw - 180px)) !important;
   padding:10px 12px !important;
   border-radius:18px !important;
   z-index:100004 !important;
@@ -1216,7 +1158,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 #clockBubble .cb-label{ display:none !important; }
 #clockBubble .cb-row{
   display:grid !important;
-  grid-template-columns:auto auto auto 1fr auto;
+  grid-template-columns:auto auto auto auto 1fr auto;
   align-items:center !important;
   gap:10px !important;
   margin-top:0 !important;
@@ -1234,6 +1176,14 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 }
 #sweepToggleBtn{
   min-width:118px;
+}
+#spcBubbleBtn{
+  min-width:92px;
+}
+.cb-btn.active{
+  background:#fdd835 !important;
+  color:#111 !important;
+  border-color:rgba(0,0,0,0.28) !important;
 }
 #radarSweepControls{
   position:absolute;
@@ -1267,11 +1217,20 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   z-index:360;
 }
 @media (max-width: 900px){
-  #clockBubble .cb-row{
-    grid-template-columns:auto auto 1fr auto;
+  #clockBubble{
+    width:min(980px, calc(100vw - 24px)) !important;
   }
-  #sweepToggleBtn{ grid-column:1 / span 2; }
-  #clockBubble .cb-time{ grid-column:4; }
+  #clockBubble .cb-row{
+    grid-template-columns:auto auto auto 1fr auto;
+  }
+  #spcBubbleBtn{ grid-column:1; }
+  #sweepToggleBtn{ grid-column:2; }
+  #clockBubble .cb-time{ grid-column:5; }
+}
+
+/* Move lower-right zoom above the bottom time bubble */
+.zoom-corner{
+  bottom:104px !important;
 }
 
 </style>
@@ -1347,6 +1306,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <div aria-label="Time controls" class="cb-row">
 <button class="cb-btn" id="cbBackBtn" title="Step backward">◀</button>
 <button class="cb-btn" id="cbFwdBtn" title="Step forward">▶</button>
+<button class="cb-btn" id="spcBubbleBtn" title="Toggle SPC Day 1 outlook">SPC</button>
 <button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP OFF</button>
 <input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
 <div class="cb-time" id="clockBubbleTime">—</div>
@@ -1398,14 +1358,12 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <span class="leg-mini-label">Heavy</span>
 </div>
 </div>
-<div class="bl-right"></div>
+<div class="bl-right">
+<button class="banner-btn banner-btn-blue" id="stormScienceGuideBtn" title="Weather Discovery Terms">WEATHER DISCOVERY TERMS</button>
+</div>
 </div>
 </div>
 <div class="bstatus" id="status" style="display:none;"></div>
-</div>
-<div id="productDock" aria-label="Weather product controls">
-  <div class="product-pill" id="dockProductLabel">PRODUCT TOOLS</div>
-  <button class="product-btn active" id="stormScienceGuideBtn" title="Weather Discovery Terms">📘 TERMS</button>
 </div>
 <img alt="Weather Workshops" id="brandLogo" src="./storm_science_lab_logo.png"/>
 <script>
@@ -2532,14 +2490,15 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70 };
+var productOpacity = { radar: 0.70, spc: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70 };
 
 function getActiveProductKey(){
-  // Priority: global > snow > temp > radar (matches your product label logic)
+  // Priority: global > snow > temp > goes > spc > radar
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
+  if (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled) return "spc";
   return "radar";
 }
 
@@ -2770,6 +2729,116 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var radarSweepAnim = 0;
   var radarSweepAngle = 0;
   var radarSweepLastTs = 0;
+
+  // SPC Day 1 overlay
+  var spcDay1Layer = null;
+  var spcDay1Enabled = false;
+  var spcLoadPromise = null;
+  var SPC_COLORS = {
+    TSTM: { fill: "#C8F2C2", stroke: "#55AA55" },
+    MRGL: { fill: "#55BB55", stroke: "#005500" },
+    SLGT: { fill: "#FFF566", stroke: "#D6A300" },
+    ENH:  { fill: "#FFA366", stroke: "#CC6600" },
+    MDT:  { fill: "#FF6666", stroke: "#CC0000" },
+    HIGH: { fill: "#FF66FF", stroke: "#CC00CC" }
+  };
+
+  function normalizeSpcCategory(props){
+    if (!props) return "TSTM";
+    var raw = props.CATEGORICAL || props.category || props.CAT || props.LABEL || props.label || props.risk || props.RISK || props.DN || props.dn || props.VALUE || props.value || props.level || props.LEVEL || "";
+    raw = String(raw).trim().toUpperCase();
+    if (raw === "6" || raw.indexOf("HIGH") >= 0) return "HIGH";
+    if (raw === "5" || raw.indexOf("MDT") >= 0 || raw.indexOf("MODERATE") >= 0) return "MDT";
+    if (raw === "4" || raw.indexOf("ENH") >= 0 || raw.indexOf("ENHANCED") >= 0) return "ENH";
+    if (raw === "3" || raw.indexOf("SLGT") >= 0 || raw.indexOf("SLIGHT") >= 0) return "SLGT";
+    if (raw === "2" || raw.indexOf("MRGL") >= 0 || raw.indexOf("MARGINAL") >= 0) return "MRGL";
+    return "TSTM";
+  }
+
+  function spcDay1Style(feature){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    var c = SPC_COLORS[cat] || SPC_COLORS.TSTM;
+    return {
+      color: c.stroke,
+      weight: 2,
+      opacity: 0.98,
+      fillColor: c.fill,
+      fillOpacity: productOpacity.spc || 0.32,
+      interactive: true
+    };
+  }
+
+  function spcDay1OnEachFeature(feature, layer){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    layer.bindPopup("<div style='font:900 14px/1.15 Arial,sans-serif'>SPC Day 1 Outlook</div><div style='margin-top:4px;font:900 13px/1.15 Arial,sans-serif'>" + cat + "</div>");
+  }
+
+  function getSpcDay1Url(){
+    try{
+      if (CFG && Array.isArray(CFG.overlays)) {
+        for (var i=0;i<CFG.overlays.length;i++){
+          var o = CFG.overlays[i] || {};
+          var name = String(o.name || o.label || "").toLowerCase();
+          var url = o.url || o.path || o.file || "";
+          if (!url) continue;
+          if (name.indexOf("day 1") >= 0 || name.indexOf("spc") >= 0){
+            return _isAbsUrl(url) ? url : _joinUrl(DATA_BASE, url);
+          }
+        }
+      }
+    }catch(e){}
+    return _joinUrl(DATA_BASE, "overlays/Day1.json");
+  }
+
+  function ensureSpcDay1Layer(){
+    if (spcDay1Layer) return Promise.resolve(spcDay1Layer);
+    if (spcLoadPromise) return spcLoadPromise;
+    var url = getSpcDay1Url();
+    spcLoadPromise = fetch(url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + Date.now(), { cache:"no-store" })
+      .then(function(res){ if (!res.ok) throw new Error("SPC Day 1 HTTP " + res.status + ": " + url); return res.json(); })
+      .then(function(geojson){
+        spcDay1Layer = L.geoJSON(geojson, { style: spcDay1Style, onEachFeature: spcDay1OnEachFeature });
+        try { spcDay1Layer.setZIndex && spcDay1Layer.setZIndex(430); } catch(e){}
+        return spcDay1Layer;
+      })
+      .finally(function(){ spcLoadPromise = null; });
+    return spcLoadPromise;
+  }
+
+  function applySpcOpacity(op){
+    productOpacity.spc = op;
+    if (spcDay1Layer && spcDay1Layer.eachLayer){
+      spcDay1Layer.eachLayer(function(layer){
+        if (layer && layer.setStyle) layer.setStyle({ fillOpacity: Math.max(0.12, Math.min(0.85, op)) });
+      });
+    }
+  }
+
+  function syncSpcButton(){
+    var btn = document.getElementById("spcBubbleBtn");
+    if (btn) btn.classList.toggle("active", !!spcDay1Enabled);
+  }
+
+  function setSpcDay1Enabled(on){
+    spcDay1Enabled = !!on;
+    syncSpcButton();
+    if (!spcDay1Enabled){
+      if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
+      updateLegend();
+      updateProductLabel();
+      return Promise.resolve();
+    }
+    return ensureSpcDay1Layer().then(function(layer){
+      if (!map.hasLayer(layer)) layer.addTo(map);
+      applySpcOpacity(productOpacity.spc || 0.32);
+      updateLegend();
+      updateProductLabel();
+    }).catch(function(err){
+      console.error(err);
+      spcDay1Enabled = false;
+      syncSpcButton();
+    });
+  }
 
   function stopRadarSweep(){
     if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
@@ -3013,6 +3082,7 @@ function setTimeLabel(){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
@@ -3034,6 +3104,10 @@ function setTimeLabel(){
     if (key === "radar"){
       title = "Radar reflectivity";
       if (bar) bar.style.background = "linear-gradient(90deg, #2b83ba, #4ecdc4, #a8e6a3, #ffd166, #ef476f)";
+      el.style.display = "";
+    } else if (key === "spc"){
+      title = "SPC Day 1 outlook";
+      if (bar) bar.style.background = "linear-gradient(90deg, #C8F2C2 0%, #55BB55 20%, #FFF566 40%, #FFA366 65%, #FF6666 82%, #FF66FF 100%)";
       el.style.display = "";
     } else if (key === "snow"){
       title = "Snow (forecast)";
@@ -3057,7 +3131,10 @@ function setTimeLabel(){
   }
 
 
+  var radarLoadNonce = 0;
+
   function updateRadar(){
+    var thisLoad = ++radarLoadNonce;
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
       if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
@@ -3068,6 +3145,7 @@ function setTimeLabel(){
     var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function(){
+      if (thisLoad !== radarLoadNonce) return;
       radarSweepImage = img;
       radarSweepImageUrl = url;
       var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
@@ -3090,6 +3168,7 @@ function setTimeLabel(){
       }
     };
     img.onerror = function(){
+      if (thisLoad !== radarLoadNonce) return;
       hideRadarSweepCanvas();
       setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
@@ -3176,17 +3255,21 @@ function updateAlerts(){
   // Time scrubber (drag to jump through time)
   var _scrub = document.getElementById("cbScrubber");
   if (_scrub){
-    _scrub.oninput = function(){
+    var _scrubJump = function(){
       var v = parseInt(_scrub.value, 10);
       if (!isFinite(v)) return;
       if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
         setCurrentRadarFrameIndex(v);
-        updateAll();
+        setTimeLabel();
+        updateRadar();
+        syncJetParticlesToClock();
         return;
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
       clampTime(); updateAll();
     };
+    _scrub.oninput = _scrubJump;
+    _scrub.onchange = _scrubJump;
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
   function syncSweepButton(){
@@ -3199,6 +3282,11 @@ function updateAlerts(){
       updateRadar();
     };
     syncSweepButton();
+  }
+  var _spcBtn = document.getElementById("spcBubbleBtn");
+  if (_spcBtn){
+    _spcBtn.onclick = function(){ setSpcDay1Enabled(!spcDay1Enabled); };
+    syncSpcButton();
   }
 
   map.on('zoom move resize', function(){
@@ -3281,32 +3369,17 @@ function updateAlerts(){
 
   if (!btn || !panel || !body) return;
 
-  var dockLabel = document.getElementById("dockProductLabel");
-  var topProduct = document.getElementById("productLabel");
-  function syncDockLabel(){
-    if (!dockLabel || !topProduct) return;
-    dockLabel.textContent = topProduct.textContent || "PRODUCT TOOLS";
-  }
-  syncDockLabel();
-  try {
-    if (topProduct && window.MutationObserver) {
-      new MutationObserver(syncDockLabel).observe(topProduct, { childList:true, subtree:true, characterData:true });
-    }
-  } catch(e){}
-
   // ---------- State ----------
   var mode = "scene"; // "scene" or "all"
   var q = "";
 
   function openPanel(){
     document.body.classList.add("ssg-open");
-    if (btn) btn.classList.add("active");
     try{ if (typeof map !== "undefined") setTimeout(function(){ map.invalidateSize(); }, 220); }catch(e){}
     render();
   }
   function closePanel(){
     document.body.classList.remove("ssg-open");
-    if (btn) btn.classList.remove("active");
     try{ if (typeof map !== "undefined") setTimeout(function(){ map.invalidateSize(); }, 220); }catch(e){}
   }
   function togglePanel(){
