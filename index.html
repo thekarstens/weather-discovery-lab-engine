@@ -2914,7 +2914,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   // ---------- Layers ----------
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
-  var radarSweepEnabled = true;
+  var radarSweepEnabled = false;
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
   var radarSweepBeamCanvas = null;
@@ -3305,13 +3305,14 @@ function setTimeLabel(){
     var want = !!on;
     if (want){
       try{
+        metarVisible = true;
+        window.metarVisible = metarVisible;
         if (!metarLayer){
           if (!metarData.length) await loadMetars();
           metarLayer = buildMetarLayer();
         }
         refreshMetarLayer();
-        metarVisible = true;
-        window.metarVisible = metarVisible;
+        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
@@ -3430,6 +3431,8 @@ function setTimeLabel(){
       if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
       setStatus('Radar off');
     } else {
+      radarSweepEnabled = false;
+      syncSweepButton();
       updateRadar();
       setStatus('Radar on');
     }
@@ -3493,6 +3496,7 @@ function setTimeLabel(){
   }
 
 
+  var radarLoadToken = 0;
   function updateRadar(){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
@@ -3500,10 +3504,12 @@ function setTimeLabel(){
       return;
     }
     var url = radarUrlFor(curZ);
+    var myToken = ++radarLoadToken;
 
     var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function(){
+      if (myToken !== radarLoadToken) return;
       radarSweepImage = img;
       radarSweepImageUrl = url;
       var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
@@ -3526,6 +3532,7 @@ function setTimeLabel(){
       }
     };
     img.onerror = function(){
+      if (myToken !== radarLoadToken) return;
       hideRadarSweepCanvas();
       setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
@@ -3896,6 +3903,7 @@ function updateAlerts(){
     if (action === 'radar'){
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
       return;
     }
