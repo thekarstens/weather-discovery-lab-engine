@@ -3601,7 +3601,17 @@ function updateAlerts(){
     chip.addEventListener('click', function(){
       var action = chip.getAttribute('data-action');
       if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') clickIf('spcToggleBtn');
+      else if (action === 'spc') {
+        try{
+          if (typeof window.setSpcDay1Enabled === 'function') {
+            window.setSpcDay1Enabled(!window.spcDay1Enabled);
+          } else if (typeof setSpcDay1Enabled === 'function') {
+            setSpcDay1Enabled(!window.spcDay1Enabled);
+          } else {
+            clickIf('spcToggleBtn');
+          }
+        }catch(e){ console.error(e); setStatus('SPC toggle error'); }
+      }
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
@@ -3816,84 +3826,8 @@ function updateAlerts(){
   }
 
 
-// ===== Investigation dock: 6-tab lesson structure =====
-(function(){
-  var dock = document.getElementById("investigationDock");
-  if (!dock) return;
 
-  var tabs = Array.prototype.slice.call(dock.querySelectorAll('.inv-tab'));
-  var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
-  var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
-
-  function showPane(name){
-    tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
-    panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
-  }
-
-  tabs.forEach(function(btn){
-    btn.addEventListener('click', function(){ showPane(btn.getAttribute('data-tab')); });
-  });
-
-  function refreshDockStates(){
-    var termsOpen = document.body.classList.contains('ssg-open');
-    dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
-    var spcOn = false;
-    try{ spcOn = !!(window.spcDay1Enabled); }catch(e){}
-    dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', spcOn); });
-    var sweepOn = false;
-    try{ sweepOn = !!(window.radarSweepEnabled); }catch(e){}
-    dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
-    var metarsOn = false;
-    try{ metarsOn = !!metarVisible; }catch(e){}
-    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
-    var radarOn = false;
-    try{ radarOn = !!obsRadarEnabled; }catch(e){}
-    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
-  }
-
-  function clickIf(id){
-    var el = document.getElementById(id);
-    if (el) el.click();
-  }
-
-  chips.forEach(function(chip){
-    chip.addEventListener('click', function(){
-      var action = chip.getAttribute('data-action');
-      if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') clickIf('spcToggleBtn');
-      else if (action === 'sweep') clickIf('sweepToggleBtn');
-      else if (action === 'lesson') clickIf('openLessonBtn');
-      else if (action === 'metars') {
-        try{
-          if (typeof window.toggleMetars === 'function') {
-            Promise.resolve(window.toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
-          } else if (typeof toggleMetars === 'function') {
-            Promise.resolve(toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
-          } else {
-            setStatus('METAR toggle not available');
-          }
-        }catch(e){ console.error(e); setStatus('METAR toggle error'); }
-      }
-      else if (action === 'radar') {
-        try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
-        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
-        try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
-      }
-      setTimeout(refreshDockStates, 30);
-    });
-  });
-
-  var obs = new MutationObserver(function(){ refreshDockStates(); });
-  try{
-    obs.observe(document.body, { attributes:true, attributeFilter:['class'] });
-    var spcBtn = document.getElementById('spcToggleBtn');
-    if (spcBtn) obs.observe(spcBtn, { attributes:true, attributeFilter:['class'] });
-  }catch(e){}
-
-  refreshDockStates();
-})();
-
-})();
+// duplicate investigation dock block removed
 </script>
 </body>
 </html>
