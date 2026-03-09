@@ -1232,7 +1232,7 @@ body.ssg-open #stormScienceGuide{
 #investigationDock{
   position:absolute;
   left:50%;
-  top:118px;
+  top:98px;
   transform:translateX(-50%);
   z-index:100020;
   width:min(980px, calc(100vw - 28px));
@@ -1271,6 +1271,17 @@ body.ssg-open #stormScienceGuide{
 #investigationBody{
   padding:10px 12px 12px;
   border-top:1px solid rgba(255,255,255,0.08);
+  max-height:320px;
+  overflow:hidden;
+  transition:max-height 180ms ease, padding 180ms ease, border-top-color 180ms ease, opacity 180ms ease;
+  opacity:1;
+}
+.inv-shell.collapsed #investigationBody{
+  max-height:0;
+  padding-top:0;
+  padding-bottom:0;
+  border-top-color:transparent;
+  opacity:0;
 }
 .inv-pane{ display:none; }
 .inv-pane.active{ display:block; }
@@ -1319,7 +1330,7 @@ body.ssg-open #stormScienceGuide{
 }
 @media (max-width: 900px){
   #investigationDock{
-    top:112px;
+    top:92px;
     width:calc(100vw - 16px);
   }
   .inv-tabs{
@@ -3685,9 +3696,19 @@ function updateAlerts(){
   var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
   var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
 
+  var shell = dock.querySelector('.inv-shell');
+
+  function collapseDock(){
+    if (shell) shell.classList.add('collapsed');
+  }
+  function expandDock(){
+    if (shell) shell.classList.remove('collapsed');
+  }
+
   function showPane(name){
     tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
     panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
+    expandDock();
   }
 
   tabs.forEach(function(btn){
@@ -3741,6 +3762,7 @@ function updateAlerts(){
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
       setTimeout(refreshDockStates, 30);
+      setTimeout(collapseDock, 60);
     });
   });
 
