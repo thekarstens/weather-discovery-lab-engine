@@ -778,7 +778,7 @@ html, body { height:100%; margin:0; }
 #stormScienceGuide{
   position:absolute;
   top:92px;             /* below your banner */
-  right:10px;
+  right:-390px;
   width:360px;
   max-width:92vw;
   max-height: calc(100vh - 100px);
@@ -788,12 +788,20 @@ html, body { height:100%; margin:0; }
   border:1px solid rgba(0,0,0,0.18);
   border-radius:16px;
   box-shadow: 0 10px 28px rgba(0,0,0,.18);
-  transform: translateX(110%);
-  transition: transform 180ms ease;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:right 180ms ease, opacity 180ms ease, visibility 0s linear 180ms;
   display:flex;
   flex-direction:column;
 }
-body.ssg-open #stormScienceGuide{ transform: translateX(0); }
+body.ssg-open #stormScienceGuide{
+  right:10px;
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transition:right 180ms ease, opacity 180ms ease;
+}
 
 .ssg-head{
   display:flex;
@@ -883,11 +891,14 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 /* Mobile: full-screen drawer */
 @media (max-width: 640px){
   #stormScienceGuide{
-    left:6px;
-    right:6px;
-    width:auto;
+    left:auto;
+    right:-101vw;
+    width:min(360px, calc(100vw - 12px));
     top:78px;
     max-height: calc(100vh - 86px);
+  }
+  body.ssg-open #stormScienceGuide{
+    right:6px;
   }
 }
 
@@ -1704,6 +1715,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   var RADAR_MANIFEST_FOLDER = "";
   var currentRadarFrameIndex = 0;
   var useManifestFrameScrubber = false;
+  var radarRequestId = 0;
 
   function _isAbsUrl(u){
     return /^https?:\/\//i.test(String(u||"")) || String(u||"").startsWith("data:") || String(u||"").startsWith("blob:");
@@ -3497,13 +3509,17 @@ function setTimeLabel(){
       return;
     }
     var url = radarUrlFor(curZ);
+    var thisReq = ++radarRequestId;
 
     var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function(){
+      if (thisReq !== radarRequestId) return;
       radarSweepImage = img;
       radarSweepImageUrl = url;
-      var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
+      var op = 0.70;
+      var rs = document.getElementById("radarOpacity");
+      if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
 
       if (radarSweepEnabled){
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
@@ -3518,18 +3534,20 @@ function setTimeLabel(){
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
         obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
         obsRadarOverlay.addTo(map);
+        try{ if (spcDay1Layer && map.hasLayer(spcDay1Layer) && spcDay1Layer.bringToFront) spcDay1Layer.bringToFront(); }catch(e){}
         applyActiveOpacity();
         setStatus("Radar: " + url);
       }
     };
     img.onerror = function(){
+      if (thisReq !== radarRequestId) return;
       hideRadarSweepCanvas();
       setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
     img.src = url;
   }
 
-  
+
   function updateGfsSnow(){
     if (!gfsSnowEnabled) return;
 
