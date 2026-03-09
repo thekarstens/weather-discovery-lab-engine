@@ -3153,8 +3153,8 @@ function nearestHrrrFrameIndexForTime(d){
 
   function setCurrentHrrrFrameIndex(idx){
     if (!hrrrFrames || !hrrrFrames.length) return;
-    idx = Math.max(0, Math.min(hrrrFrames.length - 1, idx|0));
-    var f = hrrrFrames[idx];
+    currentHrrrFrameIndex = Math.max(0, Math.min(hrrrFrames.length - 1, idx|0));
+    var f = hrrrFrames[currentHrrrFrameIndex];
     var rawUtc = f ? (f.time || f.utc || f.valid || null) : null;
     if (rawUtc) curZ = new Date(rawUtc);
   }
@@ -3174,7 +3174,7 @@ function nearestHrrrFrameIndexForTime(d){
       scrub.step = "1";
       if (mode === 'hrrr'){
         scrub.max = String(Math.max(0, hrrrFrames.length - 1));
-        scrub.value = String(nearestHrrrFrameIndexForTime(curZ));
+        scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -3464,11 +3464,13 @@ function nearestHrrrFrameIndexForTime(d){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
       if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
+      try{ setTimeLabel(); }catch(e){}
       setStatus('Radar off');
     } else {
       radarSweepEnabled = false;
       syncSweepButton();
       updateRadar();
+      try{ setTimeLabel(); }catch(e){}
       setStatus('Radar on');
     }
     try{ updateProductLabel(); }catch(e){}
@@ -3478,6 +3480,7 @@ function nearestHrrrFrameIndexForTime(d){
 
   var hrrrManifest = null;
   var hrrrFrames = [];
+  var currentHrrrFrameIndex = 0;
   var hrrrBounds = null;
   var hrrrLoadPromise = null;
   var hrrrLoadToken = 0;
@@ -3538,6 +3541,7 @@ function nearestHrrrFrameIndexForTime(d){
       hrrrManifest = raw || {};
       hrrrBounds = parseHrrrBounds(raw);
       hrrrFrames = parseHrrrFrames(raw);
+      currentHrrrFrameIndex = 0;
       window.__HRRR_FRAMES__ = hrrrFrames;
       if (!hrrrBounds) throw new Error('HRRR manifest missing bounds');
       if (!hrrrFrames.length) throw new Error('HRRR manifest has no frames');
@@ -3552,6 +3556,9 @@ function nearestHrrrFrameIndexForTime(d){
   }
   function currentHrrrFrame(){
     if (!hrrrFrames.length) return null;
+    if (hrrrTempEnabled){
+      return hrrrFrames[Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0))] || null;
+    }
     var valid = hrrrFrames.filter(function(f){ return isFinite(f.timeMs); });
     if (valid.length){
       var best = valid[0], bestDiff = Math.abs(valid[0].timeMs - curZ.getTime());
@@ -3606,10 +3613,13 @@ function nearestHrrrFrameIndexForTime(d){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
       setStatus('HRRR Temp off');
       try{ updateProductLabel(); }catch(e){}
+      try{ setTimeLabel(); }catch(e){}
       return;
     }
     try{
       await loadHrrrManifest();
+      currentHrrrFrameIndex = nearestHrrrFrameIndexForTime(curZ);
+      setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
       updateHrrrOverlay();
       setStatus('HRRR Temp on');
     }catch(err){
@@ -3823,12 +3833,16 @@ function updateAlerts(){
       var mode = getActiveScrubberMode();
       if (mode === 'radar'){
         setCurrentRadarFrameIndex(v);
-        updateAll();
+        setTimeLabel();
+        updateRadar();
+        updateProductLabel();
         return;
       }
       if (mode === 'hrrr'){
         setCurrentHrrrFrameIndex(v);
-        updateAll();
+        setTimeLabel();
+        updateHrrrOverlay();
+        updateProductLabel();
         return;
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
