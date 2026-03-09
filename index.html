@@ -2687,11 +2687,12 @@ var radarOpacity = document.getElementById("radarOpacity");
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
 
 function getActiveProductKey(){
-  // Priority: global > snow > temp > radar (matches your product label logic)
+  // Priority: global > snow > temp > goes > spc > metars > radar
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
+  if (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled) return "spc";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
 }
@@ -3300,12 +3301,11 @@ function setTimeLabel(){
     var want = !!on;
     if (want){
       try{
-        if (!metarLayer){
-          if (!metarData.length) await loadMetars();
-          metarLayer = buildMetarLayer();
-        }
-        refreshMetarLayer();
+        if (!metarData.length) await loadMetars();
         metarVisible = true;
+        if (typeof obsRadarEnabled !== "undefined") obsRadarEnabled = false;
+        if (!metarLayer) metarLayer = buildMetarLayer();
+        refreshMetarLayer();
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
@@ -3324,11 +3324,112 @@ function setTimeLabel(){
     await setMetarsEnabled(!metarVisible);
   }
 
+  var spcDay1Layer = null;
+  var spcDay1Enabled = false;
+  var spcDay1LoadedUrl = "";
+  var SPC_COLORS = {
+    TSTM: { fill: "#c1e9c1", stroke: "#55aa55" },
+    MRGL: { fill: "#55bb55", stroke: "#005500" },
+    SLGT: { fill: "#fff566", stroke: "#ddaa00" },
+    ENH:  { fill: "#ffa366", stroke: "#cc6600" },
+    MDT:  { fill: "#ff6666", stroke: "#cc0000" },
+    HIGH: { fill: "#ff66ff", stroke: "#cc00cc" }
+  };
+
+  function normalizeSpcCategory(props){
+    if (!props) return "TSTM";
+    var raw = props.CATEGORICAL || props.category || props.CAT || props.LABEL || props.label || props.risk || props.RISK || "";
+    raw = String(raw).trim().toUpperCase();
+    if (raw.includes("HIGH")) return "HIGH";
+    if (raw.includes("MDT") || raw.includes("MODERATE")) return "MDT";
+    if (raw.includes("ENH") || raw.includes("ENHANCED")) return "ENH";
+    if (raw.includes("SLGT") || raw.includes("SLIGHT")) return "SLGT";
+    if (raw.includes("MRGL") || raw.includes("MARGINAL")) return "MRGL";
+    if (raw.includes("TSTM") || raw.includes("GENERAL")) return "TSTM";
+    var dn = Number(props.DN ?? props.dn ?? props.VALUE ?? props.value ?? props.level ?? props.LEVEL);
+    if (dn === 6) return "HIGH";
+    if (dn === 5) return "MDT";
+    if (dn === 4) return "ENH";
+    if (dn === 3) return "SLGT";
+    if (dn === 2) return "MRGL";
+    if (dn === 1) return "TSTM";
+    return "TSTM";
+  }
+
+  function spcDay1Style(feature){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    var c = SPC_COLORS[cat] || SPC_COLORS.TSTM;
+    return { color:c.stroke, weight:2, opacity:0.95, fillColor:c.fill, fillOpacity:0.30 };
+  }
+
+  function spcDay1Popup(feature){
+    var cat = normalizeSpcCategory(feature && feature.properties);
+    return "<div style='font:900 14px/1.2 Lato,Arial,sans-serif'>SPC Day 1 Outlook</div>" +
+           "<div style='font:800 13px/1.2 Lato,Arial,sans-serif;margin-top:4px'>" + cat + "</div>";
+  }
+
+  function getSpcDay1Url(){
+    try{
+      if (CFG && Array.isArray(CFG.overlays)){
+        var found = CFG.overlays.find(function(o){
+          var n = String((o && o.name) || "").toLowerCase();
+          return n.includes("day 1") || n.includes("spc");
+        });
+        if (found && found.url) return _isAbsUrl(found.url) ? found.url : _joinUrl(DATA_BASE, found.url);
+      }
+    }catch(e){}
+    return _joinUrl(DATA_BASE, "overlays/Day1.json");
+  }
+
+  async function ensureSpcDay1Layer(){
+    var url = getSpcDay1Url();
+    if (spcDay1Layer && spcDay1LoadedUrl === url) return spcDay1Layer;
+    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+    if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
+    var gj = await res.json();
+    if (!map.getPane('spcPane')){
+      map.createPane('spcPane');
+      map.getPane('spcPane').style.zIndex = 410;
+      map.getPane('spcPane').style.pointerEvents = 'auto';
+    }
+    spcDay1LoadedUrl = url;
+    spcDay1Layer = L.geoJSON(gj, {
+      pane:'spcPane',
+      style:spcDay1Style,
+      onEachFeature:function(feature, layer){ layer.bindPopup(spcDay1Popup(feature)); }
+    });
+    return spcDay1Layer;
+  }
+
+  async function setSpcDay1Enabled(on){
+    spcDay1Enabled = !!on;
+    window.spcDay1Enabled = spcDay1Enabled;
+    if (spcDay1Enabled){
+      try{
+        var layer = await ensureSpcDay1Layer();
+        if (!map.hasLayer(layer)) layer.addTo(map);
+        if (layer.bringToFront) layer.bringToFront();
+        setStatus('SPC Day 1 outlook on');
+      }catch(err){
+        console.error(err);
+        spcDay1Enabled = false;
+        window.spcDay1Enabled = false;
+        setStatus('SPC Day 1 outlook failed to load');
+      }
+    } else {
+      if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
+      setStatus('SPC Day 1 outlook off');
+    }
+    try{ updateProductLabel(); }catch(e){}
+  }
+
   map.on('zoomend moveend', function(){
     if (metarVisible) refreshMetarLayer();
   });
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
+  window.setSpcDay1Enabled = setSpcDay1Enabled;
+  window.spcDay1Enabled = spcDay1Enabled;
 
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
@@ -3340,6 +3441,7 @@ function setTimeLabel(){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
@@ -3369,6 +3471,9 @@ function setTimeLabel(){
       el.style.display = "";
     } else if (key === "goes"){
       title = "GOES Satellite";
+      el.style.display = "none";
+    } else if (key === "spc"){
+      title = "SPC Day 1 Outlook";
       el.style.display = "none";
     } else if (key === "global"){
       title = "Global 2m Temperature (°F) — ERA5";
@@ -3510,7 +3615,10 @@ function updateAlerts(){
       if (!isFinite(v)) return;
       if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
         setCurrentRadarFrameIndex(v);
-        updateAll();
+        setTimeLabel();
+        updateRadar();
+        if (typeof metarVisible !== "undefined" && metarVisible) refreshMetarLayer();
+        updateProductLabel();
         return;
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
@@ -3594,7 +3702,7 @@ function updateAlerts(){
     chip.addEventListener('click', function(){
       var action = chip.getAttribute('data-action');
       if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') clickIf('spcToggleBtn');
+      else if (action === 'spc') { try{ if (typeof setSpcDay1Enabled === 'function') setSpcDay1Enabled(!window.spcDay1Enabled); }catch(e){ console.error(e); } }
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
@@ -3610,7 +3718,8 @@ function updateAlerts(){
       }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
-        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
+        try{ if (typeof setMetarsEnabled === 'function' && metarVisible) setMetarsEnabled(false); }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; setTimeLabel(); updateRadar(); } }catch(e){}
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
       setTimeout(refreshDockStates, 30);
@@ -3850,7 +3959,7 @@ function updateAlerts(){
     chip.addEventListener('click', function(){
       var action = chip.getAttribute('data-action');
       if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') clickIf('spcToggleBtn');
+      else if (action === 'spc') { try{ if (typeof setSpcDay1Enabled === 'function') setSpcDay1Enabled(!window.spcDay1Enabled); }catch(e){ console.error(e); } }
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
@@ -3866,7 +3975,8 @@ function updateAlerts(){
       }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
-        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
+        try{ if (typeof setMetarsEnabled === 'function' && metarVisible) setMetarsEnabled(false); }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; setTimeLabel(); updateRadar(); } }catch(e){}
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
       setTimeout(refreshDockStates, 30);
