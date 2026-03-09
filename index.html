@@ -2928,6 +2928,10 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   // ---------- Static METAR layer ----------
   var metarLayer = null;
   var metarVisible = false;
+  window.metarVisible = metarVisible;
+  window.obsRadarEnabled = obsRadarEnabled;
+  window.radarSweepEnabled = radarSweepEnabled;
+  window.spcDay1Enabled = false;
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -3307,15 +3311,18 @@ function setTimeLabel(){
         }
         refreshMetarLayer();
         metarVisible = true;
+        window.metarVisible = metarVisible;
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
+        window.metarVisible = metarVisible;
         setStatus('METARs failed to load');
         console.error(err);
       }
     } else {
       if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
       metarVisible = false;
+      window.metarVisible = metarVisible;
       setStatus('METARs off');
     }
     try{ updateProductLabel(); }catch(e){}
@@ -3331,6 +3338,105 @@ function setTimeLabel(){
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
 
+  var spcDay1Layer = null;
+  var spcDay1Enabled = false;
+
+  function getSpcDay1Url(){
+    try {
+      if (CFG && Array.isArray(CFG.overlays)) {
+        for (var i=0;i<CFG.overlays.length;i++){
+          var o = CFG.overlays[i] || {};
+          var nm = String(o.name || '').toLowerCase();
+          if (nm.indexOf('day 1') !== -1 || nm.indexOf('spc') !== -1){
+            var u = o.url || o.file;
+            if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+          }
+        }
+      }
+    } catch(e){}
+    return _joinUrl(DATA_BASE, 'overlays/Day1.json');
+  }
+
+  function normalizeSpcCategory(props){
+    if (!props) return 'TSTM';
+    var raw = props.CATEGORICAL || props.category || props.CAT || props.LABEL || props.label || props.risk || props.RISK || '';
+    raw = String(raw).trim().toUpperCase();
+    if (raw.includes('HIGH')) return 'HIGH';
+    if (raw.includes('MDT') || raw.includes('MODERATE')) return 'MDT';
+    if (raw.includes('ENH') || raw.includes('ENHANCED')) return 'ENH';
+    if (raw.includes('SLGT') || raw.includes('SLIGHT')) return 'SLGT';
+    if (raw.includes('MRGL') || raw.includes('MARGINAL')) return 'MRGL';
+    if (raw.includes('TSTM') || raw.includes('GENERAL')) return 'TSTM';
+    var dn = Number(props.DN ?? props.dn ?? props.VALUE ?? props.value ?? props.level ?? props.LEVEL);
+    if (dn === 6) return 'HIGH';
+    if (dn === 5) return 'MDT';
+    if (dn === 4) return 'ENH';
+    if (dn === 3) return 'SLGT';
+    if (dn === 2) return 'MRGL';
+    if (dn === 1) return 'TSTM';
+    return 'TSTM';
+  }
+
+  function spcStyle(feature){
+    var c = {
+      TSTM:{fill:'#C1E9C1',stroke:'#55AA55'},
+      MRGL:{fill:'#55BB55',stroke:'#005500'},
+      SLGT:{fill:'#FFF566',stroke:'#DDAA00'},
+      ENH:{fill:'#FFA366',stroke:'#CC6600'},
+      MDT:{fill:'#FF6666',stroke:'#CC0000'},
+      HIGH:{fill:'#FF66FF',stroke:'#CC00CC'}
+    }[normalizeSpcCategory(feature && feature.properties)] || {fill:'#C1E9C1',stroke:'#55AA55'};
+    return { color:c.stroke, weight:2, opacity:0.95, fillColor:c.fill, fillOpacity:0.28 };
+  }
+
+  async function ensureSpcDay1Layer(){
+    if (spcDay1Layer) return spcDay1Layer;
+    var url = getSpcDay1Url();
+    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+    if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
+    var gj = await res.json();
+    spcDay1Layer = L.geoJSON(gj, { style:spcStyle });
+    return spcDay1Layer;
+  }
+
+  async function setSpcDay1Enabled(on){
+    spcDay1Enabled = !!on;
+    window.spcDay1Enabled = spcDay1Enabled;
+    if (spcDay1Enabled){
+      try{
+        var lyr = await ensureSpcDay1Layer();
+        if (!map.hasLayer(lyr)) lyr.addTo(map);
+        if (lyr.bringToFront) lyr.bringToFront();
+        setStatus('SPC Day 1 on');
+      } catch(err){
+        spcDay1Enabled = false;
+        window.spcDay1Enabled = false;
+        setStatus('SPC Day 1 failed');
+        console.error(err);
+      }
+    } else {
+      if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
+      setStatus('SPC Day 1 off');
+    }
+    try{ updateProductLabel(); }catch(e){}
+  }
+  window.setSpcDay1Enabled = setSpcDay1Enabled;
+
+  async function setRadarEnabled(on){
+    obsRadarEnabled = !!on;
+    window.obsRadarEnabled = obsRadarEnabled;
+    if (!obsRadarEnabled){
+      hideRadarSweepCanvas();
+      if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
+      setStatus('Radar off');
+    } else {
+      updateRadar();
+      setStatus('Radar on');
+    }
+    try{ updateProductLabel(); }catch(e){}
+  }
+  window.setRadarEnabled = setRadarEnabled;
+
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
   if (!pl) return;
@@ -3341,6 +3447,7 @@ function setTimeLabel(){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
@@ -3520,6 +3627,7 @@ function updateAlerts(){
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
   function syncSweepButton(){
+    window.radarSweepEnabled = radarSweepEnabled;
     if (_sweepBtn) _sweepBtn.textContent = radarSweepEnabled ? "SWEEP ON" : "SWEEP OFF";
   }
   if (_sweepBtn){
@@ -3763,55 +3871,53 @@ function updateAlerts(){
   function refreshDockStates(){
     var termsOpen = document.body.classList.contains('ssg-open');
     dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
-    var spcOn = false;
-    try{ spcOn = !!window.spcDay1Enabled; }catch(e){}
-    dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', spcOn); });
-    var sweepOn = false;
-    try{ sweepOn = !!window.radarSweepEnabled; }catch(e){}
-    dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
-    var metarsOn = false;
-    try{ metarsOn = !!window.metarVisible; }catch(e){}
-    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
-    var radarOn = false;
-    try{ radarOn = !!window.obsRadarEnabled; }catch(e){}
-    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
+    dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
+    dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
+    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
+    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
   }
 
-  function clickIf(id){
-    var el = document.getElementById(id);
-    if (el) el.click();
+  function clickIf(id){ var el = document.getElementById(id); if (el) el.click(); }
+
+  async function activateAction(action){
+    if (action === 'terms'){
+      clickIf('stormScienceGuideBtn');
+      return;
+    }
+    if (action === 'lesson'){
+      clickIf('openLessonBtn');
+      return;
+    }
+    if (action === 'sweep'){
+      if (!window.obsRadarEnabled && typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      clickIf('sweepToggleBtn');
+      return;
+    }
+    if (action === 'radar'){
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      return;
+    }
+    if (action === 'metars'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
+      return;
+    }
+    if (action === 'spc'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
+      return;
+    }
   }
 
   chips.forEach(function(chip){
     chip.addEventListener('click', async function(ev){
       ev.preventDefault();
-      var action = chip.getAttribute('data-action');
-      try{
-        if (action === 'terms') {
-          clickIf('stormScienceGuideBtn');
-        } else if (action === 'spc') {
-          if (typeof window.setSpcDay1Enabled === 'function') {
-            await window.setSpcDay1Enabled(!window.spcDay1Enabled);
-          }
-        } else if (action === 'sweep') {
-          clickIf('sweepToggleBtn');
-        } else if (action === 'lesson') {
-          clickIf('openLessonBtn');
-        } else if (action === 'metars') {
-          if (typeof window.toggleMetars === 'function') {
-            await window.toggleMetars();
-          } else if (typeof toggleMetars === 'function') {
-            await toggleMetars();
-          }
-        } else if (action === 'radar') {
-          try{ if (typeof window.setMetarsEnabled === 'function' && window.metarVisible) await window.setMetarsEnabled(false); }catch(e){}
-          try{ if (typeof window.setSpcDay1Enabled === 'function' && window.spcDay1Enabled) await window.setSpcDay1Enabled(false); }catch(e){}
-          try{ window.obsRadarEnabled = true; if (typeof updateRadar === 'function') updateRadar(); }catch(e){}
-          try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
-        }
-      } catch(err){
-        console.error(err);
-      }
+      try { await activateAction(chip.getAttribute('data-action')); }
+      catch(err){ console.error(err); }
       refreshDockStates();
       collapseDock();
     });
@@ -3819,7 +3925,6 @@ function updateAlerts(){
 
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
-
   refreshDockStates();
 })();
 </script>
