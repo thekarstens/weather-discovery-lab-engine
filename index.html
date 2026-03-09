@@ -778,7 +778,7 @@ html, body { height:100%; margin:0; }
 #stormScienceGuide{
   position:absolute;
   top:92px;             /* below your banner */
-  right:-390px;
+  right:10px;
   width:360px;
   max-width:92vw;
   max-height: calc(100vh - 100px);
@@ -788,20 +788,12 @@ html, body { height:100%; margin:0; }
   border:1px solid rgba(0,0,0,0.18);
   border-radius:16px;
   box-shadow: 0 10px 28px rgba(0,0,0,.18);
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  transition:right 180ms ease, opacity 180ms ease, visibility 0s linear 180ms;
+  transform: translateX(110%);
+  transition: transform 180ms ease;
   display:flex;
   flex-direction:column;
 }
-body.ssg-open #stormScienceGuide{
-  right:10px;
-  opacity:1;
-  visibility:visible;
-  pointer-events:auto;
-  transition:right 180ms ease, opacity 180ms ease;
-}
+body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 
 .ssg-head{
   display:flex;
@@ -891,14 +883,11 @@ body.ssg-open #stormScienceGuide{
 /* Mobile: full-screen drawer */
 @media (max-width: 640px){
   #stormScienceGuide{
-    left:auto;
-    right:-101vw;
-    width:min(360px, calc(100vw - 12px));
+    left:6px;
+    right:6px;
+    width:auto;
     top:78px;
     max-height: calc(100vh - 86px);
-  }
-  body.ssg-open #stormScienceGuide{
-    right:6px;
   }
 }
 
@@ -1076,7 +1065,7 @@ body.ssg-open #stormScienceGuide{
 .zoom-corner{
   position:absolute;
   right:14px;
-  bottom: 92px; /* above attribution & bottom UI */
+  bottom: 38px; /* above bottom bar */
   z-index:100003;
   display:flex;
   gap:8px;
@@ -1232,7 +1221,7 @@ body.ssg-open #stormScienceGuide{
 #investigationDock{
   position:absolute;
   left:50%;
-  top:88px;
+  top:118px;
   transform:translateX(-50%);
   z-index:100020;
   width:min(980px, calc(100vw - 28px));
@@ -1265,24 +1254,15 @@ body.ssg-open #stormScienceGuide{
 .inv-tab:last-child{ border-right:0; }
 .inv-tab:hover{ background:rgba(255,255,255,0.06); }
 .inv-tab.active{
-  background:linear-gradient(180deg, #4ea3ff, #1e88e5);
+  background:linear-gradient(180deg, #3b82f6, #1d4ed8 70%, #0b3b91);
   color:#fff;
 }
 #investigationBody{
   padding:10px 12px 12px;
   border-top:1px solid rgba(255,255,255,0.08);
-  max-height:320px;
-  overflow:hidden;
-  transition:max-height 180ms ease, padding 180ms ease, border-top-color 180ms ease, opacity 180ms ease;
-  opacity:1;
 }
-.inv-shell.collapsed #investigationBody{
-  max-height:0;
-  padding-top:0;
-  padding-bottom:0;
-  border-top-color:transparent;
-  opacity:0;
-}
+#investigationDock.collapsed #investigationBody{ display:none; }
+#investigationDock.collapsed .inv-shell{ overflow:visible; }
 .inv-pane{ display:none; }
 .inv-pane.active{ display:block; }
 .inv-heading{
@@ -1330,7 +1310,7 @@ body.ssg-open #stormScienceGuide{
 }
 @media (max-width: 900px){
   #investigationDock{
-    top:92px;
+    top:112px;
     width:calc(100vw - 16px);
   }
   .inv-tabs{
@@ -1726,7 +1706,6 @@ body.ssg-open #stormScienceGuide{
   var RADAR_MANIFEST_FOLDER = "";
   var currentRadarFrameIndex = 0;
   var useManifestFrameScrubber = false;
-  var radarRequestId = 0;
 
   function _isAbsUrl(u){
     return /^https?:\/\//i.test(String(u||"")) || String(u||"").startsWith("data:") || String(u||"").startsWith("blob:");
@@ -2710,12 +2689,11 @@ var radarOpacity = document.getElementById("radarOpacity");
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
 
 function getActiveProductKey(){
-  // Priority: global > snow > temp > goes > spc > metars > radar
+  // Priority: global > snow > temp > radar (matches your product label logic)
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
-  if (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled) return "spc";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
 }
@@ -3324,11 +3302,12 @@ function setTimeLabel(){
     var want = !!on;
     if (want){
       try{
-        if (!metarData.length) await loadMetars();
-        metarVisible = true;
-        if (typeof obsRadarEnabled !== "undefined") obsRadarEnabled = false;
-        if (!metarLayer) metarLayer = buildMetarLayer();
+        if (!metarLayer){
+          if (!metarData.length) await loadMetars();
+          metarLayer = buildMetarLayer();
+        }
         refreshMetarLayer();
+        metarVisible = true;
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
@@ -3347,112 +3326,11 @@ function setTimeLabel(){
     await setMetarsEnabled(!metarVisible);
   }
 
-  var spcDay1Layer = null;
-  var spcDay1Enabled = false;
-  var spcDay1LoadedUrl = "";
-  var SPC_COLORS = {
-    TSTM: { fill: "#c1e9c1", stroke: "#55aa55" },
-    MRGL: { fill: "#55bb55", stroke: "#005500" },
-    SLGT: { fill: "#fff566", stroke: "#ddaa00" },
-    ENH:  { fill: "#ffa366", stroke: "#cc6600" },
-    MDT:  { fill: "#ff6666", stroke: "#cc0000" },
-    HIGH: { fill: "#ff66ff", stroke: "#cc00cc" }
-  };
-
-  function normalizeSpcCategory(props){
-    if (!props) return "TSTM";
-    var raw = props.CATEGORICAL || props.category || props.CAT || props.LABEL || props.label || props.risk || props.RISK || "";
-    raw = String(raw).trim().toUpperCase();
-    if (raw.includes("HIGH")) return "HIGH";
-    if (raw.includes("MDT") || raw.includes("MODERATE")) return "MDT";
-    if (raw.includes("ENH") || raw.includes("ENHANCED")) return "ENH";
-    if (raw.includes("SLGT") || raw.includes("SLIGHT")) return "SLGT";
-    if (raw.includes("MRGL") || raw.includes("MARGINAL")) return "MRGL";
-    if (raw.includes("TSTM") || raw.includes("GENERAL")) return "TSTM";
-    var dn = Number(props.DN ?? props.dn ?? props.VALUE ?? props.value ?? props.level ?? props.LEVEL);
-    if (dn === 6) return "HIGH";
-    if (dn === 5) return "MDT";
-    if (dn === 4) return "ENH";
-    if (dn === 3) return "SLGT";
-    if (dn === 2) return "MRGL";
-    if (dn === 1) return "TSTM";
-    return "TSTM";
-  }
-
-  function spcDay1Style(feature){
-    var cat = normalizeSpcCategory(feature && feature.properties);
-    var c = SPC_COLORS[cat] || SPC_COLORS.TSTM;
-    return { color:c.stroke, weight:2, opacity:0.95, fillColor:c.fill, fillOpacity:0.30 };
-  }
-
-  function spcDay1Popup(feature){
-    var cat = normalizeSpcCategory(feature && feature.properties);
-    return "<div style='font:900 14px/1.2 Lato,Arial,sans-serif'>SPC Day 1 Outlook</div>" +
-           "<div style='font:800 13px/1.2 Lato,Arial,sans-serif;margin-top:4px'>" + cat + "</div>";
-  }
-
-  function getSpcDay1Url(){
-    try{
-      if (CFG && Array.isArray(CFG.overlays)){
-        var found = CFG.overlays.find(function(o){
-          var n = String((o && o.name) || "").toLowerCase();
-          return n.includes("day 1") || n.includes("spc");
-        });
-        if (found && found.url) return _isAbsUrl(found.url) ? found.url : _joinUrl(DATA_BASE, found.url);
-      }
-    }catch(e){}
-    return _joinUrl(DATA_BASE, "overlays/Day1.json");
-  }
-
-  async function ensureSpcDay1Layer(){
-    var url = getSpcDay1Url();
-    if (spcDay1Layer && spcDay1LoadedUrl === url) return spcDay1Layer;
-    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
-    if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
-    var gj = await res.json();
-    if (!map.getPane('spcPane')){
-      map.createPane('spcPane');
-      map.getPane('spcPane').style.zIndex = 410;
-      map.getPane('spcPane').style.pointerEvents = 'auto';
-    }
-    spcDay1LoadedUrl = url;
-    spcDay1Layer = L.geoJSON(gj, {
-      pane:'spcPane',
-      style:spcDay1Style,
-      onEachFeature:function(feature, layer){ layer.bindPopup(spcDay1Popup(feature)); }
-    });
-    return spcDay1Layer;
-  }
-
-  async function setSpcDay1Enabled(on){
-    spcDay1Enabled = !!on;
-    window.spcDay1Enabled = spcDay1Enabled;
-    if (spcDay1Enabled){
-      try{
-        var layer = await ensureSpcDay1Layer();
-        if (!map.hasLayer(layer)) layer.addTo(map);
-        if (layer.bringToFront) layer.bringToFront();
-        setStatus('SPC Day 1 outlook on');
-      }catch(err){
-        console.error(err);
-        spcDay1Enabled = false;
-        window.spcDay1Enabled = false;
-        setStatus('SPC Day 1 outlook failed to load');
-      }
-    } else {
-      if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
-      setStatus('SPC Day 1 outlook off');
-    }
-    try{ updateProductLabel(); }catch(e){}
-  }
-
   map.on('zoomend moveend', function(){
     if (metarVisible) refreshMetarLayer();
   });
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
-  window.setSpcDay1Enabled = setSpcDay1Enabled;
-  window.spcDay1Enabled = spcDay1Enabled;
 
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
@@ -3464,7 +3342,6 @@ function setTimeLabel(){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
-    { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
@@ -3495,9 +3372,6 @@ function setTimeLabel(){
     } else if (key === "goes"){
       title = "GOES Satellite";
       el.style.display = "none";
-    } else if (key === "spc"){
-      title = "SPC Day 1 Outlook";
-      el.style.display = "none";
     } else if (key === "global"){
       title = "Global 2m Temperature (°F) — ERA5";
       if (bar) bar.style.background = "linear-gradient(90deg, #2d004b 0%, #542788 12%, #2166ac 26%, #67a9cf 40%, #d1e5f0 52%, #fff7bc 62%, #fec44f 72%, #f16913 84%, #d73027 100%)";
@@ -3520,17 +3394,13 @@ function setTimeLabel(){
       return;
     }
     var url = radarUrlFor(curZ);
-    var thisReq = ++radarRequestId;
 
     var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function(){
-      if (thisReq !== radarRequestId) return;
       radarSweepImage = img;
       radarSweepImageUrl = url;
-      var op = 0.70;
-      var rs = document.getElementById("radarOpacity");
-      if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
+      var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
 
       if (radarSweepEnabled){
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
@@ -3545,20 +3415,18 @@ function setTimeLabel(){
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
         obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
         obsRadarOverlay.addTo(map);
-        try{ if (spcDay1Layer && map.hasLayer(spcDay1Layer) && spcDay1Layer.bringToFront) spcDay1Layer.bringToFront(); }catch(e){}
         applyActiveOpacity();
         setStatus("Radar: " + url);
       }
     };
     img.onerror = function(){
-      if (thisReq !== radarRequestId) return;
       hideRadarSweepCanvas();
       setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
     img.src = url;
   }
 
-
+  
   function updateGfsSnow(){
     if (!gfsSnowEnabled) return;
 
@@ -3644,10 +3512,7 @@ function updateAlerts(){
       if (!isFinite(v)) return;
       if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
         setCurrentRadarFrameIndex(v);
-        setTimeLabel();
-        updateRadar();
-        if (typeof metarVisible !== "undefined" && metarVisible) refreshMetarLayer();
-        updateProductLabel();
+        updateAll();
         return;
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
@@ -3696,23 +3561,18 @@ function updateAlerts(){
   var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
   var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
 
-  var shell = dock.querySelector('.inv-shell');
-
-  function collapseDock(){
-    if (shell) shell.classList.add('collapsed');
-  }
-  function expandDock(){
-    if (shell) shell.classList.remove('collapsed');
-  }
-
   function showPane(name){
+    dock.classList.remove('collapsed');
     tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
     panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
-    expandDock();
+  }
+
+  function collapseDock(){
+    dock.classList.add('collapsed');
   }
 
   tabs.forEach(function(btn){
-    btn.addEventListener('click', function(){ showPane(btn.getAttribute('data-tab')); });
+    btn.addEventListener('click', function(ev){ ev.stopPropagation(); showPane(btn.getAttribute('data-tab')); });
   });
 
   function refreshDockStates(){
@@ -3741,7 +3601,7 @@ function updateAlerts(){
     chip.addEventListener('click', function(){
       var action = chip.getAttribute('data-action');
       if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') { try{ if (typeof setSpcDay1Enabled === 'function') setSpcDay1Enabled(!window.spcDay1Enabled); }catch(e){ console.error(e); } }
+      else if (action === 'spc') clickIf('spcToggleBtn');
       else if (action === 'sweep') clickIf('sweepToggleBtn');
       else if (action === 'lesson') clickIf('openLessonBtn');
       else if (action === 'metars') {
@@ -3757,14 +3617,15 @@ function updateAlerts(){
       }
       else if (action === 'radar') {
         try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
-        try{ if (typeof setMetarsEnabled === 'function' && metarVisible) setMetarsEnabled(false); }catch(e){}
-        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; setTimeLabel(); updateRadar(); } }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
         try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
       }
-      setTimeout(refreshDockStates, 30);
-      setTimeout(collapseDock, 60);
+      setTimeout(function(){ refreshDockStates(); collapseDock(); }, 30);
     });
   });
+
+  dock.addEventListener('click', function(ev){ ev.stopPropagation(); });
+  document.addEventListener('click', function(){ collapseDock(); });
 
   var obs = new MutationObserver(function(){ refreshDockStates(); });
   try{
@@ -3955,8 +3816,82 @@ function updateAlerts(){
   }
 
 
+// ===== Investigation dock: 6-tab lesson structure =====
+(function(){
+  var dock = document.getElementById("investigationDock");
+  if (!dock) return;
 
+  var tabs = Array.prototype.slice.call(dock.querySelectorAll('.inv-tab'));
+  var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
+  var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
 
+  function showPane(name){
+    tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
+    panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
+  }
+
+  tabs.forEach(function(btn){
+    btn.addEventListener('click', function(){ showPane(btn.getAttribute('data-tab')); });
+  });
+
+  function refreshDockStates(){
+    var termsOpen = document.body.classList.contains('ssg-open');
+    dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
+    var spcOn = false;
+    try{ spcOn = !!(window.spcDay1Enabled); }catch(e){}
+    dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', spcOn); });
+    var sweepOn = false;
+    try{ sweepOn = !!(window.radarSweepEnabled); }catch(e){}
+    dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
+    var metarsOn = false;
+    try{ metarsOn = !!metarVisible; }catch(e){}
+    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
+    var radarOn = false;
+    try{ radarOn = !!obsRadarEnabled; }catch(e){}
+    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
+  }
+
+  function clickIf(id){
+    var el = document.getElementById(id);
+    if (el) el.click();
+  }
+
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var action = chip.getAttribute('data-action');
+      if (action === 'terms') clickIf('stormScienceGuideBtn');
+      else if (action === 'spc') clickIf('spcToggleBtn');
+      else if (action === 'sweep') clickIf('sweepToggleBtn');
+      else if (action === 'lesson') clickIf('openLessonBtn');
+      else if (action === 'metars') {
+        try{
+          if (typeof window.toggleMetars === 'function') {
+            Promise.resolve(window.toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else if (typeof toggleMetars === 'function') {
+            Promise.resolve(toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
+          } else {
+            setStatus('METAR toggle not available');
+          }
+        }catch(e){ console.error(e); setStatus('METAR toggle error'); }
+      }
+      else if (action === 'radar') {
+        try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
+        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; updateRadar(); } }catch(e){}
+        try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
+      }
+      setTimeout(refreshDockStates, 30);
+    });
+  });
+
+  var obs = new MutationObserver(function(){ refreshDockStates(); });
+  try{
+    obs.observe(document.body, { attributes:true, attributeFilter:['class'] });
+    var spcBtn = document.getElementById('spcToggleBtn');
+    if (spcBtn) obs.observe(spcBtn, { attributes:true, attributeFilter:['class'] });
+  }catch(e){}
+
+  refreshDockStates();
+})();
 
 })();
 </script>
