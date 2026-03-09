@@ -1076,7 +1076,7 @@ body.ssg-open #stormScienceGuide{
 .zoom-corner{
   position:absolute;
   right:14px;
-  bottom: 24px; /* above attribution & bottom UI */
+  bottom: 92px; /* above attribution & bottom UI */
   z-index:100003;
   display:flex;
   gap:8px;
@@ -1149,7 +1149,7 @@ body.ssg-open #stormScienceGuide{
   left:50% !important;
   right:auto !important;
   top:auto !important;
-  bottom:12px !important;
+  bottom:2px !important;
   transform:translateX(-50%) !important;
   width:min(1160px, calc(100vw - 26px)) !important;
   padding:10px 12px !important;
@@ -1232,7 +1232,7 @@ body.ssg-open #stormScienceGuide{
 #investigationDock{
   position:absolute;
   left:50%;
-  top:98px;
+  top:88px;
   transform:translateX(-50%);
   z-index:100020;
   width:min(980px, calc(100vw - 28px));
@@ -1265,8 +1265,8 @@ body.ssg-open #stormScienceGuide{
 .inv-tab:last-child{ border-right:0; }
 .inv-tab:hover{ background:rgba(255,255,255,0.06); }
 .inv-tab.active{
-  background:linear-gradient(180deg, rgba(255,214,66,0.96), rgba(239,188,26,0.98));
-  color:#0b1c2d;
+  background:linear-gradient(180deg, #4ea3ff, #1e88e5);
+  color:#fff;
 }
 #investigationBody{
   padding:10px 12px 12px;
@@ -3955,83 +3955,8 @@ function updateAlerts(){
   }
 
 
-// ===== Investigation dock: 6-tab lesson structure =====
-(function(){
-  var dock = document.getElementById("investigationDock");
-  if (!dock) return;
 
-  var tabs = Array.prototype.slice.call(dock.querySelectorAll('.inv-tab'));
-  var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
-  var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
 
-  function showPane(name){
-    tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
-    panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
-  }
-
-  tabs.forEach(function(btn){
-    btn.addEventListener('click', function(){ showPane(btn.getAttribute('data-tab')); });
-  });
-
-  function refreshDockStates(){
-    var termsOpen = document.body.classList.contains('ssg-open');
-    dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
-    var spcOn = false;
-    try{ spcOn = !!(window.spcDay1Enabled); }catch(e){}
-    dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', spcOn); });
-    var sweepOn = false;
-    try{ sweepOn = !!(window.radarSweepEnabled); }catch(e){}
-    dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', sweepOn); });
-    var metarsOn = false;
-    try{ metarsOn = !!metarVisible; }catch(e){}
-    dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', metarsOn); });
-    var radarOn = false;
-    try{ radarOn = !!obsRadarEnabled; }catch(e){}
-    dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', radarOn); });
-  }
-
-  function clickIf(id){
-    var el = document.getElementById(id);
-    if (el) el.click();
-  }
-
-  chips.forEach(function(chip){
-    chip.addEventListener('click', function(){
-      var action = chip.getAttribute('data-action');
-      if (action === 'terms') clickIf('stormScienceGuideBtn');
-      else if (action === 'spc') { try{ if (typeof setSpcDay1Enabled === 'function') setSpcDay1Enabled(!window.spcDay1Enabled); }catch(e){ console.error(e); } }
-      else if (action === 'sweep') clickIf('sweepToggleBtn');
-      else if (action === 'lesson') clickIf('openLessonBtn');
-      else if (action === 'metars') {
-        try{
-          if (typeof window.toggleMetars === 'function') {
-            Promise.resolve(window.toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
-          } else if (typeof toggleMetars === 'function') {
-            Promise.resolve(toggleMetars()).catch(function(err){ console.error(err); setStatus('METARs failed to load'); });
-          } else {
-            setStatus('METAR toggle not available');
-          }
-        }catch(e){ console.error(e); setStatus('METAR toggle error'); }
-      }
-      else if (action === 'radar') {
-        try{ if (typeof setSpcDay1Enabled === 'function' && window.spcDay1Enabled) setSpcDay1Enabled(false); }catch(e){}
-        try{ if (typeof setMetarsEnabled === 'function' && metarVisible) setMetarsEnabled(false); }catch(e){}
-        try{ if (typeof obsRadarEnabled !== 'undefined'){ obsRadarEnabled = true; setTimeLabel(); updateRadar(); } }catch(e){}
-        try{ if (typeof updateProductLabel === 'function') updateProductLabel(); }catch(e){}
-      }
-      setTimeout(refreshDockStates, 30);
-    });
-  });
-
-  var obs = new MutationObserver(function(){ refreshDockStates(); });
-  try{
-    obs.observe(document.body, { attributes:true, attributeFilter:['class'] });
-    var spcBtn = document.getElementById('spcToggleBtn');
-    if (spcBtn) obs.observe(spcBtn, { attributes:true, attributeFilter:['class'] });
-  }catch(e){}
-
-  refreshDockStates();
-})();
 
 })();
 </script>
