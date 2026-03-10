@@ -1852,6 +1852,12 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 // ---------- Map ----------
   var initView = (CFG && CFG.map && CFG.map.initialView) ? CFG.map.initialView : { lat: 43.55, lon: -96.73, zoom: 6 };
   var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.55, initView.lon || -96.73], initView.zoom || 6);
+  window.map = map;
+window.CFG = CFG;
+window.DATA_BASE = DATA_BASE;
+window._isAbsUrl = _isAbsUrl;
+window._joinUrl = _joinUrl;
+window.setStatus = setStatus;
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
