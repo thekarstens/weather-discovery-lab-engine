@@ -1522,12 +1522,12 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
       </div>
       <div class="inv-pane" data-pane="trigger">
         <div class="inv-heading">What forced the air to rise?</div>
-        <div class="inv-sub">derecho repo: fronts · overlays</div>
+        <div class="inv-sub">derecho repo: fronts · overlays · boundaries</div>
         <div class="inv-chips">
-          <button class="inv-chip" type="button" data-action="states">STATES</button>
-          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
           <button class="inv-chip" type="button" disabled>FRONTS</button>
           <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
+          <button class="inv-chip" type="button" data-action="states">STATES</button>
+          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
         </div>
       </div>
       <div class="inv-pane" data-pane="organize">
@@ -1719,98 +1719,6 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
     if (!b) return r;
     return (b.endsWith('/') ? b : (b + '/')) + r;
   }
-
-  // ---------------- Boundary overlays ----------------
-  try {
-    if (!map.getPane('boundaries')) {
-      map.createPane('boundaries');
-      map.getPane('boundaries').style.zIndex = 455;
-      map.getPane('boundaries').style.pointerEvents = 'none';
-    }
-  } catch(e){}
-  var statesBoundaryLayer = null;
-  var countiesBoundaryLayer = null;
-  var statesEnabled = false;
-  var countiesEnabled = false;
-  window.statesEnabled = statesEnabled;
-  window.countiesEnabled = countiesEnabled;
-
-  function getBoundaryUrl(kind){
-    try {
-      var b = (CFG && CFG.boundaries) ? CFG.boundaries : null;
-      if (!b || !b[kind]) return null;
-      return _joinUrl(DATA_BASE, b[kind]);
-    } catch(e){ return null; }
-  }
-
-  async function ensureStatesLayer(){
-    if (statesBoundaryLayer) return statesBoundaryLayer;
-    var url = getBoundaryUrl('states');
-    if (!url) throw new Error('No states boundary file configured');
-    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), {cache:'no-store'});
-    if (!res.ok) throw new Error('States boundary HTTP ' + res.status + ': ' + url);
-    var geo = await res.json();
-    statesBoundaryLayer = L.geoJSON(geo, {
-      pane:'boundaries',
-      interactive:false,
-      style:function(){ return { color:'#2b3a55', weight:2, opacity:0.8, fillOpacity:0 }; }
-    });
-    return statesBoundaryLayer;
-  }
-
-  async function ensureCountiesLayer(){
-    if (countiesBoundaryLayer) return countiesBoundaryLayer;
-    var url = getBoundaryUrl('counties');
-    if (!url) throw new Error('No counties boundary file configured');
-    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), {cache:'no-store'});
-    if (!res.ok) throw new Error('Counties boundary HTTP ' + res.status + ': ' + url);
-    var geo = await res.json();
-    countiesBoundaryLayer = L.geoJSON(geo, {
-      pane:'boundaries',
-      interactive:false,
-      style:function(){ return { color:'#6b7280', weight:1, opacity:0.45, fillOpacity:0 }; }
-    });
-    return countiesBoundaryLayer;
-  }
-
-  function refreshCountyVisibility(){
-    if (!countiesBoundaryLayer) return;
-    var shouldShow = !!countiesEnabled && map.getZoom() >= 7;
-    if (shouldShow) {
-      if (!map.hasLayer(countiesBoundaryLayer)) countiesBoundaryLayer.addTo(map);
-    } else {
-      if (map.hasLayer(countiesBoundaryLayer)) map.removeLayer(countiesBoundaryLayer);
-    }
-  }
-  map.on('zoomend', refreshCountyVisibility);
-
-  async function setStatesEnabled(on){
-    statesEnabled = !!on;
-    window.statesEnabled = statesEnabled;
-    if (!statesEnabled){
-      if (statesBoundaryLayer && map.hasLayer(statesBoundaryLayer)) map.removeLayer(statesBoundaryLayer);
-      return;
-    }
-    try {
-      var lyr = await ensureStatesLayer();
-      if (!map.hasLayer(lyr)) lyr.addTo(map);
-    } catch(err){ console.error(err); }
-  }
-  window.setStatesEnabled = setStatesEnabled;
-
-  async function setCountiesEnabled(on){
-    countiesEnabled = !!on;
-    window.countiesEnabled = countiesEnabled;
-    if (!countiesEnabled){
-      if (countiesBoundaryLayer && map.hasLayer(countiesBoundaryLayer)) map.removeLayer(countiesBoundaryLayer);
-      return;
-    }
-    try {
-      await ensureCountiesLayer();
-      refreshCountyVisibility();
-    } catch(err){ console.error(err); }
-  }
-  window.setCountiesEnabled = setCountiesEnabled;
 
   async function loadRadarManifestIfNeeded(){
     try{
