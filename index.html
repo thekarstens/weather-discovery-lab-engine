@@ -3114,6 +3114,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   }
 
   function setStatus(s){ /* hidden */ }
+  window.setStatus = setStatus;
 
   function positionClockBubble(){
     try{
@@ -4100,7 +4101,6 @@ function updateAlerts(){
     return;
   }
 
-  // Create a real pane for boundaries
   try{
     if (!map.getPane("boundariesPane")) map.createPane("boundariesPane");
     map.getPane("boundariesPane").style.zIndex = 525;
@@ -4109,12 +4109,8 @@ function updateAlerts(){
     console.warn("Could not create boundaries pane:", e);
   }
 
-  // IMPORTANT: explicit renderer for vector GeoJSON in this pane
   var boundaryRenderer = L.svg({ pane: "boundariesPane" });
-
-  if (!map.hasLayer(boundaryRenderer)) {
-    boundaryRenderer.addTo(map);
-  }
+  boundaryRenderer.addTo(map);
 
   window.statesEnabled = !!window.statesEnabled;
   window.countiesEnabled = !!window.countiesEnabled;
@@ -4223,14 +4219,22 @@ function updateAlerts(){
     try { z = map.getZoom(); } catch(e){}
 
     if (statesLayer){
-      if (window.statesEnabled) safeAdd(statesLayer);
-      else safeRemove(statesLayer);
+      if (window.statesEnabled) {
+        safeAdd(statesLayer);
+        try { statesLayer.bringToFront(); } catch(e){}
+      } else {
+        safeRemove(statesLayer);
+      }
     }
 
     var showCounties = !!window.countiesEnabled && z >= 7;
     if (countiesLayer){
-      if (showCounties) safeAdd(countiesLayer);
-      else safeRemove(countiesLayer);
+      if (showCounties) {
+        safeAdd(countiesLayer);
+        try { countiesLayer.bringToFront(); } catch(e){}
+      } else {
+        safeRemove(countiesLayer);
+      }
     }
   }
 
