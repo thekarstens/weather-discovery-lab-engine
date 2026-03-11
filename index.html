@@ -3788,7 +3788,9 @@ function updateAlerts(){
   function updateAll(){
     setTimeLabel();
     // Keep jet particles in sync with the master banner clock
-    syncJetParticlesToClock();
+   if (typeof syncJetParticlesToClock === "function") {
+  syncJetParticlesToClock();
+}
     updateRadar();
     updateGfsSnow();
     updateEra5Global();
