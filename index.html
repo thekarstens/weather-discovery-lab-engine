@@ -4297,6 +4297,47 @@ console.log("Boundary system ready");
   refreshDockStates();
 })();
 </script>
+<script>
+(function(){
+  function bindBoundaryButtons(){
+    var statesBtn = document.querySelector('[data-action="states"]');
+    var countiesBtn = document.querySelector('[data-action="counties"]');
 
+    if (statesBtn){
+      statesBtn.addEventListener('click', async function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.setStatesEnabled === "function"){
+          await window.setStatesEnabled(!window.statesEnabled);
+          this.classList.toggle('active', !!window.statesEnabled);
+          console.log("States toggled:", window.statesEnabled);
+        } else {
+          console.warn("setStatesEnabled not found");
+        }
+      });
+    }
+
+    if (countiesBtn){
+      countiesBtn.addEventListener('click', async function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.setCountiesEnabled === "function"){
+          await window.setCountiesEnabled(!window.countiesEnabled);
+          this.classList.toggle('active', !!window.countiesEnabled);
+          console.log("Counties toggled:", window.countiesEnabled);
+        } else {
+          console.warn("setCountiesEnabled not found");
+        }
+      });
+    }
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", bindBoundaryButtons);
+  } else {
+    bindBoundaryButtons();
+  }
+})();
+</script>
 </body>
 </html>
