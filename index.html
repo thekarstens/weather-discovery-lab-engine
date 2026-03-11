@@ -1148,7 +1148,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 #clockBubble .cb-label{ display:none !important; }
 #clockBubble .cb-row{
   display:grid !important;
-  grid-template-columns:auto auto auto 1fr auto;
+  grid-template-columns:auto auto 1fr auto;
   align-items:center !important;
   gap:10px !important;
   margin-top:0 !important;
@@ -1165,7 +1165,13 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   margin-top:0 !important;
 }
 #sweepToggleBtn{
-  min-width:118px;
+  min-width:132px;
+}
+.sweep-toggle-row{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  margin-bottom:4px;
 }
 #radarSweepControls{
   position:absolute;
@@ -1202,7 +1208,6 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   #clockBubble .cb-row{
     grid-template-columns:auto auto 1fr auto;
   }
-  #sweepToggleBtn{ grid-column:1 / span 2; }
   #clockBubble .cb-time{ grid-column:4; }
 }
 
@@ -1419,6 +1424,9 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 </div>
 <!-- Master clock bubble docked to bottom -->
 <div aria-label="Radar sweep controls" id="radarSweepControls">
+  <div class="sweep-toggle-row">
+    <button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP OFF</button>
+  </div>
   <label>Spin speed
     <input id="sweepSpeedSlider" max="30" min="1" step="1" type="range" value="1"/>
   </label>
@@ -1431,7 +1439,6 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 <div aria-label="Time controls" class="cb-row">
 <button class="cb-btn" id="cbBackBtn" title="Step backward">◀</button>
 <button class="cb-btn" id="cbFwdBtn" title="Step forward">▶</button>
-<button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP OFF</button>
 <input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
 <div class="cb-time" id="clockBubbleTime">—</div>
 </div>
@@ -2938,6 +2945,9 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var radarSweepAnim = 0;
   var radarSweepAngle = 0;
   var radarSweepLastTs = 0;
+  var radarSweepStartAngle = -Math.PI / 2;
+  var radarSweepSwept = 0;
+  var radarSweepCompleted = false;
 
   // ---------- Static METAR layer ----------
   var metarLayer = null;
@@ -2984,8 +2994,9 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   }
 
   function hideRadarSweepCanvas(){
+    stopRadarSweep();
+    resetRadarSweepState();
     if (radarSweepCanvas){
-      stopRadarSweep();
       radarSweepCanvas.style.display = 'none';
       if (radarSweepCtx) radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
     }
@@ -3032,69 +3043,72 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     return map.latLngToContainerPoint(RADAR_BOUNDS.getCenter());
   }
 
+  function getRadarSweepDrawState(){
+    resizeRadarSweepCanvas();
+    var nw = map.latLngToContainerPoint(RADAR_BOUNDS.getNorthWest());
+    var se = map.latLngToContainerPoint(RADAR_BOUNDS.getSouthEast());
+    var x = nw.x, y = nw.y, w = se.x - nw.x, h = se.y - nw.y;
+    var c = getRadarSweepCenterPoint();
+    var maxRange = Math.max(radarSweepCanvas ? radarSweepCanvas.width : 0, radarSweepCanvas ? radarSweepCanvas.height : 0) * 1.4;
+    return { x:x, y:y, w:w, h:h, c:c, maxRange:maxRange };
+  }
+
+  function renderRadarSweepCurrentState(){
+    if (!radarSweepCanvas || !radarSweepCtx || !radarSweepImage) return;
+    resizeRadarSweepCanvas();
+    radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
+    if (radarSweepBeamCtx && radarSweepBeamCanvas) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width,radarSweepBeamCanvas.height);
+
+    var ds = getRadarSweepDrawState();
+    if (!(ds.w > 0 && ds.h > 0)) return;
+
+    if (radarSweepCompleted){
+      radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
+      return;
+    }
+
+    var theta = radarSweepAngle;
+    radarSweepCtx.save();
+    radarSweepCtx.beginPath();
+    radarSweepCtx.moveTo(ds.c.x, ds.c.y);
+    radarSweepCtx.arc(ds.c.x, ds.c.y, ds.maxRange, radarSweepStartAngle, theta, false);
+    radarSweepCtx.closePath();
+    radarSweepCtx.clip();
+    radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
+    radarSweepCtx.restore();
+
+    if (radarSweepBeamCtx){
+      var ex = ds.c.x + Math.cos(theta) * ds.maxRange;
+      var ey = ds.c.y + Math.sin(theta) * ds.maxRange;
+      radarSweepBeamCtx.save();
+      radarSweepBeamCtx.beginPath();
+      radarSweepBeamCtx.moveTo(ds.c.x, ds.c.y);
+      radarSweepBeamCtx.lineTo(ex, ey);
+      radarSweepBeamCtx.lineWidth = Math.max(1, radarSweepBeamPx);
+      radarSweepBeamCtx.strokeStyle = "rgba(255, 215, 0, 0.95)";
+      radarSweepBeamCtx.shadowColor = "rgba(255, 215, 0, 0.65)";
+      radarSweepBeamCtx.shadowBlur = 4;
+      radarSweepBeamCtx.stroke();
+      radarSweepBeamCtx.restore();
+    }
+  }
+
+  function resetRadarSweepState(){
+    radarSweepLastTs = 0;
+    radarSweepStartAngle = -Math.PI / 2;
+    radarSweepSwept = 0;
+    radarSweepCompleted = false;
+    radarSweepAngle = radarSweepStartAngle;
+  }
+
   function startRadarSweep(){
     if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
     ensureRadarSweepCanvas();
-    resizeRadarSweepCanvas();
     radarSweepCanvas.style.display = 'block';
     if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
     stopRadarSweep();
-    radarSweepLastTs = 0;
-
-    var startAngle = -Math.PI / 2; // start from north
-    radarSweepAngle = startAngle;
-    var swept = 0;
-    if (radarSweepCtx) radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
-    if (radarSweepBeamCtx) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width,radarSweepBeamCanvas.height);
-
-    function paintBeam(theta, beamPx){
-      resizeRadarSweepCanvas();
-
-      var nw = map.latLngToContainerPoint(RADAR_BOUNDS.getNorthWest());
-      var se = map.latLngToContainerPoint(RADAR_BOUNDS.getSouthEast());
-      var x = nw.x, y = nw.y, w = se.x - nw.x, h = se.y - nw.y;
-      var c = getRadarSweepCenterPoint();
-
-      var maxRange = Math.max(radarSweepCanvas.width, radarSweepCanvas.height) * 1.4;
-      var ex = c.x + Math.cos(theta) * maxRange;
-      var ey = c.y + Math.sin(theta) * maxRange;
-
-      var half = beamPx / 2;
-      var px = -Math.sin(theta) * half;
-      var py =  Math.cos(theta) * half;
-
-      var p1x = c.x + px, p1y = c.y + py;
-      var p2x = ex + px, p2y = ey + py;
-      var p3x = ex - px, p3y = ey - py;
-      var p4x = c.x - px, p4y = c.y - py;
-
-      // Paint returns only within a thin beam polygon; leave them there
-      radarSweepCtx.save();
-      radarSweepCtx.beginPath();
-      radarSweepCtx.moveTo(p1x, p1y);
-      radarSweepCtx.lineTo(p2x, p2y);
-      radarSweepCtx.lineTo(p3x, p3y);
-      radarSweepCtx.lineTo(p4x, p4y);
-      radarSweepCtx.closePath();
-      radarSweepCtx.clip();
-      if (w > 0 && h > 0) radarSweepCtx.drawImage(radarSweepImage, x, y, w, h);
-      radarSweepCtx.restore();
-
-      // Clear only the beam overlay canvas, then draw a fine yellow line
-      if (radarSweepBeamCtx){
-        radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width, radarSweepBeamCanvas.height);
-        radarSweepBeamCtx.save();
-        radarSweepBeamCtx.beginPath();
-        radarSweepBeamCtx.moveTo(c.x, c.y);
-        radarSweepBeamCtx.lineTo(ex, ey);
-        radarSweepBeamCtx.lineWidth = Math.max(1, beamPx);
-        radarSweepBeamCtx.strokeStyle = "rgba(255, 215, 0, 0.95)";
-        radarSweepBeamCtx.shadowColor = "rgba(255, 215, 0, 0.65)";
-        radarSweepBeamCtx.shadowBlur = 4;
-        radarSweepBeamCtx.stroke();
-        radarSweepBeamCtx.restore();
-      }
-    }
+    resetRadarSweepState();
+    renderRadarSweepCurrentState();
 
     function frame(ts){
       if (!radarSweepEnabled || !radarSweepImage || !obsRadarEnabled || !radarSweepCtx) return;
@@ -3104,16 +3118,16 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 
       var angVel = (Math.max(1, radarSweepRPM) * 2 * Math.PI / 60);
       var dTheta = angVel * dt;
-      swept += dTheta;
-      radarSweepAngle += dTheta;
+      radarSweepSwept = Math.min(Math.PI * 2, radarSweepSwept + dTheta);
+      radarSweepAngle = radarSweepStartAngle + radarSweepSwept;
+      radarSweepCompleted = radarSweepSwept >= Math.PI * 2;
+      renderRadarSweepCurrentState();
 
-      if (swept >= Math.PI * 2){
-        // Leave fully painted returns and remove only the beam line
-        if (radarSweepBeamCtx) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width, radarSweepBeamCanvas.height);
+      if (radarSweepCompleted){
+        stopRadarSweep();
         return;
       }
 
-      paintBeam(radarSweepAngle, radarSweepBeamPx);
       radarSweepAnim = requestAnimationFrame(frame);
     }
 
@@ -3880,7 +3894,11 @@ function updateAlerts(){
 
   map.on('zoom move resize', function(){
     resizeRadarSweepCanvas();
-    if (radarSweepEnabled && radarSweepImage) startRadarSweep();
+    if (radarSweepEnabled && radarSweepImage){
+      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
+      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
+      renderRadarSweepCurrentState();
+    }
   });
 
 
