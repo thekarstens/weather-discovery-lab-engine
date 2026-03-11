@@ -4075,210 +4075,118 @@ function updateAlerts(){
 })();
 </script>
 
-<script>
-// ===== Lesson boundary overlays (states + counties from lesson.json) =====
+// ===== Lesson boundary overlays =====
 (function(){
-  var map = window.map;
-  var CFG = window.CFG || {};
-  var DATA_BASE = window.DATA_BASE || "./";
-  var _isAbsUrl = window._isAbsUrl || function(u){
-    return /^https?:\/\//i.test(String(u || "")) ||
-           String(u || "").startsWith("data:") ||
-           String(u || "").startsWith("blob:");
-  };
-  var _joinUrl = window._joinUrl || function(base, rel){
-    if (!rel) return String(base || "");
-    if (_isAbsUrl(rel)) return String(rel);
-    var b = String(base || "");
-    var r = String(rel).replace(/^\.\//, "").replace(/^\//, "");
-    if (!b) return r;
-    return (b.endsWith("/") ? b : (b + "/")) + r;
-  };
-  var setStatus = window.setStatus || function(){};
 
-  if (!map) {
-    console.warn("Boundary overlays: window.map not available.");
-    return;
-  }
+const map = window.map;
+if(!map){
+  console.warn("Boundary system: map not ready");
+  return;
+}
 
-  try{
-    if (!map.getPane("boundariesPane")) map.createPane("boundariesPane");
-    map.getPane("boundariesPane").style.zIndex = 525;
-    map.getPane("boundariesPane").style.pointerEvents = "none";
-  } catch(e){
-    console.warn("Could not create boundaries pane:", e);
-  }
+const cfg = window.CFG?.boundaries;
+const base = window.DATA_BASE;
 
-  var boundaryRenderer = L.svg({ pane: "boundariesPane" });
-  boundaryRenderer.addTo(map);
+if(!cfg){
+  console.warn("Boundary config missing");
+  return;
+}
 
-  window.statesEnabled = !!window.statesEnabled;
-  window.countiesEnabled = !!window.countiesEnabled;
+// pane for boundary lines
+if(!map.getPane("boundariesPane")){
+  map.createPane("boundariesPane");
+}
 
-  var statesLayer = null;
-  var countiesLayer = null;
-  var statesLoadPromise = null;
-  var countiesLoadPromise = null;
+map.getPane("boundariesPane").style.zIndex = 525;
+map.getPane("boundariesPane").style.pointerEvents = "none";
 
-  function boundaryUrl(kind){
-    try{
-      var rel = CFG && CFG.boundaries && CFG.boundaries[kind];
-      if (!rel) return null;
-      return _isAbsUrl(rel) ? rel : _joinUrl(DATA_BASE, rel);
-    } catch(e){
-      return null;
-    }
-  }
+// dedicated renderer
+const boundaryRenderer = L.svg({pane:"boundariesPane"});
+boundaryRenderer.addTo(map);
 
-  function boundaryStyle(kind){
-    if (kind === "counties"){
-      return {
-        color: "#5f6b7a",
-        weight: 0.8,
-        opacity: 0.45,
-        fill: false,
-        fillOpacity: 0,
-        interactive: false
-      };
-    }
-    return {
-      color: "#1f2937",
-      weight: 1.8,
-      opacity: 0.8,
-      fill: false,
-      fillOpacity: 0,
-      interactive: false
-    };
-  }
+let statesLayer = null;
+let countiesLayer = null;
 
-  function buildBoundaryLayer(kind, gj){
-    return L.geoJSON(gj, {
-      pane: "boundariesPane",
-      renderer: boundaryRenderer,
-      interactive: false,
-      bubblingMouseEvents: false,
-      style: function(){ return boundaryStyle(kind); }
+function loadLayer(path, style){
+
+  return fetch(path)
+  .then(r=>r.json())
+  .then(gj=>{
+    return L.geoJSON(gj,{
+      renderer:boundaryRenderer,
+      pane:"boundariesPane",
+      interactive:false,
+      style:style
     });
+  });
+
+}
+
+function statesURL(){
+  return window._joinUrl(base,cfg.states);
+}
+
+function countiesURL(){
+  return window._joinUrl(base,cfg.counties);
+}
+
+window.setStatesEnabled = async function(on){
+
+  window.statesEnabled = !!on;
+
+  if(on){
+
+    if(!statesLayer){
+      statesLayer = await loadLayer(
+        statesURL(),
+        {color:"#1f2937",weight:1.8,opacity:0.8,fill:false}
+      );
+    }
+
+    statesLayer.addTo(map);
+
+  }else if(statesLayer){
+    map.removeLayer(statesLayer);
   }
 
-  function ensureBoundaryLayer(kind){
-    if (kind === "states" && statesLayer) return Promise.resolve(statesLayer);
-    if (kind === "counties" && countiesLayer) return Promise.resolve(countiesLayer);
+};
 
-    var existing = (kind === "states") ? statesLoadPromise : countiesLoadPromise;
-    if (existing) return existing;
+window.setCountiesEnabled = async function(on){
 
-    var url = boundaryUrl(kind);
-    if (!url) {
-      return Promise.reject(new Error("No boundary file configured for " + kind));
+  window.countiesEnabled = !!on;
+
+  if(on){
+
+    if(!countiesLayer){
+      countiesLayer = await loadLayer(
+        countiesURL(),
+        {color:"#5f6b7a",weight:0.8,opacity:0.45,fill:false}
+      );
     }
 
-    var prom = fetch(url, { cache: "no-store" })
-      .then(function(r){
-        if (!r.ok) throw new Error(kind + " boundaries HTTP " + r.status + " :: " + url);
-        return r.json();
-      })
-      .then(function(gj){
-        var layer = buildBoundaryLayer(kind, gj);
-        if (kind === "states") statesLayer = layer;
-        else countiesLayer = layer;
-        refreshBoundaryVisibility();
-        return layer;
-      })
-      .catch(function(err){
-        if (kind === "states") statesLoadPromise = null;
-        else countiesLoadPromise = null;
-        console.error("Boundary load failed:", kind, err);
-        throw err;
-      });
+    if(map.getZoom() >= 7){
+      countiesLayer.addTo(map);
+    }
 
-    if (kind === "states") statesLoadPromise = prom;
-    else countiesLoadPromise = prom;
-
-    return prom;
+  }else if(countiesLayer){
+    map.removeLayer(countiesLayer);
   }
 
-  function safeAdd(layer){
-    if (!layer) return;
-    if (!map.hasLayer(layer)) {
-      try { layer.addTo(map); }
-      catch(err){ console.error("Boundary add failed:", err); }
+};
+
+map.on("zoomend",()=>{
+  if(countiesLayer){
+    if(window.countiesEnabled && map.getZoom()>=7){
+      countiesLayer.addTo(map);
+    }else{
+      map.removeLayer(countiesLayer);
     }
   }
+});
 
-  function safeRemove(layer){
-    if (!layer) return;
-    if (map.hasLayer(layer)) {
-      try { map.removeLayer(layer); }
-      catch(err){ console.error("Boundary remove failed:", err); }
-    }
-  }
+console.log("Boundary system ready");
 
-  function refreshBoundaryVisibility(){
-    var z = 0;
-    try { z = map.getZoom(); } catch(e){}
-
-    if (statesLayer){
-      if (window.statesEnabled) {
-        safeAdd(statesLayer);
-        try { statesLayer.bringToFront(); } catch(e){}
-      } else {
-        safeRemove(statesLayer);
-      }
-    }
-
-    var showCounties = !!window.countiesEnabled && z >= 7;
-    if (countiesLayer){
-      if (showCounties) {
-        safeAdd(countiesLayer);
-        try { countiesLayer.bringToFront(); } catch(e){}
-      } else {
-        safeRemove(countiesLayer);
-      }
-    }
-  }
-
-  window.setStatesEnabled = async function(on){
-    window.statesEnabled = !!on;
-    try{
-      if (window.statesEnabled){
-        await ensureBoundaryLayer("states");
-        setStatus("States on");
-      } else {
-        setStatus("States off");
-      }
-      refreshBoundaryVisibility();
-    } catch(err){
-      console.error(err);
-      setStatus("States failed");
-    }
-  };
-
-  window.setCountiesEnabled = async function(on){
-    window.countiesEnabled = !!on;
-    try{
-      if (window.countiesEnabled){
-        await ensureBoundaryLayer("counties");
-        refreshBoundaryVisibility();
-        if (map.getZoom() < 7) setStatus("Counties on (zoom to 7+ to view)");
-        else setStatus("Counties on");
-      } else {
-        setStatus("Counties off");
-        refreshBoundaryVisibility();
-      }
-    } catch(err){
-      console.error(err);
-      setStatus("Counties failed");
-    }
-  };
-
-  map.on("zoomend", refreshBoundaryVisibility);
-  map.on("moveend", refreshBoundaryVisibility);
-
-  console.log("✅ Boundary overlay system initialized");
 })();
-</script>
-
 <script>
 (function(){
   var dock = document.getElementById('investigationDock');
