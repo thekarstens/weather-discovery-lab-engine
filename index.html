@@ -3015,6 +3015,27 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 
   if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 2;
   if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 1;
+  if (typeof radarSweepRangeMiles === "undefined") var radarSweepRangeMiles = 150;
+
+  function destinationPoint(lat, lon, bearingDeg, distanceMeters){
+    var R = 6371000;
+    var brng = bearingDeg * Math.PI / 180;
+    var lat1 = lat * Math.PI / 180;
+    var lon1 = lon * Math.PI / 180;
+    var ang = distanceMeters / R;
+
+    var lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(ang) +
+      Math.cos(lat1) * Math.sin(ang) * Math.cos(brng)
+    );
+
+    var lon2 = lon1 + Math.atan2(
+      Math.sin(brng) * Math.sin(ang) * Math.cos(lat1),
+      Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+    return L.latLng(lat2 * 180 / Math.PI, lon2 * 180 / Math.PI);
+  }
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
@@ -3034,22 +3055,35 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     updateSweepUi();
   }
 
-  function getRadarSweepCenterPoint(){
+  function getRadarSweepCenterLatLng(){
     try{
       if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.radar_latlon) && RADAR_MANIFEST.radar_latlon.length === 2){
-        return map.latLngToContainerPoint([RADAR_MANIFEST.radar_latlon[0], RADAR_MANIFEST.radar_latlon[1]]);
+        return L.latLng(RADAR_MANIFEST.radar_latlon[0], RADAR_MANIFEST.radar_latlon[1]);
       }
     }catch(e){}
-    return map.latLngToContainerPoint(RADAR_BOUNDS.getCenter());
+    return RADAR_BOUNDS.getCenter();
+  }
+
+  function getRadarSweepCenterPoint(){
+    return map.latLngToLayerPoint(getRadarSweepCenterLatLng());
+  }
+
+  function getRadarSweepRangePx(){
+    var centerLL = getRadarSweepCenterLatLng();
+    var eastRange = destinationPoint(centerLL.lat, centerLL.lng, 90, radarSweepRangeMiles * 1609.344);
+    var c = map.latLngToLayerPoint(centerLL);
+    var e = map.latLngToLayerPoint(eastRange);
+    var px = Math.hypot(e.x - c.x, e.y - c.y);
+    return Math.max(20, px);
   }
 
   function getRadarSweepDrawState(){
     resizeRadarSweepCanvas();
-    var nw = map.latLngToContainerPoint(RADAR_BOUNDS.getNorthWest());
-    var se = map.latLngToContainerPoint(RADAR_BOUNDS.getSouthEast());
+    var nw = map.latLngToLayerPoint(RADAR_BOUNDS.getNorthWest());
+    var se = map.latLngToLayerPoint(RADAR_BOUNDS.getSouthEast());
     var x = nw.x, y = nw.y, w = se.x - nw.x, h = se.y - nw.y;
     var c = getRadarSweepCenterPoint();
-    var maxRange = Math.max(radarSweepCanvas ? radarSweepCanvas.width : 0, radarSweepCanvas ? radarSweepCanvas.height : 0) * 1.4;
+    var maxRange = getRadarSweepRangePx();
     return { x:x, y:y, w:w, h:h, c:c, maxRange:maxRange };
   }
 
