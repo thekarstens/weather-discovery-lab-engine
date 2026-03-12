@@ -3077,6 +3077,31 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     return Math.max(20, px);
   }
 
+  function thetaToBearingDeg(theta){
+    var deg = (theta * 180 / Math.PI) + 90;
+    deg = ((deg % 360) + 360) % 360;
+    return deg;
+  }
+
+  function getRadarSweepEndpointPoint(theta){
+    var centerLL = getRadarSweepCenterLatLng();
+    var endLL = destinationPoint(centerLL.lat, centerLL.lng, thetaToBearingDeg(theta), radarSweepRangeMiles * 1609.344);
+    return map.latLngToLayerPoint(endLL);
+  }
+
+  function buildRadarSweepSectorPoints(startTheta, endTheta){
+    var centerPt = getRadarSweepCenterPoint();
+    var pts = [centerPt];
+    var sweep = endTheta - startTheta;
+    if (sweep <= 0) sweep += Math.PI * 2;
+    var steps = Math.max(24, Math.ceil(sweep / (Math.PI / 72)));
+    for (var i = 0; i <= steps; i++){
+      var t = startTheta + (sweep * i / steps);
+      pts.push(getRadarSweepEndpointPoint(t));
+    }
+    return pts;
+  }
+
   function getRadarSweepDrawState(){
     resizeRadarSweepCanvas();
     var nw = map.latLngToLayerPoint(RADAR_BOUNDS.getNorthWest());
@@ -3102,22 +3127,24 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     }
 
     var theta = radarSweepAngle;
+    var sectorPts = buildRadarSweepSectorPoints(radarSweepStartAngle, theta);
     radarSweepCtx.save();
     radarSweepCtx.beginPath();
-    radarSweepCtx.moveTo(ds.c.x, ds.c.y);
-    radarSweepCtx.arc(ds.c.x, ds.c.y, ds.maxRange, radarSweepStartAngle, theta, false);
+    radarSweepCtx.moveTo(sectorPts[0].x, sectorPts[0].y);
+    for (var i = 1; i < sectorPts.length; i++){
+      radarSweepCtx.lineTo(sectorPts[i].x, sectorPts[i].y);
+    }
     radarSweepCtx.closePath();
     radarSweepCtx.clip();
     radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
     radarSweepCtx.restore();
 
     if (radarSweepBeamCtx){
-      var ex = ds.c.x + Math.cos(theta) * ds.maxRange;
-      var ey = ds.c.y + Math.sin(theta) * ds.maxRange;
+      var endPt = getRadarSweepEndpointPoint(theta);
       radarSweepBeamCtx.save();
       radarSweepBeamCtx.beginPath();
       radarSweepBeamCtx.moveTo(ds.c.x, ds.c.y);
-      radarSweepBeamCtx.lineTo(ex, ey);
+      radarSweepBeamCtx.lineTo(endPt.x, endPt.y);
       radarSweepBeamCtx.lineWidth = Math.max(1, radarSweepBeamPx);
       radarSweepBeamCtx.strokeStyle = "rgba(255, 215, 0, 0.95)";
       radarSweepBeamCtx.shadowColor = "rgba(255, 215, 0, 0.65)";
