@@ -789,6 +789,47 @@ html, body { height:100%; margin:0; }
     letter-spacing: 0.2px;
   }
 
+  .hrrr-popup-title{
+    font: 900 22px/1.05 "Lato", Arial, sans-serif;
+    color:#122033;
+    letter-spacing:0.2px;
+    margin-bottom:8px;
+  }
+  .hrrr-popup-chips{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin:6px 0 10px 0;
+  }
+  .hrrr-popup-chip{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:999px;
+    font:900 13px/1 "Lato", Arial, sans-serif;
+    border:1px solid rgba(0,0,0,.14);
+    color:#122033;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .hrrr-popup-chip.temp{ background:#dce775; }
+  .hrrr-popup-chip.dew{ background:#d9edf7; }
+  .hrrr-popup-chip.wind{ background:#e7eef8; }
+  .hrrr-popup-chip.press{ background:#f4efe1; }
+  .hrrr-popup-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin:5px 0;
+    font:800 15px/1.2 Arial, sans-serif;
+    color:#2a3440;
+  }
+  .hrrr-popup-row span:first-child{ opacity:.82; }
+  .hrrr-popup-value{
+    text-align:right;
+    font-weight:900;
+    color:#122033;
+  }
+
 
   /* Force the layer toggle box to be visible */
   .leaflet-control-layers{ display:block !important; }
@@ -3365,22 +3406,57 @@ function nearestHrrrFrameIndexForTime(d){
     return '#8b1e1e';
   }
 
+  function metarDirCardinal(deg){
+    var d = Number(deg);
+    if (!isFinite(d)) return '—';
+    var dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
+  }
+
+  function ktToMph(kt){
+    var n = Number(kt);
+    return isFinite(n) ? Math.round(n * 1.15078) : null;
+  }
+
+  function metarDisplayName(r){
+    var raw = r && (r.city || r.name || r.station_name || r.site || r.locality || r.town || r.label || r.id);
+    if (!raw) return 'METAR';
+    raw = String(raw).trim();
+    if (/^[A-Z0-9]{3,4}$/.test(raw)) return raw;
+    return raw.replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  }
+
+  function metarFormatPressure(alti){
+    if (alti == null || alti === '') return '—';
+    var n = Number(alti);
+    if (isFinite(n)) return n.toFixed(2) + ' in';
+    return String(alti);
+  }
+
+  function metarFormatWind(r){
+    var dir = (r && r.drct != null && r.drct !== '') ? metarDirCardinal(r.drct) : null;
+    var spd = ktToMph(r && r.sknt);
+    var gst = ktToMph(r && r.gust);
+    if (!dir && spd == null) return '—';
+    var out = '';
+    if (dir) out += dir;
+    if (spd != null) out += (out ? ' ' : '') + spd + ' mph';
+    if (gst != null) out += ' gust ' + gst;
+    return out;
+  }
+
   function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var tempChip = '<span class="hrrr-popup-chip temp">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span class="hrrr-popup-chip dew">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var windChip = '<span class="hrrr-popup-chip wind">Wind ' + metarFormatWind(r) + '</span>';
+    var pressChip = '<span class="hrrr-popup-chip press">Barometer ' + metarFormatPressure(r.alti) + '</span>';
     var parts = [];
-    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
-    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
+    parts.push('<div class="hrrr-popup-title">' + metarDisplayName(r) + '</div>');
+    parts.push('<div class="hrrr-popup-chips">' + tempChip + dewChip + windChip + pressChip + '</div>');
     parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
-    var windTxt = '—';
-    if (r.drct != null || r.sknt != null){
-      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
-      if (r.gust != null) windTxt += ' G' + String(r.gust);
-    }
-    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
     parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
     if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
+    if (r.id) parts.push('<div class="hrrr-popup-row"><span>Station</span><span class="hrrr-popup-value">' + r.id + '</span></div>');
     return '<div class="hrrr-popup">' + parts.join('') + '</div>';
   }
 
