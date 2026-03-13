@@ -1858,6 +1858,12 @@ window.DATA_BASE = DATA_BASE;
 window._isAbsUrl = _isAbsUrl;
 window._joinUrl = _joinUrl;
 window.setStatus = setStatus;
+
+// Engine safety defaults for optional helpers/layers
+if (typeof window.gfsSnowEnabled === "undefined") window.gfsSnowEnabled = false;
+if (typeof window.gfsSnowOverlay === "undefined") window.gfsSnowOverlay = null;
+if (typeof window.syncJetParticlesToClock !== "function") window.syncJetParticlesToClock = function(){};
+if (typeof window.updateEra5Global !== "function") window.updateEra5Global = function(){};
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -2188,28 +2194,9 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   );
 
   function loadUsStatesGeoJSONOnce(){
-    if (usStatesLoaded) return;
+    // Legacy fallback disabled; lesson boundary system now handles states/counties.
     usStatesLoaded = true;
-
-    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
-      .then(function(res){
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function(geojson){
-        usStatesLayer = L.geoJSON(geojson, {
-          pane: "lines",
-          style: function(){
-            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
-          }
-        });
-// If user already has HRRR temp on, add immediately
-        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
-      })
-      .catch(function(err){
-        // If GeoJSON missing, we just rely on tile fallback
-        console.log("State GeoJSON not loaded (using tile fallback):", err);
-      });
+    return;
   }
 
   function addStateLines(){
@@ -2226,8 +2213,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
   }
 
-  // Kick off loading in the background (won't break anything if missing)
-  loadUsStatesGeoJSONOnce();
+  // Legacy fallback state loader disabled; lesson boundary system handles states/counties.
   // Clean base map (no labels) — CARTO Light (white/gray land)
   var base = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
@@ -3787,7 +3773,7 @@ function updateAlerts(){
   function updateAll(){
     setTimeLabel();
     // Keep jet particles in sync with the master banner clock
-    syncJetParticlesToClock();
+    if (typeof window.syncJetParticlesToClock === "function") window.syncJetParticlesToClock();
     updateRadar();
     updateGfsSnow();
     updateEra5Global();
@@ -4077,13 +4063,30 @@ function updateAlerts(){
 <script>
 // ===== Lesson boundary overlays (states + counties from lesson.json) =====
 (function(){
-  if (!window.map) return;
+  var map = window.map;
+  var CFG = window.CFG || {};
+  var DATA_BASE = window.DATA_BASE || "./";
+  var _isAbsUrl = window._isAbsUrl || function(u){
+    return /^https?:\/\//i.test(String(u || "")) || String(u || "").startsWith("data:") || String(u || "").startsWith("blob:");
+  };
+  var _joinUrl = window._joinUrl || function(base, rel){
+    if (!rel) return String(base || "");
+    if (_isAbsUrl(rel)) return String(rel);
+    var b = String(base || "");
+    var r = String(rel).replace(/^\.\//, "").replace(/^\//, "");
+    if (!b) return r;
+    return (b.endsWith('/') ? b : (b + '/')) + r;
+  };
+  if (!map || typeof map.getPane !== 'function' || typeof map.hasLayer !== 'function') return;
 
   try{
     if (!map.getPane('boundariesPane')) map.createPane('boundariesPane');
     map.getPane('boundariesPane').style.zIndex = 525;
     map.getPane('boundariesPane').style.pointerEvents = 'none';
-  }catch(e){}
+  }catch(e){ return; }
+
+  var boundaryRenderer = L.svg({ pane:'boundariesPane' });
+  try { boundaryRenderer.addTo(map); } catch(e) {}
 
   window.statesEnabled = !!window.statesEnabled;
   window.countiesEnabled = !!window.countiesEnabled;
@@ -4122,7 +4125,7 @@ function updateAlerts(){
       if (!r.ok) throw new Error(kind + ' boundaries HTTP ' + r.status);
       return r.json();
     }).then(function(gj){
-      var layer = L.geoJSON(gj, { pane:'boundariesPane', style:function(){ return boundaryStyle(kind); } });
+      var layer = L.geoJSON(gj, { pane:'boundariesPane', renderer: boundaryRenderer, interactive:false, bubblingMouseEvents:false, style:function(){ return boundaryStyle(kind); } });
       if (kind === 'states') statesLayer = layer;
       else countiesLayer = layer;
       refreshBoundaryVisibility();
@@ -4296,6 +4299,66 @@ function updateAlerts(){
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
   refreshDockStates();
+})();
+</script>
+
+
+<script>
+(function(){
+  function whenReady(fn){
+    if (window.map && typeof window.map.getPane === 'function' &&
+        typeof window.setStatesEnabled === 'function' &&
+        typeof window.setCountiesEnabled === 'function') return fn();
+    setTimeout(function(){ whenReady(fn); }, 200);
+  }
+
+  whenReady(function(){
+    var leafletMap = window.map;
+    try{
+      document.querySelectorAll('[data-action="states"], [data-action="counties"]').forEach(function(el){
+        el.style.display = 'none';
+      });
+    }catch(e){}
+
+    function wantsStates(){
+      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled);
+    }
+    function wantsCounties(){
+      return !!window.obsRadarEnabled && leafletMap.getZoom() >= 7;
+    }
+
+    async function refreshAutoBoundaries(){
+      try{
+        if (typeof window.setStatesEnabled === 'function') await window.setStatesEnabled(wantsStates());
+        if (typeof window.setCountiesEnabled === 'function') await window.setCountiesEnabled(wantsCounties());
+      }catch(err){
+        console.error('Auto-boundary refresh failed:', err);
+      }
+    }
+
+    window.refreshAutoBoundaries = refreshAutoBoundaries;
+
+    function wrapAsync(name){
+      if (typeof window[name] !== 'function') return;
+      var original = window[name];
+      if (original.__autoBoundaryWrapped) return;
+      var wrapped = async function(){
+        var out = await original.apply(this, arguments);
+        await refreshAutoBoundaries();
+        return out;
+      };
+      wrapped.__autoBoundaryWrapped = true;
+      window[name] = wrapped;
+    }
+
+    wrapAsync('setRadarEnabled');
+    wrapAsync('setMetarsEnabled');
+    wrapAsync('setHrrrTempEnabled');
+    wrapAsync('setSpcDay1Enabled');
+
+    leafletMap.on('zoomend', refreshAutoBoundaries);
+    setTimeout(refreshAutoBoundaries, 400);
+  });
 })();
 </script>
 
