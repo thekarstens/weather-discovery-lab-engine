@@ -314,6 +314,8 @@ var gfsSnowOverlay = null;
 function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
+window.syncJetParticlesToClock = syncJetParticlesToClock;
+window.updateEra5Global = updateEra5Global;
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -644,28 +646,9 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   );
 
   function loadUsStatesGeoJSONOnce(){
-    if (usStatesLoaded) return;
+    // Legacy fallback disabled; lesson boundary system handles states/counties now.
     usStatesLoaded = true;
-
-    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
-      .then(function(res){
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function(geojson){
-        usStatesLayer = L.geoJSON(geojson, {
-          pane: "lines",
-          style: function(){
-            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
-          }
-        });
-// If user already has HRRR temp on, add immediately
-        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
-      })
-      .catch(function(err){
-        // If GeoJSON missing, we just rely on tile fallback
-        console.log("State GeoJSON not loaded (using tile fallback):", err);
-      });
+    return;
   }
 
   function addStateLines(){
@@ -682,8 +665,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
   }
 
-  // Kick off loading in the background (won't break anything if missing)
-  loadUsStatesGeoJSONOnce();
+  // Legacy fallback state loader disabled; lesson boundary system handles states/counties.
   // Clean base map (no labels) — CARTO Light (white/gray land)
   var base = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
@@ -2178,7 +2160,7 @@ function nearestHrrrFrameIndexForTime(d){
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
-    { on: (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -2320,7 +2302,6 @@ function updateAlerts(){
     updateAlerts();
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
-    if (typeof window.updateBoundaryMode === "function") window.updateBoundaryMode();
   }
 
   // ---------- Time controls ----------
@@ -2750,30 +2731,6 @@ function updateAlerts(){
       }
     }
 
-    async function updateBoundaryMode(){
-      try{
-        var radar = !!window.obsRadarEnabled;
-        var metars = !!window.metarVisible;
-        var hrrr = !!window.hrrrTempEnabled;
-        var spc = !!window.spcDay1Enabled;
-        var z = 0;
-        try { z = map.getZoom(); } catch(e){}
-
-        var wantStates = radar || metars || hrrr || spc;
-        var wantCounties = radar && z >= 7;
-
-        if (wantStates && !statesLayer) await ensureBoundaryLayer("states");
-        if (wantCounties && !countiesLayer) await ensureBoundaryLayer("counties");
-
-        window.statesEnabled = wantStates;
-        window.countiesEnabled = wantCounties;
-        refreshBoundaryVisibility();
-      } catch(err){
-        console.error("Boundary mode update failed:", err);
-      }
-    }
-    window.updateBoundaryMode = updateBoundaryMode;
-
     window.setStatesEnabled = async function(on){
       window.statesEnabled = !!on;
       try{
@@ -2808,10 +2765,8 @@ function updateAlerts(){
       }
     };
 
-    map.on("zoomend", updateBoundaryMode);
+    map.on("zoomend", refreshBoundaryVisibility);
     map.on("moveend", refreshBoundaryVisibility);
-
-    setTimeout(function(){ updateBoundaryMode(); }, 0);
 
     console.log("✅ Boundary overlay system initialized");
     return true;
