@@ -1,5 +1,5 @@
-/* ---- extracted inline script 2 ---- */
-function resolveJetFrameUrl(u){
+
+  function resolveJetFrameUrl(u){
     if (!u) return u;
     const dir = (typeof JET_ANIM_DIR !== "undefined") ? JET_ANIM_DIR : "jet_anim";
     if (!u.includes("/") && !u.startsWith("http")) return dir + "/" + u;
@@ -7,11 +7,12 @@ function resolveJetFrameUrl(u){
   }
 
 
-/* ---- extracted inline script 5 ---- */
+
+
 var storyStarted = false; // do not auto-open storyboard
 
 
-/* ---- extracted inline script 7 ---- */
+
 (async function(){
   // ---------- Config (loaded per lesson) ----------
   function _qs(name){
@@ -307,6 +308,10 @@ window.DATA_BASE = DATA_BASE;
 window._isAbsUrl = _isAbsUrl;
 window._joinUrl = _joinUrl;
 window.setStatus = setStatus;
+
+  if (!map.getPane("townLabelsPane")) map.createPane("townLabelsPane");
+  map.getPane("townLabelsPane").style.zIndex = 1150;
+  map.getPane("townLabelsPane").style.pointerEvents = "none";
 
 // Engine safety defaults for optional layers/helpers
 var gfsSnowEnabled = false;
@@ -723,7 +728,7 @@ var NATIONAL_CITIES = [
   ["Boston", 42.3601, -71.0589]
 ];
 
-function addDeclutteredCityLabels(layer, cityList, minPx){
+function addDeclutteredCityLabels(layer, cityList, minPx, kind){
   layer.clearLayers();
   var b = map.getBounds();
   var placed = []; // container points
@@ -747,12 +752,15 @@ function addDeclutteredCityLabels(layer, cityList, minPx){
 }
 
 
-  function makeCityLabel(name, lat, lon){
+  function makeCityLabel(name, lat, lon, kind){
+    var cls = (kind === "major") ? "tv-city-major" : "tv-city-small";
     return L.marker([lat, lon], {
       interactive: false,
+      pane: "townLabelsPane",
+      zIndexOffset: 1000,
       icon: L.divIcon({
         className: "town-label",
-        html: name,
+        html: '<div class="' + cls + '">' + name + '</div>',
         iconSize: null
       })
     });
@@ -817,7 +825,7 @@ function updateCityLabels(){
   // 1) Wide CONUS view: show decluttered major US cities (sparse)
   if (z <= 4){
     var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
-    addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
+    addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat, "major");
   } else {
     nationalCityLayer.clearLayers();
   }
@@ -826,7 +834,7 @@ function updateCityLabels(){
   // Tier 1 (regional anchors) at zoom 5+
   if (z >= 5){
     var minPx1 = (z === 5) ? 70 : 55;
-    addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
+    addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1, "major");
   }
   // Tier 2 (regional fill) at zoom 6+
   if (z >= 6){
@@ -854,7 +862,7 @@ function updateCityLabels(){
         }
         if (!ok) continue;
         placed.push(pt);
-        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2], "small"));
       }
     })();
   }
@@ -882,7 +890,7 @@ function updateCityLabels(){
         }
         if (!ok) continue;
         placed.push(pt);
-        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2], "small"));
       }
     })();
   }
@@ -1767,23 +1775,133 @@ function nearestHrrrFrameIndexForTime(d){
     return '#8b1e1e';
   }
 
-  function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
-    var parts = [];
-    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
-    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
-    parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
-    var windTxt = '—';
-    if (r.drct != null || r.sknt != null){
-      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
-      if (r.gust != null) windTxt += ' G' + String(r.gust);
+  function metarEscape(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function ordinalSuffix(n){
+    n = Number(n);
+    var j = n % 10, k = n % 100;
+    if (j === 1 && k !== 11) return n + 'st';
+    if (j === 2 && k !== 12) return n + 'nd';
+    if (j === 3 && k !== 13) return n + 'rd';
+    return n + 'th';
+  }
+
+  function formatMetarValidPretty(valid){
+    if (!valid) return '—';
+    var d = new Date(valid);
+    if (isNaN(d)) return String(valid);
+    try{
+      var month = d.toLocaleDateString('en-US', { month:'long', timeZone:'America/Chicago' });
+      var day = ordinalSuffix(Number(d.toLocaleDateString('en-US', { day:'numeric', timeZone:'America/Chicago' })));
+      var year = d.toLocaleDateString('en-US', { year:'numeric', timeZone:'America/Chicago' });
+      var time = d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' }).toLowerCase();
+      return month + ' ' + day + ', ' + year + ' at ' + time;
+    }catch(e){
+      return String(valid);
     }
-    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
-    if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
-    return '<div class="hrrr-popup">' + parts.join('') + '</div>';
+  }
+
+  function metarWindDirCardinal(deg){
+    var d = Number(deg);
+    if (!isFinite(d)) return '';
+    var dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
+  }
+
+  function ktToMph(v){
+    var n = Number(v);
+    return isFinite(n) ? Math.round(n * 1.15078) : null;
+  }
+
+  function metarWeatherIcon(code){
+    var c = String(code || '').toUpperCase();
+    if (!c) return '⛅';
+    if (c.includes('TS')) return '⛈';
+    if (c.includes('SN') || c.includes('PL') || c.includes('FZRA') || c.includes('SG') || c.includes('IC')) return '❄';
+    if (c.includes('RA') || c.includes('DZ') || c.includes('SH')) return '🌧';
+    if (c.includes('FG') || c.includes('BR') || c.includes('HZ')) return '🌫';
+    if (c.includes('FC') || c.includes('+FC')) return '🌪';
+    if (c.includes('GR') || c.includes('GS')) return '🧊';
+    if (c.includes('DU') || c.includes('SA')) return '💨';
+    if (c.includes('SKC') || c.includes('CLR')) return '☀';
+    if (c.includes('BKN') || c.includes('OVC') || c.includes('SCT') || c.includes('FEW')) return '☁';
+    return '⛅';
+  }
+
+  function nearestMetarTownName(r){
+    var explicit = r.name || r.city || r.town || r.station_name || r.stationName || r.site || r.location || r.label;
+    if (explicit) return String(explicit);
+    var lat = Number(r.lat), lon = Number(r.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return String(r.id || 'METAR');
+    var pools = [];
+    try{
+      if (Array.isArray(CITIES_TIER1)) pools = pools.concat(CITIES_TIER1);
+      if (Array.isArray(CITIES_TIER2)) pools = pools.concat(CITIES_TIER2);
+      if (Array.isArray(CITIES_TIER3)) pools = pools.concat(CITIES_TIER3);
+      if (Array.isArray(NATIONAL_CITIES)) pools = pools.concat(NATIONAL_CITIES);
+    }catch(e){}
+    var best = null, bestD = Infinity;
+    for (var i=0;i<pools.length;i++){
+      var c = pools[i];
+      if (!c) continue;
+      var clat = Number(c[1]), clon = Number(c[2]);
+      if (!isFinite(clat) || !isFinite(clon)) continue;
+      var d = map.distance([lat, lon], [clat, clon]);
+      if (d < bestD){ bestD = d; best = c[0]; }
+    }
+    if (best && bestD <= 50000) return best;
+    return String(r.id || 'METAR');
+  }
+
+  function metarChip(label, value, bg, fg){
+    return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:' + bg + ';color:' + (fg || '#122033') + ';font:900 12px/1 "Lato",Arial,sans-serif;border:1px solid rgba(0,0,0,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)">' +
+      '<span style="opacity:.88">' + metarEscape(label) + '</span><span>' + metarEscape(value) + '</span></span>';
+  }
+
+  function metarPopupHtml(r){
+    var townName = nearestMetarTownName(r);
+    var stationId = (r.id || '').toUpperCase();
+    var tempChip = metarChip('Temp', ((r.tmpf ?? '—')) + '°F', metarTempColorF(r.tmpf));
+    var dewChip  = metarChip('Dew', ((r.dwpf ?? '—')) + '°F', '#d9edf7');
+
+    var windDir = metarWindDirCardinal(r.drct);
+    var windMph = ktToMph(r.sknt);
+    var gustMph = ktToMph(r.gust);
+    var windTxt = '—';
+    if (windDir || windMph != null){
+      windTxt = (windDir ? windDir + ' ' : '') + (windMph != null ? windMph + ' mph' : '');
+      if (gustMph != null) windTxt += ' gust ' + gustMph;
+    }
+    var windChip = metarChip('Wind', windTxt, '#dce6f2');
+
+    var visTxt = (r.vsby != null && r.vsby !== '') ? (String(r.vsby) + ' mi') : '—';
+    var visChip = metarChip('Visibility', visTxt, '#efe7c9');
+
+    var baroTxt = (r.alti != null && r.alti !== '') ? (String(r.alti) + ' in') : '—';
+    var baroChip = metarChip('Barometer', baroTxt, '#ece8da');
+
+    var wxRaw = r.wx || r.weather || r.wxcodes || r.conditions || '';
+    var wxChip = wxRaw ? metarChip('Weather Conditions', metarWeatherIcon(wxRaw) + ' ' + wxRaw, '#eadff7') : '';
+
+    var validPretty = formatMetarValidPretty(r.valid);
+
+    var topTitle = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">' +
+      '<div><div class="hrrr-popup-title" style="margin:0">' + metarEscape(townName) + '</div>' +
+      (stationId && stationId !== townName.toUpperCase() ? '<div style="font:800 11px/1.1 "Lato",Arial,sans-serif;letter-spacing:.6px;color:#5b6470;margin-top:4px">' + metarEscape(stationId) + '</div>' : '') +
+      '</div></div>';
+
+    var chips = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px 0">' + tempChip + dewChip + windChip + visChip + baroChip + (wxChip ? wxChip : '') + '</div>';
+
+    var footer = '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08);font:800 12px/1.3 "Lato",Arial,sans-serif;color:#58616d">Valid ' + metarEscape(validPretty) + '</div>';
+
+    return '<div class="hrrr-popup" style="min-width:260px">' + topTitle + chips + footer + '</div>';
   }
 
   async function loadMetars(){
@@ -2423,7 +2541,7 @@ function updateAlerts(){
 })();
 
 
-/* ---- extracted inline script 8 ---- */
+
 (function(){
   // ---------- Glossary Data (starter pack) ----------
   var GLOSSARY = [
@@ -2604,7 +2722,7 @@ function updateAlerts(){
 })();
 
 
-/* ---- extracted inline script 9 ---- */
+
 // ===== Lesson boundary overlays (states + counties from lesson.json) =====
 (function(){
   function initBoundaries(){
@@ -2797,7 +2915,7 @@ function updateAlerts(){
 })();
 
 
-/* ---- extracted inline script 10 ---- */
+
 (function(){
   var dock = document.getElementById('investigationDock');
   var body = document.getElementById('investigationBody');
@@ -2906,7 +3024,7 @@ function updateAlerts(){
 })();
 
 
-/* ---- extracted inline script 11 ---- */
+
 (function(){
   function whenReady(fn){
     if (window.map && typeof window.map.getPane === 'function' &&

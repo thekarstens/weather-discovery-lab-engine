@@ -71,12 +71,38 @@ html, body { height:100%; margin:0; }
 
   /* Simple town label style */
   .town-label{
-    background: rgba(255,255,255,0.75);
-    border:1px solid rgba(0,0,0,0.25);
-    padding:2px 6px;
-    border-radius:10px;
-    font:800 11px/1 Arial, sans-serif;
-    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .tv-city-major{
+    display:inline-block;
+    background: rgba(255,255,255,0.92);
+    color:#111;
+    border:1px solid rgba(0,0,0,0.20);
+    padding:3px 8px;
+    border-radius:11px;
+    font:900 12px/1 "Lato", Arial, sans-serif;
+    letter-spacing:0.15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.22);
+    white-space:nowrap;
+  }
+
+  .tv-city-small{
+    display:inline-block;
+    color:#fff;
+    font:900 13px/1 "Lato", Arial, sans-serif;
+    letter-spacing:0.2px;
+    white-space:nowrap;
+    text-shadow:
+      0 1px 0 rgba(0,0,0,0.98),
+      1px 0 0 rgba(0,0,0,0.98),
+      0 -1px 0 rgba(0,0,0,0.98),
+      -1px 0 0 rgba(0,0,0,0.98),
+      0 2px 5px rgba(0,0,0,0.65);
   }
 
 /* --- Banner layout + controls --- */
@@ -714,19 +740,26 @@ html, body { height:100%; margin:0; }
 
 /* TV-style city labels */
 .leaflet-tooltip.tv-city-label{
-  background:rgba(255,255,255,0.94);
-  color:#111;
-  border:0;
-  border-radius:10px;
-  padding:4px 8px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.25);
-  font:800 12px/1 Arial,sans-serif;
+  background: transparent;
+  color: #fff;
+  border: 0;
+  border-radius:0;
+  padding: 0;
+  box-shadow:none;
+  font:900 13px/1 "Lato", Arial, sans-serif;
+  letter-spacing:0.2px;
+  text-shadow:
+    0 1px 0 rgba(0,0,0,0.98),
+    1px 0 0 rgba(0,0,0,0.98),
+    0 -1px 0 rgba(0,0,0,0.98),
+    -1px 0 0 rgba(0,0,0,0.98),
+    0 2px 5px rgba(0,0,0,0.65);
 }
 .leaflet-tooltip-top.tv-city-label:before,
 .leaflet-tooltip-right.tv-city-label:before,
 .leaflet-tooltip-left.tv-city-label:before,
 .leaflet-tooltip-bottom.tv-city-label:before{
-  border:0;
+  display:none;
 }
 
 
