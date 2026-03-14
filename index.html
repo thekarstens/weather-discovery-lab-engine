@@ -898,8 +898,8 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   top:6px !important;
   right:10px !important;
   bottom:auto !important;
-  width:120px !important;
-  max-width:32vw !important;
+  width:180px !important;
+  max-width:40vw !important;
   height:auto !important;
   padding:0 !important;
   background:transparent !important;
@@ -1357,7 +1357,29 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   padding: 2px 6px;
 }
 .metar-id-tip:before{ display:none; }
+#bannerLegend{
+  display:none !important;
+}
+  @media (max-width: 640px){
 
+  #brandLogo{
+    width:110px !important;
+    top:8px !important;
+    right:6px !important;
+  }
+
+  .tvbanner{
+    padding:10px 12px;
+    font-size:18px;
+  }
+
+  .top-question{
+    font-size:14px !important;
+    line-height:1.2;
+  }
+
+}
+  
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
