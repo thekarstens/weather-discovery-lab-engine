@@ -1526,7 +1526,8 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
         <div class="inv-chips">
           <button class="inv-chip" type="button" disabled>FRONTS</button>
           <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
-          
+          <button class="inv-chip" type="button" data-action="states">STATES</button>
+          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
         </div>
       </div>
       <div class="inv-pane" data-pane="organize">
@@ -1857,6 +1858,12 @@ window.DATA_BASE = DATA_BASE;
 window._isAbsUrl = _isAbsUrl;
 window._joinUrl = _joinUrl;
 window.setStatus = setStatus;
+
+// Engine safety defaults for optional helpers/layers
+if (typeof window.gfsSnowEnabled === "undefined") window.gfsSnowEnabled = false;
+if (typeof window.gfsSnowOverlay === "undefined") window.gfsSnowOverlay = null;
+if (typeof window.syncJetParticlesToClock !== "function") window.syncJetParticlesToClock = function(){};
+if (typeof window.updateEra5Global !== "function") window.updateEra5Global = function(){};
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -2187,28 +2194,9 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   );
 
   function loadUsStatesGeoJSONOnce(){
-    if (usStatesLoaded) return;
+    // Legacy fallback disabled; lesson boundary system now handles states/counties.
     usStatesLoaded = true;
-
-    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
-      .then(function(res){
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function(geojson){
-        usStatesLayer = L.geoJSON(geojson, {
-          pane: "lines",
-          style: function(){
-            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
-          }
-        });
-// If user already has HRRR temp on, add immediately
-        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
-      })
-      .catch(function(err){
-        // If GeoJSON missing, we just rely on tile fallback
-        console.log("State GeoJSON not loaded (using tile fallback):", err);
-      });
+    return;
   }
 
   function addStateLines(){
@@ -2225,8 +2213,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
   }
 
-  // Kick off loading in the background (won't break anything if missing)
-  loadUsStatesGeoJSONOnce();
+  // Legacy fallback state loader disabled; lesson boundary system handles states/counties.
   // Clean base map (no labels) — CARTO Light (white/gray land)
   var base = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
@@ -2921,6 +2908,18 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
   var radarSweepEnabled = false;
+  var alertsLayer = L.geoJSON(null, {
+    pane: "lines",
+    style: function(){
+      return {
+        color: "#ff0000",
+        weight: 2,
+        opacity: 0.9,
+        fill: false,
+        fillOpacity: 0
+      };
+    }
+  });
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
   var radarSweepBeamCanvas = null;
@@ -2938,12 +2937,6 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   window.obsRadarEnabled = obsRadarEnabled;
   window.radarSweepEnabled = radarSweepEnabled;
   window.spcDay1Enabled = false;
-  var alertsLayer = L.geoJSON(null, {
-    pane: "lines",
-    style: function(){
-      return { color:"#ff0000", weight:2, opacity:0.9, fill:false, fillOpacity:0 };
-    }
-  });
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -3649,23 +3642,22 @@ function nearestHrrrFrameIndexForTime(d){
   var pl = document.getElementById("productLabel");
   if (!pl) return;
 
+  // IMPORTANT: never concatenate labels (it will crowd the middle).
+  // Choose ONE label based on what is currently visible/active.
   var candidates = [
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
-    { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
+    { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
   var label = "MAP";
-  for (var i = 0; i < candidates.length; i++){
-    if (candidates[i].on){
-      label = candidates[i].label;
-      break;
-    }
+  for (var i=0;i<candidates.length;i++){
+    if (candidates[i].on){ label = candidates[i].label; break; }
   }
   pl.textContent = label;
 }
@@ -3774,16 +3766,12 @@ function alertsUrlFor(d){
 
 function updateAlerts(){
     if (!alertsLayer) return;
-
     var url = alertsUrlFor(curZ);
     if (!url) {
       alertsLayer.clearLayers();
-      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
-        map.removeLayer(alertsLayer);
-      }
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
       return;
     }
-
     fetch(url).then(function(r){
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
@@ -3794,9 +3782,7 @@ function updateAlerts(){
       setStatus("Alerts: " + url);
     }).catch(function(err){
       alertsLayer.clearLayers();
-      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
-        map.removeLayer(alertsLayer);
-      }
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
       setStatus("Alerts missing: " + url);
     });
   }
@@ -3804,7 +3790,7 @@ function updateAlerts(){
   function updateAll(){
     setTimeLabel();
     // Keep jet particles in sync with the master banner clock
-    syncJetParticlesToClock();
+    if (typeof window.syncJetParticlesToClock === "function") window.syncJetParticlesToClock();
     updateRadar();
     updateGfsSnow();
     updateEra5Global();
@@ -3889,11 +3875,7 @@ function updateAlerts(){
 
   map.on('zoom move resize', function(){
     resizeRadarSweepCanvas();
-    if (radarSweepEnabled && radarSweepImage){
-      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState();
-    }
+    if (radarSweepEnabled && radarSweepImage) startRadarSweep();
   });
 
 
@@ -4098,13 +4080,30 @@ function updateAlerts(){
 <script>
 // ===== Lesson boundary overlays (states + counties from lesson.json) =====
 (function(){
-  if (!window.map) return;
+  var map = window.map;
+  var CFG = window.CFG || {};
+  var DATA_BASE = window.DATA_BASE || "./";
+  var _isAbsUrl = window._isAbsUrl || function(u){
+    return /^https?:\/\//i.test(String(u || "")) || String(u || "").startsWith("data:") || String(u || "").startsWith("blob:");
+  };
+  var _joinUrl = window._joinUrl || function(base, rel){
+    if (!rel) return String(base || "");
+    if (_isAbsUrl(rel)) return String(rel);
+    var b = String(base || "");
+    var r = String(rel).replace(/^\.\//, "").replace(/^\//, "");
+    if (!b) return r;
+    return (b.endsWith('/') ? b : (b + '/')) + r;
+  };
+  if (!map || typeof map.getPane !== 'function' || typeof map.hasLayer !== 'function') return;
 
   try{
     if (!map.getPane('boundariesPane')) map.createPane('boundariesPane');
     map.getPane('boundariesPane').style.zIndex = 525;
     map.getPane('boundariesPane').style.pointerEvents = 'none';
-  }catch(e){}
+  }catch(e){ return; }
+
+  var boundaryRenderer = L.svg({ pane:'boundariesPane' });
+  try { boundaryRenderer.addTo(map); } catch(e) {}
 
   window.statesEnabled = !!window.statesEnabled;
   window.countiesEnabled = !!window.countiesEnabled;
@@ -4143,7 +4142,7 @@ function updateAlerts(){
       if (!r.ok) throw new Error(kind + ' boundaries HTTP ' + r.status);
       return r.json();
     }).then(function(gj){
-      var layer = L.geoJSON(gj, { pane:'boundariesPane', style:function(){ return boundaryStyle(kind); } });
+      var layer = L.geoJSON(gj, { pane:'boundariesPane', renderer: boundaryRenderer, interactive:false, bubblingMouseEvents:false, style:function(){ return boundaryStyle(kind); } });
       if (kind === 'states') statesLayer = layer;
       else countiesLayer = layer;
       refreshBoundaryVisibility();
@@ -4160,7 +4159,7 @@ function updateAlerts(){
 
   function refreshBoundaryVisibility(){
     var z = 0;
-    try{ z = map.getZoom(); }catch(e){ return; }
+    try{ z = map.getZoom(); }catch(e){}
 
     if (statesLayer){
       if (window.statesEnabled){
@@ -4317,6 +4316,80 @@ function updateAlerts(){
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
   refreshDockStates();
+})();
+</script>
+
+
+<script>
+(function(){
+  function whenReady(fn){
+    if (window.map && typeof window.map.getPane === 'function' &&
+        typeof window.setStatesEnabled === 'function' &&
+        typeof window.setCountiesEnabled === 'function') return fn();
+    setTimeout(function(){ whenReady(fn); }, 200);
+  }
+
+  whenReady(function(){
+    var leafletMap = window.map;
+    try{
+      document.querySelectorAll('[data-action="states"], [data-action="counties"]').forEach(function(el){
+        el.style.display = 'none';
+      });
+    }catch(e){}
+
+    function wantsStates(){
+      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled);
+    }
+    function wantsCounties(){
+      return !!window.obsRadarEnabled && leafletMap.getZoom() >= 7;
+    }
+
+    async function refreshAutoBoundaries(){
+      try{
+        if (typeof window.setStatesEnabled === 'function') await window.setStatesEnabled(wantsStates());
+        if (typeof window.setCountiesEnabled === 'function') await window.setCountiesEnabled(wantsCounties());
+      }catch(err){
+        console.error('Auto-boundary refresh failed:', err);
+      }
+    }
+
+    window.refreshAutoBoundaries = refreshAutoBoundaries;
+
+    if (typeof window.updateAll === 'function' && !window.updateAll.__autoBoundaryWrapped2){
+      var oldUpdateAll = window.updateAll;
+      window.updateAll = function(){
+        var out = oldUpdateAll.apply(this, arguments);
+        setTimeout(refreshAutoBoundaries, 0);
+        return out;
+      };
+      window.updateAll.__autoBoundaryWrapped2 = true;
+    }
+
+    function wrapAsync(name){
+      if (typeof window[name] !== 'function') return;
+      var original = window[name];
+      if (original.__autoBoundaryWrapped) return;
+      var wrapped = async function(){
+        var out = await original.apply(this, arguments);
+        await refreshAutoBoundaries();
+        return out;
+      };
+      wrapped.__autoBoundaryWrapped = true;
+      window[name] = wrapped;
+    }
+
+    wrapAsync('setRadarEnabled');
+    wrapAsync('setMetarsEnabled');
+    wrapAsync('setHrrrTempEnabled');
+    wrapAsync('setSpcDay1Enabled');
+
+    leafletMap.on('zoomend', refreshAutoBoundaries);
+    leafletMap.on('moveend', refreshAutoBoundaries);
+    setTimeout(refreshAutoBoundaries, 200);
+    setTimeout(refreshAutoBoundaries, 1000);
+    setTimeout(function(){ try{ if (typeof window.setStatesEnabled==='function') window.setStatesEnabled(true); }catch(e){} }, 400);
+    setTimeout(function(){ try{ refreshAutoBoundaries(); }catch(e){} }, 1600);
+  });
 })();
 </script>
 
