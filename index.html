@@ -1412,6 +1412,93 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 
 }
+/* ===== FINAL BANNER OVERRIDES ===== */
+
+/* Bigger top-right logo */
+#brandLogo{
+  position:absolute !important;
+  top:6px !important;
+  right:10px !important;
+  bottom:auto !important;
+  width:180px !important;
+  max-width:40vw !important;
+  height:auto !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:none !important;
+  border-radius:12px !important;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.45)) !important;
+  z-index:100005 !important;
+  pointer-events:none !important;
+}
+
+/* Remove banner legend completely */
+#bannerLegend{
+  display:none !important;
+}
+
+/* Cleaner bottom banner spacing once legend is gone */
+.banner-bottomline{
+  padding-top:4px !important;
+  padding-bottom:6px !important;
+}
+
+/* Broadcast-style polish that actually wins */
+.tvbanner{
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.35),
+    inset 0 -2px 0 rgba(255,255,255,0.06) !important;
+}
+
+.top-lesson,
+.top-question{
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6) !important;
+}
+
+.product-center{
+  text-shadow:
+    0 2px 6px rgba(0,0,0,0.65),
+    0 0 12px rgba(30,136,229,0.25) !important;
+}
+
+/* Mobile cleanup */
+@media (max-width: 640px){
+  #brandLogo{
+    width:110px !important;
+    top:8px !important;
+    right:6px !important;
+  }
+
+  .banner-topline{
+    padding-top:8px !important;
+    padding-bottom:4px !important;
+  }
+
+  .top-lesson{
+    font-size:18px !important;
+    line-height:1.05 !important;
+    padding-right:90px !important;
+  }
+
+  .top-question{
+    font-size:12px !important;
+    line-height:1.2 !important;
+    padding:0 6px !important;
+  }
+
+  .product-center{
+    font-size:28px !important;
+  }
+
+  .open-lesson-btn{
+    padding:10px 12px !important;
+    font-size:11px !important;
+  }
+
+  #investigationDock{
+    top:128px !important;
+  }
+}
   
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
