@@ -246,8 +246,8 @@ window.createRadarModule = function(opts){
   }
 
   function startRadarSweep(){
-    if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
     ensureRadarSweepCanvas();
+    if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
     radarSweepCanvas.style.display = 'block';
     if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
     stopRadarSweep();
@@ -339,6 +339,28 @@ window.createRadarModule = function(opts){
     radarSweepEnabled = !radarSweepEnabled;
     syncWindowState();
     syncSweepButton();
+    updateSweepUi();
+
+    if (!radarSweepEnabled){
+      stopRadarSweep();
+      hideRadarSweepCanvas();
+      updateRadar();
+      return;
+    }
+
+    if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){
+      try{ map.removeLayer(obsRadarOverlay); }catch(e){}
+      obsRadarOverlay = null;
+    }
+
+    ensureRadarSweepCanvas();
+
+    if (radarSweepImage){
+      startRadarSweep();
+      setStatus("Radar sweep on");
+    } else {
+      updateRadar();
+    }
   }
 
   function syncSweepButton(){
@@ -360,6 +382,7 @@ window.createRadarModule = function(opts){
 
   bindSweepControls();
   syncSweepButton();
+  installMapEvents();
 
   return {
     stopRadarSweep: stopRadarSweep,
