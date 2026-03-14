@@ -318,378 +318,30 @@ window.gfsSnowEnabled = gfsSnowEnabled;
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
 
-  // Custom lower-right zoom buttons
-  var zoomCornerPlus = document.getElementById('zoomCornerPlus');
-  var zoomCornerMinus = document.getElementById('zoomCornerMinus');
-  if (zoomCornerPlus) zoomCornerPlus.onclick = function(){ map.zoomIn(); };
-  if (zoomCornerMinus) zoomCornerMinus.onclick = function(){ map.zoomOut(); };
-
-  // Keep the clock bubble pinned above the layer control
-  window.addEventListener('resize', function(){ setTimeout(positionClockBubble, 50); });
-  setTimeout(positionClockBubble, 300);
-
-
-  // Custom zoom box buttons (top-right)
-  var zoomPlus = document.getElementById("zoomPlus");
-  var zoomMinus = document.getElementById("zoomMinus");
-  if (zoomPlus) zoomPlus.onclick = function(){ map.zoomIn(); };
-  if (zoomMinus) zoomMinus.onclick = function(){ map.zoomOut(); };
-
-  // Map tools (Ruler / Probe / Draw / Home)
-  var toolMeasureBtn = document.getElementById("toolMeasure");
-  var toolProbeBtn   = document.getElementById("toolProbe");
-  var toolDrawBtn    = document.getElementById("toolDraw");
-  var toolEraseBtn   = document.getElementById("toolErase");
-  var toolHomeBtn    = document.getElementById("toolHome");
-
-  // Teacher/student mode (URL param): ?mode=student to disable teacher tools
-  var isTeacherMode = true;
-  try{
-    var qsMode = new URLSearchParams(window.location.search).get("mode");
-    isTeacherMode = (qsMode !== "student");
-  }catch(e){ isTeacherMode = true; }
-
-  // Wire OPEN LESSON button in banner (replaces the old floating tab)
-  var openLessonBtn = document.getElementById("openLessonBtn");
-
-
-  var measureStart = null;
-  var measureLine = null;
-  var measureStartMarker = null;
-  var measurePopup = null;
-
-  function clearMeasureGraphics(){
-    try{ if (measureLine) map.removeLayer(measureLine); }catch(e){}
-    try{ if (measureStartMarker) map.removeLayer(measureStartMarker); }catch(e){}
-    try{ if (measurePopup) map.closePopup(measurePopup); }catch(e){}
-    measureLine = null; measureStartMarker = null; measurePopup = null;
-    measureStart = null;
-  }
-
-  function setMeasureMode(on){
-    if (on){
-      document.body.classList.add("measure-active");
-      document.body.classList.remove("probe-active");
-      document.body.classList.remove("draw-active");
-    } else {
-      document.body.classList.remove("measure-active");
-      clearMeasureGraphics();
-    }
-
-  }
-
-
-  /* ===== Storm Lab Fix Pack (v6): missing tool functions ===== */
-
-  // Make sure tool buttons show active state
-  function setToolActive(btn, on){
-    if (!btn) return;
-    btn.classList.toggle("active", !!on);
-  }
-
-  // ----- Probe mode (HRRR temp only for now) -----
-  function setProbeMode(on){
-    if (on){
-      document.body.classList.add("probe-active");
-      document.body.classList.remove("measure-active");
-      document.body.classList.remove("draw-active");
-    } else {
-      document.body.classList.remove("probe-active");
-    }
-    setToolActive(toolProbeBtn, on);
-    if (on){
-      setToolActive(toolMeasureBtn, false);
-      setToolActive(toolDrawBtn, false);
-    }
-  }
-
-  // ----- Measure (ruler) -----
-  function handleMeasureClick(e){
-    if (!e || !e.latlng) return;
-
-    // First click: set start
-    if (!measureStart){
-      clearMeasureGraphics();
-
-      measureStart = e.latlng;
-      measureStartMarker = L.circleMarker(measureStart, {
-        radius: 6, color: "rgba(255,255,255,0.95)", weight: 2,
-        fillColor: "rgba(30,136,229,0.95)", fillOpacity: 0.95
-      }).addTo(map);
-
-      measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
-        .setLatLng(measureStart)
-        .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Ruler</div><div style='font:900 16px/1.1 Arial,sans-serif'>Tap a second point…</div>");
-      measurePopup.openOn(map);
-      return;
-    }
-
-    // Second click: compute distance
-    var end = e.latlng;
-    var meters = map.distance(measureStart, end);
-    var miles = meters / 1609.344;
-    var km = meters / 1000;
-
-    try{ if (measureLine) map.removeLayer(measureLine); }catch(_){}
-    measureLine = L.polyline([measureStart, end], {
-      color: "rgba(30,136,229,0.95)",
-      weight: 4,
-      opacity: 0.95
-    }).addTo(map);
-
-    var content =
-      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Distance</div>" +
-      "<div style='font:900 26px/1.05 Arial,sans-serif'>" + miles.toFixed(1) + " mi</div>" +
-      "<div style='font:900 16px/1.05 Arial,sans-serif;opacity:.9'>" + km.toFixed(1) + " km</div>";
-
-    measurePopup = L.popup({ closeButton:true, className:"hrrr-popup" })
-      .setLatLng(end)
-      .setContent(content)
-      .openOn(map);
-
-    // Reset start so the next click starts a new measurement
-    measureStart = null;
-  }
-
-  // Keep measure button "active" styling in sync
-  var _origSetMeasureMode = setMeasureMode;
-  setMeasureMode = function(on){
-    _origSetMeasureMode(on);
-    setToolActive(toolMeasureBtn, on);
-    if (on){
-      setToolActive(toolProbeBtn, false);
-      setToolActive(toolDrawBtn, false);
-    }
-  };
-
-  // ----- Draw / telestrator -----
-  var drawGroup = L.layerGroup().addTo(map);
-  var drawing = false;
-  var currentLine = null;
-
-  function clearDrawings(){
-    try{ drawGroup.clearLayers(); }catch(e){}
-  }
-
-  function setDrawMode(on){
-    if (!isTeacherMode){
-      // student mode: do nothing, keep disabled
-      setToolActive(toolDrawBtn, false);
-      setToolActive(toolEraseBtn, false);
-      document.body.classList.remove("draw-active");
-      return;
-    }
-
-    if (on){
-      document.body.classList.add("draw-active");
-      document.body.classList.remove("measure-active");
-      document.body.classList.remove("probe-active");
-      setToolActive(toolDrawBtn, true);
-      setToolActive(toolEraseBtn, true);
-      setToolActive(toolMeasureBtn, false);
-      setToolActive(toolProbeBtn, false);
-
-      // prevent map panning while drawing
-      try{ map.dragging.disable(); }catch(e){}
-    } else {
-      document.body.classList.remove("draw-active");
-      setToolActive(toolDrawBtn, false);
-      setToolActive(toolEraseBtn, false);
-      drawing = false;
-      currentLine = null;
-      try{ map.dragging.enable(); }catch(e){}
-    }
-  }
-
-  function startDraw(e){
-    if (!document.body.classList.contains("draw-active")) return;
-    if (!e || !e.latlng) return;
-    drawing = true;
-
-    currentLine = L.polyline([e.latlng], {
-      color: "#fdd835",
-      weight: 5,
-      opacity: 0.95,
-      lineCap: "round",
-      lineJoin: "round"
-    }).addTo(drawGroup);
-  }
-
-  function moveDraw(e){
-    if (!drawing || !currentLine) return;
-    if (!e || !e.latlng) return;
-    currentLine.addLatLng(e.latlng);
-  }
-
-  function endDraw(){
-    if (!drawing) return;
-    drawing = false;
-    currentLine = null;
-  }
-
-  // Pointer/touch drawing
-  map.on("mousedown", startDraw);
-  map.on("mousemove", moveDraw);
-  map.on("mouseup", endDraw);
-  map.on("touchstart", startDraw);
-  map.on("touchmove", moveDraw);
-  map.on("touchend", endDraw);
-
-  // ----- Probe click handler (HRRR temp nearest point) -----
-  function handleProbeClick(e){
-    if (!e || !e.latlng) return;
-
-    // Require HRRR temp layer + points
-    try{
-      if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
-        L.popup({ closeButton:true, className:"hrrr-popup" })
-          .setLatLng(e.latlng)
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b>.</div>")
-          .openOn(map);
-        return;
-      }
-    }catch(_){}
-
-    var best = null;
-    var bestD = Infinity;
-    for (var i=0; i<hrrrPoints.length; i++){
-      var p = hrrrPoints[i];
-      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-      var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
-      if (d < bestD){ bestD = d; best = p; }
-    }
-    if (!best) return;
-
-    var tf = (typeof best.tF === "number") ? best.tF : null;
-    var content =
-      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
-      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
-
-    L.popup({ closeButton:true, className:"hrrr-popup" })
-      .setLatLng([best.lat, best.lon])
-      .setContent(content)
-      .openOn(map);
-  }
-
-if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
-    var on = !document.body.classList.contains("measure-active");
-    setMeasureMode(on);
-    if (on) setDrawMode(false);
-  };
-
-  if (toolProbeBtn) toolProbeBtn.onclick = function(){
-    // Keep probe simple: if HRRR layer isn't on, tell the user and don't enable.
-    try{
-      if (!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer))){
-        L.popup({ closeButton:true, className:"hrrr-popup" })
-          .setLatLng(map.getCenter())
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> to probe.</div>")
-          .openOn(map);
-        setProbeMode(false);
-        return;
-      }
-    }catch(e){}
-    var on = !document.body.classList.contains("probe-active");
-    setProbeMode(on);
-    if (on) setDrawMode(false);
-  };
-
-  if (toolDrawBtn) toolDrawBtn.onclick = function(){
-    var on = !document.body.classList.contains("draw-active");
-    setDrawMode(on);
-  };
-
-  if (toolEraseBtn) toolEraseBtn.onclick = function(){
-    if (!isTeacherMode) return;
-    clearDrawings();
-  };
-
-  if (toolHomeBtn) toolHomeBtn.onclick = function(){
-    setMeasureMode(false); setProbeMode(false); setDrawMode(false);
-    clearMeasureGraphics();
-    map.setView([43.55, -96.73], 6);
-  };
-
-  // OPEN LESSON button in banner toggles the storyteller panel
-  if (openLessonBtn){
-    openLessonBtn.onclick = function(){
+  
+  var mapUiApi = (window.createMapUiModule ? window.createMapUiModule({
+    map: map,
+    homeView: { lat: (initView.lat || 43.55), lon: (initView.lon || -96.73), zoom: (initView.zoom || 6) },
+    storyPanelEl: (typeof storyPanelEl !== "undefined" ? storyPanelEl : null),
+    openGuide: (typeof openGuide === "function" ? openGuide : function(){}),
+    closeGuide: (typeof closeGuide === "function" ? closeGuide : function(){}),
+    getHrrrTempLayer: function(){ return (typeof hrrrTempLayer !== "undefined") ? hrrrTempLayer : null; },
+    getHrrrPoints: function(){ return (typeof hrrrPoints !== "undefined") ? hrrrPoints : []; },
+    isTeacherMode: (function(){
       try{
-        if (storyPanelEl && storyPanelEl.classList.contains("story-open")) closeGuide();
-        else openGuide();
-      }catch(e){}
-    };
-  }
+        var qsMode = new URLSearchParams(window.location.search).get("mode");
+        return (qsMode !== "student");
+      }catch(e){ return true; }
+    })()
+  }) : null);
 
-  // Disable teacher-only tools in student mode
-  if (!isTeacherMode){
-    if (toolDrawBtn){ toolDrawBtn.classList.add("disabled"); }
-    if (toolEraseBtn){ toolEraseBtn.classList.add("disabled"); }
-  }
-
-
-
-
-  // --- State boundaries / outlines (GeoJSON first; tile fallback) ---
-  map.createPane("lines");
-  map.getPane("lines").style.zIndex = 450;         // above dots, below popups         // above dots
-  map.getPane("lines").style.pointerEvents = "none"; // keep clicks working
-
-  var usStatesLayer = null;
-  var usStatesLoaded = false;
-
-  // Fallback: reliable reference tiles (works even if GeoJSON isn't present)
-  var stateLinesTile = L.tileLayer(
-    "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}",
-    { pane: "lines", opacity: 0.95 }
-  );
-
-  function loadUsStatesGeoJSONOnce(){
-    if (usStatesLoaded) return;
-    usStatesLoaded = true;
-
-    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
-      .then(function(res){
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function(geojson){
-        usStatesLayer = L.geoJSON(geojson, {
-          pane: "lines",
-          style: function(){
-            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
-          }
-        });
-// If user already has HRRR temp on, add immediately
-        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
-      })
-      .catch(function(err){
-        // If GeoJSON missing, we just rely on tile fallback
-        console.log("State GeoJSON not loaded (using tile fallback):", err);
-      });
-  }
-
-  function addStateLines(){
-    // Prefer GeoJSON outlines if available; otherwise tile fallback
-    if (usStatesLayer) {
-      if (!map.hasLayer(usStatesLayer)) usStatesLayer.addTo(map);
-      if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
-    } else {
-      if (!map.hasLayer(stateLinesTile)) stateLinesTile.addTo(map);
-    }
-  }
-  function removeStateLines(){
-    if (usStatesLayer && map.hasLayer(usStatesLayer)) map.removeLayer(usStatesLayer);
-    if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
-  }
-
-  // Kick off loading in the background (won't break anything if missing)
-  loadUsStatesGeoJSONOnce();
-  // Clean base map (no labels) — CARTO Light (white/gray land)
-  var base = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
-    { attribution: "© OpenStreetMap © CARTO", subdomains:"abcd", maxZoom: 19, className: "basemap-tiles" }
-  ).addTo(map);
-// (No road overlay)
+  var setMeasureMode = mapUiApi ? mapUiApi.setMeasureMode : function(){};
+  var setProbeMode   = mapUiApi ? mapUiApi.setProbeMode   : function(){};
+  var setDrawMode    = mapUiApi ? mapUiApi.setDrawMode    : function(){};
+  var clearMeasureGraphics = mapUiApi ? mapUiApi.clearMeasureGraphics : function(){};
+  var handleMeasureClick   = mapUiApi ? mapUiApi.handleMeasureClick   : function(){};
+  var handleProbeClick     = mapUiApi ? mapUiApi.handleProbeClick     : function(){};
+  var clearDrawings        = mapUiApi ? mapUiApi.clearDrawings        : function(){};
 
 // --- Extra Midwest city labels (shows more as you zoom in) ---
   var cityLabelLayer = L.layerGroup().addTo(map);
@@ -1374,26 +1026,36 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
     }
   });
 
-  // ---------- Layers ----------
-  var obsRadarOverlay = null;
-  var obsRadarEnabled = true;
-  var radarSweepEnabled = false;
-  var radarSweepCanvas = null;
-  var radarSweepCtx = null;
-  var radarSweepBeamCanvas = null;
-  var radarSweepBeamCtx = null;
-  var radarSweepImage = null;
-  var radarSweepImageUrl = "";
-  var radarSweepAnim = 0;
-  var radarSweepAngle = 0;
-  var radarSweepLastTs = 0;
-  var radarSweepStartAngle = -Math.PI / 2;
-  var radarSweepSwept = 0;
-  var radarSweepCompleted = false;
+  
+  var radarApi = (window.createRadarModule ? window.createRadarModule({
+    map: map,
+    L: L,
+    getRadarBounds: function(){ return RADAR_BOUNDS; },
+    getRadarManifest: function(){ return RADAR_MANIFEST; },
+    getRadarUrl: function(d){ return radarUrlFor(d); },
+    getCurrentTime: function(){ return curZ; },
+    getProductOpacity: function(){ return productOpacity; },
+    applyActiveOpacity: applyActiveOpacity,
+    setStatus: setStatus
+  }) : null);
 
-  // ---------- Static METAR layer ----------
+  var metarsApi = (window.createMetarsModule ? window.createMetarsModule({
+    map: map,
+    CFG: CFG,
+    DATA_BASE: DATA_BASE,
+    _isAbsUrl: _isAbsUrl,
+    _joinUrl: _joinUrl,
+    setStatus: setStatus,
+    updateProductLabel: function(){ try{ updateProductLabel(); }catch(e){} },
+    setTimeLabel: function(){ try{ setTimeLabel(); }catch(e){} }
+  }) : null);
+
+  var obsRadarOverlay = null;
+  var obsRadarEnabled = radarApi ? radarApi.getObsRadarEnabled() : true;
+  var radarSweepEnabled = radarApi ? radarApi.getRadarSweepEnabled() : false;
+
   var metarLayer = null;
-  var metarVisible = false;
+  var metarVisible = metarsApi ? metarsApi.isVisible() : false;
   window.metarVisible = metarVisible;
   window.obsRadarEnabled = obsRadarEnabled;
   window.radarSweepEnabled = radarSweepEnabled;
@@ -1404,514 +1066,54 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
       return { color:"#ff0000", weight:2, opacity:0.9, fill:false, fillOpacity:0 };
     }
   });
-  var metarData = [];
-  var metarLoadPromise = null;
 
-  function stopRadarSweep(){
-    if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
+  function syncRadarStateRefs(){
+    if (!radarApi) return;
+    obsRadarEnabled = radarApi.getObsRadarEnabled();
+    radarSweepEnabled = radarApi.getRadarSweepEnabled();
+    obsRadarOverlay = radarApi.getOverlay();
+    window.obsRadarEnabled = obsRadarEnabled;
+    window.radarSweepEnabled = radarSweepEnabled;
   }
 
-  function ensureRadarSweepCanvas(){
-    if (!radarSweepCanvas){
-      var pane = map.getPanes().overlayPane;
-      radarSweepCanvas = L.DomUtil.create('canvas', 'radar-sweep-canvas', pane);
-      radarSweepCtx = radarSweepCanvas.getContext('2d');
-    }
-    if (!radarSweepBeamCanvas){
-      var pane2 = map.getPanes().overlayPane;
-      radarSweepBeamCanvas = L.DomUtil.create('canvas', 'radar-sweep-canvas', pane2);
-      radarSweepBeamCtx = radarSweepBeamCanvas.getContext('2d');
-    }
-    resizeRadarSweepCanvas();
-    radarSweepCanvas.style.opacity = String((productOpacity && productOpacity.radar) || 0.7);
-    radarSweepBeamCanvas.style.opacity = "1";
-    return radarSweepCanvas;
+  function syncMetarStateRefs(){
+    if (!metarsApi) return;
+    metarVisible = metarsApi.isVisible();
+    metarLayer = metarsApi.getLayer();
+    window.metarVisible = metarVisible;
   }
 
-  function resizeRadarSweepCanvas(){
-    if (!map) return;
-    var s = map.getSize();
-    if (radarSweepCanvas){
-      if (radarSweepCanvas.width !== s.x) radarSweepCanvas.width = s.x;
-      if (radarSweepCanvas.height !== s.y) radarSweepCanvas.height = s.y;
-    }
-    if (radarSweepBeamCanvas){
-      if (radarSweepBeamCanvas.width !== s.x) radarSweepBeamCanvas.width = s.x;
-      if (radarSweepBeamCanvas.height !== s.y) radarSweepBeamCanvas.height = s.y;
-    }
-  }
+  function stopRadarSweep(){ if (radarApi) radarApi.stopRadarSweep(); }
+  function ensureRadarSweepCanvas(){ return radarApi ? radarApi.ensureRadarSweepCanvas() : null; }
+  function resizeRadarSweepCanvas(){ if (radarApi) radarApi.resizeRadarSweepCanvas(); }
+  function hideRadarSweepCanvas(){ if (radarApi) radarApi.hideRadarSweepCanvas(); syncRadarStateRefs(); }
+  function updateSweepUi(){ if (radarApi) radarApi.updateSweepUi(); syncRadarStateRefs(); }
+  function bindSweepControls(){ if (radarApi) radarApi.bindSweepControls(); syncRadarStateRefs(); }
+  function getRadarSweepCenterLatLng(){ return radarApi ? radarApi.getRadarSweepCenterLatLng() : RADAR_BOUNDS.getCenter(); }
+  function getRadarSweepCenterPoint(){ return radarApi ? radarApi.getRadarSweepCenterPoint() : map.latLngToLayerPoint(RADAR_BOUNDS.getCenter()); }
+  function getRadarSweepRangePx(){ return radarApi ? radarApi.getRadarSweepRangePx() : 20; }
+  function getRadarSweepEndpointPoint(theta){ return radarApi ? radarApi.getRadarSweepEndpointPoint(theta) : null; }
+  function buildRadarSweepSectorPoints(startTheta, endTheta){ return radarApi ? radarApi.buildRadarSweepSectorPoints(startTheta, endTheta) : []; }
+  function getRadarSweepDrawState(){ return radarApi ? radarApi.getRadarSweepDrawState() : null; }
+  function renderRadarSweepCurrentState(){ if (radarApi) radarApi.renderRadarSweepCurrentState(); }
+  function resetRadarSweepState(){ if (radarApi) radarApi.resetRadarSweepState(); syncRadarStateRefs(); }
+  function startRadarSweep(){ if (radarApi) radarApi.startRadarSweep(); syncRadarStateRefs(); }
 
-  function hideRadarSweepCanvas(){
-    stopRadarSweep();
-    resetRadarSweepState();
-    if (radarSweepCanvas){
-      radarSweepCanvas.style.display = 'none';
-      if (radarSweepCtx) radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
-    }
-    if (typeof radarSweepBeamCanvas !== "undefined" && radarSweepBeamCanvas){
-      radarSweepBeamCanvas.style.display = 'none';
-      if (radarSweepBeamCtx) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width,radarSweepBeamCanvas.height);
-    }
-  }
+  function getMetarUrl(){ return metarsApi ? metarsApi.getMetarUrl() : null; }
+  function metarTempColorF(tmpf){ return metarsApi ? metarsApi.metarTempColorF(tmpf) : '#f4e8a3'; }
+  function metarOutlineColor(tmpf){ return metarsApi ? metarsApi.metarOutlineColor(tmpf) : '#243447'; }
+  function metarPopupHtml(r){ return metarsApi ? metarsApi.metarPopupHtml(r) : ''; }
+  async function loadMetars(){ var out = metarsApi ? await metarsApi.loadMetars() : []; syncMetarStateRefs(); return out; }
+  function metarMinSepForZoom(z){ return metarsApi ? metarsApi.metarMinSepForZoom(z) : 24; }
+  function buildMetarLayer(){ var out = metarsApi ? metarsApi.buildMetarLayer() : null; syncMetarStateRefs(); return out; }
+  function refreshMetarLayer(){ if (metarsApi) metarsApi.refreshMetarLayer(); syncMetarStateRefs(); }
+  async function setMetarsEnabled(on){ if (metarsApi) await metarsApi.setMetarsEnabled(on); syncMetarStateRefs(); }
+  async function toggleMetars(){ if (metarsApi) await metarsApi.toggleMetars(); syncMetarStateRefs(); }
 
-  function updateSweepUi(){
-    var btn = document.getElementById('sweepToggleBtn');
-    if (btn) btn.textContent = radarSweepEnabled ? 'SWEEP ON' : 'SWEEP OFF';
-    var panel = document.getElementById('radarSweepControls');
-    if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
-  }
-
-  if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 2;
-  if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 1;
-  if (typeof radarSweepRangeMiles === "undefined") var radarSweepRangeMiles = 150;
-
-  function destinationPoint(lat, lon, bearingDeg, distanceMeters){
-    var R = 6371000;
-    var brng = bearingDeg * Math.PI / 180;
-    var lat1 = lat * Math.PI / 180;
-    var lon1 = lon * Math.PI / 180;
-    var ang = distanceMeters / R;
-
-    var lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(ang) +
-      Math.cos(lat1) * Math.sin(ang) * Math.cos(brng)
-    );
-
-    var lon2 = lon1 + Math.atan2(
-      Math.sin(brng) * Math.sin(ang) * Math.cos(lat1),
-      Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2)
-    );
-
-    return L.latLng(lat2 * 180 / Math.PI, lon2 * 180 / Math.PI);
-  }
-
-  function bindSweepControls(){
-    var speed = document.getElementById('sweepSpeedSlider');
-    if (speed) {
-      speed.value = String(radarSweepRPM);
-      speed.oninput = function(){
-        radarSweepRPM = Math.max(1, Math.min(30, parseInt(this.value || '6', 10)));
-      };
-    }
-    var beam = document.getElementById('sweepBeamSlider');
-    if (beam) {
-      beam.value = String(radarSweepBeamPx);
-      beam.oninput = function(){
-        radarSweepBeamPx = Math.max(1, Math.min(8, parseInt(this.value || '2', 10)));
-      };
-    }
-    updateSweepUi();
-  }
-
-  function getRadarSweepCenterLatLng(){
-    try{
-      if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.radar_latlon) && RADAR_MANIFEST.radar_latlon.length === 2){
-        return L.latLng(RADAR_MANIFEST.radar_latlon[0], RADAR_MANIFEST.radar_latlon[1]);
-      }
-    }catch(e){}
-    return RADAR_BOUNDS.getCenter();
-  }
-
-  function getRadarSweepCenterPoint(){
-    return map.latLngToLayerPoint(getRadarSweepCenterLatLng());
-  }
-
-  function getRadarSweepRangePx(){
-    var centerLL = getRadarSweepCenterLatLng();
-    var eastRange = destinationPoint(centerLL.lat, centerLL.lng, 90, radarSweepRangeMiles * 1609.344);
-    var c = map.latLngToLayerPoint(centerLL);
-    var e = map.latLngToLayerPoint(eastRange);
-    var px = Math.hypot(e.x - c.x, e.y - c.y);
-    return Math.max(20, px);
-  }
-
-  function thetaToBearingDeg(theta){
-    var deg = (theta * 180 / Math.PI) + 90;
-    deg = ((deg % 360) + 360) % 360;
-    return deg;
-  }
-
-  function getRadarSweepEndpointPoint(theta){
-    var centerLL = getRadarSweepCenterLatLng();
-    var endLL = destinationPoint(centerLL.lat, centerLL.lng, thetaToBearingDeg(theta), radarSweepRangeMiles * 1609.344);
-    return map.latLngToLayerPoint(endLL);
-  }
-
-  function buildRadarSweepSectorPoints(startTheta, endTheta){
-    var centerPt = getRadarSweepCenterPoint();
-    var pts = [centerPt];
-    var sweep = endTheta - startTheta;
-    if (sweep <= 0) sweep += Math.PI * 2;
-    var steps = Math.max(24, Math.ceil(sweep / (Math.PI / 72)));
-    for (var i = 0; i <= steps; i++){
-      var t = startTheta + (sweep * i / steps);
-      pts.push(getRadarSweepEndpointPoint(t));
-    }
-    return pts;
-  }
-
-  function getRadarSweepDrawState(){
-    resizeRadarSweepCanvas();
-    var nw = map.latLngToLayerPoint(RADAR_BOUNDS.getNorthWest());
-    var se = map.latLngToLayerPoint(RADAR_BOUNDS.getSouthEast());
-    var x = nw.x, y = nw.y, w = se.x - nw.x, h = se.y - nw.y;
-    var c = getRadarSweepCenterPoint();
-    var maxRange = getRadarSweepRangePx();
-    return { x:x, y:y, w:w, h:h, c:c, maxRange:maxRange };
-  }
-
-  function renderRadarSweepCurrentState(){
-    if (!radarSweepCanvas || !radarSweepCtx || !radarSweepImage) return;
-    resizeRadarSweepCanvas();
-    radarSweepCtx.clearRect(0,0,radarSweepCanvas.width,radarSweepCanvas.height);
-    if (radarSweepBeamCtx && radarSweepBeamCanvas) radarSweepBeamCtx.clearRect(0,0,radarSweepBeamCanvas.width,radarSweepBeamCanvas.height);
-
-    var ds = getRadarSweepDrawState();
-    if (!(ds.w > 0 && ds.h > 0)) return;
-
-    if (radarSweepCompleted){
-      radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
-      return;
-    }
-
-    var theta = radarSweepAngle;
-    var sectorPts = buildRadarSweepSectorPoints(radarSweepStartAngle, theta);
-    radarSweepCtx.save();
-    radarSweepCtx.beginPath();
-    radarSweepCtx.moveTo(sectorPts[0].x, sectorPts[0].y);
-    for (var i = 1; i < sectorPts.length; i++){
-      radarSweepCtx.lineTo(sectorPts[i].x, sectorPts[i].y);
-    }
-    radarSweepCtx.closePath();
-    radarSweepCtx.clip();
-    radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
-    radarSweepCtx.restore();
-
-    if (radarSweepBeamCtx){
-      var endPt = getRadarSweepEndpointPoint(theta);
-      radarSweepBeamCtx.save();
-      radarSweepBeamCtx.beginPath();
-      radarSweepBeamCtx.moveTo(ds.c.x, ds.c.y);
-      radarSweepBeamCtx.lineTo(endPt.x, endPt.y);
-      radarSweepBeamCtx.lineWidth = Math.max(1, radarSweepBeamPx);
-      radarSweepBeamCtx.strokeStyle = "rgba(255, 215, 0, 0.95)";
-      radarSweepBeamCtx.shadowColor = "rgba(255, 215, 0, 0.65)";
-      radarSweepBeamCtx.shadowBlur = 4;
-      radarSweepBeamCtx.stroke();
-      radarSweepBeamCtx.restore();
-    }
-  }
-
-  function resetRadarSweepState(){
-    radarSweepLastTs = 0;
-    radarSweepStartAngle = -Math.PI / 2;
-    radarSweepSwept = 0;
-    radarSweepCompleted = false;
-    radarSweepAngle = radarSweepStartAngle;
-  }
-
-  function startRadarSweep(){
-    if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
-    ensureRadarSweepCanvas();
-    radarSweepCanvas.style.display = 'block';
-    if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-    stopRadarSweep();
-    resetRadarSweepState();
-    renderRadarSweepCurrentState();
-
-    function frame(ts){
-      if (!radarSweepEnabled || !radarSweepImage || !obsRadarEnabled || !radarSweepCtx) return;
-      if (!radarSweepLastTs) radarSweepLastTs = ts;
-      var dt = Math.min(0.05, (ts - radarSweepLastTs) / 1000);
-      radarSweepLastTs = ts;
-
-      var angVel = (Math.max(1, radarSweepRPM) * 2 * Math.PI / 60);
-      var dTheta = angVel * dt;
-      radarSweepSwept = Math.min(Math.PI * 2, radarSweepSwept + dTheta);
-      radarSweepAngle = radarSweepStartAngle + radarSweepSwept;
-      radarSweepCompleted = radarSweepSwept >= Math.PI * 2;
-      renderRadarSweepCurrentState();
-
-      if (radarSweepCompleted){
-        stopRadarSweep();
-        return;
-      }
-
-      radarSweepAnim = requestAnimationFrame(frame);
-    }
-
-    radarSweepAnim = requestAnimationFrame(frame);
-  }
-
-  function setStatus(s){ /* hidden */ }
-  window.setStatus = setStatus;
-
-  function positionClockBubble(){
-    try{
-      var bubble = document.getElementById("clockBubble");
-      if (!bubble) return;
-      bubble.style.left = "50%";
-      bubble.style.right = "auto";
-      bubble.style.top = "auto";
-      bubble.style.bottom = "14px";
-      bubble.style.transform = "translateX(-50%)";
-    }catch(e){}
-  }
-
-function updateHrrrTempRadius(){
-  return;
-}
-
-function formatCentralLabel(d){
-  try{
-    var optsDate = { month: "short", day: "numeric" };
-    var optsTime = { hour: "numeric", minute: "2-digit", hour12: true };
-    var dateStr = d.toLocaleDateString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsDate));
-    var timeStr = d.toLocaleTimeString("en-US", Object.assign({ timeZone: "America/Chicago" }, optsTime));
-    timeStr = timeStr.replace(":00", "").replace(" ", "");
-    return (dateStr + " " + timeStr).toUpperCase();
-  }catch(e){
-    return d.toISOString();
-  }
-}
-
-function nearestHrrrFrameIndexForTime(d){
-    if (!hrrrFrames || !hrrrFrames.length) return 0;
-    var t = d && d.getTime ? d.getTime() : NaN;
-    if (!isFinite(t)) return 0;
-    var bestIdx = 0, bestDiff = Infinity;
-    for (var i=0;i<hrrrFrames.length;i++){
-      var ms = hrrrFrames[i] && hrrrFrames[i].timeMs;
-      if (!isFinite(ms)) continue;
-      var diff = Math.abs(ms - t);
-      if (diff < bestDiff){ bestDiff = diff; bestIdx = i; }
-    }
-    return bestIdx;
-  }
-
-  function setCurrentHrrrFrameIndex(idx){
-    if (!hrrrFrames || !hrrrFrames.length) return;
-    currentHrrrFrameIndex = Math.max(0, Math.min(hrrrFrames.length - 1, idx|0));
-    var f = hrrrFrames[currentHrrrFrameIndex];
-    var rawUtc = f ? (f.time || f.utc || f.valid || null) : null;
-    if (rawUtc) curZ = new Date(rawUtc);
-  }
-
-  function getActiveScrubberMode(){
-    if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
-    if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
-    return 'lesson';
-  }
-
-  function syncScrubberToActiveProduct(){
-    try{
-      var scrub = document.getElementById("cbScrubber");
-      if (!scrub) return;
-      var mode = getActiveScrubberMode();
-      scrub.min = "0";
-      scrub.step = "1";
-      if (mode === 'hrrr'){
-        scrub.max = String(Math.max(0, hrrrFrames.length - 1));
-        scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
-      } else if (mode === 'radar'){
-        scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
-        scrub.value = String(currentRadarFrameIndex);
-      } else {
-        var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
-        if (idx < 0) idx = 0;
-        var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
-        scrub.max = String(max);
-        scrub.value = String(idx);
-      }
-    }catch(e){}
-  }
-
-  function setTimeLabel(){
-    var label = formatCentralLabel(curZ);
-    var btl = document.getElementById("bannerTimeLabel");
-    if (btl) btl.textContent = label;
-
-    var cbt = document.getElementById("clockBubbleTime");
-    if (cbt) cbt.textContent = label;
-
-    syncScrubberToActiveProduct();
-    positionClockBubble();
-  }
-
-
-  function getMetarUrl(){
-    try{
-      if (!CFG || !CFG.metars) return null;
-      var f = CFG.metars.file || CFG.metars.url || null;
-      if (!f && CFG.metars.enabled) f = 'metars/metars.json';
-      if (!f) return null;
-      return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
-    }catch(e){
-      return null;
-    }
-  }
-
-  function metarTempColorF(tmpf){
-    var t = Number(tmpf);
-    if (!isFinite(t)) return '#f4e8a3';
-    if (t <= 20) return '#b39ddb';
-    if (t <= 32) return '#90caf9';
-    if (t <= 45) return '#80deea';
-    if (t <= 60) return '#a5d6a7';
-    if (t <= 70) return '#dce775';
-    if (t <= 80) return '#ffd54f';
-    if (t <= 90) return '#ffb74d';
-    return '#ef5350';
-  }
-
-  function metarOutlineColor(tmpf){
-    var t = Number(tmpf);
-    if (!isFinite(t)) return '#243447';
-    if (t <= 32) return '#1d4f91';
-    if (t <= 60) return '#2e5d34';
-    if (t <= 80) return '#8a5a00';
-    return '#8b1e1e';
-  }
-
-  function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
-    var parts = [];
-    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
-    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
-    parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
-    var windTxt = '—';
-    if (r.drct != null || r.sknt != null){
-      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
-      if (r.gust != null) windTxt += ' G' + String(r.gust);
-    }
-    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
-    if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
-    return '<div class="hrrr-popup">' + parts.join('') + '</div>';
-  }
-
-  async function loadMetars(){
-    if (metarLoadPromise) return metarLoadPromise;
-    var url = getMetarUrl();
-    if (!url) throw new Error('No METAR file configured in lesson.json');
-    setStatus('Loading METARs…');
-    metarLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
-      if (!r.ok) throw new Error('METAR HTTP ' + r.status + ' :: ' + url);
-      return r.json();
-    }).then(function(rows){
-      metarData = Array.isArray(rows) ? rows : [];
-      setStatus('METARs loaded: ' + metarData.length + ' stations');
-      return metarData;
-    }).catch(function(err){
-      metarLoadPromise = null;
-      setStatus('METAR load failed');
-      throw err;
-    });
-    return metarLoadPromise;
-  }
-
-  function metarMinSepForZoom(z){
-    if (z <= 5) return 42;
-    if (z <= 6) return 32;
-    if (z <= 7) return 24;
-    if (z <= 8) return 18;
-    return 12;
-  }
-
-  function buildMetarLayer(){
-    var rows = (Array.isArray(metarData) ? metarData : []).filter(function(r){
-      return r && isFinite(Number(r.lat)) && isFinite(Number(r.lon));
-    });
-    var group = L.layerGroup();
-    var z = map.getZoom ? map.getZoom() : 6;
-    var bounds = map.getBounds ? map.getBounds().pad(0.22) : null;
-    var minSep = metarMinSepForZoom(z);
-    var placed = [];
-
-    rows.forEach(function(r){
-      var lat = Number(r.lat), lon = Number(r.lon);
-      if (bounds && !bounds.contains([lat, lon])) return;
-      var pt = map.latLngToContainerPoint([lat, lon]);
-      for (var i = 0; i < placed.length; i++){
-        var dx = pt.x - placed[i].x;
-        var dy = pt.y - placed[i].y;
-        if ((dx*dx + dy*dy) < (minSep * minSep)) return;
-      }
-      placed.push(pt);
-
-      var fill = metarTempColorF(r.tmpf);
-      var stroke = metarOutlineColor(r.tmpf);
-      var tempText = (r.tmpf == null || r.tmpf === '') ? '—' : String(Math.round(Number(r.tmpf)));
-      var cls = 'metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '');
-      var html = '<div class="' + cls + '" style="background:' + fill + ';border-color:' + stroke + ';">' + tempText + '</div>';
-      var marker = L.marker([lat, lon], {
-        icon: L.divIcon({
-          className: 'metar-temp-wrap',
-          html: html,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-          popupAnchor: [0, -18]
-        }),
-        pane: 'markerPane',
-        keyboard: false
-      });
-      marker.bindPopup(metarPopupHtml(r), { maxWidth: 280 });
-      group.addLayer(marker);
-    });
-
-    setStatus('METARs shown: ' + placed.length + '/' + rows.length + ' (zoom ' + z + ')');
-    return group;
-  }
-
-  function refreshMetarLayer(){
-    if (!metarVisible) return;
-    if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
-    metarLayer = buildMetarLayer();
-    if (metarLayer) metarLayer.addTo(map);
-  }
-
-  async function setMetarsEnabled(on){
-    var want = !!on;
-    if (want){
-      try{
-        metarVisible = true;
-        window.metarVisible = metarVisible;
-        if (!metarLayer){
-          if (!metarData.length) await loadMetars();
-          metarLayer = buildMetarLayer();
-        }
-        refreshMetarLayer();
-        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
-        setStatus('METARs on');
-      }catch(err){
-        metarVisible = false;
-        window.metarVisible = metarVisible;
-        setStatus('METARs failed to load');
-        console.error(err);
-      }
-    } else {
-      if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
-      metarVisible = false;
-      window.metarVisible = metarVisible;
-      setStatus('METARs off');
-    }
-    try{ updateProductLabel(); }catch(e){}
-    try{ setTimeLabel(); }catch(e){}
-  }
-
-  async function toggleMetars(){
-    await setMetarsEnabled(!metarVisible);
-  }
-
-  map.on('zoomend moveend', function(){
-    if (metarVisible) refreshMetarLayer();
-  });
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
 
-  var spcDay1Layer = null;
+var spcDay1Layer = null;
   var spcDay1Enabled = false;
 
   function getSpcDay1Url(){
@@ -1997,6 +1199,13 @@ function nearestHrrrFrameIndexForTime(d){
   window.setSpcDay1Enabled = setSpcDay1Enabled;
 
   async function setRadarEnabled(on){
+    if (radarApi){
+      await radarApi.setRadarEnabled(on);
+      syncRadarStateRefs();
+      try{ setTimeLabel(); }catch(e){}
+      try{ updateProductLabel(); }catch(e){}
+      return;
+    }
     obsRadarEnabled = !!on;
     window.obsRadarEnabled = obsRadarEnabled;
     if (!obsRadarEnabled){
@@ -2230,45 +1439,11 @@ function nearestHrrrFrameIndexForTime(d){
 
   var radarLoadToken = 0;
   function updateRadar(){
-    if (!obsRadarEnabled){
-      hideRadarSweepCanvas();
-      if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+    if (radarApi){
+      radarApi.updateRadar();
+      syncRadarStateRefs();
       return;
     }
-    var url = radarUrlFor(curZ);
-    var myToken = ++radarLoadToken;
-
-    var img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = function(){
-      if (myToken !== radarLoadToken) return;
-      radarSweepImage = img;
-      radarSweepImageUrl = url;
-      var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
-
-      if (radarSweepEnabled){
-        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
-        ensureRadarSweepCanvas();
-        radarSweepCanvas.style.opacity = String(op);
-        startRadarSweep();
-        updateSweepUi();
-        setStatus("Radar sweep: " + url);
-      } else {
-        hideRadarSweepCanvas();
-        updateSweepUi();
-        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
-        obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
-        obsRadarOverlay.addTo(map);
-        applyActiveOpacity();
-        setStatus("Radar: " + url);
-      }
-    };
-    img.onerror = function(){
-      if (myToken !== radarLoadToken) return;
-      hideRadarSweepCanvas();
-      setStatus("Radar missing: " + url + " (check manifest/frames path)");
-    };
-    img.src = url;
   }
 
   
@@ -2323,15 +1498,6 @@ function updateAlerts(){
       if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
         map.removeLayer(alertsLayer);
       }
-      setStatus("Alerts missing: " + url);
-    });
-  }).then(function(gj){
-      alertsLayer.clearLayers();
-      alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
-      setStatus("Alerts: " + url);
-    }).catch(function(err){
-      alertsLayer.clearLayers();
       setStatus("Alerts missing: " + url);
     });
   }
@@ -2410,11 +1576,19 @@ function updateAlerts(){
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
   function syncSweepButton(){
+    syncRadarStateRefs();
+    if (radarApi) return radarApi.syncSweepButton();
     window.radarSweepEnabled = radarSweepEnabled;
     if (_sweepBtn) _sweepBtn.textContent = radarSweepEnabled ? "SWEEP ON" : "SWEEP OFF";
   }
   if (_sweepBtn){
     _sweepBtn.onclick = function(){
+      if (radarApi){
+        radarApi.toggleSweep();
+        syncRadarStateRefs();
+        updateRadar();
+        return;
+      }
       radarSweepEnabled = !radarSweepEnabled;
       syncSweepButton();
       updateRadar();
@@ -2422,14 +1596,7 @@ function updateAlerts(){
     syncSweepButton();
   }
 
-  map.on('zoom move resize', function(){
-    resizeRadarSweepCanvas();
-    if (radarSweepEnabled && radarSweepImage){
-      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      renderRadarSweepCurrentState();
-    }
-  });
+  if (radarApi && typeof radarApi.installMapEvents === "function") radarApi.installMapEvents();
 
 
 
