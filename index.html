@@ -2908,6 +2908,18 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
   var radarSweepEnabled = false;
+  var alertsLayer = L.geoJSON(null, {
+    pane: "lines",
+    style: function(){
+      return {
+        color: "#ff0000",
+        weight: 2,
+        opacity: 0.9,
+        fill: false,
+        fillOpacity: 0
+      };
+    }
+  });
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
   var radarSweepBeamCanvas = null;
@@ -3753,19 +3765,24 @@ function alertsUrlFor(d){
 }
 
 function updateAlerts(){
-    
+    if (!alertsLayer) return;
     var url = alertsUrlFor(curZ);
-    if (!url) { alertsLayer.clearLayers(); return; }
+    if (!url) {
+      alertsLayer.clearLayers();
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
+      return;
+    }
     fetch(url).then(function(r){
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
     }).then(function(gj){
       alertsLayer.clearLayers();
       alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
+      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
       setStatus("Alerts: " + url);
     }).catch(function(err){
       alertsLayer.clearLayers();
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
       setStatus("Alerts missing: " + url);
     });
   }
@@ -4338,6 +4355,16 @@ function updateAlerts(){
 
     window.refreshAutoBoundaries = refreshAutoBoundaries;
 
+    if (typeof window.updateAll === 'function' && !window.updateAll.__autoBoundaryWrapped2){
+      var oldUpdateAll = window.updateAll;
+      window.updateAll = function(){
+        var out = oldUpdateAll.apply(this, arguments);
+        setTimeout(refreshAutoBoundaries, 0);
+        return out;
+      };
+      window.updateAll.__autoBoundaryWrapped2 = true;
+    }
+
     function wrapAsync(name){
       if (typeof window[name] !== 'function') return;
       var original = window[name];
@@ -4357,7 +4384,9 @@ function updateAlerts(){
     wrapAsync('setSpcDay1Enabled');
 
     leafletMap.on('zoomend', refreshAutoBoundaries);
-    setTimeout(refreshAutoBoundaries, 400);
+    leafletMap.on('moveend', refreshAutoBoundaries);
+    setTimeout(refreshAutoBoundaries, 200);
+    setTimeout(refreshAutoBoundaries, 1000);
   });
 })();
 </script>
