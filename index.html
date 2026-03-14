@@ -1106,6 +1106,39 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   background-position: center !important;
   opacity: 1 !important;
 }
+  /* ===== Broadcast-style banner polish ===== */
+
+.tvbanner{
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.35),
+    inset 0 -2px 0 rgba(255,255,255,0.06);
+}
+
+/* subtle top highlight like TV graphics */
+.tvbanner::after{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:1px;
+  background:rgba(255,255,255,0.35);
+  opacity:0.6;
+}
+
+/* slightly brighter text for readability */
+.top-lesson,
+.top-question{
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* radar product title glow */
+.product-center{
+  text-shadow:
+    0 2px 6px rgba(0,0,0,0.65),
+    0 0 12px rgba(30,136,229,0.25);
+}
 /* Ensure any previous banner overlay remains subtle but NOT see-through */
 .tvbanner::before{
   content:"";
