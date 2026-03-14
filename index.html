@@ -1526,8 +1526,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
         <div class="inv-chips">
           <button class="inv-chip" type="button" disabled>FRONTS</button>
           <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
-          <button class="inv-chip" type="button" data-action="states">STATES</button>
-          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
+          
         </div>
       </div>
       <div class="inv-pane" data-pane="organize">
@@ -3800,15 +3799,6 @@ function updateAlerts(){
       }
       setStatus("Alerts missing: " + url);
     });
-  }).then(function(gj){
-      alertsLayer.clearLayers();
-      alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
-      setStatus("Alerts: " + url);
-    }).catch(function(err){
-      alertsLayer.clearLayers();
-      setStatus("Alerts missing: " + url);
-    });
   }
 
   function updateAll(){
@@ -4170,7 +4160,7 @@ function updateAlerts(){
 
   function refreshBoundaryVisibility(){
     var z = 0;
-    try{ z = map.getZoom(); }catch(e){}
+    try{ z = map.getZoom(); }catch(e){ return; }
 
     if (statesLayer){
       if (window.statesEnabled){
