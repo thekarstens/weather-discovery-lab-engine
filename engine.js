@@ -314,8 +314,6 @@ var gfsSnowOverlay = null;
 function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
-window.syncJetParticlesToClock = syncJetParticlesToClock;
-window.updateEra5Global = updateEra5Global;
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -646,9 +644,28 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   );
 
   function loadUsStatesGeoJSONOnce(){
-    // Legacy fallback disabled; lesson boundary system handles states/counties now.
+    if (usStatesLoaded) return;
     usStatesLoaded = true;
-    return;
+
+    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function(geojson){
+        usStatesLayer = L.geoJSON(geojson, {
+          pane: "lines",
+          style: function(){
+            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
+          }
+        });
+// If user already has HRRR temp on, add immediately
+        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
+      })
+      .catch(function(err){
+        // If GeoJSON missing, we just rely on tile fallback
+        console.log("State GeoJSON not loaded (using tile fallback):", err);
+      });
   }
 
   function addStateLines(){
@@ -665,7 +682,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
   }
 
-  // Legacy fallback state loader disabled; lesson boundary system handles states/counties.
+  // Kick off loading in the background (won't break anything if missing)
+  loadUsStatesGeoJSONOnce();
   // Clean base map (no labels) — CARTO Light (white/gray land)
   var base = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
@@ -1359,18 +1377,6 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   // ---------- Layers ----------
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
-  var alertsLayer = L.geoJSON(null, {
-    pane: "lines",
-    style: function(){
-      return {
-        color: "#ff0000",
-        weight: 2,
-        opacity: 0.9,
-        fill: false,
-        fillOpacity: 0
-      };
-    }
-  });
   var radarSweepEnabled = false;
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
@@ -1392,6 +1398,12 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   window.obsRadarEnabled = obsRadarEnabled;
   window.radarSweepEnabled = radarSweepEnabled;
   window.spcDay1Enabled = false;
+  var alertsLayer = L.geoJSON(null, {
+    pane: "lines",
+    style: function(){
+      return { color:"#ff0000", weight:2, opacity:0.9, fill:false, fillOpacity:0 };
+    }
+  });
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -2163,22 +2175,23 @@ function nearestHrrrFrameIndexForTime(d){
   var pl = document.getElementById("productLabel");
   if (!pl) return;
 
-  // IMPORTANT: never concatenate labels (it will crowd the middle).
-  // Choose ONE label based on what is currently visible/active.
   var candidates = [
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
-    { on: (typeof ptypeEnabled  !== "undefined" && ptypeEnabled),  label: "P-TYPE" },
-    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
+    { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
   var label = "MAP";
-  for (var i=0;i<candidates.length;i++){
-    if (candidates[i].on){ label = candidates[i].label; break; }
+  for (var i = 0; i < candidates.length; i++){
+    if (candidates[i].on){
+      label = candidates[i].label;
+      break;
+    }
   }
   pl.textContent = label;
 }
@@ -2310,6 +2323,15 @@ function updateAlerts(){
       if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
         map.removeLayer(alertsLayer);
       }
+      setStatus("Alerts missing: " + url);
+    });
+  }).then(function(gj){
+      alertsLayer.clearLayers();
+      alertsLayer.addData(gj);
+      alertsLayer.addTo(map);
+      setStatus("Alerts: " + url);
+    }).catch(function(err){
+      alertsLayer.clearLayers();
       setStatus("Alerts missing: " + url);
     });
   }
