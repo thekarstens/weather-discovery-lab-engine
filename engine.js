@@ -1359,6 +1359,18 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   // ---------- Layers ----------
   var obsRadarOverlay = null;
   var obsRadarEnabled = true;
+  var alertsLayer = L.geoJSON(null, {
+    pane: "lines",
+    style: function(){
+      return {
+        color: "#ff0000",
+        weight: 2,
+        opacity: 0.9,
+        fill: false,
+        fillOpacity: 0
+      };
+    }
+  });
   var radarSweepEnabled = false;
   var radarSweepCanvas = null;
   var radarSweepCtx = null;
@@ -2274,19 +2286,30 @@ function alertsUrlFor(d){
 }
 
 function updateAlerts(){
-    
+    if (!alertsLayer) return;
+
     var url = alertsUrlFor(curZ);
-    if (!url) { alertsLayer.clearLayers(); return; }
+    if (!url) {
+      alertsLayer.clearLayers();
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
+        map.removeLayer(alertsLayer);
+      }
+      return;
+    }
+
     fetch(url).then(function(r){
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
     }).then(function(gj){
       alertsLayer.clearLayers();
       alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
+      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
       setStatus("Alerts: " + url);
     }).catch(function(err){
       alertsLayer.clearLayers();
+      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
+        map.removeLayer(alertsLayer);
+      }
       setStatus("Alerts missing: " + url);
     });
   }
