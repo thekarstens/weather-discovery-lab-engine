@@ -295,14 +295,6 @@ var storyStarted = false; // do not auto-open storyboard
     return DATA_BASE + "gfs_snow/gfs_20180411_00z_f96_snow_weatherbell.png";
   }
 
-  function setStatus(s){
-    var el = document.getElementById("status");
-    if (!el) return;
-    el.textContent = s || "";
-    el.style.display = "none";
-  }
-  window.setStatus = setStatus;
-
   // Expose loaded config for debugging
   window.__WDL_CFG__ = CFG;
   await loadRadarManifestIfNeeded();
@@ -2331,15 +2323,6 @@ function updateAlerts(){
       if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
         map.removeLayer(alertsLayer);
       }
-      setStatus("Alerts missing: " + url);
-    });
-  }).then(function(gj){
-      alertsLayer.clearLayers();
-      alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
-      setStatus("Alerts: " + url);
-    }).catch(function(err){
-      alertsLayer.clearLayers();
       setStatus("Alerts missing: " + url);
     });
   }
