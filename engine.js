@@ -3077,6 +3077,18 @@ function updateAlerts(){
         updateProductLabel();
         return true;
       }
+    } else if (mode === 'metars'){
+      var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+      if (mt.length && typeof stepMetarTime === 'function'){
+        var nextIdx = Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0) + delta));
+        var entry = mt[nextIdx];
+        var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
+        if (isFinite(t)) curZ = new Date(t);
+        stepMetarTime(delta);
+        setTimeLabel();
+        updateProductLabel();
+        return true;
+      }
     } else if (mode === 'hrrr'){
       var idx = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(idx + delta);
