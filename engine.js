@@ -2551,19 +2551,11 @@ function nearestHrrrFrameIndexForTime(d){
         forcedScrubberMode = 'metars';
         window.forcedScrubberMode = forcedScrubberMode;
 
-        // Load timeline and snap master clock to nearest METAR hour
+        // DESIGN B: always start at the FIRST METAR manifest hour/file
         await loadMetarManifest();
         var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
         if (mt.length){
           var idx = 0;
-          var bestDelta = Infinity;
-          var target = curZ.getTime();
-          for (var i=0; i<mt.length; i++){
-            var tt = Date.parse((mt[i] && (mt[i].time || mt[i].utc || mt[i].valid)) || '');
-            if (!isFinite(tt)) continue;
-            var dd = Math.abs(tt - target);
-            if (dd < bestDelta){ bestDelta = dd; idx = i; }
-          }
           if (typeof setCurrentMetarIndex === 'function') setCurrentMetarIndex(idx);
           var entry = mt[idx];
           var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
@@ -2571,13 +2563,20 @@ function nearestHrrrFrameIndexForTime(d){
         }
 
         await loadMetarsForTime(curZ);
+        if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
         metarLayer = buildMetarLayer();
         refreshMetarLayer();
-        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
+        requestAnimationFrame(function(){
+          if (!metarVisible) return;
+          try{ refreshMetarLayer(); }catch(e){}
+          try{ syncScrubberToActiveProduct(); }catch(e){}
+          try{ updateProductLabel(); }catch(e){}
+          try{ setTimeLabel(); }catch(e){}
+        });
 
         try{ syncScrubberToActiveProduct(); }catch(e){}
-        try{ setTimeLabel(); }catch(e){}
         try{ updateProductLabel(); }catch(e){}
+        try{ setTimeLabel(); }catch(e){}
 
         setStatus('METARs on');
       }catch(err){
@@ -2593,8 +2592,8 @@ function nearestHrrrFrameIndexForTime(d){
       window.metarVisible = metarVisible;
       if (forcedScrubberMode === 'metars') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
       try{ syncScrubberToActiveProduct(); }catch(e){}
-      try{ setTimeLabel(); }catch(e){}
       try{ updateProductLabel(); }catch(e){}
+      try{ setTimeLabel(); }catch(e){}
       setStatus('METARs off');
     }
   }
@@ -2696,17 +2695,26 @@ function nearestHrrrFrameIndexForTime(d){
 
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
-    if (obsRadarEnabled) { forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode; }
+    if (obsRadarEnabled) {
+      forcedScrubberMode = 'radar';
+      window.forcedScrubberMode = forcedScrubberMode;
+    }
     window.obsRadarEnabled = obsRadarEnabled;
     if (!obsRadarEnabled){
+      if (forcedScrubberMode === 'radar') {
+        forcedScrubberMode = null;
+        window.forcedScrubberMode = forcedScrubberMode;
+      }
       hideRadarSweepCanvas();
       if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
+      try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       setStatus('Radar off');
     } else {
       radarSweepEnabled = false;
       syncSweepButton();
       updateRadar();
+      try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       setStatus('Radar on');
     }
@@ -3119,11 +3127,17 @@ function updateAlerts(){
     } else if (mode === 'metars'){
       var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
       if (mt.length && typeof stepMetarTime === 'function'){
+        forcedScrubberMode = 'metars';
+        window.forcedScrubberMode = forcedScrubberMode;
         var nextIdx = Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0) + delta));
         var entry = mt[nextIdx];
         var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
         if (isFinite(t)) curZ = new Date(t);
-        stepMetarTime(delta);
+        Promise.resolve(stepMetarTime(delta)).then(function(){
+          try{ syncScrubberToActiveProduct(); }catch(e){}
+          try{ updateProductLabel(); }catch(e){}
+          try{ setTimeLabel(); }catch(e){}
+        });
         setTimeLabel();
         updateProductLabel();
         return true;
@@ -3183,12 +3197,19 @@ function updateAlerts(){
       }
       if (mode === 'metars'){
         if (typeof setCurrentMetarIndex === 'function' && typeof loadMetarsForTime === 'function'){
+          forcedScrubberMode = 'metars';
+          window.forcedScrubberMode = forcedScrubberMode;
           setCurrentMetarIndex(v);
           var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
           var entry = mt[Math.max(0, Math.min(mt.length - 1, v|0))];
           var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
           if (isFinite(t)) curZ = new Date(t);
-          loadMetarsForTime(curZ).then(function(){ try{ refreshMetarLayer(); }catch(e){} });
+          loadMetarsForTime(curZ).then(function(){
+            try{ refreshMetarLayer(); }catch(e){}
+            try{ syncScrubberToActiveProduct(); }catch(e){}
+            try{ updateProductLabel(); }catch(e){}
+            try{ setTimeLabel(); }catch(e){}
+          });
           setTimeLabel();
           updateProductLabel();
           return;
