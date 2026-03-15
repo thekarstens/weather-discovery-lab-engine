@@ -1343,6 +1343,33 @@ function getCurrentGoesFrame(){
   if (!goesFrames || !goesFrames.length) return null;
   return goesFrames[Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0))];
 }
+function getGoesFrameTimeMs(frame){
+  if (!frame || !frame.time) return NaN;
+  return Date.parse(frame.time);
+}
+function findNearestGoesFrameIndexForTime(d){
+  if (!goesFrames || !goesFrames.length) return 0;
+  var target = (d instanceof Date) ? d.getTime() : Date.parse(d);
+  if (!isFinite(target)) return 0;
+  var bestIdx = 0;
+  var bestDelta = Infinity;
+  for (var i=0; i<goesFrames.length; i++){
+    var t = getGoesFrameTimeMs(goesFrames[i]);
+    if (!isFinite(t)) continue;
+    var delta = Math.abs(t - target);
+    if (delta < bestDelta){
+      bestDelta = delta;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+function setCurrentGoesFrameIndex(idx){
+  if (!goesFrames || !goesFrames.length) return;
+  currentGoesFrameIndex = Math.max(0, Math.min(goesFrames.length - 1, idx|0));
+  var gf = getCurrentGoesFrame();
+  if (gf && gf.time) curZ = new Date(gf.time);
+}
 function goesFrameUrl(frame){
   if (!frame) return null;
   var f = frame.file;
@@ -1366,9 +1393,7 @@ function playGoesAnim(ms){
   stopGoesAnim();
   if (!goesFrames || goesFrames.length < 2) return;
   goesAnimTimer = setInterval(function(){
-    currentGoesFrameIndex = (currentGoesFrameIndex + 1) % goesFrames.length;
-    var f = getCurrentGoesFrame();
-    if (f && f.time) curZ = new Date(f.time);
+    setCurrentGoesFrameIndex((currentGoesFrameIndex + 1) % goesFrames.length);
     updateGoes();
     try{ syncScrubberToActiveProduct(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
@@ -1503,8 +1528,7 @@ async function setGoesEnabled(on){
     try{
       await loadGoesManifest();
       if (!goesFrames.length) throw new Error('No satellite frames in manifest');
-      var frame = getCurrentGoesFrame();
-      if (frame && frame.time) curZ = new Date(frame.time);
+      setCurrentGoesFrameIndex(findNearestGoesFrameIndexForTime(curZ));
       updateGoes();
       syncScrubberToActiveProduct();
       setStatus('Satellite on. Click Fit to show drag handles.');
@@ -1596,6 +1620,17 @@ map.on('zoomend moveend', function(){
       }
       if (!best) return;
       var val = (best.tF != null) ? Number(best.tF).toFixed(0) : "—";
+      var validLabel = '';
+      try{
+        var hf = currentHrrrFrame();
+        validLabel = (hf && (hf.label || hf.time)) ? (hf.label || hf.time) : '';
+      }catch(e){}
+      var popupHtml =
+        "<div style='font-family:Lato,Arial,sans-serif;text-align:center;letter-spacing:.2px;'>" +
+          "<div style='font-weight:900;font-size:13px;line-height:1;opacity:.85;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,.35);'>HRRR 2m Temp</div>" +
+          "<div style='margin-top:4px;font-weight:900;font-size:30px;line-height:1;color:#122033;text-shadow:0 1px 0 rgba(255,255,255,.55), 0 2px 3px rgba(0,0,0,.12);'>" + val + "°F</div>" +
+          (validLabel ? "<div style='margin-top:4px;font-weight:800;font-size:11px;line-height:1.1;opacity:.8;'>" + validLabel + "</div>" : "") +
+        "</div>";
       L.popup({
         className: "hrrr-popup",
         closeButton: true,
@@ -1603,7 +1638,7 @@ map.on('zoomend moveend', function(){
         offset: [0, -10]
       })
       .setLatLng([best.lat, best.lon])
-      .setContent(val + "°F")
+      .setContent(popupHtml)
       .openOn(map);
       
     }
@@ -2371,7 +2406,13 @@ function nearestHrrrFrameIndexForTime(d){
       var tRaw = f.time || f.valid || f.utc || f.datetime || f.ts || null;
       var t = tRaw ? new Date(tRaw) : null;
       var timeMs = (t && !isNaN(t)) ? t.getTime() : NaN;
-      frames.push({ file:file, label:f.label || f.name || ('F' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs });
+      frames.push({
+        file:file,
+        label:f.label || f.name || ('F' + String(i).padStart(2,'0')),
+        time:tRaw || null,
+        timeMs:timeMs,
+        pixelData: f.pixelData || f.pixelJson || f.queryFile || f.dataFile || null
+      });
     });
     return frames;
   }
@@ -2422,6 +2463,47 @@ function nearestHrrrFrameIndexForTime(d){
     if (!frame) return null;
     return _isAbsUrl(frame.file) ? frame.file : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), frame.file);
   }
+  function hrrrPixelUrl(frame){
+    if (!frame) return null;
+    var p = frame.pixelData || null;
+    if (!p && frame.file){
+      var m = String(frame.file).match(/_F(\d+)\.(png|jpg|jpeg|webp)$/i);
+      if (m) p = '2_meter_temperature_sioux_falls_pixel_data_F' + m[1] + '.json';
+    }
+    if (!p && frame.label){
+      var m2 = String(frame.label).match(/F(\d+)/i);
+      if (m2) p = '2_meter_temperature_sioux_falls_pixel_data_F' + m2[1].padStart(2,'0') + '.json';
+    }
+    return p ? (_isAbsUrl(p) ? p : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), p)) : null;
+  }
+  var hrrrPointLoadToken = 0;
+  async function loadHrrrPointsForFrame(frame){
+    var token = ++hrrrPointLoadToken;
+    hrrrPoints = [];
+    window.hrrrPoints = hrrrPoints;
+    var purl = hrrrPixelUrl(frame);
+    if (!purl) return;
+    try{
+      var r = await fetch(purl, { cache:'no-store' });
+      if (!r.ok) throw new Error('HRRR pixel JSON HTTP ' + r.status + ': ' + purl);
+      var raw = await r.json();
+      if (token !== hrrrPointLoadToken) return;
+      if (!Array.isArray(raw)) throw new Error('HRRR pixel JSON is not an array');
+      hrrrPoints = raw.map(function(row){
+        var lat = Number(row.lat ?? row.latitude);
+        var lon = Number(row.lon ?? row.longitude);
+        var tf = Number(row.tF ?? row.temperature_f ?? row['2_meter_temperature'] ?? row.value);
+        if (!isFinite(lat) || !isFinite(lon) || !isFinite(tf)) return null;
+        return { lat: lat, lon: lon, tF: tf };
+      }).filter(Boolean);
+      window.hrrrPoints = hrrrPoints;
+    }catch(err){
+      if (token !== hrrrPointLoadToken) return;
+      console.warn('HRRR pixel query load failed:', err);
+      hrrrPoints = [];
+      window.hrrrPoints = hrrrPoints;
+    }
+  }
   function updateHrrrOverlay(){
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
@@ -2441,6 +2523,7 @@ function nearestHrrrFrameIndexForTime(d){
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
+      loadHrrrPointsForFrame(frame);
       applyActiveOpacity();
       setStatus('HRRR Temp: ' + (frame.label || url));
       try{ updateProductLabel(); }catch(e){}
@@ -2456,6 +2539,8 @@ function nearestHrrrFrameIndexForTime(d){
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
+      hrrrPoints = [];
+      window.hrrrPoints = hrrrPoints;
       setStatus('HRRR Temp off');
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
@@ -2641,7 +2726,12 @@ function updateAlerts(){
     updateRadar();
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
-    if (typeof updateGoes === "function" && goesEnabled) updateGoes();
+    if (typeof updateGoes === "function" && goesEnabled){
+      if (!goesAnimTimer && goesFrames && goesFrames.length){
+        setCurrentGoesFrameIndex(findNearestGoesFrameIndexForTime(curZ));
+      }
+      updateGoes();
+    }
     updateHrrrOverlay();
     updateAlerts();
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
@@ -2660,10 +2750,10 @@ function updateAlerts(){
       if (stepRadarFrame(delta)) return true;
     } else if (mode === 'goes'){
       if (goesFrames && goesFrames.length){
-        currentGoesFrameIndex = Math.max(0, Math.min(goesFrames.length - 1, (currentGoesFrameIndex|0) + delta));
-        var gf = getCurrentGoesFrame();
-        if (gf && gf.time) curZ = new Date(gf.time);
+        setCurrentGoesFrameIndex((currentGoesFrameIndex|0) + delta);
         updateGoes();
+        setTimeLabel();
+        updateProductLabel();
         return true;
       }
     } else if (mode === 'hrrr'){
@@ -2708,6 +2798,13 @@ function updateAlerts(){
         setCurrentHrrrFrameIndex(v);
         setTimeLabel();
         updateHrrrOverlay();
+        updateProductLabel();
+        return;
+      }
+      if (mode === 'goes'){
+        setCurrentGoesFrameIndex(v);
+        setTimeLabel();
+        updateGoes();
         updateProductLabel();
         return;
       }
