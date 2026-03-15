@@ -2163,8 +2163,19 @@ function nearestHrrrFrameIndexForTime(d){
   function getMetarUrl(){
     try{
       if (!CFG || !CFG.metars) return null;
-      var f = CFG.metars.file || CFG.metars.url || null;
+      var f = CFG.metars.file || CFG.metars.url || CFG.metars.fallbackFile || null;
       if (!f && CFG.metars.enabled) f = 'metars/metars.json';
+      if (!f) return null;
+      return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
+    }catch(e){
+      return null;
+    }
+  }
+
+  function getMetarManifestUrl(){
+    try{
+      if (!CFG || !CFG.metars) return null;
+      var f = CFG.metars.manifest || CFG.metars.manifestFile || null;
       if (!f) return null;
       return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
     }catch(e){
@@ -2285,11 +2296,80 @@ function nearestHrrrFrameIndexForTime(d){
       return r.json();
     }).then(function(rows){
       metarData = Array.isArray(rows) ? rows : [];
+      currentMetarFile = url;
+      currentMetarTime = null;
       setStatus('METARs loaded: ' + metarData.length + ' stations');
       return metarData;
     }).catch(function(err){
       metarLoadPromise = null;
       setStatus('METAR load failed');
+      throw err;
+    });
+    return metarLoadPromise;
+  }
+
+  async function loadMetarManifest(){
+    if (metarManifest) return metarManifest;
+    if (metarManifestPromise) return metarManifestPromise;
+    var url = getMetarManifestUrl();
+    if (!url) return null;
+    metarManifestPromise = fetch(url, { cache:'no-store' }).then(function(r){
+      if (!r.ok) throw new Error('METAR manifest HTTP ' + r.status + ' :: ' + url);
+      return r.json();
+    }).then(function(raw){
+      metarManifest = raw || {};
+      return metarManifest;
+    }).catch(function(err){
+      metarManifestPromise = null;
+      console.warn('METAR manifest load failed', err);
+      return null;
+    });
+    return metarManifestPromise;
+  }
+
+  function findNearestMetarEntryForTime(d){
+    if (!metarManifest || !Array.isArray(metarManifest.hours) || !metarManifest.hours.length) return null;
+    var target = (d instanceof Date) ? d.getTime() : Date.parse(d);
+    if (!isFinite(target)) return metarManifest.hours[0] || null;
+    var best = null;
+    var bestDelta = Infinity;
+    for (var i=0; i<metarManifest.hours.length; i++){
+      var h = metarManifest.hours[i] || {};
+      var t = Date.parse(h.time || h.utc || h.valid || '');
+      if (!isFinite(t)) continue;
+      var delta = Math.abs(t - target);
+      if (delta < bestDelta){ bestDelta = delta; best = h; }
+    }
+    return best || metarManifest.hours[0] || null;
+  }
+
+  async function loadMetarsForTime(d){
+    var manifest = await loadMetarManifest();
+    if (!manifest || !Array.isArray(manifest.hours) || !manifest.hours.length){
+      return loadMetars();
+    }
+    var entry = findNearestMetarEntryForTime(d);
+    if (!entry) return loadMetars();
+    var rel = entry.file || entry.url || null;
+    if (!rel) return loadMetars();
+    var url = _isAbsUrl(rel) ? rel : _joinUrl(_joinUrl(DATA_BASE, 'metars/'), rel);
+    if (currentMetarFile === url && Array.isArray(metarData) && metarData.length){
+      currentMetarTime = entry.time || entry.utc || entry.valid || null;
+      return metarData;
+    }
+    setStatus('Loading METARs ' + (entry.time || '') + '…');
+    metarLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
+      if (!r.ok) throw new Error('METAR HTTP ' + r.status + ' :: ' + url);
+      return r.json();
+    }).then(function(rows){
+      metarData = Array.isArray(rows) ? rows : [];
+      currentMetarFile = url;
+      currentMetarTime = entry.time || entry.utc || entry.valid || null;
+      setStatus('METARs loaded: ' + metarData.length + ' stations');
+      return metarData;
+    }).catch(function(err){
+      metarLoadPromise = null;
+      console.warn('Timed METAR load failed', err);
       throw err;
     });
     return metarLoadPromise;
@@ -2377,9 +2457,12 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function updateMetarsForTime(d){
-    // Placeholder for future time-sequenced METAR datasets.
-    // For now, keep the currently loaded METAR snapshot and just refresh display if visible.
-    if (metarVisible) refreshMetarLayer();
+    if (!metarVisible) return;
+    loadMetarsForTime(d).then(function(){
+      refreshMetarLayer();
+    }).catch(function(err){
+      console.warn('updateMetarsForTime failed', err);
+    });
   }
 
   function buildMetarLayer(){
@@ -2441,7 +2524,7 @@ function nearestHrrrFrameIndexForTime(d){
         metarVisible = true;
         window.metarVisible = metarVisible;
         if (!metarLayer){
-          if (!metarData.length) await loadMetars();
+          if (!metarData.length) await loadMetarsForTime(curZ);
           metarLayer = buildMetarLayer();
         }
         refreshMetarLayer();
