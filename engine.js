@@ -311,9 +311,255 @@ window.setStatus = setStatus;
 // Engine safety defaults for optional layers/helpers
 var gfsSnowEnabled = false;
 var gfsSnowOverlay = null;
-function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
-function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
+
+var jetEnabled = false;
+var jetLayer = null;
+var jetCache = Object.create(null);
+var jetPendingKey = null;
+var currentJetTimeKey = null;
 window.gfsSnowEnabled = gfsSnowEnabled;
+window.jetEnabled = jetEnabled;
+window.jetLayer = jetLayer;
+window.__JET_CACHE__ = jetCache;
+
+function getJetCfg(){
+  try {
+    if (CFG && CFG.jet && CFG.jet.enabled !== false) return CFG.jet;
+  } catch(e){}
+  return null;
+}
+
+function normalizeJetTimeKey(raw){
+  if (!raw && raw !== 0) return null;
+  var s = String(raw).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(s)) s = s + 'Z';
+  var t = Date.parse(s);
+  if (!isFinite(t)) return null;
+  return new Date(t).toISOString();
+}
+
+function getJetFilesMap(){
+  var cfg = getJetCfg();
+  if (!cfg) return {};
+  var out = {};
+  var src = cfg.files || {};
+  Object.keys(src).forEach(function(k){
+    var nk = normalizeJetTimeKey(k) || k;
+    out[nk] = src[k];
+  });
+  return out;
+}
+
+function getSortedJetTimeKeys(){
+  var files = getJetFilesMap();
+  var keys = Object.keys(files).sort(function(a,b){ return Date.parse(a) - Date.parse(b); });
+  return keys;
+}
+
+function nearestJetTimeKeyForDate(d){
+  var keys = getSortedJetTimeKeys();
+  if (!keys.length || !d) return null;
+  var target = d.getTime();
+  var best = keys[0];
+  var bestDiff = Math.abs(Date.parse(best) - target);
+  for (var i=1;i<keys.length;i++){
+    var diff = Math.abs(Date.parse(keys[i]) - target);
+    if (diff < bestDiff){ best = keys[i]; bestDiff = diff; }
+  }
+  return best;
+}
+
+function jetFileUrlForTimeKey(key){
+  var cfg = getJetCfg();
+  if (!cfg || !key) return null;
+  var files = getJetFilesMap();
+  var file = files[key] || files[normalizeJetTimeKey(key)] || null;
+  if (!file && cfg.defaultFile) file = cfg.defaultFile;
+  if (!file) return null;
+  if (_isAbsUrl(file)) return file;
+  var basePath = cfg.basePath || 'jet/';
+  return _joinUrl(_joinUrl(DATA_BASE, basePath), file);
+}
+
+function flatten2D(arr){
+  if (!Array.isArray(arr)) return [];
+  var out = [];
+  for (var r=0;r<arr.length;r++){
+    var row = arr[r] || [];
+    for (var c=0;c<row.length;c++) out.push(Number(row[c]));
+  }
+  return out;
+}
+
+function mean(list){
+  if (!Array.isArray(list) || !list.length) return NaN;
+  var sum = 0, count = 0;
+  for (var i=0;i<list.length;i++){
+    var v = Number(list[i]);
+    if (isFinite(v)){ sum += v; count++; }
+  }
+  return count ? (sum / count) : NaN;
+}
+
+function buildJetVelocityRecords(raw){
+  if (!raw || !Array.isArray(raw.u) || !Array.isArray(raw.v) || !Array.isArray(raw.lat) || !Array.isArray(raw.lon)){
+    throw new Error('Jet JSON missing lat/lon/u/v grids');
+  }
+
+  var ny = Number((raw.grid_shape && (raw.grid_shape.ny || raw.grid_shape.rows)) || raw.lat.length || 0);
+  var nx = Number((raw.grid_shape && (raw.grid_shape.nx || raw.grid_shape.cols)) || (raw.lat[0] && raw.lat[0].length) || 0);
+  if (!nx || !ny) throw new Error('Jet JSON missing grid shape');
+
+  var latRows = raw.lat.map(function(row){ return mean(row); });
+  var lonCols = [];
+  for (var c=0;c<nx;c++){
+    var vals = [];
+    for (var r=0;r<ny;r++) vals.push(raw.lon[r] && raw.lon[r][c]);
+    lonCols.push(mean(vals));
+  }
+
+  var la1 = Number(latRows[0]);
+  var la2 = Number(latRows[latRows.length - 1]);
+  var lo1 = Number(lonCols[0]);
+  var lo2 = Number(lonCols[lonCols.length - 1]);
+  var dx = (lo2 - lo1) / Math.max(1, nx - 1);
+  var dy = (la2 - la1) / Math.max(1, ny - 1);
+  var refTime = normalizeJetTimeKey(raw.valid_time_utc) || new Date().toISOString();
+
+  return [
+    {
+      header: {
+        parameterCategory: 2,
+        parameterNumber: 2,
+        parameterUnit: (raw.units && raw.units.u) || 'm/s',
+        nx: nx,
+        ny: ny,
+        lo1: lo1,
+        la1: la1,
+        lo2: lo2,
+        la2: la2,
+        dx: dx,
+        dy: dy,
+        refTime: refTime,
+        forecastTime: 0
+      },
+      data: flatten2D(raw.u)
+    },
+    {
+      header: {
+        parameterCategory: 2,
+        parameterNumber: 3,
+        parameterUnit: (raw.units && raw.units.v) || 'm/s',
+        nx: nx,
+        ny: ny,
+        lo1: lo1,
+        la1: la1,
+        lo2: lo2,
+        la2: la2,
+        dx: dx,
+        dy: dy,
+        refTime: refTime,
+        forecastTime: 0
+      },
+      data: flatten2D(raw.v)
+    }
+  ];
+}
+
+function removeJetLayer(){
+  if (jetLayer && map && map.hasLayer && map.hasLayer(jetLayer)) map.removeLayer(jetLayer);
+}
+
+async function loadJetForTimeKey(key){
+  var cfg = getJetCfg();
+  if (!cfg) throw new Error('Jet config missing');
+  var normalizedKey = normalizeJetTimeKey(key) || key;
+  var url = jetFileUrlForTimeKey(normalizedKey);
+  if (!url) throw new Error('No jet file URL for ' + normalizedKey);
+
+  var data = jetCache[normalizedKey];
+  if (!data){
+    var res = await fetch(url, { cache:'no-store' });
+    if (!res.ok) throw new Error('Jet HTTP ' + res.status + ': ' + url);
+    var raw = await res.json();
+    data = buildJetVelocityRecords(raw);
+    jetCache[normalizedKey] = data;
+  }
+
+  var options = Object.assign({
+    displayValues: true,
+    displayOptions: {
+      velocityType: '500mb Jet Stream',
+      position: 'bottomleft',
+      emptyString: 'No jet data'
+    },
+    maxVelocity: 80,
+    velocityScale: 0.005,
+    particleAge: 60,
+    lineWidth: 1.2,
+    particleMultiplier: 250,
+    frameRate: 20
+  }, (cfg.particleOptions || {}));
+
+  removeJetLayer();
+  jetLayer = L.velocityLayer(Object.assign({}, options, { data: data }));
+  window.jetLayer = jetLayer;
+  currentJetTimeKey = normalizedKey;
+  if (jetEnabled && jetLayer && map) jetLayer.addTo(map);
+  setStatus('Jet: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
+  try{ updateProductLabel(); }catch(e){}
+  return jetLayer;
+}
+
+function syncJetParticlesToClock(force){
+  if (!jetEnabled){
+    removeJetLayer();
+    return;
+  }
+  var key = nearestJetTimeKeyForDate(curZ);
+  if (!key) return;
+  if (!force && currentJetTimeKey === key){
+    if (jetLayer && map && map.hasLayer && !map.hasLayer(jetLayer)) jetLayer.addTo(map);
+    return;
+  }
+  if (jetPendingKey === key) return;
+  jetPendingKey = key;
+  loadJetForTimeKey(key).catch(function(err){
+    console.error(err);
+    setStatus('Jet failed');
+  }).finally(function(){
+    if (jetPendingKey === key) jetPendingKey = null;
+  });
+}
+
+async function setJetEnabled(on){
+  jetEnabled = !!on;
+  window.jetEnabled = jetEnabled;
+  if (!jetEnabled){
+    removeJetLayer();
+    setStatus('Jet off');
+    try{ updateProductLabel(); }catch(e){}
+    try{ setTimeLabel(); }catch(e){}
+    return;
+  }
+  try{
+    syncJetParticlesToClock(true);
+    setStatus('Jet on');
+  } catch(err){
+    jetEnabled = false;
+    window.jetEnabled = false;
+    console.error(err);
+    setStatus('Jet failed');
+  }
+  try{ updateProductLabel(); }catch(e){}
+  try{ setTimeLabel(); }catch(e){}
+}
+window.setJetEnabled = setJetEnabled;
+window.syncJetParticlesToClock = syncJetParticlesToClock;
+
+function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -2282,6 +2528,7 @@ async function setMetarsEnabled(on){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof jetEnabled !== "undefined" && jetEnabled), label: "JET STREAM" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
@@ -2955,6 +3202,7 @@ function updateAlerts(){
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
+    dock.querySelectorAll('[data-action="jet"]').forEach(function(el){ el.classList.toggle('active', !!window.jetEnabled); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
@@ -2990,6 +3238,10 @@ function updateAlerts(){
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
+      return;
+    }
+    if (action === 'jet'){
+      if (typeof window.setJetEnabled === 'function') await window.setJetEnabled(!window.jetEnabled);
       return;
     }
     if (action === 'spc'){
@@ -3086,6 +3338,7 @@ function updateAlerts(){
 
     wrapAsync('setRadarEnabled');
     wrapAsync('setMetarsEnabled');
+    wrapAsync('setJetEnabled');
     wrapAsync('setHrrrTempEnabled');
     wrapAsync('setSpcDay1Enabled');
 
