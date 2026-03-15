@@ -3144,7 +3144,8 @@ function updateAlerts(){
   chips.forEach(function(chip){
     var action = chip.getAttribute('data-action');
     if (action === 'satellite'){
-      var satOn = !!(CFG && CFG.satellite && CFG.satellite.enabled);
+      var lessonCfg = (window.__LESSON_CFG__ || window.CFG || {});
+      var satOn = !!(lessonCfg && lessonCfg.satellite && lessonCfg.satellite.enabled);
       if (satOn){
         chip.disabled = false;
         chip.removeAttribute('disabled');
