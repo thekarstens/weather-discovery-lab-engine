@@ -2113,9 +2113,9 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
-    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
     if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
+    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -2135,8 +2135,9 @@ function nearestHrrrFrameIndexForTime(d){
         scrub.value = String(Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0)));
       } else if (mode === 'metars'){
         var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+        var mIdx = (typeof currentMetarIndex !== 'undefined') ? currentMetarIndex : (window.currentMetarIndex|0);
         scrub.max = String(Math.max(0, mt.length - 1));
-        scrub.value = String(Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0))));
+        scrub.value = String(Math.max(0, Math.min(mt.length - 1, (mIdx|0))));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -2538,12 +2539,26 @@ function nearestHrrrFrameIndexForTime(d){
       try{
         metarVisible = true;
         window.metarVisible = metarVisible;
-        if (!metarLayer){
-          if (!metarData.length) await loadMetarsForTime(curZ);
-          metarLayer = buildMetarLayer();
+
+        // Load timeline and snap master clock to nearest METAR hour
+        await loadMetarManifest();
+        if (metarTimeline && metarTimeline.length){
+          var idx = findNearestMetarIndexForTime(curZ);
+          setCurrentMetarIndex(idx);
+          var entry = metarTimeline[idx];
+          var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
+          if (isFinite(t)) curZ = new Date(t);
         }
+
+        await loadMetarsForTime(curZ);
+        metarLayer = buildMetarLayer();
         refreshMetarLayer();
         requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
+
+        try{ syncScrubberToActiveProduct(); }catch(e){}
+        try{ setTimeLabel(); }catch(e){}
+        try{ updateProductLabel(); }catch(e){}
+
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
@@ -2556,10 +2571,11 @@ function nearestHrrrFrameIndexForTime(d){
       try{ clearLiveMetarProbe(); }catch(e){}
       metarVisible = false;
       window.metarVisible = metarVisible;
+      try{ syncScrubberToActiveProduct(); }catch(e){}
+      try{ setTimeLabel(); }catch(e){}
+      try{ updateProductLabel(); }catch(e){}
       setStatus('METARs off');
     }
-    try{ updateProductLabel(); }catch(e){}
-    try{ setTimeLabel(); }catch(e){}
   }
 
   async function toggleMetars(){
@@ -3084,11 +3100,9 @@ function updateAlerts(){
         var entry = mt[nextIdx];
         var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
         if (isFinite(t)) curZ = new Date(t);
-        Promise.resolve(stepMetarTime(delta)).then(function(){
-          try{ syncScrubberToActiveProduct(); }catch(e){}
-          try{ setTimeLabel(); }catch(e){}
-          try{ updateProductLabel(); }catch(e){}
-        });
+        stepMetarTime(delta);
+        setTimeLabel();
+        updateProductLabel();
         return true;
       }
     } else if (mode === 'hrrr'){
