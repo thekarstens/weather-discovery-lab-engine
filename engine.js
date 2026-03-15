@@ -312,6 +312,7 @@ window.setStatus = setStatus;
 var gfsSnowEnabled = false;
 var gfsSnowOverlay = null;
 
+
 var jetEnabled = false;
 var jetLayer = null;
 var jetCache = Object.create(null);
@@ -354,8 +355,7 @@ function getJetFilesMap(){
 
 function getSortedJetTimeKeys(){
   var files = getJetFilesMap();
-  var keys = Object.keys(files).sort(function(a,b){ return Date.parse(a) - Date.parse(b); });
-  return keys;
+  return Object.keys(files).sort(function(a,b){ return Date.parse(a) - Date.parse(b); });
 }
 
 function nearestJetTimeKeyForDate(d){
@@ -383,93 +383,62 @@ function jetFileUrlForTimeKey(key){
   return _joinUrl(_joinUrl(DATA_BASE, basePath), file);
 }
 
-function flatten2D(arr){
-  if (!Array.isArray(arr)) return [];
-  var out = [];
-  for (var r=0;r<arr.length;r++){
-    var row = arr[r] || [];
-    for (var c=0;c<row.length;c++) out.push(Number(row[c]));
-  }
-  return out;
+function removeJetLayer(){
+  try{ if (jetLayer && map && map.hasLayer && map.hasLayer(jetLayer)) map.removeLayer(jetLayer); }catch(e){}
 }
 
-function mean(list){
-  if (!Array.isArray(list) || !list.length) return NaN;
-  var sum = 0, count = 0;
-  for (var i=0;i<list.length;i++){
-    var v = Number(list[i]);
-    if (isFinite(v)){ sum += v; count++; }
-  }
-  return count ? (sum / count) : NaN;
-}
-
-function buildJetVelocityRecords(raw){
+function sampleJetRows(raw){
   if (!raw || !Array.isArray(raw.u) || !Array.isArray(raw.v) || !Array.isArray(raw.lat) || !Array.isArray(raw.lon)){
     throw new Error('Jet JSON missing lat/lon/u/v grids');
   }
+  var ny = Number((raw.grid_shape && raw.grid_shape.ny) || raw.lat.length || 0);
+  var nx = Number((raw.grid_shape && raw.grid_shape.nx) || (raw.lat[0] && raw.lat[0].length) || 0);
+  if (!ny || !nx) throw new Error('Jet JSON missing grid shape');
 
-  var ny = Number((raw.grid_shape && (raw.grid_shape.ny || raw.grid_shape.rows)) || raw.lat.length || 0);
-  var nx = Number((raw.grid_shape && (raw.grid_shape.nx || raw.grid_shape.cols)) || (raw.lat[0] && raw.lat[0].length) || 0);
-  if (!nx || !ny) throw new Error('Jet JSON missing grid shape');
+  var stepY = 3;
+  var stepX = 3;
+  var rows = [];
 
-  var latRows = raw.lat.map(function(row){ return mean(row); });
-  var lonCols = [];
-  for (var c=0;c<nx;c++){
-    var vals = [];
-    for (var r=0;r<ny;r++) vals.push(raw.lon[r] && raw.lon[r][c]);
-    lonCols.push(mean(vals));
-  }
-
-  var la1 = Number(latRows[0]);
-  var la2 = Number(latRows[latRows.length - 1]);
-  var lo1 = Number(lonCols[0]);
-  var lo2 = Number(lonCols[lonCols.length - 1]);
-  var dx = (lo2 - lo1) / Math.max(1, nx - 1);
-  var dy = (la2 - la1) / Math.max(1, ny - 1);
-  var refTime = normalizeJetTimeKey(raw.valid_time_utc) || new Date().toISOString();
-
-  return [
-    {
-      header: {
-        parameterCategory: 2,
-        parameterNumber: 2,
-        parameterUnit: (raw.units && raw.units.u) || 'm/s',
-        nx: nx,
-        ny: ny,
-        lo1: lo1,
-        la1: la1,
-        lo2: lo2,
-        la2: la2,
-        dx: dx,
-        dy: dy,
-        refTime: refTime,
-        forecastTime: 0
-      },
-      data: flatten2D(raw.u)
-    },
-    {
-      header: {
-        parameterCategory: 2,
-        parameterNumber: 3,
-        parameterUnit: (raw.units && raw.units.v) || 'm/s',
-        nx: nx,
-        ny: ny,
-        lo1: lo1,
-        la1: la1,
-        lo2: lo2,
-        la2: la2,
-        dx: dx,
-        dy: dy,
-        refTime: refTime,
-        forecastTime: 0
-      },
-      data: flatten2D(raw.v)
+  for (var r=0; r<ny; r += stepY){
+    for (var c=0; c<nx; c += stepX){
+      var lat = Number(raw.lat[r] && raw.lat[r][c]);
+      var lon = Number(raw.lon[r] && raw.lon[r][c]);
+      var u = Number(raw.u[r] && raw.u[r][c]);
+      var v = Number(raw.v[r] && raw.v[r][c]);
+      if (!isFinite(lat) || !isFinite(lon) || !isFinite(u) || !isFinite(v)) continue;
+      var speed = Math.sqrt(u*u + v*v);
+      if (!isFinite(speed)) continue;
+      rows.push({ lat: lat, lon: lon, u: u, v: v, speed: speed });
     }
-  ];
+  }
+  return rows;
 }
 
-function removeJetLayer(){
-  if (jetLayer && map && map.hasLayer && map.hasLayer(jetLayer)) map.removeLayer(jetLayer);
+function jetArrowHtml(speed, angleDeg){
+  var len = Math.max(16, Math.min(34, 12 + speed * 0.7));
+  return '<div style="transform: rotate(' + angleDeg + 'deg); width:' + len + 'px; height:14px; display:flex; align-items:center; justify-content:flex-start;">'
+    + '<div style="position:relative; width:' + len + 'px; height:3px; background:#0b3b8c; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,0.55);">'
+    + '<div style="position:absolute; right:-1px; top:-4px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:9px solid #0b3b8c;"></div>'
+    + '</div></div>';
+}
+
+function buildJetArrowLayer(raw){
+  var rows = sampleJetRows(raw);
+  var group = L.layerGroup();
+
+  rows.forEach(function(pt){
+    var angle = Math.atan2(pt.v, pt.u) * 180 / Math.PI;
+    var icon = L.divIcon({
+      className: 'jet-arrow-icon',
+      html: jetArrowHtml(pt.speed, angle),
+      iconSize: [36, 16],
+      iconAnchor: [18, 8]
+    });
+    var m = L.marker([pt.lat, pt.lon], { icon: icon, interactive: false, keyboard: false, pane: 'markerPane' });
+    group.addLayer(m);
+  });
+
+  return group;
 }
 
 async function loadJetForTimeKey(key){
@@ -479,36 +448,20 @@ async function loadJetForTimeKey(key){
   var url = jetFileUrlForTimeKey(normalizedKey);
   if (!url) throw new Error('No jet file URL for ' + normalizedKey);
 
-  var data = jetCache[normalizedKey];
-  if (!data){
+  var raw = jetCache[normalizedKey];
+  if (!raw){
     var res = await fetch(url, { cache:'no-store' });
     if (!res.ok) throw new Error('Jet HTTP ' + res.status + ': ' + url);
-    var raw = await res.json();
-    data = buildJetVelocityRecords(raw);
-    jetCache[normalizedKey] = data;
+    raw = await res.json();
+    jetCache[normalizedKey] = raw;
   }
 
-  var options = Object.assign({
-    displayValues: false,
-    displayOptions: {
-      velocityType: '500mb Jet Stream',
-      position: 'bottomleft',
-      emptyString: 'No jet data'
-    },
-    maxVelocity: 80,
-    velocityScale: 0.0035,
-    particleAge: 40,
-    lineWidth: 1.0,
-    particleMultiplier: 60,
-    frameRate: 12
-  }, (cfg.particleOptions || {}));
-
   removeJetLayer();
-  jetLayer = L.velocityLayer(Object.assign({}, options, { data: data }));
+  jetLayer = buildJetArrowLayer(raw);
   window.jetLayer = jetLayer;
   currentJetTimeKey = normalizedKey;
   if (jetEnabled && jetLayer && map) jetLayer.addTo(map);
-  setStatus('Jet: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
+  setStatus('Jet arrows: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
   try{ updateProductLabel(); }catch(e){}
   return jetLayer;
 }
@@ -522,9 +475,6 @@ function syncJetParticlesToClock(force){
   if (!key) return;
   if (!force && currentJetTimeKey === key){
     if (jetLayer && map && map.hasLayer && !map.hasLayer(jetLayer)) jetLayer.addTo(map);
-    return;
-  }
-  if (!force && currentJetTimeKey !== null){
     return;
   }
   if (jetPendingKey === key) return;
@@ -562,7 +512,6 @@ async function setJetEnabled(on){
 }
 window.setJetEnabled = setJetEnabled;
 window.syncJetParticlesToClock = syncJetParticlesToClock;
-
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
