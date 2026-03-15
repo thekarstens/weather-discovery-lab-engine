@@ -1230,8 +1230,6 @@ var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
-var forcedScrubberMode = null;
-window.forcedScrubberMode = forcedScrubberMode;
 
 function getActiveProductKey(){
   // Priority: global > snow > temp > radar (matches your product label logic)
@@ -1674,11 +1672,12 @@ map.on('zoomend moveend', function(){
   // Keep HRRR temp blobs sized appropriately as you zoom
   map.on("zoomend", updateHrrrTempRadius);
   map.on("mousemove", function(e){
-    if (!document.body.classList.contains("probe-active")) return;
-    updateLiveHrrrProbe(e.latlng);
+    if (document.body.classList.contains("probe-active")) updateLiveHrrrProbe(e.latlng);
+    if (typeof updateLiveMetarProbe === "function") updateLiveMetarProbe(e.latlng);
   });
   map.on("mouseout", function(){
     if (document.body.classList.contains("probe-active")) clearLiveProbe();
+    if (typeof clearLiveMetarProbe === "function") clearLiveMetarProbe();
   });
 
 
@@ -2231,6 +2230,8 @@ function nearestHrrrFrameIndexForTime(d){
   function metarWindArrow(deg){
     var d = Number(deg);
     if (!isFinite(d)) return "•";
+    // METAR direction is FROM; arrow should point TO
+    d = (d + 180) % 360;
     var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
     return arrows[Math.round(d / 45) % 8];
   }
@@ -2302,6 +2303,85 @@ function nearestHrrrFrameIndexForTime(d){
     return 12;
   }
 
+  var liveMetarMarker = null;
+  var liveMetarTooltip = null;
+
+  function clearLiveMetarProbe(){
+    try{ if (liveMetarTooltip) map.removeLayer(liveMetarTooltip); }catch(e){}
+    try{ if (liveMetarMarker) map.removeLayer(liveMetarMarker); }catch(e){}
+    liveMetarMarker = null;
+    liveMetarTooltip = null;
+  }
+
+  function nearestMetarStation(latlng){
+    if (!latlng || !Array.isArray(metarData) || !metarData.length) return null;
+    var best = null, bestD = Infinity;
+    for (var i=0; i<metarData.length; i++){
+      var r = metarData[i];
+      var lat = Number(r && r.lat), lon = Number(r && r.lon);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      var d = map.distance(latlng, L.latLng(lat, lon));
+      if (d < bestD){ bestD = d; best = r; }
+    }
+    return best;
+  }
+
+  function updateLiveMetarProbe(latlng){
+    if (!latlng || !metarVisible || document.body.classList.contains("draw-active") || document.body.classList.contains("measure-active")) {
+      clearLiveMetarProbe();
+      return;
+    }
+    var best = nearestMetarStation(latlng);
+    if (!best) { clearLiveMetarProbe(); return; }
+
+    var lat = Number(best.lat), lon = Number(best.lon);
+    if (!isFinite(lat) || !isFinite(lon)) { clearLiveMetarProbe(); return; }
+
+    if (!liveMetarMarker){
+      liveMetarMarker = L.circleMarker([lat, lon], {
+        radius: 8,
+        color: "rgba(255,255,255,0.96)",
+        weight: 2,
+        fillColor: "rgba(30,136,229,0.98)",
+        fillOpacity: 0.98,
+        interactive: false
+      }).addTo(map);
+    } else {
+      liveMetarMarker.setLatLng([lat, lon]);
+    }
+
+    var hoverHtml =
+      '<div style="font-family:Lato,Arial,sans-serif;min-width:180px;text-align:left;">' +
+        '<div style="font:900 16px/1.05 Lato,Arial,sans-serif;color:#202833;margin-bottom:6px;">' + metarStationName(best) + '</div>' +
+        '<div style="font:900 13px/1.2 Lato,Arial,sans-serif;color:#243447;margin-bottom:4px;">' + ((best.tmpf ?? "—")) + '°F / ' + ((best.dwpf ?? "—")) + '°F</div>' +
+        '<div style="font:800 12px/1.2 Lato,Arial,sans-serif;color:#30465d;">' + metarWindArrow(best.drct) + ' ' + metarWindText(best) + '</div>' +
+      '</div>';
+
+    if (!liveMetarTooltip){
+      liveMetarTooltip = L.tooltip({
+        permanent: false,
+        sticky: true,
+        direction: "top",
+        offset: [0, -12],
+        opacity: 1,
+        className: "hrrr-popup"
+      })
+      .setLatLng([lat, lon])
+      .setContent(hoverHtml)
+      .addTo(map);
+    } else {
+      liveMetarTooltip.setLatLng([lat, lon]);
+      liveMetarTooltip.setContent(hoverHtml);
+      if (!map.hasLayer(liveMetarTooltip)) liveMetarTooltip.addTo(map);
+    }
+  }
+
+  function updateMetarsForTime(d){
+    // Placeholder for future time-sequenced METAR datasets.
+    // For now, keep the currently loaded METAR snapshot and just refresh display if visible.
+    if (metarVisible) refreshMetarLayer();
+  }
+
   function buildMetarLayer(){
     var rows = (Array.isArray(metarData) ? metarData : []).filter(function(r){
       return r && isFinite(Number(r.lat)) && isFinite(Number(r.lon));
@@ -2354,123 +2434,22 @@ function nearestHrrrFrameIndexForTime(d){
     if (metarLayer) metarLayer.addTo(map);
   }
 
-  
-function formatMetarDockLabel(entry){
-  var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
-  if (!isFinite(t)) return 'METAR HOUR';
-  var d = new Date(t);
-  var hh = d.getHours() % 12 || 12;
-  var ampm = d.getHours() >= 12 ? 'PM' : 'AM';
-  return d.toLocaleString('en-US', { month:'short' }) + ' ' + d.getDate() + ' ' + hh + ':00 ' + ampm;
-}
-
-function ensureMetarDockControls(){
-  var box = document.getElementById('metarDockControls');
-  if (box) return box;
-
-  box = document.createElement('div');
-  box.id = 'metarDockControls';
-  box.style.position = 'absolute';
-  box.style.left = '150px';
-  box.style.bottom = '66px';
-  box.style.zIndex = '100010';
-  box.style.display = 'none';
-  box.style.background = 'rgba(11,28,45,0.94)';
-  box.style.border = '1px solid rgba(255,255,255,0.18)';
-  box.style.borderRadius = '14px';
-  box.style.padding = '8px 10px';
-  box.style.boxShadow = '0 10px 26px rgba(0,0,0,.28)';
-  box.style.color = '#fff';
-  box.style.fontFamily = 'Arial,sans-serif';
-  box.innerHTML =
-    '<button id="metDockPrev" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">◀ METAR</button>' +
-    '<span id="metDockLabel" style="display:inline-block;min-width:150px;text-align:center;font:900 12px/1 Arial,sans-serif;letter-spacing:.4px;padding:0 10px;">METAR HOUR</span>' +
-    '<button id="metDockNext" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">METAR ▶</button>';
-
-  (document.body || document.documentElement).appendChild(box);
-
-  var prev = document.getElementById('metDockPrev');
-  var next = document.getElementById('metDockNext');
-
-  if (prev) prev.onclick = async function(){
-    if (!metarVisible || typeof stepMetarTime !== 'function') return;
-    await stepMetarTime(-1);
-    updateMetarDockControls();
-  };
-  if (next) next.onclick = async function(){
-    if (!metarVisible || typeof stepMetarTime !== 'function') return;
-    await stepMetarTime(1);
-    updateMetarDockControls();
-  };
-
-  return box;
-}
-
-function updateMetarDockControls(){
-  var box = ensureMetarDockControls();
-  if (!box) return;
-  box.style.display = (typeof metarVisible !== 'undefined' && metarVisible) ? '' : 'none';
-
-  var label = document.getElementById('metDockLabel');
-  var prev = document.getElementById('metDockPrev');
-  var next = document.getElementById('metDockNext');
-  var scrub = document.getElementById('cbScrubber');
-  var sweep = document.getElementById('sweepToggleBtn');
-
-  var mt = (typeof window.__METAR_TIMELINE__ !== 'undefined' && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
-  var idx = Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0)));
-  var entry = mt[idx] || null;
-
-  if (label) label.textContent = formatMetarDockLabel(entry);
-  if (prev) prev.disabled = !(mt.length && idx > 0);
-  if (next) next.disabled = !(mt.length && idx < mt.length - 1);
-
-  if (scrub) scrub.style.opacity = (typeof metarVisible !== 'undefined' && metarVisible) ? '0.35' : '1';
-  if (scrub) scrub.style.pointerEvents = (typeof metarVisible !== 'undefined' && metarVisible) ? 'none' : 'auto';
-  if (sweep) sweep.style.opacity = (typeof metarVisible !== 'undefined' && metarVisible) ? '0.35' : '1';
-  if (sweep) sweep.style.pointerEvents = (typeof metarVisible !== 'undefined' && metarVisible) ? 'none' : 'auto';
-}
-
-async function setMetarsEnabled(on){
+  async function setMetarsEnabled(on){
     var want = !!on;
     if (want){
       try{
         metarVisible = true;
         window.metarVisible = metarVisible;
-        forcedScrubberMode = 'metars';
-        window.forcedScrubberMode = forcedScrubberMode;
-
-        await loadMetarManifest();
-        var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
-        if (mt.length){
-          if (typeof setCurrentMetarIndex === 'function') setCurrentMetarIndex(0);
-          var entry = mt[0];
-          var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
-          if (isFinite(t)) curZ = new Date(t);
+        if (!metarLayer){
+          if (!metarData.length) await loadMetars();
+          metarLayer = buildMetarLayer();
         }
-
-        await loadMetarsForTime(curZ);
-        if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
-        metarLayer = buildMetarLayer();
         refreshMetarLayer();
-        ensureMetarDockControls();
-        updateMetarDockControls();
-
-        try{ updateProductLabel(); }catch(e){}
-        try{ setTimeLabel(); }catch(e){}
-
-        requestAnimationFrame(function(){
-          if (!metarVisible) return;
-          try{ updateMetarDockControls(); }catch(e){}
-          try{ updateProductLabel(); }catch(e){}
-          try{ setTimeLabel(); }catch(e){}
-        });
-
+        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
         window.metarVisible = metarVisible;
-        try{ updateMetarDockControls(); }catch(e){}
         setStatus('METARs failed to load');
         console.error(err);
       }
@@ -2479,12 +2458,10 @@ async function setMetarsEnabled(on){
       try{ clearLiveMetarProbe(); }catch(e){}
       metarVisible = false;
       window.metarVisible = metarVisible;
-      if (forcedScrubberMode === 'metars') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
-      try{ updateMetarDockControls(); }catch(e){}
-      try{ updateProductLabel(); }catch(e){}
-      try{ setTimeLabel(); }catch(e){}
       setStatus('METARs off');
     }
+    try{ updateProductLabel(); }catch(e){}
+    try{ setTimeLabel(); }catch(e){}
   }
 
   async function toggleMetars(){
@@ -2979,6 +2956,7 @@ function updateAlerts(){
     }
     updateHrrrOverlay();
     updateAlerts();
+    if (typeof updateMetarsForTime === "function") updateMetarsForTime(curZ);
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -3009,6 +2987,7 @@ function updateAlerts(){
     }
     return false;
   }
+  window.stepActiveScrubber = stepActiveScrubber;
 
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
