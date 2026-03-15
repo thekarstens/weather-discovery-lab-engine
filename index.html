@@ -1166,6 +1166,52 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 .clock-bubble{  top: 180px !important; }
 
 
+
+/* --- Simple self-contained METAR hour controls --- */
+.metar-hour-controls{
+  position:absolute;
+  left:14px;
+  bottom:86px;
+  z-index:100006;
+  background:rgba(11,28,45,0.94);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:16px;
+  padding:10px 12px;
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+  font-family:Arial,sans-serif;
+}
+.mhc-head{
+  font:900 11px/1 Arial,sans-serif;
+  letter-spacing:.8px;
+  opacity:.92;
+  margin-bottom:8px;
+}
+.mhc-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.mhc-btn{
+  border:1px solid rgba(255,255,255,0.35);
+  background:rgba(0,0,0,0.25);
+  color:#fff;
+  padding:8px 10px;
+  border-radius:12px;
+  font:900 12px/1 Arial,sans-serif;
+  cursor:pointer;
+  line-height:1;
+}
+.mhc-btn:hover{ background:rgba(0,0,0,0.40); }
+.mhc-btn:disabled{ opacity:.38; cursor:not-allowed; }
+.mhc-label{
+  min-width:150px;
+  text-align:center;
+  font:900 13px/1.1 Arial,sans-serif;
+  letter-spacing:.4px;
+  white-space:nowrap;
+}
+
 /* --- Bottom-docked time control + sweep toggle --- */
 #clockBubble{
   left:50% !important;

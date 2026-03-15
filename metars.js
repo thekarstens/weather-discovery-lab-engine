@@ -383,6 +383,85 @@ window.createMetarsModule = function(opts){
     if (metarLayer) metarLayer.addTo(map);
   }
 
+
+  function formatMetarHourLabel(entry){
+    var t = metarEntryTime(entry);
+    if (!isFinite(t)) return "METAR HOUR";
+    var d = new Date(t);
+    var hh = d.getHours() % 12 || 12;
+    var ampm = d.getHours() >= 12 ? "PM" : "AM";
+    return d.toLocaleString("en-US", { month:"short" }) + " " + d.getDate() + " • " + hh + ":00 " + ampm;
+  }
+
+  function ensureMetarControls(){
+    var box = document.getElementById("metarHourControls");
+    if (box) return box;
+
+    box = document.createElement("div");
+    box.id = "metarHourControls";
+    box.className = "metar-hour-controls";
+    box.innerHTML =
+      '<div class="mhc-head">METAR HOURS</div>' +
+      '<div class="mhc-row">' +
+        '<button id="metarPrevBtn" class="mhc-btn" type="button">◀ HOUR</button>' +
+        '<div id="metarHourLabel" class="mhc-label">—</div>' +
+        '<button id="metarNextBtn" class="mhc-btn" type="button">HOUR ▶</button>' +
+      '</div>';
+
+    var target = document.body || document.documentElement;
+    target.appendChild(box);
+
+    var prev = document.getElementById("metarPrevBtn");
+    var next = document.getElementById("metarNextBtn");
+
+    if (prev) prev.onclick = async function(){
+      if (!metarVisible) return;
+      await stepMetarTime(-1);
+      updateMetarControls();
+    };
+    if (next) next.onclick = async function(){
+      if (!metarVisible) return;
+      await stepMetarTime(1);
+      updateMetarControls();
+    };
+
+    return box;
+  }
+
+  function updateMetarControls(){
+    var box = ensureMetarControls();
+    if (!box) return;
+    box.style.display = metarVisible ? "" : "none";
+
+    var label = document.getElementById("metarHourLabel");
+    var prev = document.getElementById("metarPrevBtn");
+    var next = document.getElementById("metarNextBtn");
+
+    var timeline = metarTimeline || [];
+    var idx = Math.max(0, Math.min(timeline.length - 1, currentMetarIndex|0));
+    var entry = timeline[idx] || null;
+
+    if (label) label.textContent = formatMetarHourLabel(entry);
+    if (prev) prev.disabled = !(timeline.length && idx > 0);
+    if (next) next.disabled = !(timeline.length && idx < timeline.length - 1);
+  }
+
+  async function loadMetarsAtIndex(idx){
+    await loadMetarManifest();
+    if (!metarTimeline || !metarTimeline.length) return false;
+    setCurrentMetarIndex(idx);
+    var entry = metarTimeline[currentMetarIndex];
+    var t = metarEntryTime(entry);
+    if (isFinite(t)){
+      currentMetarTime = new Date(t).toISOString();
+      try{ window.curZ = new Date(t); }catch(e){}
+    }
+    await loadMetarsForTime(new Date(t));
+    if (metarVisible) refreshMetarLayer();
+    updateMetarControls();
+    return true;
+  }
+
   async function setMetarsEnabled(on){
     var want = !!on;
     if (want){
@@ -390,54 +469,30 @@ window.createMetarsModule = function(opts){
         metarVisible = true;
         syncWindowState();
 
-        // DESIGN B: always start METAR mode at the first manifest hour/file
+        // Simple mode: METARs use their own hour controls, not the shared bottom scrubber
         await loadMetarManifest();
-        if (metarTimeline && metarTimeline.length){
-          setCurrentMetarIndex(0);
-          var entry = metarTimeline[0];
-          var t = metarEntryTime(entry);
-          if (isFinite(t)){
-            try{
-              if (typeof window.setCurrentTime === "function"){
-                window.setCurrentTime(new Date(t));
-              } else {
-                curZ = new Date(t);
-                window.curZ = curZ;
-              }
-            }catch(e){
-              try{
-                curZ = new Date(t);
-                window.curZ = curZ;
-              }catch(_){}
-            }
-          }
-        }
-
-        if (typeof window.forcedScrubberMode !== "undefined"){
-          window.forcedScrubberMode = "metars";
-        }
+        ensureMetarControls();
 
         if (metarTimeline && metarTimeline.length){
-          await loadMetarsForTime(new Date(metarEntryTime(metarTimeline[0])));
+          await loadMetarsAtIndex(0);
         } else {
-          await loadMetarsForTime(curZ);
+          await loadMetars();
+          refreshMetarLayer();
         }
 
-        if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
-        metarLayer = buildMetarLayer();
-        refreshMetarLayer();
-        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
-
-        try{
-          if (typeof window.syncScrubberToActiveProduct === "function"){
-            window.syncScrubberToActiveProduct();
+        updateMetarControls();
+        requestAnimationFrame(function(){
+          if (metarVisible) {
+            try{ refreshMetarLayer(); }catch(e){}
+            try{ updateMetarControls(); }catch(e){}
           }
-        }catch(e){}
+        });
 
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
         syncWindowState();
+        try{ updateMetarControls(); }catch(e){}
         setStatus('METARs failed to load');
         console.error(err);
       }
@@ -445,10 +500,10 @@ window.createMetarsModule = function(opts){
       if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
       metarVisible = false;
       syncWindowState();
+      try{ updateMetarControls(); }catch(e){}
       setStatus('METARs off');
     }
     try{ updateProductLabel(); }catch(e){}
-    try{ setTimeLabel(); }catch(e){}
   }
 
   async function toggleMetars(){
@@ -458,11 +513,8 @@ window.createMetarsModule = function(opts){
   async function stepMetarTime(delta){
     await loadMetarManifest();
     if (!metarTimeline || !metarTimeline.length) return false;
-    setCurrentMetarIndex((currentMetarIndex|0) + delta);
-    var entry = metarTimeline[currentMetarIndex];
-    var t = metarEntryTime(entry);
-    if (isFinite(t)) await loadMetarsForTime(new Date(t));
-    if (metarVisible) refreshMetarLayer();
+    var nextIdx = Math.max(0, Math.min(metarTimeline.length - 1, (currentMetarIndex|0) + delta));
+    await loadMetarsAtIndex(nextIdx);
     return true;
   }
 
@@ -491,6 +543,8 @@ window.createMetarsModule = function(opts){
     loadMetarsForTime:loadMetarsForTime,
     findNearestMetarIndexForTime:findNearestMetarIndexForTime,
     setCurrentMetarIndex:setCurrentMetarIndex,
+    updateMetarControls:updateMetarControls,
+    loadMetarsAtIndex:loadMetarsAtIndex,
     getCurrentMetarIndex:function(){ return currentMetarIndex; },
     getTimeline:function(){ return metarTimeline || []; },
     isVisible:function(){ return metarVisible; },
