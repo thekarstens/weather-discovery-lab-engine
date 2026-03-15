@@ -312,15 +312,18 @@ window.setStatus = setStatus;
 var gfsSnowEnabled = false;
 var gfsSnowOverlay = null;
 
-
+// ----- Minimal jet test layer (light canvas dots; preserves rest of engine) -----
 var jetEnabled = false;
 var jetLayer = null;
-var jetCache = Object.create(null);
+var jetPointsLayer = null;
+var jetCache = {};
 var jetPendingKey = null;
 var currentJetTimeKey = null;
+
 window.gfsSnowEnabled = gfsSnowEnabled;
 window.jetEnabled = jetEnabled;
 window.jetLayer = jetLayer;
+window.jetPointsLayer = jetPointsLayer;
 window.__JET_CACHE__ = jetCache;
 
 function getJetCfg(){
@@ -395,8 +398,6 @@ function sampleJetRows(raw){
   var nx = Number((raw.grid_shape && raw.grid_shape.nx) || (raw.lat[0] && raw.lat[0].length) || 0);
   if (!ny || !nx) throw new Error('Jet JSON missing grid shape');
 
-  // Very light first-pass sampling so we can verify the pipeline works
-  // without choking the lesson engine.
   var stepY = 6;
   var stepX = 6;
   var rows = [];
@@ -444,9 +445,9 @@ function buildJetDotLayer(raw){
       opacity: 0.9,
       fillColor: getJetDotColor(pt.speed),
       fillOpacity: 0.85,
-      interactive: false,
-      pane: 'overlayPane'
+      interactive: false
     });
+    dot.feature = { properties: { u: pt.u, v: pt.v, speed_mps: pt.speed } };
     group.addLayer(dot);
   });
 
@@ -470,7 +471,9 @@ async function loadJetForTimeKey(key){
 
   removeJetLayer();
   jetLayer = buildJetDotLayer(raw);
+  jetPointsLayer = jetLayer;
   window.jetLayer = jetLayer;
+  window.jetPointsLayer = jetPointsLayer;
   currentJetTimeKey = normalizedKey;
   if (jetEnabled && jetLayer && map) jetLayer.addTo(map);
   setStatus('Jet test dots: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
@@ -524,6 +527,7 @@ async function setJetEnabled(on){
 }
 window.setJetEnabled = setJetEnabled;
 window.syncJetParticlesToClock = syncJetParticlesToClock;
+
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
@@ -2493,7 +2497,6 @@ async function setMetarsEnabled(on){
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
-    { on: (typeof jetEnabled !== "undefined" && jetEnabled), label: "JET STREAM" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
@@ -3167,7 +3170,6 @@ function updateAlerts(){
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
-    dock.querySelectorAll('[data-action="jet"]').forEach(function(el){ el.classList.toggle('active', !!window.jetEnabled); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
@@ -3203,10 +3205,6 @@ function updateAlerts(){
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
-      return;
-    }
-    if (action === 'jet'){
-      if (typeof window.setJetEnabled === 'function') await window.setJetEnabled(!window.jetEnabled);
       return;
     }
     if (action === 'spc'){
@@ -3303,7 +3301,6 @@ function updateAlerts(){
 
     wrapAsync('setRadarEnabled');
     wrapAsync('setMetarsEnabled');
-    wrapAsync('setJetEnabled');
     wrapAsync('setHrrrTempEnabled');
     wrapAsync('setSpcDay1Enabled');
 
