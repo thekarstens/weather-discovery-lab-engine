@@ -314,14 +314,6 @@ var gfsSnowOverlay = null;
 function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
-
-  try{
-    if (!map.getPane('goesFitPane')){
-      map.createPane('goesFitPane');
-      map.getPane('goesFitPane').style.zIndex = 1000;
-      map.getPane('goesFitPane').style.pointerEvents = 'auto';
-    }
-  }catch(e){}
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -396,91 +388,6 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   }
 
   // ----- Probe mode (HRRR temp only for now) -----
-  var liveProbeMarker = null;
-  var liveProbeTooltip = null;
-
-  function clearLiveProbe(){
-    try{ if (liveProbeTooltip) map.removeLayer(liveProbeTooltip); }catch(e){}
-    try{ if (liveProbeMarker) map.removeLayer(liveProbeMarker); }catch(e){}
-    liveProbeMarker = null;
-    liveProbeTooltip = null;
-  }
-
-  function nearestHrrrPoint(latlng){
-    if (!latlng || !Array.isArray(hrrrPoints) || !hrrrPoints.length) return null;
-    var best = null, bestD = Infinity;
-    for (var i=0; i<hrrrPoints.length; i++){
-      var p = hrrrPoints[i];
-      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-      var d = map.distance(latlng, L.latLng(p.lat, p.lon));
-      if (d < bestD){ bestD = d; best = p; }
-    }
-    return best;
-  }
-
-  function buildHrrrProbePopupHtml(best, compact){
-    var val = (best && best.tF != null) ? Number(best.tF).toFixed(0) : "—";
-    var timeLabel = "";
-    try{ timeLabel = formatLocalHour(curZ); }catch(e){}
-    var tempSize = compact ? "26px" : "34px";
-    var subSize = compact ? "11px" : "12px";
-    return (
-      "<div style='font-family:Lato,Arial,sans-serif;text-align:center;letter-spacing:.2px;'>" +
-        "<div style='font-weight:900;font-size:13px;line-height:1;opacity:.88;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,.30);'>Forecast Temp</div>" +
-        "<div style='margin-top:4px;font-weight:900;font-size:" + tempSize + ";line-height:1;color:#0b1c2d;text-shadow:0 1px 0 rgba(255,255,255,.60), 0 2px 4px rgba(0,0,0,.16);'>" + val + "°F</div>" +
-        "<div style='margin-top:4px;font-weight:800;font-size:" + subSize + ";line-height:1.1;opacity:.82;'>" + (timeLabel || "") + "</div>" +
-      "</div>"
-    );
-  }
-
-  function updateLiveHrrrProbe(latlng){
-    if (!latlng || !document.body.classList.contains("probe-active")) return;
-    try{
-      if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
-        clearLiveProbe();
-        return;
-      }
-    }catch(e){
-      clearLiveProbe();
-      return;
-    }
-
-    var best = nearestHrrrPoint(latlng);
-    if (!best) { clearLiveProbe(); return; }
-
-    if (!liveProbeMarker){
-      liveProbeMarker = L.circleMarker([best.lat, best.lon], {
-        radius: 7,
-        color: "rgba(255,255,255,0.96)",
-        weight: 2,
-        fillColor: "rgba(30,136,229,0.98)",
-        fillOpacity: 0.98,
-        interactive: false
-      }).addTo(map);
-    } else {
-      liveProbeMarker.setLatLng([best.lat, best.lon]);
-    }
-
-    var html = buildHrrrProbePopupHtml(best, true);
-    if (!liveProbeTooltip){
-      liveProbeTooltip = L.tooltip({
-        permanent: false,
-        sticky: true,
-        direction: "top",
-        offset: [0, -10],
-        opacity: 1,
-        className: "hrrr-popup"
-      })
-      .setLatLng([best.lat, best.lon])
-      .setContent(html)
-      .addTo(map);
-    } else {
-      liveProbeTooltip.setLatLng([best.lat, best.lon]);
-      liveProbeTooltip.setContent(html);
-      if (!map.hasLayer(liveProbeTooltip)) liveProbeTooltip.addTo(map);
-    }
-  }
-
   function setProbeMode(on){
     if (on){
       document.body.classList.add("probe-active");
@@ -488,7 +395,6 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       document.body.classList.remove("draw-active");
     } else {
       document.body.classList.remove("probe-active");
-      clearLiveProbe();
     }
     setToolActive(toolProbeBtn, on);
     if (on){
@@ -633,6 +539,7 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
 
+    // Require HRRR temp layer + points
     try{
       if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
@@ -643,12 +550,24 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       }
     }catch(_){}
 
-    var best = nearestHrrrPoint(e.latlng);
+    var best = null;
+    var bestD = Infinity;
+    for (var i=0; i<hrrrPoints.length; i++){
+      var p = hrrrPoints[i];
+      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+      var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
+      if (d < bestD){ bestD = d; best = p; }
+    }
     if (!best) return;
 
-    L.popup({ closeButton:true, className:"hrrr-popup", autoPan: true, offset:[0,-10] })
+    var tf = (typeof best.tF === "number") ? best.tF : null;
+    var content =
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
+      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
+
+    L.popup({ closeButton:true, className:"hrrr-popup" })
       .setLatLng([best.lat, best.lon])
-      .setContent(buildHrrrProbePopupHtml(best, false))
+      .setContent(content)
       .openOn(map);
   }
 
@@ -1317,331 +1236,12 @@ if (goesFitBtn) goesFitBtn.onclick = function(){
 if (goesSaveBtn) goesSaveBtn.onclick = function(){
   saveBoundsToStorage(GOES_BOUNDS);
   stopGoesAnim(); // optional, keeps kids from moving it while saving
-  try{
-    console.log('SATELLITE_BOUNDS_FOR_MANIFEST', JSON.stringify(GOES_BOUNDS));
-  }catch(e){}
-  setStatus('Satellite bounds saved. Copy console value into manifest leaflet_bounds.');
 };
 if (goesResetBtn) goesResetBtn.onclick = function(){
   try{ localStorage.removeItem(GOES_STORAGE_KEY); }catch(e){}
   setGoesBounds(GOES_DEFAULT_BOUNDS);
-  updateGoesFitVisuals();
   if (goesEnabled) updateGoes();
 };
-
-// ---- SATELLITE / GOES manifest-driven overlay ----
-var goesEnabled = false;
-var goesOverlay = null;
-var goesManifest = null;
-var goesFrames = [];
-var currentGoesFrameIndex = 0;
-var goesAnimTimer = null;
-var goesFitMode = false;
-var goesFitClicks = [];
-var GOES_STORAGE_KEY = 'satellite_truecolor_bounds';
-var GOES_DEFAULT_BOUNDS = [[40.0, -99.5], [45.8, -89.0]];
-var GOES_BOUNDS = GOES_DEFAULT_BOUNDS;
-var goesFitLayer = null;
-var goesFitRect = null;
-var goesSwHandle = null;
-var goesNeHandle = null;
-
-window.goesEnabled = goesEnabled;
-window.goesOverlay = goesOverlay;
-
-function getSatelliteManifestUrl(){
-  try{
-    if (CFG && CFG.satellite){
-      var u = CFG.satellite.manifest || CFG.satellite.url || CFG.satellite.file;
-      if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
-    }
-  }catch(e){}
-  return _joinUrl(DATA_BASE, 'satellite/truecolor/manifest.json');
-}
-function parseSatelliteFrames(raw){
-  var arr = [];
-  var src = (raw && Array.isArray(raw.frames)) ? raw.frames : [];
-  for (var i=0;i<src.length;i++){
-    var f = src[i] || {};
-    var file = f.file || f.filename || f.name || f.png || f.jpg || f.image || null;
-    if (!file) continue;
-    arr.push({
-      file: file,
-      time: f.time || f.utc || f.valid || f.timestamp || null,
-      label: f.label || null
-    });
-  }
-  return arr;
-}
-function loadBoundsFromStorage(key){
-  try{
-    var raw = localStorage.getItem(key);
-    if (!raw) return null;
-    var b = JSON.parse(raw);
-    if (Array.isArray(b) && b.length === 2) return b;
-  }catch(e){}
-  return null;
-}
-function saveBoundsToStorage(bounds){
-  try{
-    localStorage.setItem(GOES_STORAGE_KEY, JSON.stringify(bounds));
-    GOES_BOUNDS = bounds;
-  }catch(e){}
-}
-function setGoesBounds(bounds){
-  if (Array.isArray(bounds) && bounds.length === 2){
-    GOES_BOUNDS = normalizeGoesBounds(bounds);
-  }
-}
-async function loadGoesManifest(){
-  if (goesManifest && goesFrames.length) return goesManifest;
-  var url = getSatelliteManifestUrl();
-  var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
-  if (!res.ok) throw new Error('Satellite manifest HTTP ' + res.status + ': ' + url);
-  goesManifest = await res.json();
-  goesFrames = parseSatelliteFrames(goesManifest);
-  window.__GOES_FRAMES__ = goesFrames;
-  if (goesManifest && goesManifest.savedBoundsKey) GOES_STORAGE_KEY = String(goesManifest.savedBoundsKey);
-  var saved = loadBoundsFromStorage(GOES_STORAGE_KEY);
-  if (saved) {
-    GOES_BOUNDS = saved;
-  } else if (Array.isArray(goesManifest.leaflet_bounds) && goesManifest.leaflet_bounds.length === 2) {
-    GOES_BOUNDS = goesManifest.leaflet_bounds;
-  } else if (Array.isArray(goesManifest.bounds) && goesManifest.bounds.length === 2) {
-    GOES_BOUNDS = goesManifest.bounds;
-  }
-  return goesManifest;
-}
-function getCurrentGoesFrame(){
-  if (!goesFrames || !goesFrames.length) return null;
-  return goesFrames[Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0))];
-}
-function getGoesFrameTimeMs(frame){
-  if (!frame || !frame.time) return NaN;
-  return Date.parse(frame.time);
-}
-function findNearestGoesFrameIndexForTime(d){
-  if (!goesFrames || !goesFrames.length) return 0;
-  var target = (d instanceof Date) ? d.getTime() : Date.parse(d);
-  if (!isFinite(target)) return 0;
-  var bestIdx = 0;
-  var bestDelta = Infinity;
-  for (var i=0; i<goesFrames.length; i++){
-    var t = getGoesFrameTimeMs(goesFrames[i]);
-    if (!isFinite(t)) continue;
-    var delta = Math.abs(t - target);
-    if (delta < bestDelta){
-      bestDelta = delta;
-      bestIdx = i;
-    }
-  }
-  return bestIdx;
-}
-function setCurrentGoesFrameIndex(idx){
-  if (!goesFrames || !goesFrames.length) return;
-  currentGoesFrameIndex = Math.max(0, Math.min(goesFrames.length - 1, idx|0));
-  var gf = getCurrentGoesFrame();
-  if (gf && gf.time) curZ = new Date(gf.time);
-}
-function goesFrameUrl(frame){
-  if (!frame) return null;
-  var f = frame.file;
-  if (!f) return null;
-  return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, 'satellite/truecolor/' + String(f).replace(/^\.?\/?/, ''));
-}
-function updateGoesFrameLabel(frame){
-  var el = document.getElementById('goesFrameLabel');
-  if (!el) return;
-  if (!frame) { el.textContent = '—'; return; }
-  el.textContent = frame.label || frame.time || frame.file || 'Frame';
-}
-function showGoesControls(show){
-  var el = document.getElementById('goesControls');
-  if (el) el.style.display = show ? '' : 'none';
-}
-function stopGoesAnim(){
-  if (goesAnimTimer){ clearInterval(goesAnimTimer); goesAnimTimer = null; }
-}
-function playGoesAnim(ms){
-  stopGoesAnim();
-  if (!goesFrames || goesFrames.length < 2) return;
-  goesAnimTimer = setInterval(function(){
-    setCurrentGoesFrameIndex((currentGoesFrameIndex + 1) % goesFrames.length);
-    updateGoes();
-    try{ syncScrubberToActiveProduct(); }catch(e){}
-    try{ setTimeLabel(); }catch(e){}
-  }, Math.max(150, ms || 400));
-}
-
-function normalizeGoesBounds(bounds){
-  var sw = bounds && bounds[0] ? bounds[0] : [40.0, -99.5];
-  var ne = bounds && bounds[1] ? bounds[1] : [45.8, -89.0];
-  var south = Math.min(Number(sw[0]), Number(ne[0]));
-  var north = Math.max(Number(sw[0]), Number(ne[0]));
-  var west = Math.min(Number(sw[1]), Number(ne[1]));
-  var east = Math.max(Number(sw[1]), Number(ne[1]));
-  return [[south, west], [north, east]];
-}
-function makeFitHandle(latlng, cls, label){
-  return L.marker(latlng, {
-    draggable: true,
-    keyboard: false,
-    pane: 'goesFitPane',
-    zIndexOffset: 10000,
-    icon: L.divIcon({
-      className: 'goes-fit-icon',
-      html: '<div class="' + cls + '" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#ffd400;border:3px solid #0b1c2d;box-shadow:0 2px 10px rgba(0,0,0,.45);font:900 10px/1 Arial,sans-serif;color:#0b1c2d;">' + label + '</div>',
-      iconSize: [26,26],
-      iconAnchor: [13,13]
-    })
-  });
-}
-function updateGoesFitVisuals(){
-  GOES_BOUNDS = normalizeGoesBounds(GOES_BOUNDS);
-  if (!goesFitMode) return;
-  if (!goesFitLayer){
-    goesFitLayer = L.layerGroup().addTo(map);
-  }
-  var sw = GOES_BOUNDS[0], ne = GOES_BOUNDS[1];
-  if (!goesFitRect){
-    goesFitRect = L.rectangle(GOES_BOUNDS, {
-      pane:'goesFitPane', color:'#ffd400', weight:3, opacity:1, fill:false, dashArray:'8 6'
-    }).addTo(goesFitLayer);
-  } else {
-    goesFitRect.setBounds(GOES_BOUNDS);
-  }
-  if (!goesSwHandle){
-    goesSwHandle = makeFitHandle(sw, 'goes-fit-handle sw', 'SW');
-    goesSwHandle.addTo(goesFitLayer);
-    goesSwHandle.on('drag', function(e){
-      var ll = e.target.getLatLng();
-      GOES_BOUNDS = normalizeGoesBounds([[ll.lat, ll.lng], GOES_BOUNDS[1]]);
-      if (goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
-      updateGoesFitVisuals();
-    });
-  } else {
-    goesSwHandle.setLatLng(sw);
-  }
-  if (goesFitRect && goesFitRect.bringToFront) goesFitRect.bringToFront();
-  if (!goesNeHandle){
-    goesNeHandle = makeFitHandle(ne, 'goes-fit-handle ne', 'NE');
-    goesNeHandle.addTo(goesFitLayer);
-    goesNeHandle.on('drag', function(e){
-      var ll = e.target.getLatLng();
-      GOES_BOUNDS = normalizeGoesBounds([GOES_BOUNDS[0], [ll.lat, ll.lng]]);
-      if (goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
-      updateGoesFitVisuals();
-    });
-  } else {
-    goesNeHandle.setLatLng(ne);
-  }
-  try{ if (goesSwHandle && goesSwHandle._icon) goesSwHandle._icon.style.display='block'; }catch(e){}
-  try{ if (goesNeHandle && goesNeHandle._icon) goesNeHandle._icon.style.display='block'; }catch(e){}
-}
-function clearGoesFitVisuals(){
-  try{ if (goesFitLayer) map.removeLayer(goesFitLayer); }catch(e){}
-  goesFitLayer = null;
-  goesFitRect = null;
-  goesSwHandle = null;
-  goesNeHandle = null;
-}
-function enableGoesFitMode(on){
-  goesFitMode = !!on;
-  goesFitClicks = [];
-  var btn = document.getElementById('goesFitBtn');
-  if (btn) btn.textContent = goesFitMode ? 'Drag corners' : 'Fit';
-  if (goesFitMode){
-    updateGoesFitVisuals();
-    setStatus('Satellite fit: drag the yellow SW and NE handles, then click Save');
-  } else {
-    clearGoesFitVisuals();
-    setStatus('Satellite fit off');
-  }
-}
-function updateGoes(){
-  if (!goesEnabled){
-    stopGoesAnim();
-    showGoesControls(false);
-    clearGoesFitVisuals();
-    if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
-    goesOverlay = null;
-    window.goesOverlay = goesOverlay;
-    return;
-  }
-  showGoesControls(true);
-  var frame = getCurrentGoesFrame();
-  updateGoesFrameLabel(frame);
-  var url = goesFrameUrl(frame);
-  if (!url){
-    setStatus('Satellite missing frame URL');
-    return;
-  }
-  var img = new Image();
-  img.onload = function(){
-    try{
-      if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
-    }catch(e){}
-    var op = productOpacity.goes || 0.70;
-    goesOverlay = L.imageOverlay(url, GOES_BOUNDS, { opacity: op, interactive:false });
-    goesOverlay.addTo(map);
-    window.goesOverlay = goesOverlay;
-    if (goesFitMode) updateGoesFitVisuals();
-    applyActiveOpacity();
-    setStatus('Satellite: ' + url);
-  };
-  img.onerror = function(){
-    setStatus('Satellite missing: ' + url);
-  };
-  img.src = url;
-}
-async function setGoesEnabled(on){
-  goesEnabled = !!on;
-  window.goesEnabled = goesEnabled;
-  if (goesEnabled){
-    try{
-      await loadGoesManifest();
-      if (!goesFrames.length) throw new Error('No satellite frames in manifest');
-      setCurrentGoesFrameIndex(findNearestGoesFrameIndexForTime(curZ));
-      updateGoes();
-      syncScrubberToActiveProduct();
-      setStatus('Satellite on. Click Fit to show drag handles.');
-    }catch(err){
-      goesEnabled = false;
-      window.goesEnabled = false;
-      console.error(err);
-      setStatus('Satellite failed');
-    }
-  } else {
-    stopGoesAnim();
-    showGoesControls(false);
-    if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
-    goesOverlay = null;
-    window.goesOverlay = goesOverlay;
-    setStatus('Satellite off');
-  }
-  try{ updateProductLabel(); }catch(e){}
-  try{ setTimeLabel(); }catch(e){}
-}
-window.setGoesEnabled = setGoesEnabled;
-
-map.on('click', function(e){
-  if (!goesFitMode || !e || !e.latlng) return;
-  if (goesSwHandle || goesNeHandle) return; // using draggable handles now
-  goesFitClicks.push([e.latlng.lat, e.latlng.lng]);
-  if (goesFitClicks.length < 2){
-    setStatus('Satellite fit: now click NE corner');
-    return;
-  }
-  GOES_BOUNDS = normalizeGoesBounds([goesFitClicks[0], goesFitClicks[1]]);
-  goesFitClicks = [];
-  updateGoesFitVisuals();
-  updateGoes();
-});
-
-map.on('zoomend moveend', function(){
-  if (goesEnabled && goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
-  if (goesFitMode) updateGoesFitVisuals();
-});
 // Story UI buttons
 
   
@@ -1671,14 +1271,6 @@ map.on('zoomend moveend', function(){
 
   // Keep HRRR temp blobs sized appropriately as you zoom
   map.on("zoomend", updateHrrrTempRadius);
-  map.on("mousemove", function(e){
-    if (document.body.classList.contains("probe-active")) updateLiveHrrrProbe(e.latlng);
-    if (typeof updateLiveMetarProbe === "function") updateLiveMetarProbe(e.latlng);
-  });
-  map.on("mouseout", function(){
-    if (document.body.classList.contains("probe-active")) clearLiveProbe();
-    if (typeof clearLiveMetarProbe === "function") clearLiveMetarProbe();
-  });
 
 
   map.on("click", function(e){
@@ -1700,6 +1292,7 @@ map.on('zoomend moveend', function(){
         }
       }
       if (!best) return;
+      var val = (best.tF != null) ? Number(best.tF).toFixed(0) : "—";
       L.popup({
         className: "hrrr-popup",
         closeButton: true,
@@ -1707,7 +1300,7 @@ map.on('zoomend moveend', function(){
         offset: [0, -10]
       })
       .setLatLng([best.lat, best.lon])
-      .setContent(buildHrrrProbePopupHtml(best, false))
+      .setContent(val + "°F")
       .openOn(map);
       
     }
@@ -2106,7 +1699,6 @@ function nearestHrrrFrameIndexForTime(d){
 
   function getActiveScrubberMode(){
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
-    if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -2121,9 +1713,6 @@ function nearestHrrrFrameIndexForTime(d){
       if (mode === 'hrrr'){
         scrub.max = String(Math.max(0, hrrrFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
-      } else if (mode === 'goes'){
-        scrub.max = String(Math.max(0, goesFrames.length - 1));
-        scrub.value = String(Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0)));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -2135,16 +1724,6 @@ function nearestHrrrFrameIndexForTime(d){
         scrub.value = String(idx);
       }
     }catch(e){}
-  }
-
-  function formatLocalHour(d){
-    if (!d) return "";
-    var x = new Date(d);
-    var h = x.getHours();
-    var ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12;
-    if (h === 0) h = 12;
-    return h + ampm;
   }
 
   function setTimeLabel(){
@@ -2194,85 +1773,23 @@ function nearestHrrrFrameIndexForTime(d){
     return '#8b1e1e';
   }
 
-  var METAR_CITY_NAMES = {
-    KFSD:"Sioux Falls", KSUX:"Sioux City", KOMA:"Omaha", KDSM:"Des Moines", KRST:"Rochester",
-    KHON:"Huron", KPIR:"Pierre", KABR:"Aberdeen", KBKX:"Brookings", KYKN:"Yankton",
-    KMKT:"Mankato", KMSP:"Minneapolis", KRWF:"Redwood Falls", KOTG:"Worthington",
-    KSPW:"Spencer", KSLB:"Storm Lake", KALO:"Waterloo", KMCW:"Mason City", KICL:"Clarinda",
-    KOFK:"Norfolk", KLNK:"Lincoln", KGRI:"Grand Island", KEAR:"Kearney", KATY:"Watertown",
-    KMBG:"Mobridge", KPHP:"Philip", KRAP:"Rapid City", KCPR:"Casper", KDDC:"Dodge City",
-    KGLD:"Goodland", KSHL:"Sheldon", SHL:"Sheldon", CKP:"Cherokee"
-  };
-
-  function metarStationName(r){
-    var id = String((r && (r.id || r.station || r.stid)) || "").toUpperCase();
-    return (r && (r.city || r.name)) || METAR_CITY_NAMES[id] || id || "Station";
-  }
-
-  function metarWindDirText(deg){
-    var d = Number(deg);
-    if (!isFinite(d)) return "";
-    var dirs = ["N","NE","E","SE","S","SW","W","NW"];
-    return dirs[Math.round(d / 45) % 8];
-  }
-
-  function metarWindText(r){
-    var spd = Number(r && (r.sknt ?? r.wind_speed_kt));
-    if (!isFinite(spd)) return "—";
-    var mph = Math.round(spd * 1.15078);
-    var dir = metarWindDirText(r && r.drct);
-    var out = (dir ? dir + " " : "") + mph + " mph";
-    var gust = Number(r && (r.gust ?? r.gust_kt));
-    if (isFinite(gust)) out += " G" + Math.round(gust * 1.15078);
-    return out;
-  }
-
-  function metarWindArrow(deg){
-    var d = Number(deg);
-    if (!isFinite(d)) return "•";
-    // METAR direction is FROM; arrow should point TO
-    d = (d + 180) % 360;
-    var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
-    return arrows[Math.round(d / 45) % 8];
-  }
-
-  function metarValidText(r){
-    var raw = r && (r.valid || r.time || r.datetime || r.observed);
-    if (!raw) return "—";
-    var d = new Date(raw);
-    if (isNaN(d)) return String(raw);
-    var hh = d.getHours() % 12 || 12;
-    var mm = String(d.getMinutes()).padStart(2, "0");
-    var ampm = d.getHours() >= 12 ? "PM" : "AM";
-    var month = d.toLocaleString("en-US", { month:"short" });
-    var day = d.getDate();
-    return month + " " + day + " • " + hh + ":" + mm + " " + ampm;
-  }
-
-  function metarBaroText(r){
-    var v = Number(r && r.alti);
-    return isFinite(v) ? v.toFixed(2) + '"' : "—";
-  }
-
   function metarPopupHtml(r){
-    var name = metarStationName(r);
-    var tempChip = '<span style="display:inline-block;padding:5px 11px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 13px/1 Lato,Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:5px 11px;border-radius:999px;background:#d9edf7;color:#122033;font:900 13px/1 Lato,Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
-    var validTxt = metarValidText(r);
-    var windTxt = metarWindText(r);
-    var baroTxt = metarBaroText(r);
-    var windArrow = metarWindArrow(r.drct);
-
-    return '<div class="hrrr-popup" style="min-width:250px;font-family:Lato,Arial,sans-serif;">' +
-      '<div style="font:900 19px/1.05 Lato,Arial,sans-serif;color:#202833;text-shadow:0 1px 0 rgba(255,255,255,.45);margin-bottom:8px;">' + name + '</div>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 0 10px 0">' + tempChip + dewChip + '</div>' +
-      '<div style="font:900 15px/1.15 Lato,Arial,sans-serif;color:#243447;letter-spacing:.2px;margin-bottom:9px;">' + validTxt + '</div>' +
-      '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:800 13px/1.25 Lato,Arial,sans-serif;color:#28384b;">' +
-        '<div style="opacity:.72;">Wind</div><div style="font-weight:900;">' + windArrow + ' ' + windTxt + '</div>' +
-        '<div style="opacity:.72;">Visibility</div><div style="font-weight:900;">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</div>' +
-        '<div style="opacity:.72;">Barometer</div><div style="font-weight:900;">' + baroTxt + '</div>' +
-      '</div>' +
-    '</div>';
+    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \"Lato\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var parts = [];
+    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
+    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
+    parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
+    var windTxt = '—';
+    if (r.drct != null || r.sknt != null){
+      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
+      if (r.gust != null) windTxt += ' G' + String(r.gust);
+    }
+    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
+    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
+    if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
+    return '<div class="hrrr-popup">' + parts.join('') + '</div>';
   }
 
   async function loadMetars(){
@@ -2301,85 +1818,6 @@ function nearestHrrrFrameIndexForTime(d){
     if (z <= 7) return 24;
     if (z <= 8) return 18;
     return 12;
-  }
-
-  var liveMetarMarker = null;
-  var liveMetarTooltip = null;
-
-  function clearLiveMetarProbe(){
-    try{ if (liveMetarTooltip) map.removeLayer(liveMetarTooltip); }catch(e){}
-    try{ if (liveMetarMarker) map.removeLayer(liveMetarMarker); }catch(e){}
-    liveMetarMarker = null;
-    liveMetarTooltip = null;
-  }
-
-  function nearestMetarStation(latlng){
-    if (!latlng || !Array.isArray(metarData) || !metarData.length) return null;
-    var best = null, bestD = Infinity;
-    for (var i=0; i<metarData.length; i++){
-      var r = metarData[i];
-      var lat = Number(r && r.lat), lon = Number(r && r.lon);
-      if (!isFinite(lat) || !isFinite(lon)) continue;
-      var d = map.distance(latlng, L.latLng(lat, lon));
-      if (d < bestD){ bestD = d; best = r; }
-    }
-    return best;
-  }
-
-  function updateLiveMetarProbe(latlng){
-    if (!latlng || !metarVisible || document.body.classList.contains("draw-active") || document.body.classList.contains("measure-active")) {
-      clearLiveMetarProbe();
-      return;
-    }
-    var best = nearestMetarStation(latlng);
-    if (!best) { clearLiveMetarProbe(); return; }
-
-    var lat = Number(best.lat), lon = Number(best.lon);
-    if (!isFinite(lat) || !isFinite(lon)) { clearLiveMetarProbe(); return; }
-
-    if (!liveMetarMarker){
-      liveMetarMarker = L.circleMarker([lat, lon], {
-        radius: 8,
-        color: "rgba(255,255,255,0.96)",
-        weight: 2,
-        fillColor: "rgba(30,136,229,0.98)",
-        fillOpacity: 0.98,
-        interactive: false
-      }).addTo(map);
-    } else {
-      liveMetarMarker.setLatLng([lat, lon]);
-    }
-
-    var hoverHtml =
-      '<div style="font-family:Lato,Arial,sans-serif;min-width:180px;text-align:left;">' +
-        '<div style="font:900 16px/1.05 Lato,Arial,sans-serif;color:#202833;margin-bottom:6px;">' + metarStationName(best) + '</div>' +
-        '<div style="font:900 13px/1.2 Lato,Arial,sans-serif;color:#243447;margin-bottom:4px;">' + ((best.tmpf ?? "—")) + '°F / ' + ((best.dwpf ?? "—")) + '°F</div>' +
-        '<div style="font:800 12px/1.2 Lato,Arial,sans-serif;color:#30465d;">' + metarWindArrow(best.drct) + ' ' + metarWindText(best) + '</div>' +
-      '</div>';
-
-    if (!liveMetarTooltip){
-      liveMetarTooltip = L.tooltip({
-        permanent: false,
-        sticky: true,
-        direction: "top",
-        offset: [0, -12],
-        opacity: 1,
-        className: "hrrr-popup"
-      })
-      .setLatLng([lat, lon])
-      .setContent(hoverHtml)
-      .addTo(map);
-    } else {
-      liveMetarTooltip.setLatLng([lat, lon]);
-      liveMetarTooltip.setContent(hoverHtml);
-      if (!map.hasLayer(liveMetarTooltip)) liveMetarTooltip.addTo(map);
-    }
-  }
-
-  function updateMetarsForTime(d){
-    // Placeholder for future time-sequenced METAR datasets.
-    // For now, keep the currently loaded METAR snapshot and just refresh display if visible.
-    if (metarVisible) refreshMetarLayer();
   }
 
   function buildMetarLayer(){
@@ -2434,30 +1872,129 @@ function nearestHrrrFrameIndexForTime(d){
     if (metarLayer) metarLayer.addTo(map);
   }
 
-  async function setMetarsEnabled(on){
+  
+  var METAR_HOUR_PRESETS = [
+    { label:'7 AM', file:'metars/metars_20220512_1200Z.json', time:'2022-05-12T12:00:00Z' },
+    { label:'1 PM', file:'metars/metars_20220512_1800Z.json', time:'2022-05-12T18:00:00Z' },
+    { label:'5 PM', file:'metars/metars_20220512_2200Z.json', time:'2022-05-12T22:00:00Z' }
+  ];
+  var currentMetarPresetIndex = 0;
+
+  function ensureMetarPresetControls(){
+    var box = document.getElementById('metarPresetControls');
+    if (box) return box;
+
+    box = document.createElement('div');
+    box.id = 'metarPresetControls';
+    box.style.position = 'absolute';
+    box.style.left = '146px';
+    box.style.bottom = '58px';
+    box.style.zIndex = '100010';
+    box.style.display = 'none';
+    box.style.background = 'rgba(11,28,45,0.94)';
+    box.style.border = '1px solid rgba(255,255,255,0.18)';
+    box.style.borderRadius = '14px';
+    box.style.padding = '8px 10px';
+    box.style.boxShadow = '0 10px 26px rgba(0,0,0,.28)';
+    box.style.color = '#fff';
+    box.style.fontFamily = 'Arial,sans-serif';
+    box.innerHTML =
+      '<button id="metarPresetPrev" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">◀ METAR</button>' +
+      '<span id="metarPresetLabel" style="display:inline-block;min-width:94px;text-align:center;font:900 12px/1 Arial,sans-serif;letter-spacing:.4px;padding:0 10px;">7 AM</span>' +
+      '<button id="metarPresetNext" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">METAR ▶</button>';
+
+    (document.body || document.documentElement).appendChild(box);
+
+    var prev = document.getElementById('metarPresetPrev');
+    var next = document.getElementById('metarPresetNext');
+    if (prev) prev.onclick = function(){ stepMetarPreset(-1); };
+    if (next) next.onclick = function(){ stepMetarPreset(1); };
+
+    return box;
+  }
+
+  function updateMetarPresetControls(){
+    var box = ensureMetarPresetControls();
+    var visible = !!metarVisible;
+    box.style.display = visible ? '' : 'none';
+
+    var label = document.getElementById('metarPresetLabel');
+    var prev = document.getElementById('metarPresetPrev');
+    var next = document.getElementById('metarPresetNext');
+    if (label) label.textContent = METAR_HOUR_PRESETS[currentMetarPresetIndex].label;
+    if (prev) prev.disabled = currentMetarPresetIndex <= 0;
+    if (next) next.disabled = currentMetarPresetIndex >= METAR_HOUR_PRESETS.length - 1;
+
+    var scrub = document.getElementById('cbScrubber');
+    var sweep = document.getElementById('sweepToggleBtn');
+    if (scrub){
+      scrub.style.opacity = visible ? '0.35' : '1';
+      scrub.style.pointerEvents = visible ? 'none' : 'auto';
+    }
+    if (sweep){
+      sweep.style.opacity = visible ? '0.35' : '1';
+      sweep.style.pointerEvents = visible ? 'none' : 'auto';
+    }
+  }
+
+  async function loadMetarPreset(index){
+    index = Math.max(0, Math.min(METAR_HOUR_PRESETS.length - 1, index|0));
+    currentMetarPresetIndex = index;
+    var preset = METAR_HOUR_PRESETS[currentMetarPresetIndex];
+    var url = _isAbsUrl(preset.file) ? preset.file : _joinUrl(DATA_BASE, preset.file);
+    setStatus('Loading METARs ' + preset.label + '…');
+    var rows = await fetch(url, { cache:'no-store' }).then(function(r){
+      if (!r.ok) throw new Error('METAR HTTP ' + r.status + ' :: ' + url);
+      return r.json();
+    });
+    metarData = Array.isArray(rows) ? rows : [];
+    metarLoadPromise = null;
+    curZ = new Date(preset.time);
+    if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
+    metarLayer = buildMetarLayer();
+    if (metarVisible && metarLayer) metarLayer.addTo(map);
+    updateMetarPresetControls();
+    try{ updateProductLabel(); }catch(e){}
+    try{ setTimeLabel(); }catch(e){}
+    setStatus('METARs ' + preset.label);
+    return metarData;
+  }
+
+  function stepMetarPreset(delta){
+    if (!metarVisible) return false;
+    loadMetarPreset(currentMetarPresetIndex + delta).catch(function(err){
+      console.error(err);
+      setStatus('METAR preset failed');
+    });
+    return true;
+  }
+
+async function setMetarsEnabled(on){
     var want = !!on;
     if (want){
       try{
         metarVisible = true;
         window.metarVisible = metarVisible;
-        if (!metarLayer){
-          if (!metarData.length) await loadMetars();
-          metarLayer = buildMetarLayer();
-        }
-        refreshMetarLayer();
-        requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
+        ensureMetarPresetControls();
+        await loadMetarPreset(currentMetarPresetIndex || 0);
+        requestAnimationFrame(function(){
+          if (!metarVisible) return;
+          try{ refreshMetarLayer(); }catch(e){}
+          try{ updateMetarPresetControls(); }catch(e){}
+        });
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
         window.metarVisible = metarVisible;
+        try{ updateMetarPresetControls(); }catch(e){}
         setStatus('METARs failed to load');
         console.error(err);
       }
     } else {
       if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
-      try{ clearLiveMetarProbe(); }catch(e){}
       metarVisible = false;
       window.metarVisible = metarVisible;
+      try{ updateMetarPresetControls(); }catch(e){}
       setStatus('METARs off');
     }
     try{ updateProductLabel(); }catch(e){}
@@ -2469,7 +2006,10 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   map.on('zoomend moveend', function(){
-    if (metarVisible) refreshMetarLayer();
+    if (metarVisible) {
+      refreshMetarLayer();
+      try{ updateMetarPresetControls(); }catch(e){}
+    }
   });
   window.toggleMetars = toggleMetars;
   window.setMetarsEnabled = setMetarsEnabled;
@@ -2627,13 +2167,7 @@ function nearestHrrrFrameIndexForTime(d){
       var tRaw = f.time || f.valid || f.utc || f.datetime || f.ts || null;
       var t = tRaw ? new Date(tRaw) : null;
       var timeMs = (t && !isNaN(t)) ? t.getTime() : NaN;
-      frames.push({
-        file:file,
-        label:f.label || f.name || ('F' + String(i).padStart(2,'0')),
-        time:tRaw || null,
-        timeMs:timeMs,
-        pixelData: f.pixelData || f.pixelJson || f.queryFile || f.dataFile || null
-      });
+      frames.push({ file:file, label:f.label || f.name || ('F' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs });
     });
     return frames;
   }
@@ -2684,47 +2218,6 @@ function nearestHrrrFrameIndexForTime(d){
     if (!frame) return null;
     return _isAbsUrl(frame.file) ? frame.file : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), frame.file);
   }
-  function hrrrPixelUrl(frame){
-    if (!frame) return null;
-    var p = frame.pixelData || null;
-    if (!p && frame.file){
-      var m = String(frame.file).match(/_F(\d+)\.(png|jpg|jpeg|webp)$/i);
-      if (m) p = '2_meter_temperature_sioux_falls_pixel_data_F' + m[1] + '.json';
-    }
-    if (!p && frame.label){
-      var m2 = String(frame.label).match(/F(\d+)/i);
-      if (m2) p = '2_meter_temperature_sioux_falls_pixel_data_F' + m2[1].padStart(2,'0') + '.json';
-    }
-    return p ? (_isAbsUrl(p) ? p : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), p)) : null;
-  }
-  var hrrrPointLoadToken = 0;
-  async function loadHrrrPointsForFrame(frame){
-    var token = ++hrrrPointLoadToken;
-    hrrrPoints = [];
-    window.hrrrPoints = hrrrPoints;
-    var purl = hrrrPixelUrl(frame);
-    if (!purl) return;
-    try{
-      var r = await fetch(purl, { cache:'no-store' });
-      if (!r.ok) throw new Error('HRRR pixel JSON HTTP ' + r.status + ': ' + purl);
-      var raw = await r.json();
-      if (token !== hrrrPointLoadToken) return;
-      if (!Array.isArray(raw)) throw new Error('HRRR pixel JSON is not an array');
-      hrrrPoints = raw.map(function(row){
-        var lat = Number(row.lat ?? row.latitude);
-        var lon = Number(row.lon ?? row.longitude);
-        var tf = Number(row.tF ?? row.temperature_f ?? row['2_meter_temperature'] ?? row.value);
-        if (!isFinite(lat) || !isFinite(lon) || !isFinite(tf)) return null;
-        return { lat: lat, lon: lon, tF: tf };
-      }).filter(Boolean);
-      window.hrrrPoints = hrrrPoints;
-    }catch(err){
-      if (token !== hrrrPointLoadToken) return;
-      console.warn('HRRR pixel query load failed:', err);
-      hrrrPoints = [];
-      window.hrrrPoints = hrrrPoints;
-    }
-  }
   function updateHrrrOverlay(){
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
@@ -2744,7 +2237,6 @@ function nearestHrrrFrameIndexForTime(d){
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
-      loadHrrrPointsForFrame(frame);
       applyActiveOpacity();
       setStatus('HRRR Temp: ' + (frame.label || url));
       try{ updateProductLabel(); }catch(e){}
@@ -2760,9 +2252,6 @@ function nearestHrrrFrameIndexForTime(d){
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      hrrrPoints = [];
-      window.hrrrPoints = hrrrPoints;
-      try{ clearLiveProbe(); }catch(e){}
       setStatus('HRRR Temp off');
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
@@ -2939,6 +2428,15 @@ function updateAlerts(){
       }
       setStatus("Alerts missing: " + url);
     });
+  }).then(function(gj){
+      alertsLayer.clearLayers();
+      alertsLayer.addData(gj);
+      alertsLayer.addTo(map);
+      setStatus("Alerts: " + url);
+    }).catch(function(err){
+      alertsLayer.clearLayers();
+      setStatus("Alerts missing: " + url);
+    });
   }
 
   function updateAll(){
@@ -2948,15 +2446,8 @@ function updateAlerts(){
     updateRadar();
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
-    if (typeof updateGoes === "function" && goesEnabled){
-      if (!goesAnimTimer && goesFrames && goesFrames.length){
-        setCurrentGoesFrameIndex(findNearestGoesFrameIndexForTime(curZ));
-      }
-      updateGoes();
-    }
     updateHrrrOverlay();
     updateAlerts();
-    if (typeof updateMetarsForTime === "function") updateMetarsForTime(curZ);
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -2971,14 +2462,6 @@ function updateAlerts(){
     var mode = getActiveScrubberMode();
     if (mode === 'radar'){
       if (stepRadarFrame(delta)) return true;
-    } else if (mode === 'goes'){
-      if (goesFrames && goesFrames.length){
-        setCurrentGoesFrameIndex((currentGoesFrameIndex|0) + delta);
-        updateGoes();
-        setTimeLabel();
-        updateProductLabel();
-        return true;
-      }
     } else if (mode === 'hrrr'){
       var idx = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(idx + delta);
@@ -2987,11 +2470,13 @@ function updateAlerts(){
     }
     return false;
   }
-  window.stepActiveScrubber = stepActiveScrubber;
 
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
   if (_back) _back.onclick = function(){
+    if (typeof metarVisible !== 'undefined' && metarVisible){
+      if (stepMetarPreset(-1)) return;
+    }
     if (stepActiveScrubber(-1)) return;
     curZ = new Date(curZ.getTime() - STEP_MS);
     clampTime(); updateAll();
@@ -2999,6 +2484,9 @@ function updateAlerts(){
   var _fwd = document.getElementById('cbFwdBtn') || document.getElementById('bFwdBtn');
   if (_fwd) _fwd.title = "Forward " + STEP_LABEL;
   if (_fwd) _fwd.onclick = function(){
+    if (typeof metarVisible !== 'undefined' && metarVisible){
+      if (stepMetarPreset(1)) return;
+    }
     if (stepActiveScrubber(1)) return;
     curZ = new Date(curZ.getTime() + STEP_MS);
     clampTime(); updateAll();
@@ -3022,13 +2510,6 @@ function updateAlerts(){
         setCurrentHrrrFrameIndex(v);
         setTimeLabel();
         updateHrrrOverlay();
-        updateProductLabel();
-        return;
-      }
-      if (mode === 'goes'){
-        setCurrentGoesFrameIndex(v);
-        setTimeLabel();
-        updateGoes();
         updateProductLabel();
         return;
       }
@@ -3483,7 +2964,6 @@ function updateAlerts(){
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
-    dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
@@ -3518,23 +2998,12 @@ function updateAlerts(){
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
-      return;
-    }
-    if (action === 'satellite'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
-      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(!window.goesEnabled);
       return;
     }
     if (action === 'spc'){
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
       return;
@@ -3542,7 +3011,6 @@ function updateAlerts(){
     if (action === 'hrrr-temp'){
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
@@ -3558,17 +3026,7 @@ function updateAlerts(){
     }
   }
 
-
   chips.forEach(function(chip){
-    var action = chip.getAttribute('data-action');
-    if (action === 'satellite'){
-      chip.disabled = false;
-      chip.removeAttribute('disabled');
-      chip.classList.remove('disabled');
-      chip.style.pointerEvents = 'auto';
-      chip.style.opacity = '1';
-      chip.style.filter = 'none';
-    }
     chip.addEventListener('click', async function(ev){
       ev.preventDefault();
       try { await activateAction(chip.getAttribute('data-action')); }
@@ -3637,7 +3095,6 @@ function updateAlerts(){
 
     wrapAsync('setRadarEnabled');
     wrapAsync('setMetarsEnabled');
-    wrapAsync('setGoesEnabled');
     wrapAsync('setHrrrTempEnabled');
     wrapAsync('setSpcDay1Enabled');
 
