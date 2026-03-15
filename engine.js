@@ -2542,10 +2542,19 @@ function nearestHrrrFrameIndexForTime(d){
 
         // Load timeline and snap master clock to nearest METAR hour
         await loadMetarManifest();
-        if (metarTimeline && metarTimeline.length){
-          var idx = findNearestMetarIndexForTime(curZ);
-          setCurrentMetarIndex(idx);
-          var entry = metarTimeline[idx];
+        var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+        if (mt.length){
+          var idx = 0;
+          var bestDelta = Infinity;
+          var target = curZ.getTime();
+          for (var i=0; i<mt.length; i++){
+            var tt = Date.parse((mt[i] && (mt[i].time || mt[i].utc || mt[i].valid)) || '');
+            if (!isFinite(tt)) continue;
+            var dd = Math.abs(tt - target);
+            if (dd < bestDelta){ bestDelta = dd; idx = i; }
+          }
+          if (typeof setCurrentMetarIndex === 'function') setCurrentMetarIndex(idx);
+          var entry = mt[idx];
           var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
           if (isFinite(t)) curZ = new Date(t);
         }
