@@ -489,18 +489,18 @@ async function loadJetForTimeKey(key){
   }
 
   var options = Object.assign({
-    displayValues: true,
+    displayValues: false,
     displayOptions: {
       velocityType: '500mb Jet Stream',
       position: 'bottomleft',
       emptyString: 'No jet data'
     },
     maxVelocity: 80,
-    velocityScale: 0.005,
-    particleAge: 60,
-    lineWidth: 1.2,
-    particleMultiplier: 250,
-    frameRate: 20
+    velocityScale: 0.0035,
+    particleAge: 40,
+    lineWidth: 1.0,
+    particleMultiplier: 60,
+    frameRate: 12
   }, (cfg.particleOptions || {}));
 
   removeJetLayer();
@@ -524,6 +524,9 @@ function syncJetParticlesToClock(force){
     if (jetLayer && map && map.hasLayer && !map.hasLayer(jetLayer)) jetLayer.addTo(map);
     return;
   }
+  if (!force && currentJetTimeKey !== null){
+    return;
+  }
   if (jetPendingKey === key) return;
   jetPendingKey = key;
   loadJetForTimeKey(key).catch(function(err){
@@ -545,6 +548,7 @@ async function setJetEnabled(on){
     return;
   }
   try{
+    currentJetTimeKey = null;
     syncJetParticlesToClock(true);
     setStatus('Jet on');
   } catch(err){
