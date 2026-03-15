@@ -1242,6 +1242,212 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   setGoesBounds(GOES_DEFAULT_BOUNDS);
   if (goesEnabled) updateGoes();
 };
+
+// ---- SATELLITE / GOES manifest-driven overlay ----
+var goesEnabled = false;
+var goesOverlay = null;
+var goesManifest = null;
+var goesFrames = [];
+var currentGoesFrameIndex = 0;
+var goesAnimTimer = null;
+var goesFitMode = false;
+var goesFitClicks = [];
+var GOES_STORAGE_KEY = 'satellite_truecolor_bounds';
+var GOES_DEFAULT_BOUNDS = [[40.0, -99.5], [45.8, -89.0]];
+var GOES_BOUNDS = GOES_DEFAULT_BOUNDS;
+
+window.goesEnabled = goesEnabled;
+window.goesOverlay = goesOverlay;
+
+function getSatelliteManifestUrl(){
+  try{
+    if (CFG && CFG.satellite){
+      var u = CFG.satellite.manifest || CFG.satellite.url || CFG.satellite.file;
+      if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+    }
+  }catch(e){}
+  return _joinUrl(DATA_BASE, 'satellite/truecolor/manifest.json');
+}
+function parseSatelliteFrames(raw){
+  var arr = [];
+  var src = (raw && Array.isArray(raw.frames)) ? raw.frames : [];
+  for (var i=0;i<src.length;i++){
+    var f = src[i] || {};
+    var file = f.file || f.filename || f.name || f.png || f.jpg || f.image || null;
+    if (!file) continue;
+    arr.push({
+      file: file,
+      time: f.time || f.utc || f.valid || f.timestamp || null,
+      label: f.label || null
+    });
+  }
+  return arr;
+}
+function loadBoundsFromStorage(key){
+  try{
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    var b = JSON.parse(raw);
+    if (Array.isArray(b) && b.length === 2) return b;
+  }catch(e){}
+  return null;
+}
+function saveBoundsToStorage(bounds){
+  try{
+    localStorage.setItem(GOES_STORAGE_KEY, JSON.stringify(bounds));
+    GOES_BOUNDS = bounds;
+  }catch(e){}
+}
+function setGoesBounds(bounds){
+  if (Array.isArray(bounds) && bounds.length === 2){
+    GOES_BOUNDS = bounds;
+  }
+}
+async function loadGoesManifest(){
+  if (goesManifest && goesFrames.length) return goesManifest;
+  var url = getSatelliteManifestUrl();
+  var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+  if (!res.ok) throw new Error('Satellite manifest HTTP ' + res.status + ': ' + url);
+  goesManifest = await res.json();
+  goesFrames = parseSatelliteFrames(goesManifest);
+  window.__GOES_FRAMES__ = goesFrames;
+  if (goesManifest && goesManifest.savedBoundsKey) GOES_STORAGE_KEY = String(goesManifest.savedBoundsKey);
+  var saved = loadBoundsFromStorage(GOES_STORAGE_KEY);
+  if (saved) {
+    GOES_BOUNDS = saved;
+  } else if (Array.isArray(goesManifest.leaflet_bounds) && goesManifest.leaflet_bounds.length === 2) {
+    GOES_BOUNDS = goesManifest.leaflet_bounds;
+  } else if (Array.isArray(goesManifest.bounds) && goesManifest.bounds.length === 2) {
+    GOES_BOUNDS = goesManifest.bounds;
+  }
+  return goesManifest;
+}
+function getCurrentGoesFrame(){
+  if (!goesFrames || !goesFrames.length) return null;
+  return goesFrames[Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0))];
+}
+function goesFrameUrl(frame){
+  if (!frame) return null;
+  var f = frame.file;
+  if (!f) return null;
+  return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, 'satellite/truecolor/' + String(f).replace(/^\.?\/?/, ''));
+}
+function updateGoesFrameLabel(frame){
+  var el = document.getElementById('goesFrameLabel');
+  if (!el) return;
+  if (!frame) { el.textContent = '—'; return; }
+  el.textContent = frame.label || frame.time || frame.file || 'Frame';
+}
+function showGoesControls(show){
+  var el = document.getElementById('goesControls');
+  if (el) el.style.display = show ? '' : 'none';
+}
+function stopGoesAnim(){
+  if (goesAnimTimer){ clearInterval(goesAnimTimer); goesAnimTimer = null; }
+}
+function playGoesAnim(ms){
+  stopGoesAnim();
+  if (!goesFrames || goesFrames.length < 2) return;
+  goesAnimTimer = setInterval(function(){
+    currentGoesFrameIndex = (currentGoesFrameIndex + 1) % goesFrames.length;
+    var f = getCurrentGoesFrame();
+    if (f && f.time) curZ = new Date(f.time);
+    updateGoes();
+    try{ syncScrubberToActiveProduct(); }catch(e){}
+    try{ setTimeLabel(); }catch(e){}
+  }, Math.max(150, ms || 400));
+}
+function enableGoesFitMode(on){
+  goesFitMode = !!on;
+  goesFitClicks = [];
+  var btn = document.getElementById('goesFitBtn');
+  if (btn) btn.textContent = goesFitMode ? 'Click SW / NE' : 'Fit';
+  setStatus(goesFitMode ? 'Satellite fit: click SW corner, then NE corner' : 'Satellite fit off');
+}
+function updateGoes(){
+  if (!goesEnabled){
+    stopGoesAnim();
+    showGoesControls(false);
+    if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+    goesOverlay = null;
+    window.goesOverlay = goesOverlay;
+    return;
+  }
+  showGoesControls(true);
+  var frame = getCurrentGoesFrame();
+  updateGoesFrameLabel(frame);
+  var url = goesFrameUrl(frame);
+  if (!url){
+    setStatus('Satellite missing frame URL');
+    return;
+  }
+  var img = new Image();
+  img.onload = function(){
+    try{
+      if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+    }catch(e){}
+    var op = productOpacity.goes || 0.70;
+    goesOverlay = L.imageOverlay(url, GOES_BOUNDS, { opacity: op, interactive:false });
+    goesOverlay.addTo(map);
+    window.goesOverlay = goesOverlay;
+    applyActiveOpacity();
+    setStatus('Satellite: ' + url);
+  };
+  img.onerror = function(){
+    setStatus('Satellite missing: ' + url);
+  };
+  img.src = url;
+}
+async function setGoesEnabled(on){
+  goesEnabled = !!on;
+  window.goesEnabled = goesEnabled;
+  if (goesEnabled){
+    try{
+      await loadGoesManifest();
+      if (!goesFrames.length) throw new Error('No satellite frames in manifest');
+      var frame = getCurrentGoesFrame();
+      if (frame && frame.time) curZ = new Date(frame.time);
+      updateGoes();
+      syncScrubberToActiveProduct();
+      setStatus('Satellite on');
+    }catch(err){
+      goesEnabled = false;
+      window.goesEnabled = false;
+      console.error(err);
+      setStatus('Satellite failed');
+    }
+  } else {
+    stopGoesAnim();
+    showGoesControls(false);
+    if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+    goesOverlay = null;
+    window.goesOverlay = goesOverlay;
+    setStatus('Satellite off');
+  }
+  try{ updateProductLabel(); }catch(e){}
+  try{ setTimeLabel(); }catch(e){}
+}
+window.setGoesEnabled = setGoesEnabled;
+
+map.on('click', function(e){
+  if (!goesFitMode || !e || !e.latlng) return;
+  goesFitClicks.push([e.latlng.lat, e.latlng.lng]);
+  if (goesFitClicks.length < 2){
+    setStatus('Satellite fit: now click NE corner');
+    return;
+  }
+  var sw = goesFitClicks[0], ne = goesFitClicks[1];
+  var south = Math.min(sw[0], ne[0]), north = Math.max(sw[0], ne[0]);
+  var west = Math.min(sw[1], ne[1]), east = Math.max(sw[1], ne[1]);
+  GOES_BOUNDS = [[south, west],[north, east]];
+  goesFitClicks = [];
+  enableGoesFitMode(false);
+  updateGoes();
+});
+
+map.on('zoomend moveend', function(){
+  if (goesEnabled && goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
+});
 // Story UI buttons
 
   
@@ -1699,6 +1905,7 @@ function nearestHrrrFrameIndexForTime(d){
 
   function getActiveScrubberMode(){
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
+    if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -1713,6 +1920,9 @@ function nearestHrrrFrameIndexForTime(d){
       if (mode === 'hrrr'){
         scrub.max = String(Math.max(0, hrrrFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
+      } else if (mode === 'goes'){
+        scrub.max = String(Math.max(0, goesFrames.length - 1));
+        scrub.value = String(Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0)));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -2334,6 +2544,7 @@ function updateAlerts(){
     updateRadar();
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
+    if (typeof updateGoes === "function" && goesEnabled) updateGoes();
     updateHrrrOverlay();
     updateAlerts();
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
@@ -2350,6 +2561,14 @@ function updateAlerts(){
     var mode = getActiveScrubberMode();
     if (mode === 'radar'){
       if (stepRadarFrame(delta)) return true;
+    } else if (mode === 'goes'){
+      if (goesFrames && goesFrames.length){
+        currentGoesFrameIndex = Math.max(0, Math.min(goesFrames.length - 1, (currentGoesFrameIndex|0) + delta));
+        var gf = getCurrentGoesFrame();
+        if (gf && gf.time) curZ = new Date(gf.time);
+        updateGoes();
+        return true;
+      }
     } else if (mode === 'hrrr'){
       var idx = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(idx + delta);
@@ -2815,196 +3034,6 @@ function updateAlerts(){
 })();
 
 
-
-/* ---- satellite / truecolor support ---- */
-(function(){
-  var cfg = (window.__LESSON_CFG__ && window.__LESSON_CFG__.satellite) ? window.__LESSON_CFG__.satellite : null;
-  var goesControlsEl = document.getElementById('goesControls');
-  var goesFrameLabel = document.getElementById('goesFrameLabel');
-
-  window.goesEnabled = false;
-  window.goesFitMode = false;
-  window.goesOverlay = null;
-  window.goesFrames = [];
-  window.currentGoesFrameIndex = 0;
-  window.goesAnimTimer = null;
-  window.GOES_DEFAULT_BOUNDS = [[40.0, -99.5], [45.8, -89.0]];
-  window.GOES_BOUNDS = (function(){
-    try{
-      var key = ((cfg && cfg.savedBoundsKey) || 'satellite_truecolor_bounds');
-      var raw = localStorage.getItem(key);
-      var parsed = raw ? JSON.parse(raw) : null;
-      return (Array.isArray(parsed) && parsed.length === 2) ? parsed : [[40.0, -99.5], [45.8, -89.0]];
-    }catch(e){
-      return [[40.0, -99.5], [45.8, -89.0]];
-    }
-  })();
-  window.GOES_STORAGE_KEY = ((cfg && cfg.savedBoundsKey) || 'satellite_truecolor_bounds');
-  var goesFitClicks = [];
-
-  function satelliteBaseUrl(){
-    var base = (window.__LESSON_CFG__ && window.__LESSON_CFG__.dataBase) ? window.__LESSON_CFG__.dataBase : '';
-    if (!base) return '';
-    return /\/$/.test(base) ? base : (base + '/');
-  }
-
-  function satelliteManifestUrl(){
-    if (!cfg || !cfg.manifest) return '';
-    var base = satelliteBaseUrl();
-    return cfg.manifest.match(/^https?:\/\//) ? cfg.manifest : (base + cfg.manifest);
-  }
-
-  async function loadGoesManifest(){
-    if (!cfg || !cfg.enabled) throw new Error('Satellite not enabled in lesson.json');
-    if (window.goesFrames && window.goesFrames.length) return window.goesFrames;
-    var url = satelliteManifestUrl();
-    if (!url) throw new Error('Satellite manifest path missing');
-    var res = await fetch(url, {cache:'no-store'});
-    if (!res.ok) throw new Error('Satellite manifest HTTP ' + res.status + ': ' + url);
-    var data = await res.json();
-    var frames = Array.isArray(data.frames) ? data.frames : [];
-    if (!frames.length) throw new Error('Satellite manifest has no frames');
-    var frameDir = url.replace(/[^\/]+$/, '');
-    window.GOES_STORAGE_KEY = data.savedBoundsKey || window.GOES_STORAGE_KEY;
-    try{
-      var saved = localStorage.getItem(window.GOES_STORAGE_KEY);
-      var parsed = saved ? JSON.parse(saved) : null;
-      if (Array.isArray(parsed) && parsed.length === 2){
-        window.GOES_BOUNDS = parsed;
-      }
-    }catch(e){}
-    window.goesFrames = frames.map(function(fr){
-      var file = fr.file || fr.url || '';
-      var t = fr.time || fr.ts || '';
-      var url2 = file.match(/^https?:\/\//) ? file : (frameDir + file);
-      return {time: t, file: file, url: url2};
-    });
-    return window.goesFrames;
-  }
-
-  function setGoesBounds(bounds){
-    if (!Array.isArray(bounds) || bounds.length !== 2) return;
-    window.GOES_BOUNDS = bounds;
-    if (window.goesOverlay && window.goesOverlay.setBounds) {
-      window.goesOverlay.setBounds(bounds);
-    }
-  }
-  window.setGoesBounds = setGoesBounds;
-
-  function saveBoundsToStorage(bounds){
-    try{
-      localStorage.setItem(window.GOES_STORAGE_KEY, JSON.stringify(bounds || window.GOES_BOUNDS));
-    }catch(e){}
-  }
-  window.saveBoundsToStorage = saveBoundsToStorage;
-
-  function updateGoesFrameLabel(){
-    if (!goesFrameLabel) return;
-    var fr = window.goesFrames[window.currentGoesFrameIndex];
-    goesFrameLabel.textContent = fr && fr.time ? fr.time.replace('T',' ').replace('Z',' UTC') : '—';
-  }
-
-  function updateGoes(){
-    if (!window.goesEnabled) {
-      if (window.goesOverlay && window.map && map.hasLayer(window.goesOverlay)) map.removeLayer(window.goesOverlay);
-      if (goesControlsEl) goesControlsEl.style.display = 'none';
-      updateGoesFrameLabel();
-      return;
-    }
-    if (!window.goesFrames.length) return;
-    var fr = window.goesFrames[Math.max(0, Math.min(window.currentGoesFrameIndex, window.goesFrames.length - 1))];
-    if (window.goesOverlay && window.map && map.hasLayer(window.goesOverlay)) map.removeLayer(window.goesOverlay);
-    window.goesOverlay = L.imageOverlay(fr.url, window.GOES_BOUNDS, {opacity:(window.productOpacity && window.productOpacity.goes) || 0.7, interactive:false});
-    window.goesOverlay.addTo(map);
-    if (goesControlsEl) goesControlsEl.style.display = '';
-    updateGoesFrameLabel();
-    try{ updateProductLabel(); }catch(e){}
-    try{ syncOpacitySliderToActive(); }catch(e){}
-    try{ setTimeLabel(); }catch(e){}
-  }
-  window.updateGoes = updateGoes;
-
-  function stopGoesAnim(){
-    if (window.goesAnimTimer) { clearInterval(window.goesAnimTimer); window.goesAnimTimer = null; }
-  }
-  window.stopGoesAnim = stopGoesAnim;
-
-  function playGoesAnim(ms){
-    stopGoesAnim();
-    window.goesAnimTimer = setInterval(function(){
-      if (!window.goesEnabled || !window.goesFrames.length) return;
-      window.currentGoesFrameIndex = (window.currentGoesFrameIndex + 1) % window.goesFrames.length;
-      updateGoes();
-    }, ms || 400);
-  }
-  window.playGoesAnim = playGoesAnim;
-
-  function enableGoesFitMode(on){
-    window.goesFitMode = !!on;
-    goesFitClicks = [];
-    if (!window.map) return;
-    map.getContainer().style.cursor = on ? 'crosshair' : '';
-  }
-  window.enableGoesFitMode = enableGoesFitMode;
-
-  if (window.map) {
-    map.on('click', function(ev){
-      if (!window.goesFitMode) return;
-      goesFitClicks.push([ev.latlng.lat, ev.latlng.lng]);
-      if (goesFitClicks.length < 2) return;
-      var a = goesFitClicks[0], b = goesFitClicks[1];
-      var bounds = [
-        [Math.min(a[0], b[0]), Math.min(a[1], b[1])],
-        [Math.max(a[0], b[0]), Math.max(a[1], b[1])]
-      ];
-      setGoesBounds(bounds);
-      updateGoes();
-      goesFitClicks = [];
-      enableGoesFitMode(false);
-    });
-  }
-
-  async function setGoesEnabled(on){
-    if (!cfg || !cfg.enabled){
-      setStatus('Satellite not enabled in lesson config');
-      return;
-    }
-    window.goesEnabled = !!on;
-    if (!window.goesEnabled){
-      stopGoesAnim();
-      updateGoes();
-      try{ refreshDockStates(); }catch(e){}
-      return;
-    }
-    try{
-      await loadGoesManifest();
-      window.currentGoesFrameIndex = 0;
-      updateGoes();
-      setStatus('Satellite on');
-    }catch(err){
-      window.goesEnabled = false;
-      console.error(err);
-      setStatus('Satellite failed');
-    }
-    try{ refreshDockStates(); }catch(e){}
-  }
-  window.setGoesEnabled = setGoesEnabled;
-
-  function enableSatelliteChipIfConfigured(){
-    var chip = document.querySelector('.inv-chip[data-action="satellite"]');
-    if (!chip) return;
-    if (cfg && cfg.enabled){
-      chip.removeAttribute('disabled');
-      chip.textContent = 'SATELLITE';
-      chip.style.opacity = '';
-      chip.style.cursor = 'pointer';
-    }
-  }
-
-  enableSatelliteChipIfConfigured();
-})();
-
-
 /* ---- extracted inline script 10 ---- */
 (function(){
   var dock = document.getElementById('investigationDock');
@@ -3036,9 +3065,9 @@ function updateAlerts(){
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
+    dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
-    dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
   }
@@ -3087,6 +3116,7 @@ function updateAlerts(){
     if (action === 'spc'){
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
       return;
@@ -3094,6 +3124,7 @@ function updateAlerts(){
     if (action === 'hrrr-temp'){
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
@@ -3109,7 +3140,17 @@ function updateAlerts(){
     }
   }
 
+
   chips.forEach(function(chip){
+    var action = chip.getAttribute('data-action');
+    if (action === 'satellite'){
+      var satOn = !!(CFG && CFG.satellite && CFG.satellite.enabled);
+      if (satOn){
+        chip.disabled = false;
+        chip.removeAttribute('disabled');
+        chip.classList.remove('disabled');
+      }
+    }
     chip.addEventListener('click', async function(ev){
       ev.preventDefault();
       try { await activateAction(chip.getAttribute('data-action')); }
@@ -3178,6 +3219,7 @@ function updateAlerts(){
 
     wrapAsync('setRadarEnabled');
     wrapAsync('setMetarsEnabled');
+    wrapAsync('setGoesEnabled');
     wrapAsync('setHrrrTempEnabled');
     wrapAsync('setSpcDay1Enabled');
 
