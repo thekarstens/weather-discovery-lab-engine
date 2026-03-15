@@ -1236,10 +1236,15 @@ if (goesFitBtn) goesFitBtn.onclick = function(){
 if (goesSaveBtn) goesSaveBtn.onclick = function(){
   saveBoundsToStorage(GOES_BOUNDS);
   stopGoesAnim(); // optional, keeps kids from moving it while saving
+  try{
+    console.log('SATELLITE_BOUNDS_FOR_MANIFEST', JSON.stringify(GOES_BOUNDS));
+  }catch(e){}
+  setStatus('Satellite bounds saved. Copy console value into manifest leaflet_bounds.');
 };
 if (goesResetBtn) goesResetBtn.onclick = function(){
   try{ localStorage.removeItem(GOES_STORAGE_KEY); }catch(e){}
   setGoesBounds(GOES_DEFAULT_BOUNDS);
+  updateGoesFitVisuals();
   if (goesEnabled) updateGoes();
 };
 
@@ -1255,6 +1260,10 @@ var goesFitClicks = [];
 var GOES_STORAGE_KEY = 'satellite_truecolor_bounds';
 var GOES_DEFAULT_BOUNDS = [[40.0, -99.5], [45.8, -89.0]];
 var GOES_BOUNDS = GOES_DEFAULT_BOUNDS;
+var goesFitLayer = null;
+var goesFitRect = null;
+var goesSwHandle = null;
+var goesNeHandle = null;
 
 window.goesEnabled = goesEnabled;
 window.goesOverlay = goesOverlay;
@@ -1300,7 +1309,7 @@ function saveBoundsToStorage(bounds){
 }
 function setGoesBounds(bounds){
   if (Array.isArray(bounds) && bounds.length === 2){
-    GOES_BOUNDS = bounds;
+    GOES_BOUNDS = normalizeGoesBounds(bounds);
   }
 }
 async function loadGoesManifest(){
@@ -1357,17 +1366,92 @@ function playGoesAnim(ms){
     try{ setTimeLabel(); }catch(e){}
   }, Math.max(150, ms || 400));
 }
+
+function normalizeGoesBounds(bounds){
+  var sw = bounds && bounds[0] ? bounds[0] : [40.0, -99.5];
+  var ne = bounds && bounds[1] ? bounds[1] : [45.8, -89.0];
+  var south = Math.min(Number(sw[0]), Number(ne[0]));
+  var north = Math.max(Number(sw[0]), Number(ne[0]));
+  var west = Math.min(Number(sw[1]), Number(ne[1]));
+  var east = Math.max(Number(sw[1]), Number(ne[1]));
+  return [[south, west], [north, east]];
+}
+function makeFitHandle(latlng, cls){
+  return L.marker(latlng, {
+    draggable: true,
+    keyboard: false,
+    icon: L.divIcon({
+      className: '',
+      html: '<div class="' + cls + '" style="width:18px;height:18px;border-radius:50%;background:#fdd835;border:3px solid #0b1c2d;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>',
+      iconSize: [18,18],
+      iconAnchor: [9,9]
+    })
+  });
+}
+function updateGoesFitVisuals(){
+  GOES_BOUNDS = normalizeGoesBounds(GOES_BOUNDS);
+  if (!goesFitMode) return;
+  if (!goesFitLayer){
+    goesFitLayer = L.layerGroup().addTo(map);
+  }
+  var sw = GOES_BOUNDS[0], ne = GOES_BOUNDS[1];
+  if (!goesFitRect){
+    goesFitRect = L.rectangle(GOES_BOUNDS, {
+      color:'#fdd835', weight:2, opacity:0.95, fill:false, dashArray:'6 6'
+    }).addTo(goesFitLayer);
+  } else {
+    goesFitRect.setBounds(GOES_BOUNDS);
+  }
+  if (!goesSwHandle){
+    goesSwHandle = makeFitHandle(sw, 'goes-fit-handle sw');
+    goesSwHandle.addTo(goesFitLayer);
+    goesSwHandle.on('drag', function(e){
+      var ll = e.target.getLatLng();
+      GOES_BOUNDS = normalizeGoesBounds([[ll.lat, ll.lng], GOES_BOUNDS[1]]);
+      if (goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
+      updateGoesFitVisuals();
+    });
+  } else {
+    goesSwHandle.setLatLng(sw);
+  }
+  if (!goesNeHandle){
+    goesNeHandle = makeFitHandle(ne, 'goes-fit-handle ne');
+    goesNeHandle.addTo(goesFitLayer);
+    goesNeHandle.on('drag', function(e){
+      var ll = e.target.getLatLng();
+      GOES_BOUNDS = normalizeGoesBounds([GOES_BOUNDS[0], [ll.lat, ll.lng]]);
+      if (goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
+      updateGoesFitVisuals();
+    });
+  } else {
+    goesNeHandle.setLatLng(ne);
+  }
+}
+function clearGoesFitVisuals(){
+  try{ if (goesFitLayer) map.removeLayer(goesFitLayer); }catch(e){}
+  goesFitLayer = null;
+  goesFitRect = null;
+  goesSwHandle = null;
+  goesNeHandle = null;
+}
 function enableGoesFitMode(on){
   goesFitMode = !!on;
   goesFitClicks = [];
   var btn = document.getElementById('goesFitBtn');
-  if (btn) btn.textContent = goesFitMode ? 'Click SW / NE' : 'Fit';
-  setStatus(goesFitMode ? 'Satellite fit: click SW corner, then NE corner' : 'Satellite fit off');
+  if (btn) btn.textContent = goesFitMode ? 'Drag corners' : 'Fit';
+  if (goesFitMode){
+    updateGoesFitVisuals();
+    setStatus('Satellite fit: drag the yellow SW and NE handles, then click Save');
+  } else {
+    clearGoesFitVisuals();
+    setStatus('Satellite fit off');
+  }
 }
 function updateGoes(){
   if (!goesEnabled){
     stopGoesAnim();
     showGoesControls(false);
+    clearGoesFitVisuals();
     if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
     goesOverlay = null;
     window.goesOverlay = goesOverlay;
@@ -1390,6 +1474,7 @@ function updateGoes(){
     goesOverlay = L.imageOverlay(url, GOES_BOUNDS, { opacity: op, interactive:false });
     goesOverlay.addTo(map);
     window.goesOverlay = goesOverlay;
+    if (goesFitMode) updateGoesFitVisuals();
     applyActiveOpacity();
     setStatus('Satellite: ' + url);
   };
@@ -1431,22 +1516,21 @@ window.setGoesEnabled = setGoesEnabled;
 
 map.on('click', function(e){
   if (!goesFitMode || !e || !e.latlng) return;
+  if (goesSwHandle || goesNeHandle) return; // using draggable handles now
   goesFitClicks.push([e.latlng.lat, e.latlng.lng]);
   if (goesFitClicks.length < 2){
     setStatus('Satellite fit: now click NE corner');
     return;
   }
-  var sw = goesFitClicks[0], ne = goesFitClicks[1];
-  var south = Math.min(sw[0], ne[0]), north = Math.max(sw[0], ne[0]);
-  var west = Math.min(sw[1], ne[1]), east = Math.max(sw[1], ne[1]);
-  GOES_BOUNDS = [[south, west],[north, east]];
+  GOES_BOUNDS = normalizeGoesBounds([goesFitClicks[0], goesFitClicks[1]]);
   goesFitClicks = [];
-  enableGoesFitMode(false);
+  updateGoesFitVisuals();
   updateGoes();
 });
 
 map.on('zoomend moveend', function(){
   if (goesEnabled && goesOverlay && goesOverlay.setBounds) goesOverlay.setBounds(GOES_BOUNDS);
+  if (goesFitMode) updateGoesFitVisuals();
 });
 // Story UI buttons
 
