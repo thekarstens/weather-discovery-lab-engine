@@ -2385,15 +2385,6 @@ function updateAlerts(){
       }
       setStatus("Alerts missing: " + url);
     });
-  }).then(function(gj){
-      alertsLayer.clearLayers();
-      alertsLayer.addData(gj);
-      alertsLayer.addTo(map);
-      setStatus("Alerts: " + url);
-    }).catch(function(err){
-      alertsLayer.clearLayers();
-      setStatus("Alerts missing: " + url);
-    });
   }
 
   function updateAll(){
