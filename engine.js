@@ -1813,6 +1813,14 @@ map.on('zoomend moveend', function(){
   });
   var metarData = [];
   var metarLoadPromise = null;
+  var metarManifest = null;
+  var metarManifestPromise = null;
+  var metarTimeline = [];
+  var currentMetarIndex = 0;
+  var currentMetarFile = null;
+  var currentMetarTime = null;
+  window.currentMetarIndex = 0;
+  window.__METAR_TIMELINE__ = metarTimeline;
 
   function stopRadarSweep(){
     if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
@@ -2323,6 +2331,8 @@ function nearestHrrrFrameIndexForTime(d){
       return r.json();
     }).then(function(raw){
       metarManifest = raw || {};
+      metarTimeline = Array.isArray(metarManifest.hours) ? metarManifest.hours.slice() : [];
+      window.__METAR_TIMELINE__ = metarTimeline;
       return metarManifest;
     }).catch(function(err){
       metarManifestPromise = null;
