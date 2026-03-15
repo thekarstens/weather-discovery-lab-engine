@@ -389,12 +389,51 @@ window.createMetarsModule = function(opts){
       try{
         metarVisible = true;
         syncWindowState();
-        if (!metarLayer){
-          if (!metarData.length) await loadMetarsForTime(curZ);
-          metarLayer = buildMetarLayer();
+
+        // DESIGN B: always start METAR mode at the first manifest hour/file
+        await loadMetarManifest();
+        if (metarTimeline && metarTimeline.length){
+          setCurrentMetarIndex(0);
+          var entry = metarTimeline[0];
+          var t = metarEntryTime(entry);
+          if (isFinite(t)){
+            try{
+              if (typeof window.setCurrentTime === "function"){
+                window.setCurrentTime(new Date(t));
+              } else {
+                curZ = new Date(t);
+                window.curZ = curZ;
+              }
+            }catch(e){
+              try{
+                curZ = new Date(t);
+                window.curZ = curZ;
+              }catch(_){}
+            }
+          }
         }
+
+        if (typeof window.forcedScrubberMode !== "undefined"){
+          window.forcedScrubberMode = "metars";
+        }
+
+        if (metarTimeline && metarTimeline.length){
+          await loadMetarsForTime(new Date(metarEntryTime(metarTimeline[0])));
+        } else {
+          await loadMetarsForTime(curZ);
+        }
+
+        if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
+        metarLayer = buildMetarLayer();
         refreshMetarLayer();
         requestAnimationFrame(function(){ if (metarVisible) refreshMetarLayer(); });
+
+        try{
+          if (typeof window.syncScrubberToActiveProduct === "function"){
+            window.syncScrubberToActiveProduct();
+          }
+        }catch(e){}
+
         setStatus('METARs on');
       }catch(err){
         metarVisible = false;
