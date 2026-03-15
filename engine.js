@@ -2113,9 +2113,9 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
+    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
     if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
-    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -3084,9 +3084,11 @@ function updateAlerts(){
         var entry = mt[nextIdx];
         var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
         if (isFinite(t)) curZ = new Date(t);
-        stepMetarTime(delta);
-        setTimeLabel();
-        updateProductLabel();
+        Promise.resolve(stepMetarTime(delta)).then(function(){
+          try{ syncScrubberToActiveProduct(); }catch(e){}
+          try{ setTimeLabel(); }catch(e){}
+          try{ updateProductLabel(); }catch(e){}
+        });
         return true;
       }
     } else if (mode === 'hrrr'){
