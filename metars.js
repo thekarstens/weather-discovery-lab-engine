@@ -26,6 +26,104 @@ window.createMetarsModule = function(opts){
     window.metarVisible = metarVisible;
   }
 
+  var STATION_NAMES = {
+    KFSD:"Sioux Falls", KSUX:"Sioux City", KOMA:"Omaha", KDSM:"Des Moines", KRST:"Rochester",
+    KHON:"Huron", KPIR:"Pierre", KABR:"Aberdeen", KBKX:"Brookings", KYKN:"Yankton",
+    KMKT:"Mankato", KMSP:"Minneapolis", KRWF:"Redwood Falls", KOTG:"Worthington",
+    KSPW:"Spencer", KSLB:"Storm Lake", KALO:"Waterloo", KMCW:"Mason City", KICL:"Clarinda",
+    KOFK:"Norfolk", KLNK:"Lincoln", KGRI:"Grand Island", KEAR:"Kearney", KATY:"Watertown",
+    KMBG:"Mobridge", KPHP:"Philip", KRAP:"Rapid City", KCPR:"Casper", KDDC:"Dodge City",
+    KGLD:"Goodland", CKP:"Cherokee"
+  };
+
+  function metarStationName(r){
+    var id = String(r && (r.id || r.station || r.stid || '') || '').toUpperCase();
+    return (r && (r.city || r.name)) || STATION_NAMES[id] || id || "Station";
+  }
+
+  function metarWindDirText(deg){
+    var d = Number(deg);
+    if (!isFinite(d)) return "";
+    var dirs = ["N","NE","E","SE","S","SW","W","NW"];
+    return dirs[Math.round(d / 45) % 8];
+  }
+
+  function metarWindText(r){
+    var spd = Number(r && (r.sknt ?? r.wind_speed_kt));
+    if (!isFinite(spd)) return "—";
+    var mph = Math.round(spd * 1.15078);
+    var dir = metarWindDirText(r && r.drct);
+    var out = (dir ? dir + " " : "") + mph + " mph";
+    var gust = Number(r && (r.gust ?? r.gust_kt));
+    if (isFinite(gust)) out += " G" + Math.round(gust * 1.15078);
+    return out;
+  }
+
+  function metarWindArrow(deg){
+    var d = Number(deg);
+    if (!isFinite(d)) return "•";
+    var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
+    return arrows[Math.round(d / 45) % 8];
+  }
+
+  function metarValidText(r){
+    var raw = r && (r.valid || r.time || r.datetime || r.observed);
+    if (!raw) return "—";
+    var d = new Date(raw);
+    if (isNaN(d)) return String(raw);
+    var hh = d.getHours() % 12 || 12;
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    var ampm = d.getHours() >= 12 ? "PM" : "AM";
+    var month = d.toLocaleString("en-US", { month:"short" });
+    var day = d.getDate();
+    return month + " " + day + " • " + hh + ":" + mm + " " + ampm;
+  }
+
+  function metarBaroText(r){
+    var v = Number(r && r.alti);
+    return isFinite(v) ? v.toFixed(2) + '"' : "—";
+  }
+
+  function metarWindBarbSvg(r){
+    var dir = Number(r && r.drct);
+    var spd = Number(r && (r.sknt ?? r.wind_speed_kt));
+    if (!isFinite(dir) || !isFinite(spd)) return '';
+    var feathers = '';
+    var y = 20;
+    var knots = Math.round(spd / 5) * 5;
+    while (knots >= 10){
+      feathers += '<line x1="20" y1="' + y + '" x2="30" y2="' + (y+5) + '" stroke="#122033" stroke-width="2" stroke-linecap="round"/>';
+      y -= 5;
+      knots -= 10;
+    }
+    if (knots >= 5){
+      feathers += '<line x1="20" y1="' + y + '" x2="26" y2="' + (y+3) + '" stroke="#122033" stroke-width="2" stroke-linecap="round"/>';
+    }
+    return '<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true" style="transform:rotate(' + dir + 'deg)">' +
+      '<line x1="17" y1="28" x2="17" y2="6" stroke="#122033" stroke-width="2.4" stroke-linecap="round"/>' +
+      feathers + '</svg>';
+  }
+
+  var metarAnimTimer = null;
+  function stopMetarAnimation(){
+    if (metarAnimTimer){
+      clearInterval(metarAnimTimer);
+      metarAnimTimer = null;
+    }
+  }
+  function playMetarAnimation(ms){
+    stopMetarAnimation();
+    metarAnimTimer = setInterval(function(){
+      try{
+        if (window.stepActiveScrubber) {
+          window.stepActiveScrubber(1);
+        } else if (window.clickIf) {
+          window.clickIf('cbFwdBtn');
+        }
+      }catch(e){}
+    }, Math.max(400, ms || 1200));
+  }
+
   function getMetarUrl(){
     try{
       if (!CFG || !CFG.metars) return null;
@@ -61,22 +159,28 @@ window.createMetarsModule = function(opts){
   }
 
   function metarPopupHtml(r){
-    var tempChip = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 12px/1 \\"Lato\\",Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
-    var dewChip  = '<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#d9edf7;color:#122033;font:900 12px/1 \\"Lato\\",Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
-    var parts = [];
-    parts.push('<div class="hrrr-popup-title">' + (r.id || 'METAR') + '</div>');
-    parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0">' + tempChip + dewChip + '</div>');
-    parts.push('<div class="hrrr-popup-row"><span>Valid</span><span class="hrrr-popup-value">' + (r.valid || '—') + '</span></div>');
-    var windTxt = '—';
-    if (r.drct != null || r.sknt != null){
-      windTxt = (r.drct != null ? String(r.drct) + '° ' : '') + (r.sknt != null ? String(r.sknt) + ' kt' : '');
-      if (r.gust != null) windTxt += ' G' + String(r.gust);
-    }
-    parts.push('<div class="hrrr-popup-row"><span>Wind</span><span class="hrrr-popup-value">' + windTxt + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Visibility</span><span class="hrrr-popup-value">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</span></div>');
-    parts.push('<div class="hrrr-popup-row"><span>Altimeter</span><span class="hrrr-popup-value">' + (r.alti != null ? r.alti : '—') + '</span></div>');
-    if (r.wxcodes) parts.push('<div class="hrrr-popup-row"><span>Weather</span><span class="hrrr-popup-value">' + r.wxcodes + '</span></div>');
-    return '<div class="hrrr-popup">' + parts.join('') + '</div>';
+    var name = metarStationName(r);
+    var tempChip = '<span style="display:inline-block;padding:5px 11px;border-radius:999px;background:' + metarTempColorF(r.tmpf) + ';color:#122033;font:900 13px/1 Lato,Arial,sans-serif;border:1px solid rgba(0,0,0,.18)">Temp ' + ((r.tmpf ?? '—')) + '°F</span>';
+    var dewChip  = '<span style="display:inline-block;padding:5px 11px;border-radius:999px;background:#d9edf7;color:#122033;font:900 13px/1 Lato,Arial,sans-serif;border:1px solid rgba(0,0,0,.12)">Dew ' + ((r.dwpf ?? '—')) + '°F</span>';
+    var validTxt = metarValidText(r);
+    var windTxt = metarWindText(r);
+    var baroTxt = metarBaroText(r);
+    var windArrow = metarWindArrow(r.drct);
+    var windBarb = metarWindBarbSvg(r);
+
+    return '<div class="hrrr-popup" style="min-width:250px;font-family:Lato,Arial,sans-serif;">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">' +
+        '<div style="font:900 19px/1.05 Lato,Arial,sans-serif;color:#202833;text-shadow:0 1px 0 rgba(255,255,255,.45);">' + name + '</div>' +
+        '<div style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:rgba(255,255,255,.65);border:1px solid rgba(0,0,0,.10);">' + windBarb + '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px 0">' + tempChip + dewChip + '</div>' +
+      '<div style="font:900 14px/1.15 Lato,Arial,sans-serif;color:#243447;letter-spacing:.2px;margin-bottom:8px;">' + validTxt + '</div>' +
+      '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:800 13px/1.25 Lato,Arial,sans-serif;color:#28384b;">' +
+        '<div style="opacity:.72;">Wind</div><div style="font-weight:900;">' + windArrow + ' ' + windTxt + '</div>' +
+        '<div style="opacity:.72;">Visibility</div><div style="font-weight:900;">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</div>' +
+        '<div style="opacity:.72;">Barometer</div><div style="font-weight:900;">' + baroTxt + '</div>' +
+      '</div>' +
+    '</div>';
   }
 
   async function loadMetars(){
@@ -211,6 +315,8 @@ window.createMetarsModule = function(opts){
     setMetarsEnabled:setMetarsEnabled,
     toggleMetars:toggleMetars,
     installMapEvents:installMapEvents,
+    playMetarAnimation:playMetarAnimation,
+    stopMetarAnimation:stopMetarAnimation,
     isVisible:function(){ return metarVisible; },
     getLayer:function(){ return metarLayer; }
   };
