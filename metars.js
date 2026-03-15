@@ -22,9 +22,12 @@ window.createMetarsModule = function(opts){
   var metarLoadPromise = null;
   var metarManifest = null;
   var metarManifestPromise = null;
+  var metarTimeline = [];
+  var currentMetarIndex = 0;
   var currentMetarFile = null;
   var currentMetarTime = null;
   window.metarVisible = false;
+  window.currentMetarIndex = 0;
 
   function syncWindowState(){
     window.metarVisible = metarVisible;
@@ -230,6 +233,8 @@ window.createMetarsModule = function(opts){
       return r.json();
     }).then(function(raw){
       metarManifest = raw || {};
+      metarTimeline = Array.isArray(metarManifest.hours) ? metarManifest.hours.slice() : [];
+      window.__METAR_TIMELINE__ = metarTimeline;
       return metarManifest;
     }).catch(function(err){
       metarManifestPromise = null;
@@ -237,6 +242,10 @@ window.createMetarsModule = function(opts){
       return null;
     });
     return metarManifestPromise;
+  }
+
+  function metarEntryTime(entry){
+    return Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
   }
 
   function findNearestMetarEntryForTime(d){
@@ -255,12 +264,38 @@ window.createMetarsModule = function(opts){
     return best || metarManifest.hours[0] || null;
   }
 
+  function findNearestMetarIndexForTime(d){
+    if (!metarTimeline || !metarTimeline.length) return 0;
+    var target = (d instanceof Date) ? d.getTime() : Date.parse(d);
+    if (!isFinite(target)) return 0;
+    var bestIdx = 0;
+    var bestDelta = Infinity;
+    for (var i=0; i<metarTimeline.length; i++){
+      var t = metarEntryTime(metarTimeline[i]);
+      if (!isFinite(t)) continue;
+      var delta = Math.abs(t - target);
+      if (delta < bestDelta){ bestDelta = delta; bestIdx = i; }
+    }
+    return bestIdx;
+  }
+
+  function setCurrentMetarIndex(idx){
+    if (!metarTimeline || !metarTimeline.length) return;
+    currentMetarIndex = Math.max(0, Math.min(metarTimeline.length - 1, idx|0));
+    window.currentMetarIndex = currentMetarIndex;
+    var entry = metarTimeline[currentMetarIndex];
+    var t = metarEntryTime(entry);
+    if (isFinite(t)) currentMetarTime = new Date(t).toISOString();
+  }
+
   async function loadMetarsForTime(d){
     var manifest = await loadMetarManifest();
     if (!manifest || !Array.isArray(manifest.hours) || !manifest.hours.length){
       return loadMetars();
     }
-    var entry = findNearestMetarEntryForTime(d);
+    var entryIdx = findNearestMetarIndexForTime(d);
+    setCurrentMetarIndex(entryIdx);
+    var entry = metarTimeline[entryIdx] || findNearestMetarEntryForTime(d);
     if (!entry) return loadMetars();
     var rel = entry.file || entry.url || null;
     if (!rel) return loadMetars();
@@ -381,6 +416,17 @@ window.createMetarsModule = function(opts){
     await setMetarsEnabled(!metarVisible);
   }
 
+  async function stepMetarTime(delta){
+    await loadMetarManifest();
+    if (!metarTimeline || !metarTimeline.length) return false;
+    setCurrentMetarIndex((currentMetarIndex|0) + delta);
+    var entry = metarTimeline[currentMetarIndex];
+    var t = metarEntryTime(entry);
+    if (isFinite(t)) await loadMetarsForTime(new Date(t));
+    if (metarVisible) refreshMetarLayer();
+    return true;
+  }
+
   function installMapEvents(){
     map.on('zoomend moveend', function(){
       if (metarVisible) refreshMetarLayer();
@@ -401,6 +447,13 @@ window.createMetarsModule = function(opts){
     installMapEvents:installMapEvents,
     playMetarAnimation:playMetarAnimation,
     stopMetarAnimation:stopMetarAnimation,
+    stepMetarTime:stepMetarTime,
+    loadMetarManifest:loadMetarManifest,
+    loadMetarsForTime:loadMetarsForTime,
+    findNearestMetarIndexForTime:findNearestMetarIndexForTime,
+    setCurrentMetarIndex:setCurrentMetarIndex,
+    getCurrentMetarIndex:function(){ return currentMetarIndex; },
+    getTimeline:function(){ return metarTimeline || []; },
     isVisible:function(){ return metarVisible; },
     getLayer:function(){ return metarLayer; }
   };

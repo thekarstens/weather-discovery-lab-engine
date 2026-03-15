@@ -2107,6 +2107,7 @@ function nearestHrrrFrameIndexForTime(d){
   function getActiveScrubberMode(){
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
     if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
+    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -2124,6 +2125,10 @@ function nearestHrrrFrameIndexForTime(d){
       } else if (mode === 'goes'){
         scrub.max = String(Math.max(0, goesFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0)));
+      } else if (mode === 'metars'){
+        var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+        scrub.max = String(Math.max(0, mt.length - 1));
+        scrub.value = String(Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0))));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -3114,6 +3119,19 @@ function updateAlerts(){
         updateGoes();
         updateProductLabel();
         return;
+      }
+      if (mode === 'metars'){
+        if (typeof setCurrentMetarIndex === 'function' && typeof loadMetarsForTime === 'function'){
+          setCurrentMetarIndex(v);
+          var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+          var entry = mt[Math.max(0, Math.min(mt.length - 1, v|0))];
+          var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
+          if (isFinite(t)) curZ = new Date(t);
+          loadMetarsForTime(curZ).then(function(){ try{ refreshMetarLayer(); }catch(e){} });
+          setTimeLabel();
+          updateProductLabel();
+          return;
+        }
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
       clampTime(); updateAll();
