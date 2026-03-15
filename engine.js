@@ -1230,6 +1230,8 @@ var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
+var forcedScrubberMode = null;
+window.forcedScrubberMode = forcedScrubberMode;
 
 function getActiveProductKey(){
   // Priority: global > snow > temp > radar (matches your product label logic)
@@ -1598,6 +1600,8 @@ async function setGoesEnabled(on){
   goesEnabled = !!on;
   window.goesEnabled = goesEnabled;
   if (goesEnabled){
+    forcedScrubberMode = 'goes';
+    window.forcedScrubberMode = forcedScrubberMode;
     try{
       await loadGoesManifest();
       if (!goesFrames.length) throw new Error('No satellite frames in manifest');
@@ -2113,9 +2117,14 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
+    if (forcedScrubberMode === 'metars' && typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
+    if (forcedScrubberMode === 'hrrr' && hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
+    if (forcedScrubberMode === 'goes' && goesEnabled && goesFrames && goesFrames.length) return 'goes';
+    if (forcedScrubberMode === 'radar' && obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
+
+    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
     if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
-    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
     return 'lesson';
   }
@@ -2539,6 +2548,8 @@ function nearestHrrrFrameIndexForTime(d){
       try{
         metarVisible = true;
         window.metarVisible = metarVisible;
+        forcedScrubberMode = 'metars';
+        window.forcedScrubberMode = forcedScrubberMode;
 
         // Load timeline and snap master clock to nearest METAR hour
         await loadMetarManifest();
@@ -2580,6 +2591,7 @@ function nearestHrrrFrameIndexForTime(d){
       try{ clearLiveMetarProbe(); }catch(e){}
       metarVisible = false;
       window.metarVisible = metarVisible;
+      if (forcedScrubberMode === 'metars') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
       try{ syncScrubberToActiveProduct(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       try{ updateProductLabel(); }catch(e){}
@@ -2684,6 +2696,7 @@ function nearestHrrrFrameIndexForTime(d){
 
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
+    if (obsRadarEnabled) { forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode; }
     window.obsRadarEnabled = obsRadarEnabled;
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
@@ -2880,6 +2893,7 @@ function nearestHrrrFrameIndexForTime(d){
   }
   async function setHrrrTempEnabled(on){
     hrrrTempEnabled = !!on;
+    if (hrrrTempEnabled) { forcedScrubberMode = 'hrrr'; window.forcedScrubberMode = forcedScrubberMode; }
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
@@ -3655,6 +3669,7 @@ function updateAlerts(){
       return;
     }
     if (action === 'radar'){
+      forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
@@ -3663,6 +3678,7 @@ function updateAlerts(){
       return;
     }
     if (action === 'metars'){
+      forcedScrubberMode = 'metars'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
@@ -3671,6 +3687,7 @@ function updateAlerts(){
       return;
     }
     if (action === 'satellite'){
+      forcedScrubberMode = 'goes'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
@@ -3688,6 +3705,7 @@ function updateAlerts(){
       return;
     }
     if (action === 'hrrr-temp'){
+      forcedScrubberMode = 'hrrr'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
