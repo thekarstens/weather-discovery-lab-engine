@@ -1230,8 +1230,6 @@ var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
-var forcedScrubberMode = null;
-window.forcedScrubberMode = forcedScrubberMode;
 
 function getActiveProductKey(){
   // Priority: global > snow > temp > radar (matches your product label logic)
@@ -1600,8 +1598,6 @@ async function setGoesEnabled(on){
   goesEnabled = !!on;
   window.goesEnabled = goesEnabled;
   if (goesEnabled){
-    forcedScrubberMode = 'goes';
-    window.forcedScrubberMode = forcedScrubberMode;
     try{
       await loadGoesManifest();
       if (!goesFrames.length) throw new Error('No satellite frames in manifest');
@@ -1676,12 +1672,11 @@ map.on('zoomend moveend', function(){
   // Keep HRRR temp blobs sized appropriately as you zoom
   map.on("zoomend", updateHrrrTempRadius);
   map.on("mousemove", function(e){
-    if (document.body.classList.contains("probe-active")) updateLiveHrrrProbe(e.latlng);
-    if (typeof updateLiveMetarProbe === "function") updateLiveMetarProbe(e.latlng);
+    if (!document.body.classList.contains("probe-active")) return;
+    updateLiveHrrrProbe(e.latlng);
   });
   map.on("mouseout", function(){
     if (document.body.classList.contains("probe-active")) clearLiveProbe();
-    if (typeof clearLiveMetarProbe === "function") clearLiveMetarProbe();
   });
 
 
@@ -1817,14 +1812,6 @@ map.on('zoomend moveend', function(){
   });
   var metarData = [];
   var metarLoadPromise = null;
-  var metarManifest = null;
-  var metarManifestPromise = null;
-  var metarTimeline = [];
-  var currentMetarIndex = 0;
-  var currentMetarFile = null;
-  var currentMetarTime = null;
-  window.currentMetarIndex = 0;
-  window.__METAR_TIMELINE__ = metarTimeline;
 
   function stopRadarSweep(){
     if (radarSweepAnim){ cancelAnimationFrame(radarSweepAnim); radarSweepAnim = 0; }
@@ -2117,12 +2104,6 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
-    if (forcedScrubberMode === 'metars' && typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
-    if (forcedScrubberMode === 'hrrr' && hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
-    if (forcedScrubberMode === 'goes' && goesEnabled && goesFrames && goesFrames.length) return 'goes';
-    if (forcedScrubberMode === 'radar' && obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
-
-    if (typeof metarVisible !== "undefined" && metarVisible && typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__) && window.__METAR_TIMELINE__.length) return 'metars';
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
     if (goesEnabled && goesFrames && goesFrames.length) return 'goes';
     if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
@@ -2142,11 +2123,6 @@ function nearestHrrrFrameIndexForTime(d){
       } else if (mode === 'goes'){
         scrub.max = String(Math.max(0, goesFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0)));
-      } else if (mode === 'metars'){
-        var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
-        var mIdx = (typeof currentMetarIndex !== 'undefined') ? currentMetarIndex : (window.currentMetarIndex|0);
-        scrub.max = String(Math.max(0, mt.length - 1));
-        scrub.value = String(Math.max(0, Math.min(mt.length - 1, (mIdx|0))));
       } else if (mode === 'radar'){
         scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
         scrub.value = String(currentRadarFrameIndex);
@@ -2186,19 +2162,8 @@ function nearestHrrrFrameIndexForTime(d){
   function getMetarUrl(){
     try{
       if (!CFG || !CFG.metars) return null;
-      var f = CFG.metars.file || CFG.metars.url || CFG.metars.fallbackFile || null;
+      var f = CFG.metars.file || CFG.metars.url || null;
       if (!f && CFG.metars.enabled) f = 'metars/metars.json';
-      if (!f) return null;
-      return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
-    }catch(e){
-      return null;
-    }
-  }
-
-  function getMetarManifestUrl(){
-    try{
-      if (!CFG || !CFG.metars) return null;
-      var f = CFG.metars.manifest || CFG.metars.manifestFile || null;
       if (!f) return null;
       return _isAbsUrl(f) ? f : _joinUrl(DATA_BASE, f);
     }catch(e){
@@ -2264,8 +2229,6 @@ function nearestHrrrFrameIndexForTime(d){
   function metarWindArrow(deg){
     var d = Number(deg);
     if (!isFinite(d)) return "•";
-    // METAR direction is FROM; arrow should point TO
-    d = (d + 180) % 360;
     var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
     return arrows[Math.round(d / 45) % 8];
   }
@@ -2319,82 +2282,11 @@ function nearestHrrrFrameIndexForTime(d){
       return r.json();
     }).then(function(rows){
       metarData = Array.isArray(rows) ? rows : [];
-      currentMetarFile = url;
-      currentMetarTime = null;
       setStatus('METARs loaded: ' + metarData.length + ' stations');
       return metarData;
     }).catch(function(err){
       metarLoadPromise = null;
       setStatus('METAR load failed');
-      throw err;
-    });
-    return metarLoadPromise;
-  }
-
-  async function loadMetarManifest(){
-    if (metarManifest) return metarManifest;
-    if (metarManifestPromise) return metarManifestPromise;
-    var url = getMetarManifestUrl();
-    if (!url) return null;
-    metarManifestPromise = fetch(url, { cache:'no-store' }).then(function(r){
-      if (!r.ok) throw new Error('METAR manifest HTTP ' + r.status + ' :: ' + url);
-      return r.json();
-    }).then(function(raw){
-      metarManifest = raw || {};
-      metarTimeline = Array.isArray(metarManifest.hours) ? metarManifest.hours.slice() : [];
-      window.__METAR_TIMELINE__ = metarTimeline;
-      return metarManifest;
-    }).catch(function(err){
-      metarManifestPromise = null;
-      console.warn('METAR manifest load failed', err);
-      return null;
-    });
-    return metarManifestPromise;
-  }
-
-  function findNearestMetarEntryForTime(d){
-    if (!metarManifest || !Array.isArray(metarManifest.hours) || !metarManifest.hours.length) return null;
-    var target = (d instanceof Date) ? d.getTime() : Date.parse(d);
-    if (!isFinite(target)) return metarManifest.hours[0] || null;
-    var best = null;
-    var bestDelta = Infinity;
-    for (var i=0; i<metarManifest.hours.length; i++){
-      var h = metarManifest.hours[i] || {};
-      var t = Date.parse(h.time || h.utc || h.valid || '');
-      if (!isFinite(t)) continue;
-      var delta = Math.abs(t - target);
-      if (delta < bestDelta){ bestDelta = delta; best = h; }
-    }
-    return best || metarManifest.hours[0] || null;
-  }
-
-  async function loadMetarsForTime(d){
-    var manifest = await loadMetarManifest();
-    if (!manifest || !Array.isArray(manifest.hours) || !manifest.hours.length){
-      return loadMetars();
-    }
-    var entry = findNearestMetarEntryForTime(d);
-    if (!entry) return loadMetars();
-    var rel = entry.file || entry.url || null;
-    if (!rel) return loadMetars();
-    var url = _isAbsUrl(rel) ? rel : _joinUrl(_joinUrl(DATA_BASE, 'metars/'), rel);
-    if (currentMetarFile === url && Array.isArray(metarData) && metarData.length){
-      currentMetarTime = entry.time || entry.utc || entry.valid || null;
-      return metarData;
-    }
-    setStatus('Loading METARs ' + (entry.time || '') + '…');
-    metarLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
-      if (!r.ok) throw new Error('METAR HTTP ' + r.status + ' :: ' + url);
-      return r.json();
-    }).then(function(rows){
-      metarData = Array.isArray(rows) ? rows : [];
-      currentMetarFile = url;
-      currentMetarTime = entry.time || entry.utc || entry.valid || null;
-      setStatus('METARs loaded: ' + metarData.length + ' stations');
-      return metarData;
-    }).catch(function(err){
-      metarLoadPromise = null;
-      console.warn('Timed METAR load failed', err);
       throw err;
     });
     return metarLoadPromise;
@@ -2406,88 +2298,6 @@ function nearestHrrrFrameIndexForTime(d){
     if (z <= 7) return 24;
     if (z <= 8) return 18;
     return 12;
-  }
-
-  var liveMetarMarker = null;
-  var liveMetarTooltip = null;
-
-  function clearLiveMetarProbe(){
-    try{ if (liveMetarTooltip) map.removeLayer(liveMetarTooltip); }catch(e){}
-    try{ if (liveMetarMarker) map.removeLayer(liveMetarMarker); }catch(e){}
-    liveMetarMarker = null;
-    liveMetarTooltip = null;
-  }
-
-  function nearestMetarStation(latlng){
-    if (!latlng || !Array.isArray(metarData) || !metarData.length) return null;
-    var best = null, bestD = Infinity;
-    for (var i=0; i<metarData.length; i++){
-      var r = metarData[i];
-      var lat = Number(r && r.lat), lon = Number(r && r.lon);
-      if (!isFinite(lat) || !isFinite(lon)) continue;
-      var d = map.distance(latlng, L.latLng(lat, lon));
-      if (d < bestD){ bestD = d; best = r; }
-    }
-    return best;
-  }
-
-  function updateLiveMetarProbe(latlng){
-    if (!latlng || !metarVisible || document.body.classList.contains("draw-active") || document.body.classList.contains("measure-active")) {
-      clearLiveMetarProbe();
-      return;
-    }
-    var best = nearestMetarStation(latlng);
-    if (!best) { clearLiveMetarProbe(); return; }
-
-    var lat = Number(best.lat), lon = Number(best.lon);
-    if (!isFinite(lat) || !isFinite(lon)) { clearLiveMetarProbe(); return; }
-
-    if (!liveMetarMarker){
-      liveMetarMarker = L.circleMarker([lat, lon], {
-        radius: 8,
-        color: "rgba(255,255,255,0.96)",
-        weight: 2,
-        fillColor: "rgba(30,136,229,0.98)",
-        fillOpacity: 0.98,
-        interactive: false
-      }).addTo(map);
-    } else {
-      liveMetarMarker.setLatLng([lat, lon]);
-    }
-
-    var hoverHtml =
-      '<div style="font-family:Lato,Arial,sans-serif;min-width:180px;text-align:left;">' +
-        '<div style="font:900 16px/1.05 Lato,Arial,sans-serif;color:#202833;margin-bottom:6px;">' + metarStationName(best) + '</div>' +
-        '<div style="font:900 13px/1.2 Lato,Arial,sans-serif;color:#243447;margin-bottom:4px;">' + ((best.tmpf ?? "—")) + '°F / ' + ((best.dwpf ?? "—")) + '°F</div>' +
-        '<div style="font:800 12px/1.2 Lato,Arial,sans-serif;color:#30465d;">' + metarWindArrow(best.drct) + ' ' + metarWindText(best) + '</div>' +
-      '</div>';
-
-    if (!liveMetarTooltip){
-      liveMetarTooltip = L.tooltip({
-        permanent: false,
-        sticky: true,
-        direction: "top",
-        offset: [0, -12],
-        opacity: 1,
-        className: "hrrr-popup"
-      })
-      .setLatLng([lat, lon])
-      .setContent(hoverHtml)
-      .addTo(map);
-    } else {
-      liveMetarTooltip.setLatLng([lat, lon]);
-      liveMetarTooltip.setContent(hoverHtml);
-      if (!map.hasLayer(liveMetarTooltip)) liveMetarTooltip.addTo(map);
-    }
-  }
-
-  function updateMetarsForTime(d){
-    if (!metarVisible) return;
-    loadMetarsForTime(d).then(function(){
-      refreshMetarLayer();
-    }).catch(function(err){
-      console.warn('updateMetarsForTime failed', err);
-    });
   }
 
   function buildMetarLayer(){
@@ -2542,7 +2352,84 @@ function nearestHrrrFrameIndexForTime(d){
     if (metarLayer) metarLayer.addTo(map);
   }
 
-  async function setMetarsEnabled(on){
+  
+function formatMetarDockLabel(entry){
+  var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
+  if (!isFinite(t)) return 'METAR HOUR';
+  var d = new Date(t);
+  var hh = d.getHours() % 12 || 12;
+  var ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+  return d.toLocaleString('en-US', { month:'short' }) + ' ' + d.getDate() + ' ' + hh + ':00 ' + ampm;
+}
+
+function ensureMetarDockControls(){
+  var box = document.getElementById('metarDockControls');
+  if (box) return box;
+
+  box = document.createElement('div');
+  box.id = 'metarDockControls';
+  box.style.position = 'absolute';
+  box.style.left = '150px';
+  box.style.bottom = '66px';
+  box.style.zIndex = '100010';
+  box.style.display = 'none';
+  box.style.background = 'rgba(11,28,45,0.94)';
+  box.style.border = '1px solid rgba(255,255,255,0.18)';
+  box.style.borderRadius = '14px';
+  box.style.padding = '8px 10px';
+  box.style.boxShadow = '0 10px 26px rgba(0,0,0,.28)';
+  box.style.color = '#fff';
+  box.style.fontFamily = 'Arial,sans-serif';
+  box.innerHTML =
+    '<button id="metDockPrev" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">◀ METAR</button>' +
+    '<span id="metDockLabel" style="display:inline-block;min-width:150px;text-align:center;font:900 12px/1 Arial,sans-serif;letter-spacing:.4px;padding:0 10px;">METAR HOUR</span>' +
+    '<button id="metDockNext" type="button" style="border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);color:#fff;padding:8px 10px;border-radius:12px;font:900 12px/1 Arial,sans-serif;cursor:pointer;">METAR ▶</button>';
+
+  (document.body || document.documentElement).appendChild(box);
+
+  var prev = document.getElementById('metDockPrev');
+  var next = document.getElementById('metDockNext');
+
+  if (prev) prev.onclick = async function(){
+    if (!metarVisible || typeof stepMetarTime !== 'function') return;
+    await stepMetarTime(-1);
+    updateMetarDockControls();
+  };
+  if (next) next.onclick = async function(){
+    if (!metarVisible || typeof stepMetarTime !== 'function') return;
+    await stepMetarTime(1);
+    updateMetarDockControls();
+  };
+
+  return box;
+}
+
+function updateMetarDockControls(){
+  var box = ensureMetarDockControls();
+  if (!box) return;
+  box.style.display = (typeof metarVisible !== 'undefined' && metarVisible) ? '' : 'none';
+
+  var label = document.getElementById('metDockLabel');
+  var prev = document.getElementById('metDockPrev');
+  var next = document.getElementById('metDockNext');
+  var scrub = document.getElementById('cbScrubber');
+  var sweep = document.getElementById('sweepToggleBtn');
+
+  var mt = (typeof window.__METAR_TIMELINE__ !== 'undefined' && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
+  var idx = Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0)));
+  var entry = mt[idx] || null;
+
+  if (label) label.textContent = formatMetarDockLabel(entry);
+  if (prev) prev.disabled = !(mt.length && idx > 0);
+  if (next) next.disabled = !(mt.length && idx < mt.length - 1);
+
+  if (scrub) scrub.style.opacity = (typeof metarVisible !== 'undefined' && metarVisible) ? '0.35' : '1';
+  if (scrub) scrub.style.pointerEvents = (typeof metarVisible !== 'undefined' && metarVisible) ? 'none' : 'auto';
+  if (sweep) sweep.style.opacity = (typeof metarVisible !== 'undefined' && metarVisible) ? '0.35' : '1';
+  if (sweep) sweep.style.pointerEvents = (typeof metarVisible !== 'undefined' && metarVisible) ? 'none' : 'auto';
+}
+
+async function setMetarsEnabled(on){
     var want = !!on;
     if (want){
       try{
@@ -2551,7 +2438,6 @@ function nearestHrrrFrameIndexForTime(d){
         forcedScrubberMode = 'metars';
         window.forcedScrubberMode = forcedScrubberMode;
 
-        // DESIGN B: always start at first METAR manifest hour/file
         await loadMetarManifest();
         var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
         if (mt.length){
@@ -2565,14 +2451,15 @@ function nearestHrrrFrameIndexForTime(d){
         if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
         metarLayer = buildMetarLayer();
         refreshMetarLayer();
+        ensureMetarDockControls();
+        updateMetarDockControls();
 
-        try{ syncScrubberToActiveProduct(); }catch(e){}
         try{ updateProductLabel(); }catch(e){}
         try{ setTimeLabel(); }catch(e){}
 
         requestAnimationFrame(function(){
           if (!metarVisible) return;
-          try{ syncScrubberToActiveProduct(); }catch(e){}
+          try{ updateMetarDockControls(); }catch(e){}
           try{ updateProductLabel(); }catch(e){}
           try{ setTimeLabel(); }catch(e){}
         });
@@ -2581,6 +2468,7 @@ function nearestHrrrFrameIndexForTime(d){
       }catch(err){
         metarVisible = false;
         window.metarVisible = metarVisible;
+        try{ updateMetarDockControls(); }catch(e){}
         setStatus('METARs failed to load');
         console.error(err);
       }
@@ -2590,7 +2478,7 @@ function nearestHrrrFrameIndexForTime(d){
       metarVisible = false;
       window.metarVisible = metarVisible;
       if (forcedScrubberMode === 'metars') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
-      try{ syncScrubberToActiveProduct(); }catch(e){}
+      try{ updateMetarDockControls(); }catch(e){}
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       setStatus('METARs off');
@@ -2694,20 +2582,16 @@ function nearestHrrrFrameIndexForTime(d){
 
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
-    if (obsRadarEnabled) { forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode; }
     window.obsRadarEnabled = obsRadarEnabled;
     if (!obsRadarEnabled){
-      if (forcedScrubberMode === 'radar') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
       hideRadarSweepCanvas();
       if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
-      try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       setStatus('Radar off');
     } else {
       radarSweepEnabled = false;
       syncSweepButton();
       updateRadar();
-      try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       setStatus('Radar on');
     }
@@ -2894,7 +2778,6 @@ function nearestHrrrFrameIndexForTime(d){
   }
   async function setHrrrTempEnabled(on){
     hrrrTempEnabled = !!on;
-    if (hrrrTempEnabled) { forcedScrubberMode = 'hrrr'; window.forcedScrubberMode = forcedScrubberMode; }
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
@@ -3094,7 +2977,6 @@ function updateAlerts(){
     }
     updateHrrrOverlay();
     updateAlerts();
-    if (typeof updateMetarsForTime === "function") updateMetarsForTime(curZ);
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -3117,24 +2999,6 @@ function updateAlerts(){
         updateProductLabel();
         return true;
       }
-    } else if (mode === 'metars'){
-      var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
-      if (mt.length && typeof stepMetarTime === 'function'){
-        forcedScrubberMode = 'metars';
-        window.forcedScrubberMode = forcedScrubberMode;
-        var nextIdx = Math.max(0, Math.min(mt.length - 1, (window.currentMetarIndex|0) + delta));
-        var entry = mt[nextIdx];
-        var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
-        if (isFinite(t)) curZ = new Date(t);
-        Promise.resolve(stepMetarTime(delta)).then(function(){
-          try{ syncScrubberToActiveProduct(); }catch(e){}
-          try{ updateProductLabel(); }catch(e){}
-          try{ setTimeLabel(); }catch(e){}
-        });
-        setTimeLabel();
-        updateProductLabel();
-        return true;
-      }
     } else if (mode === 'hrrr'){
       var idx = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(idx + delta);
@@ -3143,7 +3007,6 @@ function updateAlerts(){
     }
     return false;
   }
-  window.stepActiveScrubber = stepActiveScrubber;
 
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
@@ -3187,26 +3050,6 @@ function updateAlerts(){
         updateGoes();
         updateProductLabel();
         return;
-      }
-      if (mode === 'metars'){
-        if (typeof setCurrentMetarIndex === 'function' && typeof loadMetarsForTime === 'function'){
-          forcedScrubberMode = 'metars';
-          window.forcedScrubberMode = forcedScrubberMode;
-          setCurrentMetarIndex(v);
-          var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
-          var entry = mt[Math.max(0, Math.min(mt.length - 1, v|0))];
-          var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
-          if (isFinite(t)) curZ = new Date(t);
-          loadMetarsForTime(curZ).then(function(){
-            try{ refreshMetarLayer(); }catch(e){}
-            try{ syncScrubberToActiveProduct(); }catch(e){}
-            try{ updateProductLabel(); }catch(e){}
-            try{ setTimeLabel(); }catch(e){}
-          });
-          setTimeLabel();
-          updateProductLabel();
-          return;
-        }
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
       clampTime(); updateAll();
@@ -3683,7 +3526,6 @@ function updateAlerts(){
       return;
     }
     if (action === 'radar'){
-      forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
@@ -3692,7 +3534,6 @@ function updateAlerts(){
       return;
     }
     if (action === 'metars'){
-      forcedScrubberMode = 'metars'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
@@ -3701,7 +3542,6 @@ function updateAlerts(){
       return;
     }
     if (action === 'satellite'){
-      forcedScrubberMode = 'goes'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
@@ -3719,7 +3559,6 @@ function updateAlerts(){
       return;
     }
     if (action === 'hrrr-temp'){
-      forcedScrubberMode = 'hrrr'; window.forcedScrubberMode = forcedScrubberMode;
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setGoesEnabled === 'function') await window.setGoesEnabled(false);
