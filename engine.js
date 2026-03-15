@@ -1230,6 +1230,8 @@ var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
 var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
+var forcedScrubberMode = null;
+window.forcedScrubberMode = forcedScrubberMode;
 
 function getActiveProductKey(){
   // Priority: global > snow > temp > radar (matches your product label logic)
