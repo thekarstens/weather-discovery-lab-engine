@@ -2551,13 +2551,12 @@ function nearestHrrrFrameIndexForTime(d){
         forcedScrubberMode = 'metars';
         window.forcedScrubberMode = forcedScrubberMode;
 
-        // DESIGN B: always start at the FIRST METAR manifest hour/file
+        // DESIGN B: always start at first METAR manifest hour/file
         await loadMetarManifest();
         var mt = (typeof window.__METAR_TIMELINE__ !== "undefined" && Array.isArray(window.__METAR_TIMELINE__)) ? window.__METAR_TIMELINE__ : [];
         if (mt.length){
-          var idx = 0;
-          if (typeof setCurrentMetarIndex === 'function') setCurrentMetarIndex(idx);
-          var entry = mt[idx];
+          if (typeof setCurrentMetarIndex === 'function') setCurrentMetarIndex(0);
+          var entry = mt[0];
           var t = Date.parse((entry && (entry.time || entry.utc || entry.valid)) || '');
           if (isFinite(t)) curZ = new Date(t);
         }
@@ -2566,17 +2565,17 @@ function nearestHrrrFrameIndexForTime(d){
         if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
         metarLayer = buildMetarLayer();
         refreshMetarLayer();
-        requestAnimationFrame(function(){
-          if (!metarVisible) return;
-          try{ refreshMetarLayer(); }catch(e){}
-          try{ syncScrubberToActiveProduct(); }catch(e){}
-          try{ updateProductLabel(); }catch(e){}
-          try{ setTimeLabel(); }catch(e){}
-        });
 
         try{ syncScrubberToActiveProduct(); }catch(e){}
         try{ updateProductLabel(); }catch(e){}
         try{ setTimeLabel(); }catch(e){}
+
+        requestAnimationFrame(function(){
+          if (!metarVisible) return;
+          try{ syncScrubberToActiveProduct(); }catch(e){}
+          try{ updateProductLabel(); }catch(e){}
+          try{ setTimeLabel(); }catch(e){}
+        });
 
         setStatus('METARs on');
       }catch(err){
@@ -2695,16 +2694,10 @@ function nearestHrrrFrameIndexForTime(d){
 
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
-    if (obsRadarEnabled) {
-      forcedScrubberMode = 'radar';
-      window.forcedScrubberMode = forcedScrubberMode;
-    }
+    if (obsRadarEnabled) { forcedScrubberMode = 'radar'; window.forcedScrubberMode = forcedScrubberMode; }
     window.obsRadarEnabled = obsRadarEnabled;
     if (!obsRadarEnabled){
-      if (forcedScrubberMode === 'radar') {
-        forcedScrubberMode = null;
-        window.forcedScrubberMode = forcedScrubberMode;
-      }
+      if (forcedScrubberMode === 'radar') { forcedScrubberMode = null; window.forcedScrubberMode = forcedScrubberMode; }
       hideRadarSweepCanvas();
       if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)) map.removeLayer(obsRadarOverlay);
       try{ updateProductLabel(); }catch(e){}
