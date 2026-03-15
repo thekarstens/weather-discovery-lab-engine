@@ -314,6 +314,14 @@ var gfsSnowOverlay = null;
 function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
+
+  try{
+    if (!map.getPane('goesFitPane')){
+      map.createPane('goesFitPane');
+      map.getPane('goesFitPane').style.zIndex = 1000;
+      map.getPane('goesFitPane').style.pointerEvents = 'auto';
+    }
+  }catch(e){}
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -1376,15 +1384,17 @@ function normalizeGoesBounds(bounds){
   var east = Math.max(Number(sw[1]), Number(ne[1]));
   return [[south, west], [north, east]];
 }
-function makeFitHandle(latlng, cls){
+function makeFitHandle(latlng, cls, label){
   return L.marker(latlng, {
     draggable: true,
     keyboard: false,
+    pane: 'goesFitPane',
+    zIndexOffset: 10000,
     icon: L.divIcon({
-      className: '',
-      html: '<div class="' + cls + '" style="width:18px;height:18px;border-radius:50%;background:#fdd835;border:3px solid #0b1c2d;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>',
-      iconSize: [18,18],
-      iconAnchor: [9,9]
+      className: 'goes-fit-icon',
+      html: '<div class="' + cls + '" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#ffd400;border:3px solid #0b1c2d;box-shadow:0 2px 10px rgba(0,0,0,.45);font:900 10px/1 Arial,sans-serif;color:#0b1c2d;">' + label + '</div>',
+      iconSize: [26,26],
+      iconAnchor: [13,13]
     })
   });
 }
@@ -1397,13 +1407,13 @@ function updateGoesFitVisuals(){
   var sw = GOES_BOUNDS[0], ne = GOES_BOUNDS[1];
   if (!goesFitRect){
     goesFitRect = L.rectangle(GOES_BOUNDS, {
-      color:'#fdd835', weight:2, opacity:0.95, fill:false, dashArray:'6 6'
+      pane:'goesFitPane', color:'#ffd400', weight:3, opacity:1, fill:false, dashArray:'8 6'
     }).addTo(goesFitLayer);
   } else {
     goesFitRect.setBounds(GOES_BOUNDS);
   }
   if (!goesSwHandle){
-    goesSwHandle = makeFitHandle(sw, 'goes-fit-handle sw');
+    goesSwHandle = makeFitHandle(sw, 'goes-fit-handle sw', 'SW');
     goesSwHandle.addTo(goesFitLayer);
     goesSwHandle.on('drag', function(e){
       var ll = e.target.getLatLng();
@@ -1414,8 +1424,9 @@ function updateGoesFitVisuals(){
   } else {
     goesSwHandle.setLatLng(sw);
   }
+  if (goesFitRect && goesFitRect.bringToFront) goesFitRect.bringToFront();
   if (!goesNeHandle){
-    goesNeHandle = makeFitHandle(ne, 'goes-fit-handle ne');
+    goesNeHandle = makeFitHandle(ne, 'goes-fit-handle ne', 'NE');
     goesNeHandle.addTo(goesFitLayer);
     goesNeHandle.on('drag', function(e){
       var ll = e.target.getLatLng();
@@ -1426,6 +1437,8 @@ function updateGoesFitVisuals(){
   } else {
     goesNeHandle.setLatLng(ne);
   }
+  try{ if (goesSwHandle && goesSwHandle._icon) goesSwHandle._icon.style.display='block'; }catch(e){}
+  try{ if (goesNeHandle && goesNeHandle._icon) goesNeHandle._icon.style.display='block'; }catch(e){}
 }
 function clearGoesFitVisuals(){
   try{ if (goesFitLayer) map.removeLayer(goesFitLayer); }catch(e){}
@@ -1494,7 +1507,7 @@ async function setGoesEnabled(on){
       if (frame && frame.time) curZ = new Date(frame.time);
       updateGoes();
       syncScrubberToActiveProduct();
-      setStatus('Satellite on');
+      setStatus('Satellite on. Click Fit to show drag handles.');
     }catch(err){
       goesEnabled = false;
       window.goesEnabled = false;
