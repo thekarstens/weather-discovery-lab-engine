@@ -1672,11 +1672,12 @@ map.on('zoomend moveend', function(){
   // Keep HRRR temp blobs sized appropriately as you zoom
   map.on("zoomend", updateHrrrTempRadius);
   map.on("mousemove", function(e){
-    if (!document.body.classList.contains("probe-active")) return;
-    updateLiveHrrrProbe(e.latlng);
+    if (document.body.classList.contains("probe-active")) updateLiveHrrrProbe(e.latlng);
+    if (typeof updateLiveMetarProbe === "function") updateLiveMetarProbe(e.latlng);
   });
   map.on("mouseout", function(){
     if (document.body.classList.contains("probe-active")) clearLiveProbe();
+    if (typeof clearLiveMetarProbe === "function") clearLiveMetarProbe();
   });
 
 
@@ -2229,6 +2230,8 @@ function nearestHrrrFrameIndexForTime(d){
   function metarWindArrow(deg){
     var d = Number(deg);
     if (!isFinite(d)) return "•";
+    // METAR direction is FROM; arrow should point TO
+    d = (d + 180) % 360;
     var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
     return arrows[Math.round(d / 45) % 8];
   }
@@ -2298,6 +2301,85 @@ function nearestHrrrFrameIndexForTime(d){
     if (z <= 7) return 24;
     if (z <= 8) return 18;
     return 12;
+  }
+
+  var liveMetarMarker = null;
+  var liveMetarTooltip = null;
+
+  function clearLiveMetarProbe(){
+    try{ if (liveMetarTooltip) map.removeLayer(liveMetarTooltip); }catch(e){}
+    try{ if (liveMetarMarker) map.removeLayer(liveMetarMarker); }catch(e){}
+    liveMetarMarker = null;
+    liveMetarTooltip = null;
+  }
+
+  function nearestMetarStation(latlng){
+    if (!latlng || !Array.isArray(metarData) || !metarData.length) return null;
+    var best = null, bestD = Infinity;
+    for (var i=0; i<metarData.length; i++){
+      var r = metarData[i];
+      var lat = Number(r && r.lat), lon = Number(r && r.lon);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      var d = map.distance(latlng, L.latLng(lat, lon));
+      if (d < bestD){ bestD = d; best = r; }
+    }
+    return best;
+  }
+
+  function updateLiveMetarProbe(latlng){
+    if (!latlng || !metarVisible || document.body.classList.contains("draw-active") || document.body.classList.contains("measure-active")) {
+      clearLiveMetarProbe();
+      return;
+    }
+    var best = nearestMetarStation(latlng);
+    if (!best) { clearLiveMetarProbe(); return; }
+
+    var lat = Number(best.lat), lon = Number(best.lon);
+    if (!isFinite(lat) || !isFinite(lon)) { clearLiveMetarProbe(); return; }
+
+    if (!liveMetarMarker){
+      liveMetarMarker = L.circleMarker([lat, lon], {
+        radius: 8,
+        color: "rgba(255,255,255,0.96)",
+        weight: 2,
+        fillColor: "rgba(30,136,229,0.98)",
+        fillOpacity: 0.98,
+        interactive: false
+      }).addTo(map);
+    } else {
+      liveMetarMarker.setLatLng([lat, lon]);
+    }
+
+    var hoverHtml =
+      '<div style="font-family:Lato,Arial,sans-serif;min-width:180px;text-align:left;">' +
+        '<div style="font:900 16px/1.05 Lato,Arial,sans-serif;color:#202833;margin-bottom:6px;">' + metarStationName(best) + '</div>' +
+        '<div style="font:900 13px/1.2 Lato,Arial,sans-serif;color:#243447;margin-bottom:4px;">' + ((best.tmpf ?? "—")) + '°F / ' + ((best.dwpf ?? "—")) + '°F</div>' +
+        '<div style="font:800 12px/1.2 Lato,Arial,sans-serif;color:#30465d;">' + metarWindArrow(best.drct) + ' ' + metarWindText(best) + '</div>' +
+      '</div>';
+
+    if (!liveMetarTooltip){
+      liveMetarTooltip = L.tooltip({
+        permanent: false,
+        sticky: true,
+        direction: "top",
+        offset: [0, -12],
+        opacity: 1,
+        className: "hrrr-popup"
+      })
+      .setLatLng([lat, lon])
+      .setContent(hoverHtml)
+      .addTo(map);
+    } else {
+      liveMetarTooltip.setLatLng([lat, lon]);
+      liveMetarTooltip.setContent(hoverHtml);
+      if (!map.hasLayer(liveMetarTooltip)) liveMetarTooltip.addTo(map);
+    }
+  }
+
+  function updateMetarsForTime(d){
+    // Placeholder for future time-sequenced METAR datasets.
+    // For now, keep the currently loaded METAR snapshot and just refresh display if visible.
+    if (metarVisible) refreshMetarLayer();
   }
 
   function buildMetarLayer(){
@@ -2373,6 +2455,7 @@ function nearestHrrrFrameIndexForTime(d){
       }
     } else {
       if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
+      try{ clearLiveMetarProbe(); }catch(e){}
       metarVisible = false;
       window.metarVisible = metarVisible;
       setStatus('METARs off');
@@ -2873,6 +2956,7 @@ function updateAlerts(){
     }
     updateHrrrOverlay();
     updateAlerts();
+    if (typeof updateMetarsForTime === "function") updateMetarsForTime(curZ);
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -2903,6 +2987,7 @@ function updateAlerts(){
     }
     return false;
   }
+  window.stepActiveScrubber = stepActiveScrubber;
 
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
