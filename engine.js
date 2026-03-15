@@ -395,8 +395,10 @@ function sampleJetRows(raw){
   var nx = Number((raw.grid_shape && raw.grid_shape.nx) || (raw.lat[0] && raw.lat[0].length) || 0);
   if (!ny || !nx) throw new Error('Jet JSON missing grid shape');
 
-  var stepY = 3;
-  var stepX = 3;
+  // Very light first-pass sampling so we can verify the pipeline works
+  // without choking the lesson engine.
+  var stepY = 6;
+  var stepX = 6;
   var rows = [];
 
   for (var r=0; r<ny; r += stepY){
@@ -414,28 +416,38 @@ function sampleJetRows(raw){
   return rows;
 }
 
-function jetArrowHtml(speed, angleDeg){
-  var len = Math.max(16, Math.min(34, 12 + speed * 0.7));
-  return '<div style="transform: rotate(' + angleDeg + 'deg); width:' + len + 'px; height:14px; display:flex; align-items:center; justify-content:flex-start;">'
-    + '<div style="position:relative; width:' + len + 'px; height:3px; background:#0b3b8c; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,0.55);">'
-    + '<div style="position:absolute; right:-1px; top:-4px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:9px solid #0b3b8c;"></div>'
-    + '</div></div>';
+function getJetDotRadius(speed){
+  if (!isFinite(speed)) return 3;
+  return Math.max(2, Math.min(6, 2 + speed * 0.08));
 }
 
-function buildJetArrowLayer(raw){
+function getJetDotColor(speed){
+  if (!isFinite(speed)) return '#1d4ed8';
+  if (speed >= 45) return '#7c3aed';
+  if (speed >= 35) return '#2563eb';
+  if (speed >= 25) return '#0ea5e9';
+  return '#38bdf8';
+}
+
+function buildJetDotLayer(raw){
   var rows = sampleJetRows(raw);
   var group = L.layerGroup();
+  var renderer = L.canvas({ padding: 0.5 });
 
   rows.forEach(function(pt){
-    var angle = Math.atan2(pt.v, pt.u) * 180 / Math.PI;
-    var icon = L.divIcon({
-      className: 'jet-arrow-icon',
-      html: jetArrowHtml(pt.speed, angle),
-      iconSize: [36, 16],
-      iconAnchor: [18, 8]
+    var dot = L.circleMarker([pt.lat, pt.lon], {
+      renderer: renderer,
+      radius: getJetDotRadius(pt.speed),
+      stroke: true,
+      weight: 1,
+      color: 'rgba(255,255,255,0.75)',
+      opacity: 0.9,
+      fillColor: getJetDotColor(pt.speed),
+      fillOpacity: 0.85,
+      interactive: false,
+      pane: 'overlayPane'
     });
-    var m = L.marker([pt.lat, pt.lon], { icon: icon, interactive: false, keyboard: false, pane: 'markerPane' });
-    group.addLayer(m);
+    group.addLayer(dot);
   });
 
   return group;
@@ -457,11 +469,11 @@ async function loadJetForTimeKey(key){
   }
 
   removeJetLayer();
-  jetLayer = buildJetArrowLayer(raw);
+  jetLayer = buildJetDotLayer(raw);
   window.jetLayer = jetLayer;
   currentJetTimeKey = normalizedKey;
   if (jetEnabled && jetLayer && map) jetLayer.addTo(map);
-  setStatus('Jet arrows: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
+  setStatus('Jet test dots: ' + normalizedKey.replace('T', ' ').replace('.000Z', 'Z'));
   try{ updateProductLabel(); }catch(e){}
   return jetLayer;
 }
