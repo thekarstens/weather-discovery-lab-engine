@@ -396,6 +396,91 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   }
 
   // ----- Probe mode (HRRR temp only for now) -----
+  var liveProbeMarker = null;
+  var liveProbeTooltip = null;
+
+  function clearLiveProbe(){
+    try{ if (liveProbeTooltip) map.removeLayer(liveProbeTooltip); }catch(e){}
+    try{ if (liveProbeMarker) map.removeLayer(liveProbeMarker); }catch(e){}
+    liveProbeMarker = null;
+    liveProbeTooltip = null;
+  }
+
+  function nearestHrrrPoint(latlng){
+    if (!latlng || !Array.isArray(hrrrPoints) || !hrrrPoints.length) return null;
+    var best = null, bestD = Infinity;
+    for (var i=0; i<hrrrPoints.length; i++){
+      var p = hrrrPoints[i];
+      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+      var d = map.distance(latlng, L.latLng(p.lat, p.lon));
+      if (d < bestD){ bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  function buildHrrrProbePopupHtml(best, compact){
+    var val = (best && best.tF != null) ? Number(best.tF).toFixed(0) : "—";
+    var timeLabel = "";
+    try{ timeLabel = formatLocalHour(curZ); }catch(e){}
+    var tempSize = compact ? "26px" : "34px";
+    var subSize = compact ? "11px" : "12px";
+    return (
+      "<div style='font-family:Lato,Arial,sans-serif;text-align:center;letter-spacing:.2px;'>" +
+        "<div style='font-weight:900;font-size:13px;line-height:1;opacity:.88;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,.30);'>Forecast Temp</div>" +
+        "<div style='margin-top:4px;font-weight:900;font-size:" + tempSize + ";line-height:1;color:#0b1c2d;text-shadow:0 1px 0 rgba(255,255,255,.60), 0 2px 4px rgba(0,0,0,.16);'>" + val + "°F</div>" +
+        "<div style='margin-top:4px;font-weight:800;font-size:" + subSize + ";line-height:1.1;opacity:.82;'>" + (timeLabel || "") + "</div>" +
+      "</div>"
+    );
+  }
+
+  function updateLiveHrrrProbe(latlng){
+    if (!latlng || !document.body.classList.contains("probe-active")) return;
+    try{
+      if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
+        clearLiveProbe();
+        return;
+      }
+    }catch(e){
+      clearLiveProbe();
+      return;
+    }
+
+    var best = nearestHrrrPoint(latlng);
+    if (!best) { clearLiveProbe(); return; }
+
+    if (!liveProbeMarker){
+      liveProbeMarker = L.circleMarker([best.lat, best.lon], {
+        radius: 7,
+        color: "rgba(255,255,255,0.96)",
+        weight: 2,
+        fillColor: "rgba(30,136,229,0.98)",
+        fillOpacity: 0.98,
+        interactive: false
+      }).addTo(map);
+    } else {
+      liveProbeMarker.setLatLng([best.lat, best.lon]);
+    }
+
+    var html = buildHrrrProbePopupHtml(best, true);
+    if (!liveProbeTooltip){
+      liveProbeTooltip = L.tooltip({
+        permanent: false,
+        sticky: true,
+        direction: "top",
+        offset: [0, -10],
+        opacity: 1,
+        className: "hrrr-popup"
+      })
+      .setLatLng([best.lat, best.lon])
+      .setContent(html)
+      .addTo(map);
+    } else {
+      liveProbeTooltip.setLatLng([best.lat, best.lon]);
+      liveProbeTooltip.setContent(html);
+      if (!map.hasLayer(liveProbeTooltip)) liveProbeTooltip.addTo(map);
+    }
+  }
+
   function setProbeMode(on){
     if (on){
       document.body.classList.add("probe-active");
@@ -403,6 +488,7 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       document.body.classList.remove("draw-active");
     } else {
       document.body.classList.remove("probe-active");
+      clearLiveProbe();
     }
     setToolActive(toolProbeBtn, on);
     if (on){
@@ -547,7 +633,6 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
 
-    // Require HRRR temp layer + points
     try{
       if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
@@ -558,24 +643,12 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       }
     }catch(_){}
 
-    var best = null;
-    var bestD = Infinity;
-    for (var i=0; i<hrrrPoints.length; i++){
-      var p = hrrrPoints[i];
-      if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-      var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
-      if (d < bestD){ bestD = d; best = p; }
-    }
+    var best = nearestHrrrPoint(e.latlng);
     if (!best) return;
 
-    var tf = (typeof best.tF === "number") ? best.tF : null;
-    var content =
-      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
-      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
-
-    L.popup({ closeButton:true, className:"hrrr-popup" })
+    L.popup({ closeButton:true, className:"hrrr-popup", autoPan: true, offset:[0,-10] })
       .setLatLng([best.lat, best.lon])
-      .setContent(content)
+      .setContent(buildHrrrProbePopupHtml(best, false))
       .openOn(map);
   }
 
@@ -1598,6 +1671,13 @@ map.on('zoomend moveend', function(){
 
   // Keep HRRR temp blobs sized appropriately as you zoom
   map.on("zoomend", updateHrrrTempRadius);
+  map.on("mousemove", function(e){
+    if (!document.body.classList.contains("probe-active")) return;
+    updateLiveHrrrProbe(e.latlng);
+  });
+  map.on("mouseout", function(){
+    if (document.body.classList.contains("probe-active")) clearLiveProbe();
+  });
 
 
   map.on("click", function(e){
@@ -1619,18 +1699,6 @@ map.on('zoomend moveend', function(){
         }
       }
       if (!best) return;
-      var val = (best.tF != null) ? Number(best.tF).toFixed(0) : "—";
-      var validLabel = '';
-      try{
-        var hf = currentHrrrFrame();
-        validLabel = (hf && (hf.label || hf.time)) ? (hf.label || hf.time) : '';
-      }catch(e){}
-      var popupHtml =
-        "<div style='font-family:Lato,Arial,sans-serif;text-align:center;letter-spacing:.2px;'>" +
-          "<div style='font-weight:900;font-size:13px;line-height:1;opacity:.85;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,.35);'>HRRR 2m Temp</div>" +
-          "<div style='margin-top:4px;font-weight:900;font-size:30px;line-height:1;color:#122033;text-shadow:0 1px 0 rgba(255,255,255,.55), 0 2px 3px rgba(0,0,0,.12);'>" + val + "°F</div>" +
-          (validLabel ? "<div style='margin-top:4px;font-weight:800;font-size:11px;line-height:1.1;opacity:.8;'>" + validLabel + "</div>" : "") +
-        "</div>";
       L.popup({
         className: "hrrr-popup",
         closeButton: true,
@@ -1638,7 +1706,7 @@ map.on('zoomend moveend', function(){
         offset: [0, -10]
       })
       .setLatLng([best.lat, best.lon])
-      .setContent(popupHtml)
+      .setContent(buildHrrrProbePopupHtml(best, false))
       .openOn(map);
       
     }
@@ -2066,6 +2134,16 @@ function nearestHrrrFrameIndexForTime(d){
         scrub.value = String(idx);
       }
     }catch(e){}
+  }
+
+  function formatLocalHour(d){
+    if (!d) return "";
+    var x = new Date(d);
+    var h = x.getHours();
+    var ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return h + ampm;
   }
 
   function setTimeLabel(){
@@ -2541,6 +2619,7 @@ function nearestHrrrFrameIndexForTime(d){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
       hrrrPoints = [];
       window.hrrrPoints = hrrrPoints;
+      try{ clearLiveProbe(); }catch(e){}
       setStatus('HRRR Temp off');
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
