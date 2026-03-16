@@ -1069,9 +1069,11 @@ function updateCityLabels(){
   updateBaseLabels();
 
 
-  // ---------- Story (Google Sheet) ----------
-  var SHEET_ID = "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
-  var SHEET_TAB = "April Blizzard Story";
+  // ---------- Story (Google Sheet / CSV) ----------
+  var STORY_CFG = (CFG && CFG.storyboard) ? CFG.storyboard : {};
+  var STORYBOARD_CSV = (CFG && CFG.storyboardCSV) ? CFG.storyboardCSV : (STORY_CFG.type === "csv" ? (STORY_CFG.url || STORY_CFG.csv || "") : "");
+  var SHEET_ID = STORY_CFG.sheetId || STORY_CFG.googleSheetId || "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
+  var SHEET_TAB = STORY_CFG.sheetTab || STORY_CFG.tab || "April Blizzard Story";
   var storyItems = [];
   var storyMarkers = [];
   var storyIndex = 0;
@@ -1102,6 +1104,13 @@ function safeLink(url){
     return String(url).trim();
   }
 
+  function resolveStoryAsset(url){
+    var u = safeLink(url);
+    if (!u) return "";
+    if (/^https?:\/\//i.test(u) || u.startsWith("data:") || u.startsWith("blob:")) return u;
+    return _joinUrl(DATA_BASE, u);
+  }
+
   function renderStory(i, panTo){
     if (!storyItems.length) return;
     if (i < 0) i = 0;
@@ -1120,8 +1129,8 @@ function safeLink(url){
       html += "<p class='tiny'>No text for this station yet.</p>";
     }
 
-    var img = safeLink(item.image);
-    var vid = safeLink(item.video);
+    var img = resolveStoryAsset(item.image);
+    var vid = resolveStoryAsset(item.video);
 
     if (img) {
       html += "<div class='story-media'><img src='" + img + "' alt='Story image'></div>";
@@ -1214,28 +1223,28 @@ function safeLink(url){
     renderStory(0, false);
   }
 
-  function loadStory(){
-    var url = "https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(SHEET_TAB);
-    fetch(url).then(function(r){
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    }).then(function(rows){
-      // Normalize rows
-      storyItems = (rows || []).map(function(r){
-        var lat = parseFloat(r.lat);
-        var lon = parseFloat(r.lon);
-        return {
-          id: r.id,
-          title: r.title || "",
-          text: r.text || "",
-          lat: isFinite(lat) ? lat : null,
-          lon: isFinite(lon) ? lon : null,
-          image: r.image || "",
-          video: r.video || "",
-          terms: r.terms || "",
-          order: parseFloat(r.order)
-        };
-      })
+  function normalizeStoryRow(r){
+    var lat = parseFloat(r.lat);
+    var lon = parseFloat(r.lon);
+    var orderRaw = (r.order != null && r.order !== "") ? r.order : r.step;
+    return {
+      id: r.id || r.step || "",
+      title: r.title || "",
+      text: r.text || "",
+      lat: isFinite(lat) ? lat : null,
+      lon: isFinite(lon) ? lon : null,
+      image: r.image || "",
+      video: r.video || "",
+      terms: r.terms || "",
+      layer: r.layer || "",
+      zoom: (r.zoom != null && r.zoom !== "") ? Number(r.zoom) : null,
+      order: parseFloat(orderRaw)
+    };
+  }
+
+  function applyStoryRows(rows, emptyMsg){
+    storyItems = (rows || [])
+      .map(normalizeStoryRow)
       .filter(function(x){ return x.title || x.text || (x.lat!=null && x.lon!=null); })
       .sort(function(a,b){
         var ao = isFinite(a.order) ? a.order : 9999;
@@ -1243,17 +1252,67 @@ function safeLink(url){
         return ao - bo;
       });
 
-      if (!storyItems.length) {
-        storyBodyEl.innerHTML = "<p class='tiny'>No rows found in your Google Sheet tab '" + SHEET_TAB + "'.</p>";
-        return;
-      }
+    if (!storyItems.length) {
+      storyBodyEl.innerHTML = "<p class='tiny'>" + emptyMsg + "</p>";
+      return;
+    }
 
-      buildStoryMarkers();
-      setStatus("Story: loaded " + storyItems.length + " stations");
+    buildStoryMarkers();
+    setStatus("Story: loaded " + storyItems.length + " stations");
+  }
+
+  function parseStoryboardCSV(csvText){
+    var lines = String(csvText || "").trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+
+    var headers = lines[0].split(",").map(function(h){ return h.trim(); });
+
+    return lines.slice(1).map(function(line){
+      var values = line.split(",");
+      var row = {};
+      headers.forEach(function(header, i){
+        row[header] = (values[i] || "").trim();
+      });
+      return row;
+    });
+  }
+
+  function loadGoogleStoryboard(){
+    var url = "https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(SHEET_TAB);
+    return fetch(url).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function(rows){
+      applyStoryRows(rows, "No rows found in your Google Sheet tab '" + SHEET_TAB + "'.");
     }).catch(function(err){
       storyBodyEl.innerHTML = "<p class='tiny'>Could not load story from Google Sheet. Check that the sheet is published, and the tab name is '" + SHEET_TAB + "'.</p>";
       setStatus("Story load failed");
+      console.warn(err);
     });
+  }
+
+  function loadCSVStoryboard(){
+    var csvUrl = _joinUrl(DATA_BASE, STORYBOARD_CSV);
+    return fetch(csvUrl, { cache: "no-store" }).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(function(text){
+      var rows = parseStoryboardCSV(text);
+      applyStoryRows(rows, "No rows found in your storyboard CSV.");
+    }).catch(function(err){
+      storyBodyEl.innerHTML = "<p class='tiny'>Could not load storyboard CSV at '" + escapeHtml(csvUrl) + "'.</p>";
+      setStatus("Story CSV load failed");
+      console.warn(err);
+    });
+  }
+
+  function loadStory(){
+    if (STORYBOARD_CSV) {
+      console.log("📖 Loading CSV storyboard:", STORYBOARD_CSV);
+      return loadCSVStoryboard();
+    }
+    console.log("📖 Loading Google Sheet storyboard:", SHEET_ID, SHEET_TAB);
+    return loadGoogleStoryboard();
   }
 
   
