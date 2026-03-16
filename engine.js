@@ -2274,6 +2274,25 @@ async function setMetarsEnabled(on){
   }
   window.setHrrrTempEnabled = setHrrrTempEnabled;
 
+  async function setSatelliteEnabled(on){
+    window.goesEnabled = !!on;
+    try{
+      var gc = document.getElementById('goesControls');
+      if (gc) gc.style.display = on ? '' : 'none';
+      if (!on){
+        if (typeof goesOverlay !== 'undefined' && goesOverlay && map && map.hasLayer && map.hasLayer(goesOverlay)) {
+          try{ map.removeLayer(goesOverlay); }catch(e){}
+        }
+      } else {
+        if (typeof updateGoes === 'function') { try{ updateGoes(); }catch(e){ console.error(e); } }
+      }
+    }catch(err){ console.error(err); }
+    try{ updateProductLabel(); }catch(e){}
+    try{ updateLegend(); }catch(e){}
+    try{ syncDockUi(); }catch(e){}
+  }
+  window.setSatelliteEnabled = setSatelliteEnabled;
+
   function updateProductLabel(){
   var pl = document.getElementById("productLabel");
   if (!pl) return;
@@ -2957,6 +2976,7 @@ function updateAlerts(){
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
+    dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
   }
@@ -2983,6 +3003,15 @@ function updateAlerts(){
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      return;
+    }
+    if (action === 'satellite'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
+      if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(!window.goesEnabled);
       return;
     }
     if (action === 'metars'){
