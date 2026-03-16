@@ -1071,13 +1071,24 @@ function updateCityLabels(){
 
   // ---------- Story (Google Sheet / CSV) ----------
   var STORY_CFG = (CFG && CFG.storyboard) ? CFG.storyboard : {};
-  var STORYBOARD_CSV = (CFG && CFG.storyboardCSV) ? CFG.storyboardCSV : (STORY_CFG.type === "csv" ? (STORY_CFG.url || STORY_CFG.csv || "") : "");
+  var STORYBOARD_OVERRIDE = (_qs("story") || "").trim();
+  function normalizeStoryboardPath(u){
+    var s = String(u || "").trim();
+    if (!s) return "";
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.indexOf("/") === -1) return "storyboard/" + s;
+    return s.replace(/^\.\//, "");
+  }
+  var STORYBOARD_CSV = normalizeStoryboardPath(
+    STORYBOARD_OVERRIDE || ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV : (STORY_CFG.type === "csv" ? (STORY_CFG.url || STORY_CFG.csv || "") : ""))
+  );
   var SHEET_ID = STORY_CFG.sheetId || STORY_CFG.googleSheetId || "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
   var SHEET_TAB = STORY_CFG.sheetTab || STORY_CFG.tab || "April Blizzard Story";
   var storyItems = [];
   var storyMarkers = [];
   var storyIndex = 0;
   var focusRing = null;
+  window.__WDL_STORYBOARD_CSV__ = STORYBOARD_CSV;
 
   var storyPanel = document.getElementById("storyPanel");
   var storyTitleEl = document.getElementById("storyTitle");
@@ -1262,13 +1273,44 @@ function safeLink(url){
   }
 
   function parseStoryboardCSV(csvText){
-    var lines = String(csvText || "").trim().split(/\r?\n/);
+    var text = String(csvText || "").replace(/^\uFEFF/, "").trim();
+    if (!text) return [];
+
+    function splitCsvLine(line){
+      var out = [];
+      var cur = "";
+      var inQuotes = false;
+      for (var i = 0; i < line.length; i++){
+        var ch = line[i];
+        if (ch === '"'){
+          if (inQuotes && line[i + 1] === '"'){
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes){
+          out.push(cur.trim());
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur.trim());
+      return out.map(function(v){
+        return v.replace(/^"(.*)"$/, "$1").trim();
+      });
+    }
+
+    var lines = text.split(/\r?\n/).filter(function(line){
+      return String(line || "").trim().length > 0;
+    });
     if (lines.length < 2) return [];
 
-    var headers = lines[0].split(",").map(function(h){ return h.trim(); });
+    var headers = splitCsvLine(lines[0]).map(function(h){ return h.trim(); });
 
     return lines.slice(1).map(function(line){
-      var values = line.split(",");
+      var values = splitCsvLine(line);
       var row = {};
       headers.forEach(function(header, i){
         row[header] = (values[i] || "").trim();
@@ -1309,6 +1351,9 @@ function safeLink(url){
   function loadStory(){
     if (STORYBOARD_CSV) {
       console.log("📖 Loading CSV storyboard:", STORYBOARD_CSV);
+      if (STORYBOARD_OVERRIDE) {
+        console.log("🧭 Story override from URL:", STORYBOARD_OVERRIDE);
+      }
       return loadCSVStoryboard();
     }
     console.log("📖 Loading Google Sheet storyboard:", SHEET_ID, SHEET_TAB);
