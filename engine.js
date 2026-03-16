@@ -314,6 +314,161 @@ var gfsSnowOverlay = null;
 function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
+
+
+  // ---------- GOES / Satellite ----------
+  var goesEnabled = false;
+  var goesOverlay = null;
+  var goesManifest = null;
+  var goesFrames = [];
+  var goesBounds = null;
+  var currentGoesFrameIndex = 0;
+  var goesLoadPromise = null;
+  var goesLoadToken = 0;
+  var goesAnimTimer = null;
+  var goesFitMode = false;
+  var GOES_STORAGE_KEY = "wdl_goes_bounds";
+  var GOES_DEFAULT_BOUNDS = null;
+  var GOES_BOUNDS = null;
+  window.goesEnabled = goesEnabled;
+  window.goesOverlay = goesOverlay;
+
+  function getSatelliteManifestUrl(){
+    try{
+      if (CFG && CFG.satellite){
+        var u = CFG.satellite.manifest || CFG.satellite.url || CFG.satellite.file;
+        if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+      }
+    }catch(e){}
+    return _joinUrl(DATA_BASE, 'satellite/truecolor/manifest.json');
+  }
+  function parseGenericBounds(raw){
+    if (!raw) return null;
+    var b = raw.bounds || raw.bbox || raw.leaflet_bounds || raw;
+    if (Array.isArray(b) && b.length === 2 && Array.isArray(b[0]) && Array.isArray(b[1])) return b;
+    var south = Number(b.south ?? b.min_latitude ?? b.minLat ?? NaN);
+    var north = Number(b.north ?? b.max_latitude ?? b.maxLat ?? NaN);
+    var west  = _normLon(b.west ?? b.min_longitude ?? b.minLon ?? NaN);
+    var east  = _normLon(b.east ?? b.max_longitude ?? b.maxLon ?? NaN);
+    if ([south,north,west,east].every(isFinite)) return [[south, west],[north, east]];
+    return null;
+  }
+  function parseGenericFrames(raw){
+    var frames = [];
+    var src = (raw && (raw.frames || raw.images || raw.files)) || [];
+    if (!Array.isArray(src)) return frames;
+    src.forEach(function(f, i){
+      if (typeof f === 'string') f = { file:f };
+      if (!f) return;
+      var file = f.file || f.url || f.png || f.image || f.name;
+      if (!file) return;
+      var tRaw = f.time || f.valid || f.utc || f.datetime || f.ts || null;
+      var t = tRaw ? new Date(tRaw) : null;
+      var timeMs = (t && !isNaN(t)) ? t.getTime() : NaN;
+      frames.push({ file:file, label:f.label || f.name || ('SAT ' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs, points:f.points || f.pointFile || f.pointsFile || null });
+    });
+    return frames;
+  }
+  function loadBoundsFromStorage(){
+    try{
+      var raw = localStorage.getItem(GOES_STORAGE_KEY);
+      if (!raw) return null;
+      var b = JSON.parse(raw);
+      if (Array.isArray(b) && b.length === 2) return b;
+    }catch(e){}
+    return null;
+  }
+  function saveBoundsToStorage(bounds){
+    try{ if (bounds) localStorage.setItem(GOES_STORAGE_KEY, JSON.stringify(bounds)); }catch(e){}
+  }
+  function setGoesBounds(bounds){
+    if (!bounds) return;
+    GOES_BOUNDS = bounds;
+  }
+  function currentGoesFrame(){
+    if (!goesFrames.length) return null;
+    var valid = goesFrames.filter(function(f){ return isFinite(f.timeMs); });
+    if (valid.length){
+      var best = valid[0], bestDiff = Math.abs(valid[0].timeMs - curZ.getTime());
+      for (var i=1;i<valid.length;i++){
+        var d = Math.abs(valid[i].timeMs - curZ.getTime());
+        if (d < bestDiff){ best = valid[i]; bestDiff = d; }
+      }
+      currentGoesFrameIndex = Math.max(0, goesFrames.indexOf(best));
+      return best;
+    }
+    return goesFrames[Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0))] || null;
+  }
+  function goesFrameUrl(frame){
+    if (!frame) return null;
+    var manifestUrl = getSatelliteManifestUrl();
+    var folder = manifestUrl.split('/').slice(0,-1).join('/') + '/';
+    return _isAbsUrl(frame.file) ? frame.file : _joinUrl(folder, frame.file);
+  }
+  async function loadGoesManifest(){
+    if (goesLoadPromise) return goesLoadPromise;
+    var url = getSatelliteManifestUrl();
+    setStatus('Loading satellite…');
+    goesLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
+      if (!r.ok) throw new Error('Satellite manifest HTTP ' + r.status + ': ' + url);
+      return r.json();
+    }).then(function(raw){
+      goesManifest = raw || {};
+      goesFrames = parseGenericFrames(raw);
+      goesBounds = parseGenericBounds(raw) || goesBounds || RADAR_BOUNDS;
+      GOES_DEFAULT_BOUNDS = goesBounds;
+      GOES_BOUNDS = loadBoundsFromStorage() || goesBounds;
+      if (!goesFrames.length) throw new Error('Satellite manifest has no frames');
+      setStatus('Satellite loaded: ' + goesFrames.length + ' frames');
+      return raw;
+    }).catch(function(err){
+      goesLoadPromise = null;
+      setStatus('Satellite failed');
+      throw err;
+    });
+    return goesLoadPromise;
+  }
+  function stopGoesAnim(){
+    if (goesAnimTimer){ clearInterval(goesAnimTimer); goesAnimTimer = null; }
+  }
+  function playGoesAnim(ms){
+    stopGoesAnim();
+    ms = Math.max(120, Number(ms) || 400);
+    goesAnimTimer = setInterval(function(){
+      if (!goesEnabled || !goesFrames.length) return;
+      currentGoesFrameIndex = (currentGoesFrameIndex + 1) % goesFrames.length;
+      updateGoes(true);
+    }, ms);
+  }
+  function enableGoesFitMode(on){ goesFitMode = !!on; }
+  function updateGoes(fromAnim){
+    if (!goesEnabled){
+      if (goesOverlay && map && map.hasLayer && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+      return;
+    }
+    var kickoff = goesManifest ? Promise.resolve(goesManifest) : loadGoesManifest();
+    kickoff.then(function(){
+      var frame = fromAnim ? (goesFrames[Math.max(0, Math.min(goesFrames.length - 1, currentGoesFrameIndex|0))] || null) : currentGoesFrame();
+      if (!frame) return;
+      var url = goesFrameUrl(frame);
+      var bounds = GOES_BOUNDS || goesBounds || RADAR_BOUNDS;
+      var token = ++goesLoadToken;
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){
+        if (token !== goesLoadToken) return;
+        if (goesOverlay && map.hasLayer(goesOverlay)) map.removeLayer(goesOverlay);
+        goesOverlay = L.imageOverlay(url, bounds, { opacity: productOpacity.goes || 0.70, interactive:false });
+        window.goesOverlay = goesOverlay;
+        goesOverlay.addTo(map);
+        applyActiveOpacity();
+        setStatus('Satellite: ' + (frame.label || frame.time || url));
+        try{ updateProductLabel(); }catch(e){}
+      };
+      img.onerror = function(){ if (token === goesLoadToken) setStatus('Satellite missing: ' + url); };
+      img.src = url;
+    }).catch(function(err){ console.error(err); setStatus('Satellite failed'); });
+  }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
@@ -2167,7 +2322,7 @@ async function setMetarsEnabled(on){
       var tRaw = f.time || f.valid || f.utc || f.datetime || f.ts || null;
       var t = tRaw ? new Date(tRaw) : null;
       var timeMs = (t && !isNaN(t)) ? t.getTime() : NaN;
-      frames.push({ file:file, label:f.label || f.name || ('F' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs });
+      frames.push({ file:file, label:f.label || f.name || ('F' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs, points:f.points || f.pointFile || f.pointsFile || raw.points || raw.pointFile || raw.pointsFile || null });
     });
     return frames;
   }
@@ -2218,6 +2373,61 @@ async function setMetarsEnabled(on){
     if (!frame) return null;
     return _isAbsUrl(frame.file) ? frame.file : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), frame.file);
   }
+  function hrrrPointsUrl(frame){
+    if (!frame) return null;
+    var candidate = frame.points || null;
+    if (!candidate && frame.file) candidate = String(frame.file).replace(/\.[^.]+$/, '.json');
+    if (!candidate) return null;
+    return _isAbsUrl(candidate) ? candidate : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), candidate);
+  }
+  function parseHrrrPointsPayload(raw){
+    var pts = [];
+    function pushPoint(lat, lon, temp){
+      lat = Number(lat); lon = Number(lon); temp = Number(temp);
+      if (isFinite(lat) && isFinite(lon) && isFinite(temp)) pts.push({ lat:lat, lon:_normLon(lon), tF:temp });
+    }
+    if (!raw) return pts;
+    var arr = Array.isArray(raw) ? raw : (Array.isArray(raw.points) ? raw.points : (raw.features || null));
+    if (Array.isArray(arr)) {
+      arr.forEach(function(p){
+        if (!p) return;
+        if (p.type === 'Feature' && p.geometry && Array.isArray(p.geometry.coordinates)) {
+          var pr = p.properties || {};
+          pushPoint(p.geometry.coordinates[1], p.geometry.coordinates[0], pr.tF ?? pr.tempF ?? pr.value ?? pr.temp ?? pr.temperature);
+        } else {
+          pushPoint(p.lat ?? p.latitude, p.lon ?? p.lng ?? p.longitude, p.tF ?? p.tempF ?? p.value ?? p.temp ?? p.temperature);
+        }
+      });
+      return pts;
+    }
+    var lat = raw.lat || raw.latitude;
+    var lon = raw.lon || raw.longitude || raw.lng;
+    var temp = raw.tF || raw.tempF || raw.value || raw.temp || raw.temperature;
+    if (Array.isArray(lat) && Array.isArray(lon) && Array.isArray(temp)) {
+      for (var i=0;i<lat.length;i++){
+        if (Array.isArray(lat[i]) && Array.isArray(lon[i]) && Array.isArray(temp[i])) {
+          for (var j=0;j<lat[i].length;j++) pushPoint(lat[i][j], lon[i][j], temp[i][j]);
+        } else {
+          pushPoint(lat[i], lon[i], temp[i]);
+        }
+      }
+    }
+    return pts;
+  }
+  async function loadHrrrPointsForFrame(frame){
+    var url = hrrrPointsUrl(frame);
+    if (!url) { hrrrPoints = []; window.hrrrPoints = hrrrPoints; return []; }
+    try{
+      var raw = await fetch(url, { cache:'no-store' }).then(function(r){ if(!r.ok) throw new Error('HRRR points HTTP ' + r.status); return r.json(); });
+      hrrrPoints = parseHrrrPointsPayload(raw);
+      window.hrrrPoints = hrrrPoints;
+      return hrrrPoints;
+    }catch(err){
+      console.warn('HRRR points unavailable:', url, err);
+      hrrrPoints = []; window.hrrrPoints = hrrrPoints;
+      return [];
+    }
+  }
   function updateHrrrOverlay(){
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
@@ -2238,7 +2448,10 @@ async function setMetarsEnabled(on){
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
-      setStatus('HRRR Temp: ' + (frame.label || url));
+      loadHrrrPointsForFrame(frame).then(function(pts){
+        if (Array.isArray(pts) && pts.length) setStatus('HRRR Temp: ' + (frame.label || url) + ' · probe ready');
+        else setStatus('HRRR Temp: ' + (frame.label || url));
+      });
       try{ updateProductLabel(); }catch(e){}
     };
     img.onerror = function(){
@@ -2275,11 +2488,13 @@ async function setMetarsEnabled(on){
   window.setHrrrTempEnabled = setHrrrTempEnabled;
 
   async function setSatelliteEnabled(on){
-    window.goesEnabled = !!on;
+    goesEnabled = !!on;
+    window.goesEnabled = goesEnabled;
     try{
       var gc = document.getElementById('goesControls');
       if (gc) gc.style.display = on ? '' : 'none';
       if (!on){
+        stopGoesAnim();
         if (typeof goesOverlay !== 'undefined' && goesOverlay && map && map.hasLayer && map.hasLayer(goesOverlay)) {
           try{ map.removeLayer(goesOverlay); }catch(e){}
         }
@@ -2456,6 +2671,7 @@ function updateAlerts(){
     updateRadar();
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
+    if (typeof updateGoes === "function") updateGoes();
     updateHrrrOverlay();
     updateAlerts();
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
