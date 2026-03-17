@@ -1682,40 +1682,83 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 }
 
 
-/* --- WDL tweaks: larger top-right logo --- */
-.top-logo{ width:96px !important; height:96px !important; }
-.top-logo img{ width:86px !important; height:86px !important; object-fit:contain; }
 
-/* --- WDL tweaks: hide upper zoom controls --- */
-#zoomBox, #zoomControls, .zoom-box, .zoom-controls-top { display:none !important; }
+/* --- WDL tweaks: corrected logo + vertical right-side tool stack --- */
 
-/* --- WDL tweaks: vertical right-side tools stack --- */
+/* Make upper-right logo larger and readable */
+#brandLogo{
+  height:92px !important;
+  width:auto !important;
+  max-width:280px !important;
+  top:4px !important;
+  right:10px !important;
+}
+
+/* Keep only the lower-right zoom controls */
+#zoomBox,
+#zoomControls,
+.zoom-box,
+.zoom-controls-top{
+  display:none !important;
+}
+
+/* Move the map control row to the right side */
 #mapControlRow{
   position:absolute !important;
   top:160px !important;
   right:18px !important;
   left:auto !important;
   bottom:auto !important;
+  width:auto !important;
   display:flex !important;
   flex-direction:column !important;
-  gap:8px !important;
   align-items:flex-end !important;
+  gap:10px !important;
   z-index:2400 !important;
+}
+
+/* Force the tool box itself to stack vertically */
+#toolBox{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  gap:8px !important;
+  padding:10px !important;
   width:auto !important;
 }
-#mapControlRow .tool-group,
-#mapControlRow .tool-row,
-#mapControlRow .tools-wrap{
+
+/* Put the TOOLS label on top */
+#toolBox .tool-label{
+  display:block !important;
+  text-align:center !important;
+  margin-bottom:2px !important;
+}
+
+/* Force each button to its own row */
+#toolBox .tool-btn{
   display:flex !important;
-  flex-direction:column !important;
-  gap:8px !important;
-}
-#mapControlRow button,
-#mapControlRow .tool-btn,
-#mapControlRow .chip{
-  min-width:96px !important;
+  width:108px !important;
+  min-width:108px !important;
   justify-content:center !important;
+  margin:0 !important;
 }
+
+/* Small-screen safety */
+@media (max-width: 900px){
+  #mapControlRow{
+    top:150px !important;
+    right:10px !important;
+  }
+  #toolBox .tool-btn{
+    width:96px !important;
+    min-width:96px !important;
+  }
+  #brandLogo{
+    height:72px !important;
+    max-width:180px !important;
+  }
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
