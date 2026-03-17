@@ -30,7 +30,7 @@ window.createRadarModule = function(opts){
 
   var radarSweepRPM = 2;
   var radarSweepBeamPx = 1;
-  var radarSweepRangeMiles = 150;
+  var radarSweepRangeMiles = 186;
 
   window.obsRadarEnabled = obsRadarEnabled;
   window.radarSweepEnabled = radarSweepEnabled;
