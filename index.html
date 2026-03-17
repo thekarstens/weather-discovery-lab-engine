@@ -1759,6 +1759,17 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   }
 }
 
+
+/* --- Prevent image-overlay drag/select flicker during draw mode --- */
+body.draw-active .leaflet-image-layer,
+body.draw-active .leaflet-pane img,
+body.draw-active .leaflet-overlay-pane img{
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
