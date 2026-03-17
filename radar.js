@@ -367,11 +367,14 @@ function updateSweepUi(){
     }
   }
 
-  function syncSweepButton(){
-    syncWindowState();
-    var btn = document.getElementById("sweepToggleBtn");
-    if (btn) btn.textContent = radarSweepEnabled ? "SWEEP ON" : "SWEEP OFF";
+function syncSweepButton(){
+  syncWindowState();
+  var btn = document.getElementById("sweepToggleBtn");
+  if (btn){
+    btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+    btn.classList.toggle("active", !!radarSweepEnabled);
   }
+}
 
   function installMapEvents(){
     map.on('zoom move resize', function(){
