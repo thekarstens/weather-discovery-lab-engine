@@ -626,35 +626,48 @@ window.gfsSnowEnabled = gfsSnowEnabled;
     try{ drawGroup.clearLayers(); }catch(e){}
   }
 
-  function setDrawMode(on){
-    if (!isTeacherMode){
-      // student mode: do nothing, keep disabled
-      setToolActive(toolDrawBtn, false);
-      setToolActive(toolEraseBtn, false);
-      document.body.classList.remove("draw-active");
-      return;
-    }
-
-    if (on){
-      document.body.classList.add("draw-active");
-      document.body.classList.remove("measure-active");
-      document.body.classList.remove("probe-active");
-      setToolActive(toolDrawBtn, true);
-      setToolActive(toolEraseBtn, true);
-      setToolActive(toolMeasureBtn, false);
-      setToolActive(toolProbeBtn, false);
-
-      // prevent map panning while drawing
-      try{ map.dragging.disable(); }catch(e){}
-    } else {
-      document.body.classList.remove("draw-active");
-      setToolActive(toolDrawBtn, false);
-      setToolActive(toolEraseBtn, false);
-      drawing = false;
-      currentLine = null;
-      try{ map.dragging.enable(); }catch(e){}
-    }
+function setDrawMode(on){
+  if (!isTeacherMode){
+    // student mode: do nothing, keep disabled
+    setToolActive(toolDrawBtn, false);
+    setToolActive(toolEraseBtn, false);
+    document.body.classList.remove("draw-active");
+    return;
   }
+
+  if (on){
+    document.body.classList.add("draw-active");
+    document.body.classList.remove("measure-active");
+    document.body.classList.remove("probe-active");
+    setToolActive(toolDrawBtn, true);
+    setToolActive(toolEraseBtn, true);
+    setToolActive(toolMeasureBtn, false);
+    setToolActive(toolProbeBtn, false);
+
+    drawing = false;
+    currentLine = null;
+
+    try{ map.dragging.disable(); }catch(e){}
+    try{ map.boxZoom.disable(); }catch(e){}
+    try{ map.doubleClickZoom.disable(); }catch(e){}
+    try{ map.scrollWheelZoom.disable(); }catch(e){}
+    try{ map.keyboard.disable(); }catch(e){}
+    try{ map.touchZoom.disable(); }catch(e){}
+  } else {
+    document.body.classList.remove("draw-active");
+    setToolActive(toolDrawBtn, false);
+    setToolActive(toolEraseBtn, false);
+    drawing = false;
+    currentLine = null;
+
+    try{ map.dragging.enable(); }catch(e){}
+    try{ map.boxZoom.enable(); }catch(e){}
+    try{ map.doubleClickZoom.enable(); }catch(e){}
+    try{ map.scrollWheelZoom.enable(); }catch(e){}
+    try{ map.keyboard.enable(); }catch(e){}
+    try{ map.touchZoom.enable(); }catch(e){}
+  }
+}
 
   function startDraw(e){
     if (!document.body.classList.contains("draw-active")) return;
