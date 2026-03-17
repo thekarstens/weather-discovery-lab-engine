@@ -121,7 +121,7 @@ window.createRadarModule = function(opts){
     if (range){
       range.value = String(radarSweepRangeMiles);
       range.oninput = function(){
-        radarSweepRangeMiles = Math.max(25, Math.min(300, parseInt(this.value || '150', 10)));
+        radarSweepRangeMiles = Math.max(25, Math.min(186, parseInt(this.value || '186', 10)));
         if (radarSweepEnabled && radarSweepImage) renderRadarSweepCurrentState();
       };
     }
