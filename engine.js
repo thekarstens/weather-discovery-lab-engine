@@ -2478,12 +2478,23 @@ async function setMetarsEnabled(on){
     return _isAbsUrl(frame.file) ? frame.file : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), frame.file);
   }
   function hrrrPointsUrl(frame){
-    if (!frame) return null;
-    var candidate = frame.points || null;
-    if (!candidate && frame.file) candidate = String(frame.file).replace(/\.[^.]+$/, '.json');
-    if (!candidate) return null;
-    return _isAbsUrl(candidate) ? candidate : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), candidate);
+  if (!frame) return null;
+
+  var candidate =
+    frame.points ||
+    frame.pointFile ||
+    frame.pointsFile ||
+    null;
+
+  if (!candidate && frame.file) {
+    candidate = String(frame.file).replace(/\.[^.]+$/, '.json');
   }
+
+  if (!candidate) return null;
+  return _isAbsUrl(candidate)
+    ? candidate
+    : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), candidate);
+}
   function parseHrrrPointsPayload(raw){
     var pts = [];
     function pushPoint(lat, lon, temp){
