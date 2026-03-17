@@ -2495,40 +2495,84 @@ async function setMetarsEnabled(on){
     ? candidate
     : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), candidate);
 }
-  function parseHrrrPointsPayload(raw){
-    var pts = [];
-    function pushPoint(lat, lon, temp){
-      lat = Number(lat); lon = Number(lon); temp = Number(temp);
-      if (isFinite(lat) && isFinite(lon) && isFinite(temp)) pts.push({ lat:lat, lon:_normLon(lon), tF:temp });
+function parseHrrrPointsPayload(raw){
+  var pts = [];
+
+  function pickTemp(obj){
+    if (!obj) return NaN;
+    var candidates = [
+      obj.tF,
+      obj.tempF,
+      obj.value,
+      obj.temp,
+      obj.temperature,
+      obj["2_meter_temperature"]
+    ];
+    for (var i = 0; i < candidates.length; i++){
+      var n = Number(candidates[i]);
+      if (isFinite(n)) return n;
     }
-    if (!raw) return pts;
-    var arr = Array.isArray(raw) ? raw : (Array.isArray(raw.points) ? raw.points : (raw.features || null));
-    if (Array.isArray(arr)) {
-      arr.forEach(function(p){
-        if (!p) return;
-        if (p.type === 'Feature' && p.geometry && Array.isArray(p.geometry.coordinates)) {
-          var pr = p.properties || {};
-          pushPoint(p.geometry.coordinates[1], p.geometry.coordinates[0], pr.tF ?? pr.tempF ?? pr.value ?? pr.temp ?? pr.temperature);
-        } else {
-          pushPoint(p.lat ?? p.latitude, p.lon ?? p.lng ?? p.longitude, p.tF ?? p.tempF ?? p.value ?? p.temp ?? p.temperature);
-        }
-      });
-      return pts;
+    return NaN;
+  }
+
+  function pushPoint(lat, lon, temp){
+    lat = Number(lat);
+    lon = Number(lon);
+    temp = Number(temp);
+    if (isFinite(lat) && isFinite(lon) && isFinite(temp)) {
+      pts.push({ lat: lat, lon: _normLon(lon), tF: temp });
     }
-    var lat = raw.lat || raw.latitude;
-    var lon = raw.lon || raw.longitude || raw.lng;
-    var temp = raw.tF || raw.tempF || raw.value || raw.temp || raw.temperature;
-    if (Array.isArray(lat) && Array.isArray(lon) && Array.isArray(temp)) {
-      for (var i=0;i<lat.length;i++){
-        if (Array.isArray(lat[i]) && Array.isArray(lon[i]) && Array.isArray(temp[i])) {
-          for (var j=0;j<lat[i].length;j++) pushPoint(lat[i][j], lon[i][j], temp[i][j]);
-        } else {
-          pushPoint(lat[i], lon[i], temp[i]);
-        }
+  }
+
+  if (!raw) return pts;
+
+  var arr = Array.isArray(raw)
+    ? raw
+    : (Array.isArray(raw.points) ? raw.points
+      : (raw.features || null));
+
+  if (Array.isArray(arr)) {
+    arr.forEach(function(p){
+      if (!p) return;
+
+      if (p.type === 'Feature' && p.geometry && Array.isArray(p.geometry.coordinates)) {
+        var pr = p.properties || {};
+        pushPoint(
+          p.geometry.coordinates[1],
+          p.geometry.coordinates[0],
+          pickTemp(pr)
+        );
+      } else {
+        pushPoint(
+          p.lat ?? p.latitude,
+          p.lon ?? p.lng ?? p.longitude,
+          pickTemp(p)
+        );
       }
-    }
+    });
     return pts;
   }
+
+  var lat = raw.lat || raw.latitude;
+  var lon = raw.lon || raw.longitude || raw.lng;
+  var temp = raw.tF || raw.tempF || raw.value || raw.temp || raw.temperature || raw["2_meter_temperature"];
+
+  if (Array.isArray(lat) && Array.isArray(lon) && Array.isArray(temp)) {
+    for (var i = 0; i < lat.length; i++){
+      if (Array.isArray(lat[i]) && Array.isArray(lon[i]) && Array.isArray(temp[i])) {
+        for (var j = 0; j < lat[i].length; j++){
+          pushPoint(lat[i][j], lon[i][j], temp[i][j]);
+        }
+      } else {
+        pushPoint(lat[i], lon[i], temp[i]);
+      }
+    }
+  } else {
+    pushPoint(lat, lon, temp);
+  }
+
+  return pts;
+}
   async function loadHrrrPointsForFrame(frame){
     var url = hrrrPointsUrl(frame);
     if (!url) { hrrrPoints = []; window.hrrrPoints = hrrrPoints; return []; }
