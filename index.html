@@ -1246,38 +1246,6 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
 #sweepToggleBtn{
   min-width:118px;
 }
-
-/* --- LIVE Doppler Neon Button --- */
-.live-doppler-btn{
-  border:1px solid rgba(0,150,255,0.8) !important;
-  background:rgba(0,20,40,0.85) !important;
-  color:#4fc3ff !important;
-  font:900 12px/1 Arial, sans-serif;
-  padding:10px 12px;
-  border-radius:14px;
-  letter-spacing:.6px;
-  cursor:pointer;
-  box-shadow:
-    0 0 6px rgba(0,150,255,0.6),
-    0 0 12px rgba(0,150,255,0.5),
-    0 0 20px rgba(0,150,255,0.4),
-    inset 0 0 6px rgba(0,150,255,0.4);
-  transition: all 0.15s ease;
-}
-.live-doppler-btn:hover{
-  box-shadow:
-    0 0 10px rgba(0,180,255,0.9),
-    0 0 20px rgba(0,180,255,0.7),
-    0 0 30px rgba(0,180,255,0.6),
-    inset 0 0 10px rgba(0,180,255,0.6);
-  transform: translateY(-1px);
-}
-.live-doppler-btn:active{
-  transform: translateY(1px);
-  box-shadow:
-    0 0 6px rgba(0,150,255,0.5),
-    inset 0 0 8px rgba(0,150,255,0.6);
-}
 #radarSweepControls{
   position:absolute;
   left:50%;
@@ -1802,6 +1770,18 @@ body.draw-active .leaflet-overlay-pane img{
   -webkit-user-drag: none !important;
 }
 
+
+/* ACTIVE LIVE Doppler Glow */
+.live-doppler-btn.active{
+  background:rgba(0,60,120,0.95);
+  color:#aee6ff;
+  box-shadow:
+    0 0 12px rgba(0,200,255,1),
+    0 0 28px rgba(0,200,255,0.9),
+    0 0 40px rgba(0,200,255,0.7),
+    inset 0 0 12px rgba(0,200,255,0.8);
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -1875,7 +1855,7 @@ body.draw-active .leaflet-overlay-pane img{
 <div aria-label="Time controls" class="cb-row">
 <button class="cb-btn" id="cbBackBtn" title="Step backward">◀</button>
 <button class="cb-btn" id="cbFwdBtn" title="Step forward">▶</button>
-<button class="cb-btn live-doppler-btn" id="sweepToggleBtn" title="Toggle radar sweep">LIVE Doppler</button>
+<button class="cb-btn" id="sweepToggleBtn" title="Toggle radar sweep">SWEEP OFF</button>
 <input aria-label="Time scrubber" class="cb-scrubber" id="cbScrubber" max="0" min="0" step="1" type="range" value="0"/>
 <div class="cb-time" id="clockBubbleTime">—</div>
 </div>
@@ -2010,6 +1990,24 @@ body.draw-active .leaflet-overlay-pane img{
 <script src="./metars.js"></script>
 <script src="./map-ui.js"></script>
 <script src="./engine.js"></script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  const btn = document.getElementById('sweepToggleBtn');
+  if(!btn) return;
+
+  let isOn = false;
+
+  btn.textContent = "LIVE Doppler OFF";
+
+  btn.addEventListener("click", function(){
+    isOn = !isOn;
+    btn.textContent = isOn ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+    btn.classList.toggle("active", isOn);
+  });
+});
+</script>
 
 </body>
 </html>
