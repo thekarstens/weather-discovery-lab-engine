@@ -670,18 +670,24 @@ function setDrawMode(on){
 }
 
   function startDraw(e){
-    if (!document.body.classList.contains("draw-active")) return;
-    if (!e || !e.latlng) return;
-    drawing = true;
+  if (!document.body.classList.contains("draw-active")) return;
+  if (!e || !e.latlng) return;
 
-    currentLine = L.polyline([e.latlng], {
-      color: "#fdd835",
-      weight: 5,
-      opacity: 0.95,
-      lineCap: "round",
-      lineJoin: "round"
-    }).addTo(drawGroup);
+  if (e.originalEvent) {
+    if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+    if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
   }
+
+  drawing = true;
+
+  currentLine = L.polyline([e.latlng], {
+    color: "#fdd835",
+    weight: 5,
+    opacity: 0.95,
+    lineCap: "round",
+    lineJoin: "round"
+  }).addTo(drawGroup);
+}
 
   function moveDraw(e){
     if (!drawing || !currentLine) return;
