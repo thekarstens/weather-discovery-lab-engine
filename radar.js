@@ -95,12 +95,16 @@ window.createRadarModule = function(opts){
     }
   }
 
-  function updateSweepUi(){
-    var btn = document.getElementById('sweepToggleBtn');
-    if (btn) btn.textContent = radarSweepEnabled ? 'SWEEP ON' : 'SWEEP OFF';
-    var panel = document.getElementById('radarSweepControls');
-    if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
+function updateSweepUi(){
+  var btn = document.getElementById('sweepToggleBtn');
+  if (btn){
+    btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
+    btn.classList.toggle('active', !!radarSweepEnabled);
   }
+
+  var panel = document.getElementById('radarSweepControls');
+  if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
+}
 
   function bindSweepControls(){
     var speed = document.getElementById('sweepSpeedSlider');
