@@ -1677,11 +1677,31 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   window.radarSweepEnabled = radarSweepEnabled;
   window.spcDay1Enabled = false;
   var alertsLayer = L.geoJSON(null, {
-    pane: "lines",
-    style: function(){
-      return { color:"#ff0000", weight:2, opacity:0.9, fill:false, fillOpacity:0 };
-    }
-  });
+  pane: "lines",
+  style: function(feature){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var evt = String(p.event || p.type || "").toUpperCase();
+    var isTornado = evt.includes("TORNADO");
+
+    return {
+      color: isTornado ? "#ff2a2a" : "#ffd400",
+      weight: 3,
+      opacity: 0.95,
+      fill: false,
+      fillOpacity: 0
+    };
+  },
+  onEachFeature: function(feature, layer){
+    var p = feature.properties || {};
+    var popup = p.popupHtml || p.text || "<b>Warning</b>";
+    layer.bindPopup(popup);
+  }
+});
+
+var alertsGeoJson = null;
+var alertsLoadPromise = null;
+var alertsBlinkOn = true;
+var alertsBlinkTimer = null;
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -2817,34 +2837,57 @@ function alertsUrlFor(d){
 }
 
 function updateAlerts(){
-    if (!alertsLayer) return;
 
-    var url = alertsUrlFor(curZ);
-    if (!url) {
-      alertsLayer.clearLayers();
-      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
-        map.removeLayer(alertsLayer);
+  ensureAlertsLoaded().then(function(gj){
+
+    if (!gj || !alertsLayer) return;
+
+    var now = curZ.getTime();
+    var anyActive = false;
+
+    alertsLayer.eachLayer(function(layer){
+
+      var p = layer.feature.properties || {};
+
+      var start = Date.parse(p.ISSUE || p.issue || p.start);
+      var end   = Date.parse(p.EXPIRE || p.expire || p.end);
+
+      var active = now >= start && now <= end;
+
+      var evt = String(p.event || p.type || "").toUpperCase();
+      var isTornado = evt.includes("TORNADO");
+
+      if (active) anyActive = true;
+
+      layer.setStyle({
+        color: isTornado ? "#ff2a2a" : "#ffd400",
+        opacity: active ? (alertsBlinkOn ? 1 : 0.2) : 0,
+        fill: false
+      });
+
+      if (layer._path){
+        layer._path.style.pointerEvents = active ? "auto" : "none";
       }
-      return;
+
+    });
+
+    if (anyActive){
+      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
+      ensureBlinking();
+    } else {
+      if (map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
     }
 
-    fetch(url).then(function(r){
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    }).then(function(gj){
-      alertsLayer.clearLayers();
-      alertsLayer.addData(gj);
-      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
-      setStatus("Alerts: " + url);
-    }).catch(function(err){
-      alertsLayer.clearLayers();
-      if (map && map.hasLayer && map.hasLayer(alertsLayer)) {
-        map.removeLayer(alertsLayer);
-      }
-      setStatus("Alerts missing: " + url);
-    });
-  }
+  });
 
+}
+function ensureBlinking(){
+  if (alertsBlinkTimer) return;
+
+  alertsBlinkTimer = setInterval(function(){
+    alertsBlinkOn = !alertsBlinkOn;
+  }, 600);
+}
   function updateAll(){
     setTimeLabel();
     // Keep jet particles in sync with the master banner clock
@@ -2908,6 +2951,7 @@ function updateAlerts(){
       var mode = getActiveScrubberMode();
       if (mode === 'radar'){
         setCurrentRadarFrameIndex(v);
+        ensureAlertsLoaded();
         setTimeLabel();
         updateRadar();
         updateProductLabel();
