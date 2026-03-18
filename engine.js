@@ -1685,8 +1685,15 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   },
   onEachFeature: function(feature, layer){
     var p = feature.properties || {};
-    var popup = p.popupHtml || p.text || "<b>Warning</b>";
-    layer.bindPopup(popup);
+    var popup = p.popupHtml || p.bulletinText || p.text || "<b>Warning</b>";
+    var wrapped = '<div style="width:520px; max-width:520px; max-height:260px; overflow-y:auto; overflow-x:hidden; font:800 13px/1.35 Arial,sans-serif; padding-right:6px; box-sizing:border-box;">' + popup + '</div>';
+    layer.bindPopup(wrapped, {
+      maxWidth: 560,
+      minWidth: 560,
+      autoPan: true,
+      keepInView: true,
+      className: "warning-popup-shell"
+    });
   }
 });
 
@@ -2842,6 +2849,42 @@ function alertsUrlFor(d){
     return null;
   }
 }
+function parseAlertTimeValue(v){
+  if (!v) return NaN;
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  var s = String(v).trim();
+  if (!s) return NaN;
+  var t = Date.parse(s);
+  if (isFinite(t)) return t;
+  return NaN;
+}
+
+function getAlertStartMs(p){
+  if (!p) return NaN;
+  var vals = [
+    p.polyBegin, p.issued, p.ISSUE, p.issue, p.start,
+    p.start_utc, p.issue_utc, p.effective, p.onset, p.valid_from
+  ];
+  for (var i=0; i<vals.length; i++){
+    var t = parseAlertTimeValue(vals[i]);
+    if (isFinite(t)) return t;
+  }
+  return NaN;
+}
+
+function getAlertEndMs(p){
+  if (!p) return NaN;
+  var vals = [
+    p.polyEnd, p.expired, p.EXPIRE, p.expire, p.end,
+    p.end_utc, p.expire_utc, p.expires, p.valid_to
+  ];
+  for (var i=0; i<vals.length; i++){
+    var t = parseAlertTimeValue(vals[i]);
+    if (isFinite(t)) return t;
+  }
+  return NaN;
+}
+
 function ensureAlertsLoaded(){
   if (alertsGeoJson) return Promise.resolve(alertsGeoJson);
   if (alertsLoadPromise) return alertsLoadPromise;
@@ -2858,7 +2901,6 @@ function ensureAlertsLoaded(){
       alertsGeoJson = gj;
       alertsLayer.clearLayers();
       alertsLayer.addData(gj);
-      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
       return gj;
     })
     .catch(function(err){
@@ -2876,54 +2918,54 @@ function updateAlerts(){
   }
 
   ensureAlertsLoaded().then(function(gj){
-
     if (!gj || !alertsLayer) return;
 
     var now = curZ.getTime();
     var anyActive = false;
 
     alertsLayer.eachLayer(function(layer){
-
-      var p = layer.feature.properties || {};
-
-      var start = Date.parse(p.ISSUE || p.issue || p.start);
-      var end   = Date.parse(p.EXPIRE || p.expire || p.end);
-
-      var active = now >= start && now <= end;
+      var p = (layer && layer.feature && layer.feature.properties) ? layer.feature.properties : {};
+      var start = getAlertStartMs(p);
+      var end   = getAlertEndMs(p);
+      var active = isFinite(start) && isFinite(end) ? (now >= start && now <= end) : false;
 
       var evt = String(p.event || p.type || "").toUpperCase();
       var isTornado = evt.includes("TORNADO");
 
       if (active) anyActive = true;
 
-      layer.setStyle({
-        color: isTornado ? "#ff2a2a" : "#ffd400",
-        opacity: active ? (alertsBlinkOn ? 1 : 0.2) : 0,
-        fill: false
-      });
+      try{
+        layer.setStyle({
+          color: isTornado ? "#ff2a2a" : "#ffd400",
+          weight: 3,
+          opacity: active ? (alertsBlinkOn ? 1 : 0.2) : 0,
+          fill: false,
+          fillOpacity: 0
+        });
+      }catch(e){}
 
       if (layer._path){
         layer._path.style.pointerEvents = active ? "auto" : "none";
       }
-
     });
 
     if (anyActive){
       if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
+      try{ alertsLayer.bringToFront(); }catch(e){}
       ensureBlinking();
     } else {
       if (map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer);
     }
-
+  }).catch(function(err){
+    console.warn("updateAlerts failed:", err);
   });
-
 }
 function refreshAlertsBlink(){
   if (!alertsLayer) return;
   alertsLayer.eachLayer(function(layer){
     var p = (layer && layer.feature && layer.feature.properties) ? layer.feature.properties : {};
-    var start = Date.parse(p.ISSUE || p.issue || p.start);
-    var end   = Date.parse(p.EXPIRE || p.expire || p.end);
+    var start = getAlertStartMs(p);
+    var end   = getAlertEndMs(p);
     var now = curZ.getTime();
     var active = isFinite(start) && isFinite(end) ? (now >= start && now <= end) : false;
     var evt = String(p.event || p.type || "").toUpperCase();
