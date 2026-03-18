@@ -1694,6 +1694,8 @@ var alertsGeoJson = null;
 var alertsLoadPromise = null;
 var alertsBlinkOn = true;
 var alertsBlinkTimer = null;
+var warningsEnabled = false;
+window.warningsEnabled = warningsEnabled;
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -2710,6 +2712,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
+    { on: (typeof warningsEnabled !== "undefined" && warningsEnabled), label: "WARNINGS" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
@@ -2867,6 +2870,10 @@ function ensureAlertsLoaded(){
   return alertsLoadPromise;
 }
 function updateAlerts(){
+  if (!warningsEnabled){
+    try{ if (map.hasLayer(alertsLayer)) map.removeLayer(alertsLayer); }catch(e){}
+    return;
+  }
 
   ensureAlertsLoaded().then(function(gj){
 
@@ -2940,6 +2947,15 @@ function ensureBlinking(){
     refreshAlertsBlink();
   }, 600);
 }
+function setWarningsEnabled(on){
+  warningsEnabled = !!on;
+  window.warningsEnabled = warningsEnabled;
+  updateAlerts();
+  try{ updateProductLabel(); }catch(e){}
+  try{ setTimeLabel(); }catch(e){}
+}
+window.setWarningsEnabled = setWarningsEnabled;
+
   function updateAll(){
     setTimeLabel();
     // Keep jet particles in sync with the master banner clock
@@ -3468,6 +3484,7 @@ function syncSweepButton(){
     var termsOpen = document.body.classList.contains('ssg-open');
     dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
+    dock.querySelectorAll('[data-action="warnings"]').forEach(function(el){ el.classList.toggle('active', !!window.warningsEnabled); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
@@ -3522,6 +3539,10 @@ function syncSweepButton(){
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
+      return;
+    }
+    if (action === 'warnings'){
+      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(!window.warningsEnabled);
       return;
     }
     if (action === 'hrrr-temp'){
