@@ -1733,11 +1733,14 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   }
 
   function updateSweepUi(){
-    var btn = document.getElementById('sweepToggleBtn');
-    if (btn) btn.textContent = radarSweepEnabled ? 'SWEEP ON' : 'SWEEP OFF';
-    var panel = document.getElementById('radarSweepControls');
-    if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
+  var btn = document.getElementById('sweepToggleBtn');
+  if (btn){
+    btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
+    btn.classList.toggle('active', !!radarSweepEnabled);
   }
+  var panel = document.getElementById('radarSweepControls');
+  if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
+}
 
   if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 2;
   if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 1;
@@ -2922,10 +2925,14 @@ function updateAlerts(){
     };
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
-  function syncSweepButton(){
-    window.radarSweepEnabled = radarSweepEnabled;
-    if (_sweepBtn) _sweepBtn.textContent = radarSweepEnabled ? "SWEEP ON" : "SWEEP OFF";
+function syncSweepButton(){
+  window.radarSweepEnabled = radarSweepEnabled;
+  var btn = document.getElementById("sweepToggleBtn");
+  if (btn){
+    btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+    btn.classList.toggle("active", !!radarSweepEnabled);
   }
+}
   if (_sweepBtn){
     _sweepBtn.onclick = function(){
       radarSweepEnabled = !radarSweepEnabled;
