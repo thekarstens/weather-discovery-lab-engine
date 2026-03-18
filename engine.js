@@ -1530,16 +1530,8 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   var nextBtn = document.getElementById("storyNextBtn");
   if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
   if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
-
-  var sweepToggleBtn = document.getElementById("sweepToggleBtn");
   bindSweepControls();
-  if (sweepToggleBtn) sweepToggleBtn.onclick = function(){
-    radarSweepEnabled = !radarSweepEnabled;
-    updateSweepUi();
-    updateRadar();
-  };
-
-  // Load story now
+// Load story now
   loadStory();
 
 
@@ -1764,7 +1756,7 @@ var alertsBlinkTimer = null;
 
   if (typeof radarSweepRPM === "undefined") var radarSweepRPM = 2;
   if (typeof radarSweepBeamPx === "undefined") var radarSweepBeamPx = 1;
-  if (typeof radarSweepRangeMiles === "undefined") var radarSweepRangeMiles = 150;
+  if (typeof radarSweepRangeMiles === "undefined") var radarSweepRangeMiles = 186;
 
   function destinationPoint(lat, lon, bearingDeg, distanceMeters){
     var R = 6371000;
@@ -2919,11 +2911,33 @@ function updateAlerts(){
   });
 
 }
+function refreshAlertsBlink(){
+  if (!alertsLayer) return;
+  alertsLayer.eachLayer(function(layer){
+    var p = (layer && layer.feature && layer.feature.properties) ? layer.feature.properties : {};
+    var start = Date.parse(p.ISSUE || p.issue || p.start);
+    var end   = Date.parse(p.EXPIRE || p.expire || p.end);
+    var now = curZ.getTime();
+    var active = isFinite(start) && isFinite(end) ? (now >= start && now <= end) : false;
+    var evt = String(p.event || p.type || "").toUpperCase();
+    var isTornado = evt.includes("TORNADO");
+    try{
+      layer.setStyle({
+        color: isTornado ? "#ff2a2a" : "#ffd400",
+        opacity: active ? (alertsBlinkOn ? 1 : 0.2) : 0,
+        fill: false,
+        fillOpacity: 0
+      });
+    }catch(e){}
+    if (layer._path) layer._path.style.pointerEvents = active ? "auto" : "none";
+  });
+}
 function ensureBlinking(){
   if (alertsBlinkTimer) return;
 
   alertsBlinkTimer = setInterval(function(){
     alertsBlinkOn = !alertsBlinkOn;
+    refreshAlertsBlink();
   }, 600);
 }
   function updateAll(){
@@ -2990,9 +3004,7 @@ function ensureBlinking(){
       if (mode === 'radar'){
         setCurrentRadarFrameIndex(v);
         ensureAlertsLoaded();
-        setTimeLabel();
-        updateRadar();
-        updateProductLabel();
+        updateAll();
         return;
       }
       if (mode === 'hrrr'){
@@ -3042,6 +3054,7 @@ function syncSweepButton(){
 
 
   // Initial
+  ensureAlertsLoaded();
   setTimeLabel();
   // Add overlays based on default checkboxes
   // Alerts starts OFF; radar starts ON.
