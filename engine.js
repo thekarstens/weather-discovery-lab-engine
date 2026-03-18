@@ -2832,10 +2832,48 @@ function parseHrrrPointsPayload(raw){
 
 
 function alertsUrlFor(d){
-  // Optional: provide a URL to a GeoJSON feed of warnings. Return null to disable.
-  return null;
-}
+  try{
+    var a = (CFG && CFG.warnings) ? CFG.warnings : {};
+    if (a && a.enabled === false) return null;
 
+    var rel = a.geojson || a.url || a.file || "";
+    if (!rel && CFG && CFG.id === "derecho-2022"){
+      rel = "alerts/may12_2022_tornado_severe_warnings.geojson";
+    }
+    if (!rel) return null;
+
+    return _isAbsUrl(rel) ? rel : _joinUrl(DATA_BASE, rel);
+  }catch(e){
+    return null;
+  }
+}
+function ensureAlertsLoaded(){
+  if (alertsGeoJson) return Promise.resolve(alertsGeoJson);
+  if (alertsLoadPromise) return alertsLoadPromise;
+
+  var url = alertsUrlFor(curZ);
+  if (!url) return Promise.resolve(null);
+
+  alertsLoadPromise = fetch(url, { cache: "no-store" })
+    .then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status + " :: " + url);
+      return r.json();
+    })
+    .then(function(gj){
+      alertsGeoJson = gj;
+      alertsLayer.clearLayers();
+      alertsLayer.addData(gj);
+      if (!map.hasLayer(alertsLayer)) alertsLayer.addTo(map);
+      return gj;
+    })
+    .catch(function(err){
+      console.warn("Alerts load failed:", err);
+      alertsGeoJson = null;
+      return null;
+    });
+
+  return alertsLoadPromise;
+}
 function updateAlerts(){
 
   ensureAlertsLoaded().then(function(gj){
