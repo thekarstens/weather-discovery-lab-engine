@@ -493,6 +493,7 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   // Map tools (Ruler / Probe / Draw / Home)
   var toolMeasureBtn = document.getElementById("toolMeasure");
   var toolProbeBtn   = document.getElementById("toolProbe");
+  var toolTrackBtn   = document.getElementById("toolTrack");
   var toolDrawBtn    = document.getElementById("toolDraw");
   var toolEraseBtn   = document.getElementById("toolErase");
   var toolHomeBtn    = document.getElementById("toolHome");
@@ -526,6 +527,7 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       document.body.classList.add("measure-active");
       document.body.classList.remove("probe-active");
       document.body.classList.remove("draw-active");
+      document.body.classList.remove("track-active");
     } else {
       document.body.classList.remove("measure-active");
       clearMeasureGraphics();
@@ -542,12 +544,225 @@ window.gfsSnowEnabled = gfsSnowEnabled;
     btn.classList.toggle("active", !!on);
   }
 
+
+  // ----- Storm tracker -----
+  var trackLayerGroup = L.layerGroup().addTo(map);
+  var trackStartLatLng = null;
+  var trackCurrentLatLng = null;
+  var trackArrowLine = null;
+  var trackArrowHead = null;
+  var trackDotLayer = null;
+  var trackDragging = false;
+
+  var stormTrackSpeedBox = document.getElementById("stormTrackSpeedBox");
+  var stormTrackSpeedValue = document.getElementById("stormTrackSpeedValue");
+  var stormTrackArrivalBox = document.getElementById("stormTrackArrivalBox");
+  var stormTrackArrivalBody = document.getElementById("stormTrackArrivalBody");
+  var stormTrackCloseBtn = document.getElementById("stormTrackCloseBtn");
+
+  function allTrackCities(){
+    var out = [];
+    function add(list){
+      if (!Array.isArray(list)) return;
+      for (var i=0; i<list.length; i++) out.push(list[i]);
+    }
+    add(typeof CITIES_TIER1 !== "undefined" ? CITIES_TIER1 : []);
+    add(typeof CITIES_TIER2 !== "undefined" ? CITIES_TIER2 : []);
+    add(typeof CITIES_TIER3 !== "undefined" ? CITIES_TIER3 : []);
+    add(typeof NATIONAL_CITIES !== "undefined" ? NATIONAL_CITIES : []);
+    return out;
+  }
+
+  function clearStormTrackGraphics(){
+    try{ trackLayerGroup.clearLayers(); }catch(e){}
+    trackArrowLine = null;
+    trackArrowHead = null;
+    trackDotLayer = null;
+    trackStartLatLng = null;
+    trackCurrentLatLng = null;
+    trackDragging = false;
+    if (stormTrackSpeedBox) stormTrackSpeedBox.classList.remove("open");
+    if (stormTrackArrivalBox) stormTrackArrivalBox.classList.remove("open");
+    if (stormTrackArrivalBody) stormTrackArrivalBody.innerHTML = "";
+  }
+
+  function setTrackMode(on){
+    if (on){
+      document.body.classList.add("track-active");
+      document.body.classList.remove("measure-active");
+      document.body.classList.remove("probe-active");
+      document.body.classList.remove("draw-active");
+      setToolActive(toolTrackBtn, true);
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolProbeBtn, false);
+      setToolActive(toolDrawBtn, false);
+      try{ map.dragging.disable(); }catch(e){}
+      try{ map.boxZoom.disable(); }catch(e){}
+      try{ map.doubleClickZoom.disable(); }catch(e){}
+    } else {
+      document.body.classList.remove("track-active");
+      setToolActive(toolTrackBtn, false);
+      try{ map.dragging.enable(); }catch(e){}
+      try{ map.boxZoom.enable(); }catch(e){}
+      try{ map.doubleClickZoom.enable(); }catch(e){}
+      clearStormTrackGraphics();
+    }
+  }
+
+  function formatEtaLabel(minutes){
+    var base = new Date(curZ.getTime() + Math.round(minutes) * 60000);
+    var hh = base.getHours();
+    var mm = String(base.getMinutes()).padStart(2, "0");
+    var ap = hh >= 12 ? "PM" : "AM";
+    var h12 = hh % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + mm + " " + ap;
+  }
+
+  function drawTrackPreview(startLL, endLL){
+    if (!startLL || !endLL) return;
+    var meters = map.distance(startLL, endLL);
+    var mph = meters / 1609.344;
+
+    if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
+    if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = mph.toFixed(0) + " mph";
+
+    try{ if (trackArrowLine) trackLayerGroup.removeLayer(trackArrowLine); }catch(e){}
+    try{ if (trackArrowHead) trackLayerGroup.removeLayer(trackArrowHead); }catch(e){}
+    try{ if (trackDotLayer) trackLayerGroup.removeLayer(trackDotLayer); }catch(e){}
+
+    trackArrowLine = L.polyline([startLL, endLL], {
+      color: "#4fc3ff",
+      weight: 4,
+      opacity: 0.95
+    }).addTo(trackLayerGroup);
+
+    var p1 = map.latLngToLayerPoint(startLL);
+    var p2 = map.latLngToLayerPoint(endLL);
+    var dx = p2.x - p1.x, dy = p2.y - p1.y;
+    var len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var ux = dx / len, uy = dy / len;
+    var ah = 16;
+    var aw = 8;
+    var left = L.point(p2.x - ux*ah - uy*aw, p2.y - uy*ah + ux*aw);
+    var right = L.point(p2.x - ux*ah + uy*aw, p2.y - uy*ah - ux*aw);
+    trackArrowHead = L.polygon([
+      map.layerPointToLatLng(left),
+      endLL,
+      map.layerPointToLatLng(right)
+    ], {
+      color: "#4fc3ff",
+      weight: 2,
+      opacity: 0.95,
+      fillColor: "#4fc3ff",
+      fillOpacity: 0.85
+    }).addTo(trackLayerGroup);
+
+    trackDotLayer = L.layerGroup().addTo(trackLayerGroup);
+    for (var m=5; m<=60; m+=5){
+      var frac = m / 60;
+      var px = p1.x + dx * frac;
+      var py = p1.y + dy * frac;
+      var ll = map.layerPointToLatLng(L.point(px, py));
+      L.circleMarker(ll, {
+        radius: 5,
+        color: "rgba(255,255,255,0.95)",
+        weight: 2,
+        fillColor: "#4fc3ff",
+        fillOpacity: 0.98
+      }).addTo(trackDotLayer);
+      L.marker(ll, {
+        interactive:false,
+        icon:L.divIcon({
+          className:"metar-id-tip",
+          html:String(m),
+          iconSize:null
+        })
+      }).addTo(trackDotLayer);
+    }
+  }
+
+  function buildStormArrivalTable(startLL, endLL){
+    if (!stormTrackArrivalBody) return;
+    var p1 = map.latLngToLayerPoint(startLL);
+    var p2 = map.latLngToLayerPoint(endLL);
+    var dx = p2.x - p1.x, dy = p2.y - p1.y;
+    var len2 = dx*dx + dy*dy;
+    if (!len2){ stormTrackArrivalBody.innerHTML = ""; return; }
+
+    var cities = allTrackCities();
+    var hits = [];
+    for (var i=0; i<cities.length; i++){
+      var c = cities[i];
+      var ll = L.latLng(c[1], c[2]);
+      var pc = map.latLngToLayerPoint(ll);
+      var vx = pc.x - p1.x, vy = pc.y - p1.y;
+      var t = (vx*dx + vy*dy) / len2;
+      if (t <= 0 || t > 1.05) continue;
+      var projx = p1.x + dx * t, projy = p1.y + dy * t;
+      var cross = Math.sqrt(Math.pow(pc.x - projx, 2) + Math.pow(pc.y - projy, 2));
+      if (cross > 26) continue;
+      var mins = t * 60;
+      hits.push({ name:c[0], mins:mins });
+    }
+
+    hits.sort(function(a,b){ return a.mins - b.mins; });
+    var seen = {};
+    hits = hits.filter(function(h){
+      if (seen[h.name]) return false;
+      seen[h.name] = true;
+      return true;
+    }).slice(0, 14);
+
+    if (!hits.length){
+      stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">No nearby cities on this track</div><div class="sta-time">—</div></div>';
+    } else {
+      stormTrackArrivalBody.innerHTML = hits.map(function(h){
+        return '<div class="sta-row"><div class="sta-city">' + h.name + '</div><div class="sta-time">' + formatEtaLabel(h.mins) + '</div></div>';
+      }).join('');
+    }
+    if (stormTrackArrivalBox) stormTrackArrivalBox.classList.add("open");
+  }
+
+  function startTrackDrag(e){
+    if (!document.body.classList.contains("track-active")) return;
+    if (!e || !e.latlng) return;
+    if (e.originalEvent && e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+    if (e.originalEvent && e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
+    trackDragging = true;
+    trackStartLatLng = e.latlng;
+    trackCurrentLatLng = e.latlng;
+    drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
+  }
+
+  function moveTrackDrag(e){
+    if (!document.body.classList.contains("track-active")) return;
+    if (!trackDragging || !trackStartLatLng || !e || !e.latlng) return;
+    trackCurrentLatLng = e.latlng;
+    drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
+  }
+
+  function endTrackDrag(e){
+    if (!document.body.classList.contains("track-active")) return;
+    if (!trackDragging) return;
+    trackDragging = false;
+    if (e && e.latlng) trackCurrentLatLng = e.latlng;
+    if (!trackStartLatLng || !trackCurrentLatLng) return;
+    drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
+    buildStormArrivalTable(trackStartLatLng, trackCurrentLatLng);
+  }
+
+  if (stormTrackCloseBtn) stormTrackCloseBtn.onclick = function(){
+    if (stormTrackArrivalBox) stormTrackArrivalBox.classList.remove("open");
+  };
+
+
   // ----- Probe mode (HRRR temp only for now) -----
   function setProbeMode(on){
     if (on){
       document.body.classList.add("probe-active");
       document.body.classList.remove("measure-active");
       document.body.classList.remove("draw-active");
+      document.body.classList.remove("track-active");
     } else {
       document.body.classList.remove("probe-active");
     }
@@ -639,6 +854,7 @@ function setDrawMode(on){
     document.body.classList.add("draw-active");
     document.body.classList.remove("measure-active");
     document.body.classList.remove("probe-active");
+    document.body.classList.remove("track-active");
     setToolActive(toolDrawBtn, true);
     setToolActive(toolEraseBtn, true);
     setToolActive(toolMeasureBtn, false);
@@ -708,6 +924,9 @@ function setDrawMode(on){
   map.on("touchstart", startDraw);
   map.on("touchmove", moveDraw);
   map.on("touchend", endDraw);
+  map.on("mousedown", startTrackDrag);
+  map.on("mousemove", moveTrackDrag);
+  map.on("mouseup", endTrackDrag);
 
   // ----- Probe click handler (HRRR temp nearest point) -----
   function handleProbeClick(e){
@@ -768,6 +987,12 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (on) setDrawMode(false);
   };
 
+  if (toolTrackBtn) toolTrackBtn.onclick = function(){
+    var on = !document.body.classList.contains("track-active");
+    setTrackMode(on);
+    if (on){ setMeasureMode(false); setProbeMode(false); setDrawMode(false); }
+  };
+
   if (toolDrawBtn) toolDrawBtn.onclick = function(){
     var on = !document.body.classList.contains("draw-active");
     setDrawMode(on);
@@ -779,7 +1004,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   };
 
   if (toolHomeBtn) toolHomeBtn.onclick = function(){
-    setMeasureMode(false); setProbeMode(false); setDrawMode(false);
+    setMeasureMode(false); setProbeMode(false); setDrawMode(false); setTrackMode(false);
     clearMeasureGraphics();
     map.setView([43.55, -96.73], 6);
   };
