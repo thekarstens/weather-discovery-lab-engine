@@ -601,18 +601,12 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       try{ map.dragging.disable(); }catch(e){}
       try{ map.boxZoom.disable(); }catch(e){}
       try{ map.doubleClickZoom.disable(); }catch(e){}
-      try{ map.scrollWheelZoom.disable(); }catch(e){}
-      try{ map.keyboard.disable(); }catch(e){}
-      try{ map.touchZoom.disable(); }catch(e){}
     } else {
       document.body.classList.remove("track-active");
       setToolActive(toolTrackBtn, false);
       try{ map.dragging.enable(); }catch(e){}
       try{ map.boxZoom.enable(); }catch(e){}
       try{ map.doubleClickZoom.enable(); }catch(e){}
-      try{ map.scrollWheelZoom.enable(); }catch(e){}
-      try{ map.keyboard.enable(); }catch(e){}
-      try{ map.touchZoom.enable(); }catch(e){}
       clearStormTrackGraphics();
     }
   }
@@ -627,67 +621,73 @@ window.gfsSnowEnabled = gfsSnowEnabled;
   }
 
   function drawTrackPreview(startLL, endLL){
-    if (!startLL || !endLL) return;
-    var meters = map.distance(startLL, endLL);
-    var mph = meters / 1609.344;
+  if (!startLL || !endLL) return;
 
-    if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
-    if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = mph.toFixed(0) + " mph";
+  var meters = map.distance(startLL, endLL);
+  var mph = meters / 1609.344;
 
-    try{ if (trackArrowLine) trackLayerGroup.removeLayer(trackArrowLine); }catch(e){}
-    try{ if (trackArrowHead) trackLayerGroup.removeLayer(trackArrowHead); }catch(e){}
-    try{ if (trackDotLayer) trackLayerGroup.removeLayer(trackDotLayer); }catch(e){}
+  if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
+  if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = mph.toFixed(0) + " mph";
 
-    trackArrowLine = L.polyline([startLL, endLL], {
-      color: "#4fc3ff",
-      weight: 4,
-      opacity: 0.95
-    }).addTo(trackLayerGroup);
+  try{ trackLayerGroup.clearLayers(); }catch(e){}
 
-    var p1 = map.latLngToLayerPoint(startLL);
-    var p2 = map.latLngToLayerPoint(endLL);
-    var dx = p2.x - p1.x, dy = p2.y - p1.y;
-    var len = Math.sqrt(dx*dx + dy*dy) || 1;
-    var ux = dx / len, uy = dy / len;
-    var ah = 16;
-    var aw = 8;
-    var left = L.point(p2.x - ux*ah - uy*aw, p2.y - uy*ah + ux*aw);
-    var right = L.point(p2.x - ux*ah + uy*aw, p2.y - uy*ah - ux*aw);
-    trackArrowHead = L.polygon([
-      map.layerPointToLatLng(left),
-      endLL,
-      map.layerPointToLatLng(right)
-    ], {
-      color: "#4fc3ff",
-      weight: 2,
-      opacity: 0.95,
-      fillColor: "#4fc3ff",
-      fillOpacity: 0.85
-    }).addTo(trackLayerGroup);
+  // Convert to screen space
+  var p1 = map.latLngToLayerPoint(startLL);
+  var p2 = map.latLngToLayerPoint(endLL);
 
-    trackDotLayer = L.layerGroup().addTo(trackLayerGroup);
-    for (var m=5; m<=60; m+=5){
-      var frac = m / 60;
-      var px = p1.x + dx * frac;
-      var py = p1.y + dy * frac;
-      var ll = map.layerPointToLatLng(L.point(px, py));
-      L.circleMarker(ll, {
-        radius: 5,
-        color: "rgba(255,255,255,0.95)",
-        weight: 2,
-        fillColor: "#4fc3ff",
-        fillOpacity: 0.98
-      }).addTo(trackDotLayer);
-      L.marker(ll, {
-        interactive:false,
-        icon:L.divIcon({
-          className:"metar-id-tip",
-          html:String(m),
-          iconSize:null
-        })
-      }).addTo(trackDotLayer);
-    }
+  var dx = p2.x - p1.x;
+  var dy = p2.y - p1.y;
+  var len = Math.sqrt(dx*dx + dy*dy) || 1;
+
+  var ux = dx / len;
+  var uy = dy / len;
+
+  // Fan angle (degrees → radians)
+  var angle = 12 * Math.PI / 180; // ~24° total spread
+
+  function rotate(vx, vy, ang){
+    return {
+      x: vx * Math.cos(ang) - vy * Math.sin(ang),
+      y: vx * Math.sin(ang) + vy * Math.cos(ang)
+    };
   }
+
+  var leftVec = rotate(ux, uy, angle);
+  var rightVec = rotate(ux, uy, -angle);
+
+  var lengthPx = len;
+
+  var leftPt = L.point(p1.x + leftVec.x * lengthPx, p1.y + leftVec.y * lengthPx);
+  var rightPt = L.point(p1.x + rightVec.x * lengthPx, p1.y + rightVec.y * lengthPx);
+
+  var fan = L.polygon([
+    startLL,
+    map.layerPointToLatLng(leftPt),
+    map.layerPointToLatLng(rightPt)
+  ], {
+    color: "#ffffff",
+    weight: 2,
+    opacity: 0.95,
+    fillColor: "#000000",
+    fillOpacity: 0.35
+  }).addTo(trackLayerGroup);
+
+  // Center line (subtle)
+  L.polyline([startLL, endLL], {
+    color: "#ffffff",
+    weight: 2,
+    opacity: 0.85
+  }).addTo(trackLayerGroup);
+
+  // Origin marker
+  L.circleMarker(startLL, {
+    radius: 6,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#ffffff",
+    fillOpacity: 1
+  }).addTo(trackLayerGroup);
+}
 
   function buildStormArrivalTable(startLL, endLL){
     if (!stormTrackArrivalBody) return;
@@ -731,51 +731,29 @@ window.gfsSnowEnabled = gfsSnowEnabled;
     if (stormTrackArrivalBox) stormTrackArrivalBox.classList.add("open");
   }
 
-  function trackLatLngFromEvent(e){
-    if (!e) return null;
-    if (e.latlng) return e.latlng;
-    var ev = e.originalEvent || e;
-    if (!ev) return null;
-    try{
-      var cp = map.mouseEventToContainerPoint(ev);
-      return map.containerPointToLatLng(cp);
-    }catch(err){
-      return null;
-    }
-  }
-
   function startTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
-    var ll = trackLatLngFromEvent(e);
-    if (!ll) return;
-    var ev = e.originalEvent || e;
-    if (ev && ev.preventDefault) ev.preventDefault();
-    if (ev && ev.stopPropagation) ev.stopPropagation();
+    if (!e || !e.latlng) return;
+    if (e.originalEvent && e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+    if (e.originalEvent && e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
     trackDragging = true;
-    try{ map.dragging.disable(); }catch(err){}
-    trackStartLatLng = ll;
-    trackCurrentLatLng = ll;
+    trackStartLatLng = e.latlng;
+    trackCurrentLatLng = e.latlng;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
   }
 
   function moveTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
-    if (!trackDragging || !trackStartLatLng) return;
-    var ll = trackLatLngFromEvent(e);
-    if (!ll) return;
-    var ev = e.originalEvent || e;
-    if (ev && ev.preventDefault) ev.preventDefault();
-    trackCurrentLatLng = ll;
+    if (!trackDragging || !trackStartLatLng || !e || !e.latlng) return;
+    trackCurrentLatLng = e.latlng;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
   }
 
   function endTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
     if (!trackDragging) return;
-    var ll = trackLatLngFromEvent(e);
-    if (ll) trackCurrentLatLng = ll;
     trackDragging = false;
-    try{ map.dragging.disable(); }catch(err){}
+    if (e && e.latlng) trackCurrentLatLng = e.latlng;
     if (!trackStartLatLng || !trackCurrentLatLng) return;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
     buildStormArrivalTable(trackStartLatLng, trackCurrentLatLng);
@@ -961,14 +939,6 @@ function setDrawMode(on){
   map.on("mousedown", startTrackDrag);
   map.on("mousemove", moveTrackDrag);
   map.on("mouseup", endTrackDrag);
-  try{
-    var _trackContainer = map.getContainer();
-    if (_trackContainer){
-      _trackContainer.addEventListener("mousedown", startTrackDrag, { passive:false });
-      window.addEventListener("mousemove", moveTrackDrag, { passive:false });
-      window.addEventListener("mouseup", endTrackDrag, { passive:false });
-    }
-  }catch(e){}
 
   // ----- Probe click handler (HRRR temp nearest point) -----
   function handleProbeClick(e){
