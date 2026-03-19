@@ -528,6 +528,8 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       document.body.classList.remove("probe-active");
       document.body.classList.remove("draw-active");
       document.body.classList.remove("track-active");
+      setToolActive(toolTrackBtn, false);
+      clearStormTrackGraphics();
     } else {
       document.body.classList.remove("measure-active");
       clearMeasureGraphics();
@@ -599,12 +601,18 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       try{ map.dragging.disable(); }catch(e){}
       try{ map.boxZoom.disable(); }catch(e){}
       try{ map.doubleClickZoom.disable(); }catch(e){}
+      try{ map.scrollWheelZoom.disable(); }catch(e){}
+      try{ map.keyboard.disable(); }catch(e){}
+      try{ map.touchZoom.disable(); }catch(e){}
     } else {
       document.body.classList.remove("track-active");
       setToolActive(toolTrackBtn, false);
       try{ map.dragging.enable(); }catch(e){}
       try{ map.boxZoom.enable(); }catch(e){}
       try{ map.doubleClickZoom.enable(); }catch(e){}
+      try{ map.scrollWheelZoom.enable(); }catch(e){}
+      try{ map.keyboard.enable(); }catch(e){}
+      try{ map.touchZoom.enable(); }catch(e){}
       clearStormTrackGraphics();
     }
   }
@@ -723,29 +731,51 @@ window.gfsSnowEnabled = gfsSnowEnabled;
     if (stormTrackArrivalBox) stormTrackArrivalBox.classList.add("open");
   }
 
+  function trackLatLngFromEvent(e){
+    if (!e) return null;
+    if (e.latlng) return e.latlng;
+    var ev = e.originalEvent || e;
+    if (!ev) return null;
+    try{
+      var cp = map.mouseEventToContainerPoint(ev);
+      return map.containerPointToLatLng(cp);
+    }catch(err){
+      return null;
+    }
+  }
+
   function startTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
-    if (!e || !e.latlng) return;
-    if (e.originalEvent && e.originalEvent.preventDefault) e.originalEvent.preventDefault();
-    if (e.originalEvent && e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
+    var ll = trackLatLngFromEvent(e);
+    if (!ll) return;
+    var ev = e.originalEvent || e;
+    if (ev && ev.preventDefault) ev.preventDefault();
+    if (ev && ev.stopPropagation) ev.stopPropagation();
     trackDragging = true;
-    trackStartLatLng = e.latlng;
-    trackCurrentLatLng = e.latlng;
+    try{ map.dragging.disable(); }catch(err){}
+    trackStartLatLng = ll;
+    trackCurrentLatLng = ll;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
   }
 
   function moveTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
-    if (!trackDragging || !trackStartLatLng || !e || !e.latlng) return;
-    trackCurrentLatLng = e.latlng;
+    if (!trackDragging || !trackStartLatLng) return;
+    var ll = trackLatLngFromEvent(e);
+    if (!ll) return;
+    var ev = e.originalEvent || e;
+    if (ev && ev.preventDefault) ev.preventDefault();
+    trackCurrentLatLng = ll;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
   }
 
   function endTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
     if (!trackDragging) return;
+    var ll = trackLatLngFromEvent(e);
+    if (ll) trackCurrentLatLng = ll;
     trackDragging = false;
-    if (e && e.latlng) trackCurrentLatLng = e.latlng;
+    try{ map.dragging.disable(); }catch(err){}
     if (!trackStartLatLng || !trackCurrentLatLng) return;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
     buildStormArrivalTable(trackStartLatLng, trackCurrentLatLng);
@@ -763,6 +793,8 @@ window.gfsSnowEnabled = gfsSnowEnabled;
       document.body.classList.remove("measure-active");
       document.body.classList.remove("draw-active");
       document.body.classList.remove("track-active");
+      setToolActive(toolTrackBtn, false);
+      clearStormTrackGraphics();
     } else {
       document.body.classList.remove("probe-active");
     }
@@ -855,6 +887,8 @@ function setDrawMode(on){
     document.body.classList.remove("measure-active");
     document.body.classList.remove("probe-active");
     document.body.classList.remove("track-active");
+    setToolActive(toolTrackBtn, false);
+    clearStormTrackGraphics();
     setToolActive(toolDrawBtn, true);
     setToolActive(toolEraseBtn, true);
     setToolActive(toolMeasureBtn, false);
@@ -927,6 +961,14 @@ function setDrawMode(on){
   map.on("mousedown", startTrackDrag);
   map.on("mousemove", moveTrackDrag);
   map.on("mouseup", endTrackDrag);
+  try{
+    var _trackContainer = map.getContainer();
+    if (_trackContainer){
+      _trackContainer.addEventListener("mousedown", startTrackDrag, { passive:false });
+      window.addEventListener("mousemove", moveTrackDrag, { passive:false });
+      window.addEventListener("mouseup", endTrackDrag, { passive:false });
+    }
+  }catch(e){}
 
   // ----- Probe click handler (HRRR temp nearest point) -----
   function handleProbeClick(e){
@@ -989,8 +1031,14 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
   if (toolTrackBtn) toolTrackBtn.onclick = function(){
     var on = !document.body.classList.contains("track-active");
-    setTrackMode(on);
-    if (on){ setMeasureMode(false); setProbeMode(false); setDrawMode(false); }
+    if (on){
+      setMeasureMode(false);
+      setProbeMode(false);
+      setDrawMode(false);
+      setTrackMode(true);
+    } else {
+      setTrackMode(false);
+    }
   };
 
   if (toolDrawBtn) toolDrawBtn.onclick = function(){
