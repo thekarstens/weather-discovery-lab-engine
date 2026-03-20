@@ -3865,6 +3865,8 @@ function syncSweepButton(){
       catch(err){ console.error(err); }
       var group = chip.closest('.inv-group');
       if (group) group.classList.remove('open');
+      closeAllGroups();
+      collapseDock();
       refreshDockStates();
     });
   });
