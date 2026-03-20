@@ -1473,7 +1473,7 @@ body.ssg-open #stormScienceGuide{ transform: translateX(0); }
   .inv-group-grid{
     gap:6px;
   }
-  .inv-group{ width:100%; }
+  .inv-group{position:relative;display:inline-flex;flex:0 0 auto;width:auto;max-width:none;vertical-align:top;}
   .inv-group-toggle, .inv-lesson-direct{ width:100%; justify-content:space-between; }
   .inv-subpanel{
     position:static;
@@ -2023,6 +2023,39 @@ body.track-active #map{ cursor: crosshair; }
   padding:4px 8px;
   font:900 12px/1 Arial,sans-serif;
   cursor:pointer;
+}
+
+
+.inv-chip-openlesson-yellow{
+  background: linear-gradient(180deg,#ffd93a 0%,#f1c40f 100%) !important;
+  color:#0f172a !important;
+  border:1px solid rgba(0,0,0,.18) !important;
+  box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+.inv-chip-openlesson-yellow:hover{
+  filter:brightness(1.03);
+}
+.inv-tab-panel .inv-section-row{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:wrap !important;
+  align-items:flex-start !important;
+  gap:12px !important;
+}
+.inv-tab-panel .inv-group{
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  width:auto !important;
+}
+.inv-tab-panel .inv-group > .inv-chip{
+  width:auto !important;
+}
+.inv-group-menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  min-width:260px;
+  z-index:50;
 }
 
 </style>
