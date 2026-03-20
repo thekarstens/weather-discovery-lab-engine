@@ -2070,6 +2070,21 @@ body.track-active #map{ cursor: crosshair; }
   z-index:50;
 }
 
+
+/* v4 fix: force yellow lesson button inside tab panels */
+.inv-pane .inv-group-grid .inv-lesson-direct,
+.inv-pane .inv-group-grid .inv-chip.inv-lesson-direct{
+  background: linear-gradient(180deg,#ffd93a 0%,#f1c40f 100%) !important;
+  border:1px solid rgba(0,0,0,0.30) !important;
+  color:#111 !important;
+  box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+.inv-pane .inv-group-grid .inv-lesson-direct:hover,
+.inv-pane .inv-group-grid .inv-chip.inv-lesson-direct:hover{
+  background: linear-gradient(180deg,#ffe45a 0%,#f4cc21 100%) !important;
+  color:#111 !important;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
