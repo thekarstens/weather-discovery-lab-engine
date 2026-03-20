@@ -2099,6 +2099,60 @@ body.track-active #map{ cursor: crosshair; }
 }
 .inv-group-toggle{ cursor:pointer !important; }
 
+
+/* v6 layout tightening */
+.inv-group-grid{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:8px !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  padding-bottom:2px;
+  scrollbar-width:none;
+}
+.inv-group-grid::-webkit-scrollbar{ display:none; }
+
+.inv-group{
+  flex:0 0 auto !important;
+  min-width:0 !important;
+}
+
+.inv-group-toggle,
+.inv-lesson-direct{
+  min-height:40px !important;
+  padding:10px 12px !important;
+  border-radius:999px !important;
+}
+
+.inv-group-title{
+  font:900 11px/1.05 "Lato",Arial,sans-serif !important;
+  letter-spacing:.3px !important;
+}
+
+.inv-chip.inv-lesson-direct{
+  background:linear-gradient(180deg,#ffd93a 0%,#f1c40f 100%) !important;
+  border:1px solid rgba(0,0,0,.28) !important;
+  color:#111 !important;
+}
+
+.inv-subpanel{
+  min-width:300px !important;
+  max-width:min(560px, calc(100vw - 40px)) !important;
+}
+
+@media (max-width: 1500px){
+  .inv-group-toggle,
+  .inv-lesson-direct{
+    padding:9px 10px !important;
+  }
+  .inv-group-title{
+    font:900 10px/1.05 "Lato",Arial,sans-serif !important;
+  }
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2328,9 +2382,8 @@ body.track-active #map{ cursor: crosshair; }
         <div class="inv-sub">Radar · warnings · reports · live simulator tools</div>
         <div class="inv-group-grid">
           <button class="inv-chip inv-lesson-direct" type="button" data-action="lesson">OPEN LESSON</button>
-          </div>
 
-          <div class="inv-group open">
+          <div class="inv-group">
             <button class="inv-group-toggle" type="button" data-submenu-toggle="tracking-radar">
               <span><div class="inv-group-title">RADAR</div><div class="inv-group-meta">Centerpiece storm display</div></span>
               <span class="inv-caret">▾</span>
@@ -2344,7 +2397,7 @@ body.track-active #map{ cursor: crosshair; }
             </div>
           </div>
 
-          <div class="inv-group open">
+          <div class="inv-group">
             <button class="inv-group-toggle" type="button" data-submenu-toggle="tracking-alerts">
               <span><div class="inv-group-title">WARNINGS / ALERTS</div><div class="inv-group-meta">Real-time warning decision support</div></span>
               <span class="inv-caret">▾</span>
@@ -2406,9 +2459,8 @@ body.track-active #map{ cursor: crosshair; }
         <div class="inv-sub">Damage · verification · photos/video · educational background</div>
         <div class="inv-group-grid">
           <button class="inv-chip inv-lesson-direct" type="button" data-action="lesson">OPEN LESSON</button>
-          </div>
 
-          <div class="inv-group open">
+          <div class="inv-group">
             <button class="inv-group-toggle" type="button" data-submenu-toggle="recap-impacts">
               <span><div class="inv-group-title">DAMAGE / IMPACTS</div><div class="inv-group-meta">What was left behind</div></span>
               <span class="inv-caret">▾</span>
