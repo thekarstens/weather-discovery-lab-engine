@@ -2085,6 +2085,20 @@ body.track-active #map{ cursor: crosshair; }
   color:#111 !important;
 }
 
+
+.inv-chip.inv-lesson-direct{
+  appearance:none !important;
+  border:1px solid rgba(0,0,0,.30) !important;
+  background:linear-gradient(180deg,#ffd93a 0%, #f1c40f 100%) !important;
+  color:#111 !important;
+  box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+.inv-chip.inv-lesson-direct:hover{
+  background:linear-gradient(180deg,#ffe45a 0%, #f4cc21 100%) !important;
+  color:#111 !important;
+}
+.inv-group-toggle{ cursor:pointer !important; }
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2230,9 +2244,8 @@ body.track-active #map{ cursor: crosshair; }
         <div class="inv-sub">Forecast setup · pre-storm environment · morning evidence</div>
         <div class="inv-group-grid">
           <button class="inv-chip inv-lesson-direct" type="button" data-action="lesson">OPEN LESSON</button>
-          </div>
 
-          <div class="inv-group open">
+          <div class="inv-group">
             <button class="inv-group-toggle" type="button" data-submenu-toggle="forecast-spc">
               <span><div class="inv-group-title">SPC / FORECAST GUIDANCE</div><div class="inv-group-meta">Outlooks and forecast framing</div></span>
               <span class="inv-caret">▾</span>
