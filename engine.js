@@ -3813,43 +3813,50 @@ function syncSweepButton(){
       return;
     }
     if (action === 'sweep'){
-      if (!window.obsRadarEnabled && typeof window.setRadarEnabled === 'function') {
-        await window.setRadarEnabled(true);
-        await new Promise(function(resolve){ setTimeout(resolve, 120); });
-      }
+      if (!window.obsRadarEnabled && typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
       clickIf('sweepToggleBtn');
       return;
     }
     if (action === 'radar'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(!window.obsRadarEnabled);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
       return;
     }
     if (action === 'satellite'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(!window.goesEnabled);
       return;
     }
     if (action === 'metars'){
-      if (typeof window.toggleMetars === 'function') {
-        await window.toggleMetars();
-      } else if (typeof window.setMetarsEnabled === 'function') {
-        await window.setMetarsEnabled(!window.metarVisible);
-      }
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
       return;
     }
     if (action === 'spc'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
       return;
     }
     if (action === 'warnings'){
-      if (typeof window.setWarningsEnabled === 'function') {
-        window.setWarningsEnabled(!window.warningsEnabled);
-        if (typeof window.updateAlerts === 'function') {
-          try { window.updateAlerts(); } catch(e) {}
-        }
-      }
+      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(!window.warningsEnabled);
       return;
     }
     if (action === 'hrrr-temp'){
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
       if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
       return;
     }
