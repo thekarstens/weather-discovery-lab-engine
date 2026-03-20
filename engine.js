@@ -3757,6 +3757,10 @@ function syncSweepButton(){
     getPanes().forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
   }
   function expandDock(){ body.classList.remove('collapsed'); }
+  function collapseDock(){ body.classList.add('collapsed'); }
+  function closeAllGroups(){
+    getGroups().forEach(function(group){ group.classList.remove('open'); });
+  }
 
   getTabs().forEach(function(btn){
     btn.addEventListener('click', function(ev){
@@ -3772,7 +3776,9 @@ function syncSweepButton(){
       var targetId = btn.getAttribute('data-submenu-toggle');
       var group = btn.closest('.inv-group');
       if (!group || !targetId) return;
-      group.classList.toggle('open');
+      var willOpen = !group.classList.contains('open');
+      closeAllGroups();
+      if (willOpen) group.classList.add('open');
     });
   });
 
@@ -3857,9 +3863,17 @@ function syncSweepButton(){
       ev.preventDefault();
       try { await activateAction(chip.getAttribute('data-action')); }
       catch(err){ console.error(err); }
+      var group = chip.closest('.inv-group');
+      if (group) group.classList.remove('open');
       refreshDockStates();
     });
   });
+
+  // Start with the body collapsed and all submenus closed.
+  closeAllGroups();
+  showPane('forecasting');
+  collapseDock();
+  refreshDockStates();
 
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
