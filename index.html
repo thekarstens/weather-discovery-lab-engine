@@ -1980,6 +1980,12 @@ body.track-active #map{ cursor: crosshair; }
   background:rgba(255,255,255,0.11) !important;
 }
 
+
+/* Step 7: Tracking inline expandable sections */
+.inv-chip.category-chip-track{
+  background:rgba(255,255,255,0.11) !important;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2177,7 +2183,7 @@ body.track-active #map{ cursor: crosshair; }
 
       <div class="inv-pane" data-pane="tracking">
         <div class="inv-heading">Tracking the Storm</div>
-        <div class="inv-sub">Core storm monitoring: radar, live sweep, warnings, observations</div>
+        <div class="inv-sub">Operational storm monitoring: radar, warnings, reports, and live storm analysis</div>
 
         <div class="inv-section-block">
           <div class="inv-section-label">Lesson</div>
@@ -2187,24 +2193,50 @@ body.track-active #map{ cursor: crosshair; }
         </div>
 
         <div class="inv-section-block">
-          <div class="inv-section-label">Live Storm Tools</div>
+          <div class="inv-section-label">Tracking Categories</div>
           <div class="inv-chips">
-            <button class="inv-chip active" type="button" data-action="radar">RADAR</button>
-            <button class="inv-chip" type="button" data-action="sweep">LIVE DOPPLER</button>
-            <button class="inv-chip" type="button" data-action="warnings">WARNINGS</button>
-            <button class="inv-chip" type="button" data-action="metars">METARS</button>
-            <button class="inv-chip" type="button" data-action="satellite">SATELLITE</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('radar')">RADAR</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('live')">LIVE DOPPLER</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('warnings')">WARNINGS</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('reports')">STORM REPORTS</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('obs')">OBSERVATIONS</button>
           </div>
         </div>
 
-        <div class="inv-section-block">
-          <div class="inv-section-label">Coming Soon</div>
-          <div class="inv-chips">
-            <button class="inv-chip" type="button" disabled>STORM REPORTS</button>
-            <button class="inv-chip" type="button" disabled>WATCHES</button>
-            <button class="inv-chip" type="button" disabled>ARRIVAL TIMES</button>
-          </div>
+        <div class="expand-section" id="tracking-radar-section">
+          <button class="inv-chip" type="button" data-action="radar">BASE / MAIN RADAR</button>
+          <button class="inv-chip" type="button" disabled>VELOCITY</button>
+          <button class="inv-chip" type="button" disabled>STORM RELATIVE VELOCITY</button>
+          <button class="inv-chip" type="button" disabled>DUAL POL</button>
+          <button class="inv-chip" type="button" disabled>NEXRAD PRODUCTS</button>
         </div>
+
+        <div class="expand-section" id="tracking-live-section">
+          <button class="inv-chip" type="button" data-action="sweep">LIVE DOPPLER</button>
+          <button class="inv-chip" type="button" disabled>DOPPLER TEACHING MODE</button>
+          <button class="inv-chip" type="button" disabled>HOW RADAR SPINS</button>
+        </div>
+
+        <div class="expand-section" id="tracking-warnings-section">
+          <button class="inv-chip" type="button" data-action="warnings">WARNINGS ON / OFF</button>
+          <button class="inv-chip" type="button" disabled>WATCHES</button>
+          <button class="inv-chip" type="button" disabled>WARNING TEXT</button>
+        </div>
+
+        <div class="expand-section" id="tracking-reports-section">
+          <button class="inv-chip" type="button" disabled>ALL REPORTS</button>
+          <button class="inv-chip" type="button" disabled>WIND REPORTS</button>
+          <button class="inv-chip" type="button" disabled>HAIL REPORTS</button>
+          <button class="inv-chip" type="button" disabled>TORNADO REPORTS</button>
+        </div>
+
+        <div class="expand-section" id="tracking-obs-section">
+          <button class="inv-chip" type="button" data-action="metars">METARS</button>
+          <button class="inv-chip" type="button" disabled>DOT / ROAD WX</button>
+          <button class="inv-chip" type="button" disabled>1-3 MIN OBS</button>
+        </div>
+
+        <div class="inv-foot">Tracking tab now focuses on operational radar, warnings, reports, and observation options. Tools stay on the right side of the screen.</div>
       </div>
 
       <div class="inv-pane" data-pane="recap">
@@ -2241,6 +2273,19 @@ function toggleForecastSection(name){
   var sections = ['spc','model','surface','satellite'];
   sections.forEach(function(s){
     var el = document.getElementById('forecast-' + s + '-section');
+    if (!el) return;
+    if (s === name) el.classList.toggle('active');
+    else el.classList.remove('active');
+  });
+}
+</script>
+
+
+<script>
+function toggleTrackingSection(name){
+  var sections = ['radar','live','warnings','reports','obs'];
+  sections.forEach(function(s){
+    var el = document.getElementById('tracking-' + s + '-section');
     if (!el) return;
     if (s === name) el.classList.toggle('active');
     else el.classList.remove('active');
