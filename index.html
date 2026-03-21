@@ -1963,6 +1963,23 @@ body.track-active #map{ cursor: crosshair; }
   box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35);
 }
 
+
+/* Step 6: Forecasting inline expandable sections */
+.expand-section{
+  display:none;
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid rgba(255,255,255,0.15);
+}
+.expand-section.active{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.inv-chip.category-chip{
+  background:rgba(255,255,255,0.11) !important;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2115,24 +2132,47 @@ body.track-active #map{ cursor: crosshair; }
         </div>
 
         <div class="inv-section-block">
-          <div class="inv-section-label">Forecast Guidance</div>
+          <div class="inv-section-label">Forecast Categories</div>
           <div class="inv-chips">
-            <button class="inv-chip warn" type="button" data-action="spc">SPC DAY 1</button>
-            <button class="inv-chip" type="button" data-action="hrrr-temp">HRRR TEMP</button>
-            <button class="inv-chip" type="button" data-action="metars">METARS</button>
-            <button class="inv-chip" type="button" data-action="satellite">SATELLITE</button>
+            <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('spc')">SPC</button>
+            <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('model')">MODEL DATA</button>
+            <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('surface')">SURFACE OBS</button>
+            <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('satellite')">SATELLITE</button>
+            <button class="inv-chip" type="button" disabled>UPPER AIR</button>
           </div>
         </div>
 
-        <div class="inv-section-block">
-          <div class="inv-section-label">Boundaries &amp; Setup</div>
-          <div class="inv-chips">
-            <button class="inv-chip" type="button" data-action="states">STATES</button>
-            <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
-            <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
-            <button class="inv-chip" type="button" disabled>JET STREAM</button>
-          </div>
+        <div class="expand-section" id="forecast-spc-section">
+          <button class="inv-chip warn" type="button" data-action="spc">OUTLOOKS</button>
+          <button class="inv-chip" type="button" disabled>MESOSCALE DISCUSSIONS</button>
+          <button class="inv-chip" type="button" disabled>WATCHES</button>
         </div>
+
+        <div class="expand-section" id="forecast-model-section">
+          <button class="inv-chip" type="button" data-action="hrrr-temp">HRRR TEMP</button>
+          <button class="inv-chip" type="button" disabled>DEW POINT</button>
+          <button class="inv-chip" type="button" disabled>WIND GUSTS</button>
+          <button class="inv-chip" type="button" disabled>REFLECTIVITY</button>
+          <button class="inv-chip" type="button" disabled>CAPE</button>
+        </div>
+
+        <div class="expand-section" id="forecast-surface-section">
+          <button class="inv-chip" type="button" data-action="metars">METARS</button>
+          <button class="inv-chip" type="button" disabled>WIND ARROWS</button>
+          <button class="inv-chip" type="button" disabled>TEMP PLOT</button>
+          <button class="inv-chip" type="button" disabled>DEW POINT PLOT</button>
+          <button class="inv-chip" type="button" disabled>PRESSURE PLOT</button>
+          <button class="inv-chip" type="button" data-action="states">STATES</button>
+          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
+        </div>
+
+        <div class="expand-section" id="forecast-satellite-section">
+          <button class="inv-chip" type="button" data-action="satellite">VISIBLE</button>
+          <button class="inv-chip" type="button" disabled>IR</button>
+          <button class="inv-chip" type="button" disabled>WATER VAPOR</button>
+        </div>
+
+        <div class="inv-foot">Forecasting tab now uses inline expandable sections so you can add products over time without rebuilding the dock.</div>
       </div>
 
       <div class="inv-pane" data-pane="tracking">
@@ -2194,6 +2234,19 @@ body.track-active #map{ cursor: crosshair; }
     </div>
   </div>
 </div>
+
+
+<script>
+function toggleForecastSection(name){
+  var sections = ['spc','model','surface','satellite'];
+  sections.forEach(function(s){
+    var el = document.getElementById('forecast-' + s + '-section');
+    if (!el) return;
+    if (s === name) el.classList.toggle('active');
+    else el.classList.remove('active');
+  });
+}
+</script>
 
 <script src="./radar.js"></script>
 <script src="./metars.js"></script>
