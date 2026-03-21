@@ -3741,10 +3741,13 @@ function syncSweepButton(){
 
 
 /* ---- extracted inline script 10 ---- */
-(function(){
+document.addEventListener('DOMContentLoaded', function(){
   var dock = document.getElementById('investigationDock');
   var body = document.getElementById('investigationBody');
-  if (!dock || !body) return;
+  if (!dock || !body){
+    console.warn('Dock not found');
+    return;
+  }
 
   var tabs = Array.prototype.slice.call(dock.querySelectorAll('.inv-tab'));
   var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
@@ -3756,6 +3759,7 @@ function syncSweepButton(){
     tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
     panes.forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-pane') === name); });
   }
+
   function expandDock(){ body.classList.remove('collapsed'); }
   function collapseDock(){ body.classList.add('collapsed'); }
   function closeAllGroups(){
@@ -3909,7 +3913,8 @@ function syncSweepButton(){
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
   refreshDockStates();
-})();
+  console.log('Dock wired correctly ✅');
+});
 
 
 /* ---- extracted inline script 11 ---- */
