@@ -3749,6 +3749,8 @@ function syncSweepButton(){
   var tabs = Array.prototype.slice.call(dock.querySelectorAll('.inv-tab'));
   var panes = Array.prototype.slice.call(dock.querySelectorAll('.inv-pane'));
   var chips = Array.prototype.slice.call(dock.querySelectorAll('.inv-chip[data-action]'));
+  var groupToggles = Array.prototype.slice.call(dock.querySelectorAll('.inv-group-toggle[data-submenu-toggle]'));
+  var groups = Array.prototype.slice.call(dock.querySelectorAll('.inv-group'));
 
   function showPane(name){
     tabs.forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
@@ -3756,11 +3758,44 @@ function syncSweepButton(){
   }
   function expandDock(){ body.classList.remove('collapsed'); }
   function collapseDock(){ body.classList.add('collapsed'); }
+  function closeAllGroups(){
+    groups.forEach(function(group){ group.classList.remove('open'); });
+  }
+  function closeGroupsOutsidePane(name){
+    groups.forEach(function(group){
+      var pane = group.closest('.inv-pane');
+      var keep = pane && pane.getAttribute('data-pane') === name;
+      if (!keep) group.classList.remove('open');
+    });
+  }
 
   tabs.forEach(function(btn){
     btn.addEventListener('click', function(ev){
       ev.preventDefault();
-      showPane(btn.getAttribute('data-tab'));
+      var tabName = btn.getAttribute('data-tab');
+      showPane(tabName);
+      closeGroupsOutsidePane(tabName);
+      expandDock();
+    });
+  });
+
+  groupToggles.forEach(function(toggle){
+    toggle.addEventListener('click', function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      var group = toggle.closest('.inv-group');
+      if (!group) return;
+      var pane = group.closest('.inv-pane');
+      var paneName = pane ? pane.getAttribute('data-pane') : null;
+
+      groups.forEach(function(other){
+        if (other === group) return;
+        var otherPane = other.closest('.inv-pane');
+        var samePane = (!paneName && !otherPane) || (otherPane && otherPane.getAttribute('data-pane') === paneName);
+        if (samePane) other.classList.remove('open');
+      });
+
+      group.classList.toggle('open');
       expandDock();
     });
   });
@@ -3779,7 +3814,12 @@ function syncSweepButton(){
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
   }
 
-  function clickIf(id){ var el = document.getElementById(id); if (el) el.click(); }
+  window.syncDockUi = refreshDockStates;
+
+  function clickIf(id){
+    var el = document.getElementById(id);
+    if (el) el.click();
+  }
 
   async function activateAction(action){
     if (action === 'terms'){
@@ -3791,59 +3831,58 @@ function syncSweepButton(){
       return;
     }
     if (action === 'sweep'){
-      if (!window.obsRadarEnabled && typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      if (!window.obsRadarEnabled && typeof window.setRadarEnabled === 'function') {
+        await window.setRadarEnabled(true);
+      }
       clickIf('sweepToggleBtn');
       return;
     }
     if (action === 'radar'){
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      if (typeof window.setRadarEnabled === 'function') {
+        await window.setRadarEnabled(!window.obsRadarEnabled);
+      }
       return;
     }
     if (action === 'satellite'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
-      if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(!window.goesEnabled);
+      if (typeof window.setSatelliteEnabled === 'function') {
+        await window.setSatelliteEnabled(!window.goesEnabled);
+      }
       return;
     }
     if (action === 'metars'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible);
+      if (typeof window.setMetarsEnabled === 'function') {
+        await window.setMetarsEnabled(!window.metarVisible);
+      }
       return;
     }
     if (action === 'spc'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
+      if (typeof window.setSpcDay1Enabled === 'function') {
+        await window.setSpcDay1Enabled(!window.spcDay1Enabled);
+      }
       return;
     }
     if (action === 'warnings'){
-      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(!window.warningsEnabled);
+      if (typeof window.setWarningsEnabled === 'function') {
+        window.setWarningsEnabled(!window.warningsEnabled);
+      }
       return;
     }
     if (action === 'hrrr-temp'){
-      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
-      if (typeof radarSweepEnabled !== 'undefined') { radarSweepEnabled = false; try{ syncSweepButton(); }catch(e){} }
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
+      if (typeof window.setHrrrTempEnabled === 'function') {
+        await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
+      }
       return;
     }
     if (action === 'states'){
-      if (typeof window.setStatesEnabled === 'function') await window.setStatesEnabled(!window.statesEnabled);
+      if (typeof window.setStatesEnabled === 'function') {
+        await window.setStatesEnabled(!window.statesEnabled);
+      }
       return;
     }
     if (action === 'counties'){
-      if (typeof window.setCountiesEnabled === 'function') await window.setCountiesEnabled(!window.countiesEnabled);
+      if (typeof window.setCountiesEnabled === 'function') {
+        await window.setCountiesEnabled(!window.countiesEnabled);
+      }
       return;
     }
   }
@@ -3851,11 +3890,20 @@ function syncSweepButton(){
   chips.forEach(function(chip){
     chip.addEventListener('click', async function(ev){
       ev.preventDefault();
-      try { await activateAction(chip.getAttribute('data-action')); }
-      catch(err){ console.error(err); }
+      ev.stopPropagation();
+      try {
+        await activateAction(chip.getAttribute('data-action'));
+      } catch(err) {
+        console.error(err);
+      }
+      closeAllGroups();
       refreshDockStates();
       collapseDock();
     });
+  });
+
+  document.addEventListener('click', function(ev){
+    if (!dock.contains(ev.target)) closeAllGroups();
   });
 
   var obs = new MutationObserver(refreshDockStates);
