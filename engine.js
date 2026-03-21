@@ -3841,12 +3841,7 @@ function syncSweepButton(){
       return;
     }
     if (action === 'warnings'){
-      if (typeof window.setWarningsEnabled === 'function') {
-        window.setWarningsEnabled(!window.warningsEnabled);
-        if (typeof window.updateAlerts === 'function') {
-          try { window.updateAlerts(); } catch(e) {}
-        }
-      }
+      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(!window.warningsEnabled);
       return;
     }
     if (action === 'hrrr-temp'){
