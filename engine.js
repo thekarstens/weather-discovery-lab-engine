@@ -321,6 +321,7 @@ var jetFrames = [];
 var jetBounds = null;
 var jetCurrentFrameIndex = 0;
 var jetVelocityLayer = null;
+var currentJetVelocityData = null;
 var jetLoadPromise = null;
 var JET_DEFAULT_MANIFEST = 'jet/jet_manifest.json';
 window.jet500Enabled = jet500Enabled;
@@ -338,6 +339,7 @@ function getJetManifestUrl(){
 function clearJetVelocityLayer(){
   try{ if (jetVelocityLayer && map && map.hasLayer && map.hasLayer(jetVelocityLayer)) map.removeLayer(jetVelocityLayer); }catch(e){}
   jetVelocityLayer = null;
+  currentJetVelocityData = null;
   window.jetVelocityLayer = null;
 }
 
@@ -408,6 +410,46 @@ function jetFrameUrl(frame){
   return _isAbsUrl(frame.file) ? frame.file : _joinUrl(jetManifestFolder || DATA_BASE, frame.file);
 }
 
+
+function mphFromMetersPerSecond(ms){
+  return ms * 2.2369362920544;
+}
+
+function getJetWindAtLatLng(latlng){
+  if (!latlng || !currentJetVelocityData || !Array.isArray(currentJetVelocityData) || currentJetVelocityData.length < 2) return null;
+  var uRec = currentJetVelocityData[0] || null;
+  var vRec = currentJetVelocityData[1] || null;
+  if (!uRec || !vRec || !uRec.header || !vRec.header || !Array.isArray(uRec.data) || !Array.isArray(vRec.data)) return null;
+
+  var h = uRec.header;
+  var nx = Number(h.nx), ny = Number(h.ny);
+  var lo1 = Number(h.lo1), la1 = Number(h.la1);
+  var dx = Number(h.dx), dy = Number(h.dy);
+  if (![nx, ny, lo1, la1, dx, dy].every(isFinite) || !nx || !ny || !dx || !dy) return null;
+
+  var lon = Number(latlng.lng);
+  var lat = Number(latlng.lat);
+  var col = Math.round((lon - lo1) / dx);
+  var row = Math.round((la1 - lat) / dy);
+  if (!isFinite(col) || !isFinite(row)) return null;
+  if (col < 0 || col >= nx || row < 0 || row >= ny) return null;
+
+  var idx = row * nx + col;
+  var u = Number(uRec.data[idx]);
+  var v = Number(vRec.data[idx]);
+  if (!isFinite(u) || !isFinite(v)) return null;
+
+  var speedMs = Math.sqrt(u*u + v*v);
+  return {
+    row: row,
+    col: col,
+    u: u,
+    v: v,
+    speedMs: speedMs,
+    speedMph: mphFromMetersPerSecond(speedMs)
+  };
+}
+
 async function updateJetParticles(){
   if (!jet500Enabled){
     clearJetVelocityLayer();
@@ -422,15 +464,29 @@ async function updateJetParticles(){
     if (!res.ok) throw new Error('Jet frame HTTP ' + res.status + ': ' + url);
     var data = await res.json();
     clearJetVelocityLayer();
+    currentJetVelocityData = data;
     jetVelocityLayer = L.velocityLayer({
       data: data,
       displayValues: false,
-      velocityScale: 0.008,
+      displayOptions: {
+        velocityType: '500mb Winds',
+        position: 'bottomleft',
+        emptyString: 'No data'
+      },
+      velocityScale: 0.006,
       particleAge: 90,
-      lineWidth: 2,
+      lineWidth: 3,
       frameRate: 20,
       maxVelocity: 80,
-      opacity: 0.75
+      opacity: 0.82,
+      colorScale: [
+        '#00ffff',
+        '#00ff00',
+        '#ffff00',
+        '#ff9900',
+        '#ff0000',
+        '#800000'
+      ]
     });
     jetVelocityLayer.addTo(map);
     window.jetVelocityLayer = jetVelocityLayer;
@@ -1098,12 +1154,28 @@ function setDrawMode(on){
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
 
+    if (jet500Enabled && currentJetVelocityData){
+      var jetProbe = getJetWindAtLatLng(e.latlng);
+      if (jetProbe){
+        var jetContent =
+          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>500 mb Winds</div>" +
+          "<div style='font:900 30px/1.05 Arial,sans-serif'>" + Math.round(jetProbe.speedMph) + " mph</div>" +
+          "<div style='font:900 14px/1.05 Arial,sans-serif;opacity:.9'>u=" + jetProbe.u.toFixed(1) + ", v=" + jetProbe.v.toFixed(1) + " m/s</div>";
+
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng(e.latlng)
+          .setContent(jetContent)
+          .openOn(map);
+        return;
+      }
+    }
+
     // Require HRRR temp layer + points
     try{
       if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
           .setLatLng(e.latlng)
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b>.</div>")
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> or <b>500 mb Winds</b>.</div>")
           .openOn(map);
         return;
       }
@@ -1137,12 +1209,14 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   };
 
   if (toolProbeBtn) toolProbeBtn.onclick = function(){
-    // Keep probe simple: if HRRR layer isn't on, tell the user and don't enable.
+    // Allow probing for either HRRR temps or active 500 mb winds.
     try{
-      if (!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer))){
+      var canProbeHrrr = !!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer));
+      var canProbeJet = !!(jet500Enabled && currentJetVelocityData);
+      if (!(canProbeHrrr || canProbeJet)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
           .setLatLng(map.getCenter())
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> to probe.</div>")
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> or <b>500 mb Winds</b> to probe.</div>")
           .openOn(map);
         setProbeMode(false);
         return;
