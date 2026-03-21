@@ -1936,6 +1936,33 @@ body.track-active #map{ cursor: crosshair; }
   cursor:pointer;
 }
 
+
+/* Step 4: 3-tab shell */
+.inv-tabs{
+  grid-template-columns:repeat(3, 1fr) !important;
+}
+.inv-pane .inv-section-block{
+  margin-bottom:12px;
+}
+.inv-pane .inv-section-label{
+  color:rgba(255,255,255,0.72);
+  font:900 10px/1 Arial,sans-serif;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  margin:0 0 6px 2px;
+}
+.inv-pane .inv-chips{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.inv-chip.lesson-chip{
+  border:1px solid rgba(0,0,0,0.30) !important;
+  background:linear-gradient(180deg,#ffd93a 0%,#f1c40f 100%) !important;
+  color:#111 !important;
+  box-shadow:0 8px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35);
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2070,72 +2097,100 @@ body.track-active #map{ cursor: crosshair; }
 <img alt="Weather Workshops" id="brandLogo" src="./storm_science_lab_logo.png"/>
 <div id="investigationDock" aria-label="Investigation dock">
   <div class="inv-shell">
-    <div class="inv-tabs" role="tablist" aria-label="Meteorology investigation tabs">
-      <button class="inv-tab active" type="button" data-tab="observe">OBSERVE</button>
-      <button class="inv-tab" type="button" data-tab="fuel">FUEL</button>
-      <button class="inv-tab" type="button" data-tab="trigger">TRIGGER</button>
-      <button class="inv-tab" type="button" data-tab="organize">ORGANIZE</button>
-      <button class="inv-tab" type="button" data-tab="impacts">IMPACTS</button>
-      <button class="inv-tab" type="button" data-tab="forecast">FORECAST</button>
+    <div class="inv-tabs" role="tablist" aria-label="Case study tabs">
+      <button class="inv-tab active" type="button" data-tab="forecasting">FORECASTING THE STORM</button>
+      <button class="inv-tab" type="button" data-tab="tracking">TRACKING THE STORM</button>
+      <button class="inv-tab" type="button" data-tab="recap">RECAP &amp; LESSONS LEARNED</button>
     </div>
     <div id="investigationBody">
-      <div class="inv-pane active" data-pane="observe">
-        <div class="inv-heading">What is happening now?</div>
-        <div class="inv-sub">derecho repo: radar · metars · satellite</div>
-        <div class="inv-chips">
-          <button class="inv-chip active" type="button" data-action="radar">RADAR</button>
-          <button class="inv-chip" type="button" data-action="terms">TERMS</button>
-          <button class="inv-chip" type="button" data-action="metars">METARS</button>
-          <button class="inv-chip" type="button" data-action="satellite">SATELLITE</button>
+      <div class="inv-pane active" data-pane="forecasting">
+        <div class="inv-heading">Forecasting the Storm</div>
+        <div class="inv-sub">Signals before the event: outlooks, surface setup, models, satellite</div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Lesson</div>
+          <div class="inv-chips">
+            <button class="inv-chip lesson-chip" type="button" data-action="lesson">OPEN LESSON</button>
+          </div>
+        </div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Forecast Guidance</div>
+          <div class="inv-chips">
+            <button class="inv-chip warn" type="button" data-action="spc">SPC DAY 1</button>
+            <button class="inv-chip" type="button" data-action="hrrr-temp">HRRR TEMP</button>
+            <button class="inv-chip" type="button" data-action="metars">METARS</button>
+            <button class="inv-chip" type="button" data-action="satellite">SATELLITE</button>
+          </div>
+        </div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Boundaries &amp; Setup</div>
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" data-action="states">STATES</button>
+            <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
+            <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
+            <button class="inv-chip" type="button" disabled>JET STREAM</button>
+          </div>
         </div>
       </div>
-      <div class="inv-pane" data-pane="fuel">
-        <div class="inv-heading">Where is the storm fuel?</div>
-        <div class="inv-sub">derecho repo: hrrr</div>
-        <div class="inv-chips">
-          <button class="inv-chip" type="button" data-action="hrrr-temp">TEMPERATURE</button>
-          <button class="inv-chip" type="button" disabled>DEWPOINT</button>
-          <button class="inv-chip" type="button" disabled>CAPE</button>
+
+      <div class="inv-pane" data-pane="tracking">
+        <div class="inv-heading">Tracking the Storm</div>
+        <div class="inv-sub">Core storm monitoring: radar, live sweep, warnings, observations</div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Lesson</div>
+          <div class="inv-chips">
+            <button class="inv-chip lesson-chip" type="button" data-action="lesson">OPEN LESSON</button>
+          </div>
+        </div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Live Storm Tools</div>
+          <div class="inv-chips">
+            <button class="inv-chip active" type="button" data-action="radar">RADAR</button>
+            <button class="inv-chip" type="button" data-action="sweep">LIVE DOPPLER</button>
+            <button class="inv-chip" type="button" data-action="warnings">WARNINGS</button>
+            <button class="inv-chip" type="button" data-action="metars">METARS</button>
+            <button class="inv-chip" type="button" data-action="satellite">SATELLITE</button>
+          </div>
+        </div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Coming Soon</div>
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" disabled>STORM REPORTS</button>
+            <button class="inv-chip" type="button" disabled>WATCHES</button>
+            <button class="inv-chip" type="button" disabled>ARRIVAL TIMES</button>
+          </div>
         </div>
       </div>
-      <div class="inv-pane" data-pane="trigger">
-        <div class="inv-heading">What forced the air to rise?</div>
-        <div class="inv-sub">derecho repo: fronts · overlays · boundaries</div>
-        <div class="inv-chips">
-          <button class="inv-chip" type="button" disabled>FRONTS</button>
-          <button class="inv-chip" type="button" disabled>SURFACE MAP</button>
-          <button class="inv-chip" type="button" data-action="states">STATES</button>
-          <button class="inv-chip" type="button" data-action="counties">COUNTIES</button>
+
+      <div class="inv-pane" data-pane="recap">
+        <div class="inv-heading">Recap &amp; Lessons Learned</div>
+        <div class="inv-sub">After the event: impacts, verification, photos, educational background</div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Lesson</div>
+          <div class="inv-chips">
+            <button class="inv-chip lesson-chip" type="button" data-action="lesson">OPEN LESSON</button>
+            <button class="inv-chip" type="button" data-action="terms">TERMS</button>
+          </div>
+        </div>
+
+        <div class="inv-section-block">
+          <div class="inv-section-label">Recap Products</div>
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" disabled>DAMAGE REPORTS</button>
+            <button class="inv-chip" type="button" disabled>PHOTOS / VIDEO</button>
+            <button class="inv-chip" type="button" disabled>VERIFICATION</button>
+            <button class="inv-chip" type="button" disabled>WATCHES</button>
+          </div>
         </div>
       </div>
-      <div class="inv-pane" data-pane="organize">
-        <div class="inv-heading">Why did the storms organize?</div>
-        <div class="inv-sub">derecho repo: jet · radar sweep</div>
-        <div class="inv-chips">
-          <button class="inv-chip" type="button" disabled>JET</button>
-          <button class="inv-chip" type="button" disabled>WIND PARTICLES</button>
-          <button class="inv-chip" type="button" data-action="sweep">SWEEP</button>
-        </div>
-      </div>
-      <div class="inv-pane" data-pane="impacts">
-        <div class="inv-heading">What were the impacts?</div>
-        <div class="inv-sub">derecho repo: overlays · reports</div>
-        <div class="inv-chips">
-          <button class="inv-chip" type="button" disabled>DAMAGE REPORTS</button>
-          <button class="inv-chip" type="button" data-action="warnings">WARNINGS</button>
-          <button class="inv-chip" type="button" disabled>WATCHES</button>
-        </div>
-      </div>
-      <div class="inv-pane" data-pane="forecast">
-        <div class="inv-heading">Could this have been predicted?</div>
-        <div class="inv-sub">derecho repo: spc · hrrr</div>
-        <div class="inv-chips">
-          <button class="inv-chip warn" type="button" data-action="spc">SPC DAY 1</button>
-          <button class="inv-chip" type="button" data-action="hrrr-temp">HRRR</button>
-          <button class="inv-chip" type="button" data-action="lesson">OPEN LESSON</button>
-        </div>
-      </div>
-      <div class="inv-foot">Teacher build mode: working layers are live now. The gray chips are placeholders for the next repo integrations.</div>
+
+      <div class="inv-foot">Step 4 shell only: original engine logic remains intact while the case-study layout is reorganized.</div>
     </div>
   </div>
 </div>
