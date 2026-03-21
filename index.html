@@ -1986,6 +1986,22 @@ body.track-active #map{ cursor: crosshair; }
   background:rgba(255,255,255,0.11) !important;
 }
 
+
+/* Step 8: terms button moved to banner only; hide side guide drawer for now */
+#stormScienceGuide,
+#storyTab{
+  display:none !important;
+}
+#stormScienceGuideBtn{
+  display:inline-flex !important;
+  position:absolute !important;
+  left:170px !important;
+  top:58px !important;
+  z-index:4000 !important;
+  transform:none !important;
+  margin-top:0 !important;
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2241,29 +2257,48 @@ body.track-active #map{ cursor: crosshair; }
 
       <div class="inv-pane" data-pane="recap">
         <div class="inv-heading">Recap &amp; Lessons Learned</div>
-        <div class="inv-sub">After the event: impacts, verification, photos, educational background</div>
+        <div class="inv-sub">After the event: impacts, warning review, and educational background</div>
 
         <div class="inv-section-block">
           <div class="inv-section-label">Lesson</div>
           <div class="inv-chips">
             <button class="inv-chip lesson-chip" type="button" data-action="lesson">OPEN LESSON</button>
-            <button class="inv-chip" type="button" data-action="terms">TERMS</button>
           </div>
         </div>
 
         <div class="inv-section-block">
-          <div class="inv-section-label">Recap Products</div>
+          <div class="inv-section-label">Recap Categories</div>
           <div class="inv-chips">
-            <button class="inv-chip" type="button" disabled>DAMAGE REPORTS</button>
-            <button class="inv-chip" type="button" disabled>PHOTOS / VIDEO</button>
-            <button class="inv-chip" type="button" disabled>VERIFICATION</button>
-            <button class="inv-chip" type="button" disabled>WATCHES</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleRecapSection('damage')">DAMAGE REPORTS</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleRecapSection('warnings')">WARNINGS REVIEW</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleRecapSection('education')">DERECHO EDUCATION</button>
           </div>
         </div>
-      </div>
 
-      <div class="inv-foot">Step 4 shell only: original engine logic remains intact while the case-study layout is reorganized.</div>
-    </div>
+        <div class="expand-section" id="recap-damage-section">
+          <button class="inv-chip" type="button" disabled>ALL REPORTS</button>
+          <button class="inv-chip" type="button" disabled>TORNADO</button>
+          <button class="inv-chip" type="button" disabled>WIND</button>
+          <button class="inv-chip" type="button" disabled>HAIL</button>
+          <button class="inv-chip" type="button" disabled>FLOODING</button>
+        </div>
+
+        <div class="expand-section" id="recap-warnings-section">
+          <button class="inv-chip" type="button" data-action="warnings">WARNINGS ON / OFF</button>
+          <button class="inv-chip" type="button" disabled>WARNING TIMING</button>
+          <button class="inv-chip" type="button" disabled>WARNING AREAS</button>
+        </div>
+
+        <div class="expand-section" id="recap-education-section">
+          <button class="inv-chip" type="button" disabled>INGREDIENTS</button>
+          <button class="inv-chip" type="button" disabled>STORM STRUCTURE</button>
+          <button class="inv-chip" type="button" disabled>WHAT IS A DERECHO?</button>
+          <button class="inv-chip" type="button" disabled>REAR INFLOW JET</button>
+          <button class="inv-chip" type="button" disabled>STRAIGHT-LINE WINDS</button>
+        </div>
+
+        <div class="inv-foot">Recap tab now focuses on damage, warning review, and derecho education. Terms now lives only in the banner area.</div>
+      </div>
   </div>
 </div>
 
@@ -2286,6 +2321,19 @@ function toggleTrackingSection(name){
   var sections = ['radar','live','warnings','reports','obs'];
   sections.forEach(function(s){
     var el = document.getElementById('tracking-' + s + '-section');
+    if (!el) return;
+    if (s === name) el.classList.toggle('active');
+    else el.classList.remove('active');
+  });
+}
+</script>
+
+
+<script>
+function toggleRecapSection(name){
+  var sections = ['damage','warnings','education'];
+  sections.forEach(function(s){
+    var el = document.getElementById('recap-' + s + '-section');
     if (!el) return;
     if (s === name) el.classList.toggle('active');
     else el.classList.remove('active');
