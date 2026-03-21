@@ -311,7 +311,161 @@ window.setStatus = setStatus;
 // Engine safety defaults for optional layers/helpers
 var gfsSnowEnabled = false;
 var gfsSnowOverlay = null;
-function syncJetParticlesToClock(){ /* no-op until jet module is wired */ }
+
+// ---------- 500 mb Jet / velocity layer ----------
+var jet500Enabled = false;
+var jetManifest = null;
+var jetManifestUrl = "";
+var jetManifestFolder = "";
+var jetFrames = [];
+var jetBounds = null;
+var jetCurrentFrameIndex = 0;
+var jetVelocityLayer = null;
+var jetLoadPromise = null;
+var JET_DEFAULT_MANIFEST = 'jet/jet_manifest.json';
+window.jet500Enabled = jet500Enabled;
+window.jetVelocityLayer = jetVelocityLayer;
+
+function getJetManifestUrl(){
+  try{
+    var j = (CFG && (CFG.jet || CFG.upperAir || CFG.upperair)) ? (CFG.jet || CFG.upperAir || CFG.upperair) : {};
+    var u = j.manifest || j.manifestFile || j.url || j.file || '';
+    if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+  }catch(e){}
+  return _joinUrl(DATA_BASE, JET_DEFAULT_MANIFEST);
+}
+
+function clearJetVelocityLayer(){
+  try{ if (jetVelocityLayer && map && map.hasLayer && map.hasLayer(jetVelocityLayer)) map.removeLayer(jetVelocityLayer); }catch(e){}
+  jetVelocityLayer = null;
+  window.jetVelocityLayer = null;
+}
+
+function parseJetManifestFrames(raw){
+  var src = (raw && raw.frames) || [];
+  if (!Array.isArray(src)) return [];
+  return src.map(function(f, i){
+    if (typeof f === 'string') f = { filename:f };
+    if (!f) return null;
+    var file = f.filename || f.file || f.url || f.name || null;
+    if (!file) return null;
+    var tRaw = f.refTime || f.time || f.valid || f.utc || f.datetime || null;
+    var t = tRaw ? new Date(tRaw) : null;
+    return {
+      file:file,
+      time:tRaw || null,
+      timeMs:(t && !isNaN(t)) ? t.getTime() : NaN,
+      label:f.label || file,
+      index:i
+    };
+  }).filter(Boolean);
+}
+
+async function loadJetManifestIfNeeded(){
+  if (jetManifest) return jetManifest;
+  if (jetLoadPromise) return jetLoadPromise;
+  jetManifestUrl = getJetManifestUrl();
+  jetManifestFolder = jetManifestUrl.split('/').slice(0,-1).join('/') + '/';
+  setStatus('Loading 500 mb winds…');
+  jetLoadPromise = fetch(jetManifestUrl + (jetManifestUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' })
+    .then(function(r){
+      if (!r.ok) throw new Error('Jet manifest HTTP ' + r.status + ': ' + jetManifestUrl);
+      return r.json();
+    })
+    .then(function(raw){
+      jetManifest = raw || {};
+      jetFrames = parseJetManifestFrames(raw);
+      var b = raw && raw.bounds;
+      if (Array.isArray(b) && b.length === 2 && Array.isArray(b[0]) && Array.isArray(b[1])) jetBounds = b;
+      if (!jetFrames.length) throw new Error('Jet manifest has no frames');
+      return jetManifest;
+    })
+    .catch(function(err){
+      jetLoadPromise = null;
+      jetManifest = null;
+      jetFrames = [];
+      throw err;
+    });
+  return jetLoadPromise;
+}
+
+function getNearestJetFrame(d){
+  if (!jetFrames.length) return null;
+  var target = d && d.getTime ? d.getTime() : Date.now();
+  var best = jetFrames[0];
+  var bestDelta = isFinite(best.timeMs) ? Math.abs(best.timeMs - target) : Infinity;
+  for (var i=1;i<jetFrames.length;i++) {
+    var f = jetFrames[i];
+    var delta = isFinite(f.timeMs) ? Math.abs(f.timeMs - target) : Infinity;
+    if (delta < bestDelta) { best = f; bestDelta = delta; }
+  }
+  jetCurrentFrameIndex = best.index || 0;
+  return best;
+}
+
+function jetFrameUrl(frame){
+  if (!frame || !frame.file) return null;
+  return _isAbsUrl(frame.file) ? frame.file : _joinUrl(jetManifestFolder || DATA_BASE, frame.file);
+}
+
+async function updateJetParticles(){
+  if (!jet500Enabled){
+    clearJetVelocityLayer();
+    return;
+  }
+  try{
+    await loadJetManifestIfNeeded();
+    var frame = getNearestJetFrame(curZ);
+    if (!frame) return;
+    var url = jetFrameUrl(frame);
+    var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+    if (!res.ok) throw new Error('Jet frame HTTP ' + res.status + ': ' + url);
+    var data = await res.json();
+    clearJetVelocityLayer();
+    jetVelocityLayer = L.velocityLayer({
+      data: data,
+      displayValues: false,
+      velocityScale: 0.008,
+      particleAge: 90,
+      lineWidth: 2,
+      frameRate: 20,
+      maxVelocity: 80,
+      opacity: 0.75
+    });
+    jetVelocityLayer.addTo(map);
+    window.jetVelocityLayer = jetVelocityLayer;
+    if (jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
+      try{ map.fitBounds(L.latLngBounds(jetBounds), { padding:[20,20] }); }catch(e){}
+    }
+    setStatus('500 mb Winds: ' + (frame.time || frame.label || url));
+  }catch(err){
+    console.error(err);
+    setStatus('500 mb Winds failed');
+  }
+}
+
+async function setJet500Enabled(on){
+  jet500Enabled = !!on;
+  window.jet500Enabled = jet500Enabled;
+  if (!jet500Enabled){
+    clearJetVelocityLayer();
+    setStatus('500 mb Winds off');
+  } else {
+    await updateJetParticles();
+    setStatus('500 mb Winds on');
+  }
+  try{ updateProductLabel(); }catch(e){}
+  try{ updateLegend(); }catch(e){}
+  try{ syncOpacitySliderToActive(); }catch(e){}
+  try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+}
+window.setJet500Enabled = setJet500Enabled;
+
+function syncJetParticlesToClock(){
+  if (!jet500Enabled) return;
+  updateJetParticles();
+}
+
 function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
 
@@ -1669,12 +1823,13 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00 };
+var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
 
 function getActiveProductKey(){
-  // Priority: global > snow > temp > radar (matches your product label logic)
+  // Priority: global > snow > jet > temp > radar (matches your product label logic)
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
+  if (typeof jet500Enabled !== "undefined" && jet500Enabled) return "jet";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
@@ -1719,6 +1874,8 @@ function applyActiveOpacity(){
     if (era5Apr11Overlay) era5Apr11Overlay.setOpacity(op);
   } else if (key === "goes"){
     if (goesOverlay && goesEnabled) goesOverlay.setOpacity(op);
+  } else if (key === "jet"){
+    if (jetVelocityLayer && jetVelocityLayer.setOpacity) jetVelocityLayer.setOpacity(op);
   }
 }
 
@@ -2960,6 +3117,7 @@ function parseHrrrPointsPayload(raw){
   var candidates = [
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
+    { on: (typeof jet500Enabled !== "undefined" && jet500Enabled), label: "500 MB WINDS" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof warningsEnabled !== "undefined" && warningsEnabled), label: "WARNINGS" },
@@ -3814,6 +3972,7 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
+    dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
   }
@@ -3850,6 +4009,12 @@ document.addEventListener('DOMContentLoaded', function(){
     if (action === 'satellite'){
       if (typeof window.setSatelliteEnabled === 'function') {
         await window.setSatelliteEnabled(!window.goesEnabled);
+      }
+      return;
+    }
+    if (action === 'jet-500'){
+      if (typeof window.setJet500Enabled === 'function') {
+        await window.setJet500Enabled(!window.jet500Enabled);
       }
       return;
     }
