@@ -2160,7 +2160,7 @@ body.track-active #map{ cursor: crosshair; }
             <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('model')">MODEL DATA</button>
             <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('surface')">SURFACE OBS</button>
             <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('satellite')">SATELLITE</button>
-            <button class="inv-chip" type="button" disabled>UPPER AIR</button>
+            <button class="inv-chip category-chip" type="button" onclick="toggleForecastSection('upperair')">UPPER AIR</button>
           </div>
         </div>
 
@@ -2192,6 +2192,13 @@ body.track-active #map{ cursor: crosshair; }
           <button class="inv-chip" type="button" data-action="satellite">VISIBLE</button>
           <button class="inv-chip" type="button" disabled>IR</button>
           <button class="inv-chip" type="button" disabled>WATER VAPOR</button>
+        </div>
+
+        <div class="expand-section" id="forecast-upperair-section">
+          <button class="inv-chip" type="button" data-action="jet-500">500 MB WINDS</button>
+          <button class="inv-chip" type="button" disabled>250 MB ISOTACHS</button>
+          <button class="inv-chip" type="button" disabled>700 MB WINDS</button>
+          <button class="inv-chip" type="button" disabled>700 MB RH</button>
         </div>
 
         <div class="inv-foot">Forecasting tab now uses inline expandable sections so you can add products over time without rebuilding the dock.</div>
@@ -2305,7 +2312,7 @@ body.track-active #map{ cursor: crosshair; }
 
 <script>
 function toggleForecastSection(name){
-  var sections = ['spc','model','surface','satellite'];
+  var sections = ['spc','model','surface','satellite','upperair'];
   sections.forEach(function(s){
     var el = document.getElementById('forecast-' + s + '-section');
     if (!el) return;
