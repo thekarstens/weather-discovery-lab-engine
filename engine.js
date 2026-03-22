@@ -526,6 +526,246 @@ function updateEra5Global(){ /* no-op until ERA5 module is wired */ }
 window.gfsSnowEnabled = gfsSnowEnabled;
 
 
+  
+// ---------- Storm Reports (LSR) ----------
+var reportsEnabled = false;
+var reportsManifest = null;
+var reportsFeatures = [];
+var reportsLayer = null;
+var reportsLoadPromise = null;
+var reportsFilter = 'all';
+window.reportsEnabled = reportsEnabled;
+window.reportsFilter = reportsFilter;
+window.reportsLayer = reportsLayer;
+
+function getReportsManifestUrl(){
+  return _joinUrl(DATA_BASE, "reports/manifest.json");
+}
+
+function normalizeReportType(feature){
+  var p = (feature && feature.properties) ? feature.properties : {};
+  var raw = String(
+    p.type || p.typetext || p.category || p.event || p.report_type || p.phenomena || ""
+  ).toLowerCase();
+
+  if (raw.indexOf('tornado') !== -1 || raw === 'tor') return 'tornado';
+  if (raw.indexOf('hail') !== -1) return 'hail';
+  if (
+    raw.indexOf('wind') !== -1 ||
+    raw.indexOf('tstm') !== -1 ||
+    raw.indexOf('thunderstorm') !== -1 ||
+    raw.indexOf('severe thunderstorm') !== -1 ||
+    raw.indexOf('gust') !== -1
+  ) return 'wind';
+  if (
+    raw.indexOf('flood') !== -1 ||
+    raw.indexOf('flash') !== -1
+  ) return 'flood';
+
+  return 'other';
+}
+
+function getReportTime(feature){
+  var p = (feature && feature.properties) ? feature.properties : {};
+  var raw = p.valid || p.utc_valid || p.time || p.datetime || p.timestamp || null;
+  if (!raw) return NaN;
+  var t = Date.parse(raw);
+  return isFinite(t) ? t : NaN;
+}
+
+function escapeHtml(s){
+  return String(s == null ? '' : s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+async function loadReportsManifest(){
+  if (reportsManifest) return reportsManifest;
+  if (reportsLoadPromise) return reportsLoadPromise;
+
+  var url = getReportsManifestUrl();
+  setStatus('Loading storm reports…');
+
+  reportsLoadPromise = fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){
+      if (!r.ok) throw new Error('Reports manifest HTTP ' + r.status + ': ' + url);
+      return r.json();
+    })
+    .then(async function(manifest){
+      reportsManifest = manifest || {};
+      var entry = (manifest && Array.isArray(manifest.reports) && manifest.reports.length) ? manifest.reports[0] : null;
+      if (!entry || !entry.file) throw new Error('Reports manifest missing reports[0].file');
+
+      var folder = url.split('/').slice(0, -1).join('/') + '/';
+      var geoUrl = _isAbsUrl(entry.file) ? entry.file : _joinUrl(folder, entry.file);
+
+      var res = await fetch(geoUrl + (geoUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('Reports GeoJSON HTTP ' + res.status + ': ' + geoUrl);
+
+      var geo = await res.json();
+      reportsFeatures = Array.isArray(geo.features) ? geo.features : [];
+      setStatus('Storm reports loaded');
+      return reportsManifest;
+    })
+    .catch(function(err){
+      console.error('Reports load failed:', err);
+      reportsLoadPromise = null;
+      reportsManifest = null;
+      reportsFeatures = [];
+      setStatus('Storm reports failed');
+      throw err;
+    });
+
+  return reportsLoadPromise;
+}
+
+function getFilteredReports(){
+  var now = curZ.getTime();
+  return reportsFeatures.filter(function(f){
+    var t = getReportTime(f);
+    if (!isFinite(t) || t > now) return false;
+    if (!reportsFilter || reportsFilter === 'all') return true;
+    return normalizeReportType(f) === reportsFilter;
+  });
+}
+
+function reportColor(type){
+  if (type === 'tornado') return '#ff2d2d';
+  if (type === 'hail') return '#35d07f';
+  if (type === 'wind') return '#ffd54a';
+  if (type === 'flood') return '#34b3ff';
+  return '#ffffff';
+}
+
+function reportRadius(type, p){
+  var mag = Number(p.magnitude || p.mag || p.size || p.value || NaN);
+  if (type === 'tornado') return 7;
+  if (type === 'hail') {
+    if (isFinite(mag)) return Math.max(5, Math.min(10, 4 + mag * 1.5));
+    return 6;
+  }
+  if (type === 'wind') {
+    if (isFinite(mag)) return Math.max(5, Math.min(10, 3 + (mag / 20)));
+    return 6;
+  }
+  if (type === 'flood') return 6;
+  return 5;
+}
+
+function buildReportPopup(p, type){
+  var title = escapeHtml((p.type || p.typetext || p.event || 'Storm Report'));
+  var when = escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
+  var city = escapeHtml(p.city || p.town || p.location || '');
+  var state = escapeHtml(p.state || '');
+  var source = escapeHtml(p.source || p.office || '');
+  var mag = escapeHtml(p.magnitude || p.mag || p.size || '');
+  var remark = escapeHtml(p.remark || p.comments || p.text || p.narrative || '');
+
+  var parts = [
+    "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + title + "</div>"
+  ];
+  if (when) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:4px'><b>Time:</b> " + when + "</div>");
+  if (city || state) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
+  if (mag) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Magnitude:</b> " + mag + "</div>");
+  if (source) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Source:</b> " + source + "</div>");
+  if (remark) parts.push("<div style='font:800 12px/1.3 Arial,sans-serif;margin-top:6px'>" + remark + "</div>");
+  return parts.join('');
+}
+
+function refreshReportsButtons(){
+  try{
+    document.querySelectorAll('[data-action="reports-toggle"]').forEach(function(el){
+      el.classList.toggle('active', !!reportsEnabled);
+    });
+    document.querySelectorAll('[data-report-filter]').forEach(function(el){
+      var matches = !!reportsEnabled && (el.getAttribute('data-report-filter') === reportsFilter);
+      el.classList.toggle('active', matches);
+    });
+  }catch(e){}
+}
+
+function clearReportsLayer(){
+  try{
+    if (reportsLayer && map && map.hasLayer && map.hasLayer(reportsLayer)) map.removeLayer(reportsLayer);
+  }catch(e){}
+  reportsLayer = null;
+  window.reportsLayer = null;
+}
+
+function updateReportsLayer(){
+  if (!reportsEnabled){
+    clearReportsLayer();
+    refreshReportsButtons();
+    return;
+  }
+
+  var filtered = getFilteredReports();
+  clearReportsLayer();
+
+  reportsLayer = L.geoJSON(filtered, {
+    pointToLayer: function(feature, latlng){
+      var p = feature.properties || {};
+      var t = normalizeReportType(feature);
+      return L.circleMarker(latlng, {
+        radius: reportRadius(t, p),
+        fillColor: reportColor(t),
+        color: '#0b1c2d',
+        weight: 1.5,
+        opacity: 1,
+        fillOpacity: 0.92
+      });
+    },
+    onEachFeature: function(feature, layer){
+      var p = feature.properties || {};
+      layer.bindPopup(buildReportPopup(p, normalizeReportType(feature)), { className: 'hrrr-popup' });
+    }
+  });
+
+  reportsLayer.addTo(map);
+  window.reportsLayer = reportsLayer;
+  refreshReportsButtons();
+}
+
+async function setReportsEnabled(on){
+  reportsEnabled = !!on;
+  window.reportsEnabled = reportsEnabled;
+
+  if (reportsEnabled){
+    await loadReportsManifest();
+    updateReportsLayer();
+    setStatus('Storm reports on');
+  } else {
+    clearReportsLayer();
+    refreshReportsButtons();
+    setStatus('Storm reports off');
+  }
+
+  try{ updateProductLabel(); }catch(e){}
+  try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+}
+
+async function toggleReports(){
+  await setReportsEnabled(!reportsEnabled);
+}
+
+async function setReportsFilter(filter){
+  reportsFilter = String(filter || 'all').toLowerCase();
+  window.reportsFilter = reportsFilter;
+  if (!reportsEnabled){
+    await setReportsEnabled(true);
+  } else {
+    updateReportsLayer();
+    try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+  }
+}
+
+window.setReportsEnabled = setReportsEnabled;
+window.toggleReports = toggleReports;
+window.setReportsFilter = setReportsFilter;
+
+
   // ---------- GOES / Satellite ----------
   var goesEnabled = false;
   var goesOverlay = null;
@@ -3195,6 +3435,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof warningsEnabled !== "undefined" && warningsEnabled), label: "WARNINGS" },
+    { on: (typeof reportsEnabled !== "undefined" && reportsEnabled), label: "REPORTS" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
@@ -3483,6 +3724,7 @@ window.setWarningsEnabled = setWarningsEnabled;
     if (typeof updateGoes === "function") updateGoes();
     updateHrrrOverlay();
     updateAlerts();
+    updateReportsLayer();
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -4041,6 +4283,8 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="terms"]').forEach(function(el){ el.classList.toggle('active', termsOpen); });
     dock.querySelectorAll('[data-action="spc"]').forEach(function(el){ el.classList.toggle('active', !!window.spcDay1Enabled); });
     dock.querySelectorAll('[data-action="warnings"]').forEach(function(el){ el.classList.toggle('active', !!window.warningsEnabled); });
+    dock.querySelectorAll('[data-action="reports-toggle"]').forEach(function(el){ el.classList.toggle('active', !!window.reportsEnabled); });
+    dock.querySelectorAll('[data-report-filter]').forEach(function(el){ el.classList.toggle('active', !!window.reportsEnabled && el.getAttribute('data-report-filter') === (window.reportsFilter || 'all')); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
@@ -4107,6 +4351,12 @@ document.addEventListener('DOMContentLoaded', function(){
     if (action === 'warnings'){
       if (typeof window.setWarningsEnabled === 'function') {
         window.setWarningsEnabled(!window.warningsEnabled);
+      }
+      return;
+    }
+    if (action === 'reports-toggle'){
+      if (typeof window.toggleReports === 'function') {
+        await window.toggleReports();
       }
       return;
     }
