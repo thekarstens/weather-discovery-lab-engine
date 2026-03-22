@@ -19,6 +19,7 @@
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
 <script>
 var storyStarted = false; // do not auto-open storyboard
 </script>
@@ -2238,6 +2239,23 @@ body.track-active #map{ cursor: crosshair; }
           <button class="inv-chip" type="button" disabled>DOPPLER TEACHING MODE</button>
           <button class="inv-chip" type="button" disabled>HOW RADAR SPINS</button>
         </div>
+        <!-- Storm Reports Section -->
+        
+        <div class="expand-section" id="tracking-reports-section">
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" data-action="reports-toggle">LSR / DAMAGE REPORTS</button>
+          </div>
+          <div class="inv-section-label" style="margin-top:10px;">Report Filters</div>
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" data-report-filter="all" onclick="setReportsFilter('all')">ALL REPORTS</button>
+            <button class="inv-chip" type="button" data-report-filter="tornado" onclick="setReportsFilter('tornado')">TORNADO</button>
+            <button class="inv-chip" type="button" data-report-filter="wind" onclick="setReportsFilter('wind')">SEVERE T-STORMS</button>
+            <button class="inv-chip" type="button" data-report-filter="hail" onclick="setReportsFilter('hail')">HAIL</button>
+            <button class="inv-chip" type="button" data-report-filter="flood" onclick="setReportsFilter('flood')">FLOOD</button>
+          </div>
+        </div>
+
+
 
         <div class="expand-section" id="tracking-warnings-section">
           <button class="inv-chip" type="button" data-action="warnings">WARNINGS ON / OFF</button>
