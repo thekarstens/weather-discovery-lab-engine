@@ -4401,6 +4401,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var obs = new MutationObserver(refreshDockStates);
   try{ obs.observe(document.body, { attributes:true, attributeFilter:['class'] }); }catch(e){}
+  collapseDock();
   refreshDockStates();
   console.log('Dock wired correctly ✅');
 });
