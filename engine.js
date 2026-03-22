@@ -1025,6 +1025,64 @@ window.setReportsFilter = setReportsFilter;
     return out;
   }
 
+  function formatDisplayEta(baseDate, minutes){
+    var base = new Date(baseDate.getTime() + Math.round(minutes) * 60000);
+    var hh = base.getHours();
+    var mm = String(base.getMinutes()).padStart(2, "0");
+    var ap = hh >= 12 ? "PM" : "AM";
+    var h12 = hh % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + mm + " " + ap;
+  }
+
+  function getTrackArrowStats(startLL, endLL){
+    if (!startLL || !endLL) return null;
+    var meters = map.distance(startLL, endLL);
+    var miles = meters / 1609.344;
+    if (!isFinite(miles) || miles <= 0.01) return null;
+    return {
+      arrowMiles: miles,
+      stormMph: miles,           // Option A: arrow represents one hour of motion
+      arrowMinutes: 60
+    };
+  }
+
+  function getTrackFanHits(startLL, endLL){
+    var p1 = map.latLngToLayerPoint(startLL);
+    var p2 = map.latLngToLayerPoint(endLL);
+    var dx = p2.x - p1.x, dy = p2.y - p1.y;
+    var len2 = dx*dx + dy*dy;
+    if (!len2) return [];
+
+    var cities = allTrackCities();
+    var hits = [];
+    for (var i=0; i<cities.length; i++){
+      var c = cities[i];
+      var ll = L.latLng(c[1], c[2]);
+      var pc = map.latLngToLayerPoint(ll);
+      var vx = pc.x - p1.x, vy = pc.y - p1.y;
+      var t = (vx*dx + vy*dy) / len2;
+      if (t <= 0 || t > 1.05) continue;
+      var projx = p1.x + dx * t, projy = p1.y + dy * t;
+      var cross = Math.sqrt(Math.pow(pc.x - projx, 2) + Math.pow(pc.y - projy, 2));
+      if (cross > 26) continue;
+      hits.push({
+        name: c[0],
+        lat: c[1],
+        lon: c[2],
+        t: t
+      });
+    }
+
+    hits.sort(function(a,b){ return a.t - b.t; });
+    var seen = {};
+    return hits.filter(function(h){
+      if (seen[h.name]) return false;
+      seen[h.name] = true;
+      return true;
+    });
+  }
+
+
   function clearStormTrackGraphics(){
     try{ trackLayerGroup.clearLayers(); }catch(e){}
     trackArrowLine = null;
@@ -1073,11 +1131,11 @@ window.setReportsFilter = setReportsFilter;
   function drawTrackPreview(startLL, endLL){
   if (!startLL || !endLL) return;
 
-  var meters = map.distance(startLL, endLL);
-  var mph = meters / 1609.344;
+  var stats = getTrackArrowStats(startLL, endLL);
+  var mph = stats ? stats.stormMph : 0;
 
   if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
-  if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = mph.toFixed(0) + " mph";
+  if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = Math.max(1, Math.round(mph)) + " mph";
 
   try{ trackLayerGroup.clearLayers(); }catch(e){}
 
@@ -1110,7 +1168,7 @@ window.setReportsFilter = setReportsFilter;
   var leftPt = L.point(p1.x + leftVec.x * lengthPx, p1.y + leftVec.y * lengthPx);
   var rightPt = L.point(p1.x + rightVec.x * lengthPx, p1.y + rightVec.y * lengthPx);
 
-  var fan = L.polygon([
+  L.polygon([
     startLL,
     map.layerPointToLatLng(leftPt),
     map.layerPointToLatLng(rightPt)
@@ -1122,7 +1180,7 @@ window.setReportsFilter = setReportsFilter;
     fillOpacity: 0.35
   }).addTo(trackLayerGroup);
 
-  // Center line (subtle)
+  // Center line
   L.polyline([startLL, endLL], {
     color: "#ffffff",
     weight: 2,
@@ -1137,45 +1195,53 @@ window.setReportsFilter = setReportsFilter;
     fillColor: "#ffffff",
     fillOpacity: 1
   }).addTo(trackLayerGroup);
+
+  // TV-style city labels inside fan
+  var hits = getTrackFanHits(startLL, endLL).slice(0, 10);
+  hits.forEach(function(h){
+    var ll = L.latLng(h.lat, h.lon);
+    L.circleMarker(ll, {
+      radius: 3,
+      color: "#ffffff",
+      weight: 1.5,
+      fillColor: "#fdd835",
+      fillOpacity: 1
+    }).addTo(trackLayerGroup);
+
+    L.marker(ll, {
+      interactive: false,
+      icon: L.divIcon({
+        className: "storm-track-city-label",
+        html: h.name,
+        iconSize: null
+      })
+    }).addTo(trackLayerGroup);
+  });
 }
 
   function buildStormArrivalTable(startLL, endLL){
     if (!stormTrackArrivalBody) return;
-    var p1 = map.latLngToLayerPoint(startLL);
-    var p2 = map.latLngToLayerPoint(endLL);
-    var dx = p2.x - p1.x, dy = p2.y - p1.y;
-    var len2 = dx*dx + dy*dy;
-    if (!len2){ stormTrackArrivalBody.innerHTML = ""; return; }
 
-    var cities = allTrackCities();
-    var hits = [];
-    for (var i=0; i<cities.length; i++){
-      var c = cities[i];
-      var ll = L.latLng(c[1], c[2]);
-      var pc = map.latLngToLayerPoint(ll);
-      var vx = pc.x - p1.x, vy = pc.y - p1.y;
-      var t = (vx*dx + vy*dy) / len2;
-      if (t <= 0 || t > 1.05) continue;
-      var projx = p1.x + dx * t, projy = p1.y + dy * t;
-      var cross = Math.sqrt(Math.pow(pc.x - projx, 2) + Math.pow(pc.y - projy, 2));
-      if (cross > 26) continue;
-      var mins = t * 60;
-      hits.push({ name:c[0], mins:mins });
+    var stats = getTrackArrowStats(startLL, endLL);
+    if (!stats || !isFinite(stats.stormMph) || stats.stormMph <= 0){
+      stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">Draw a longer storm track</div><div class="sta-time">—</div></div>';
+      if (stormTrackArrivalBox) stormTrackArrivalBox.classList.add("open");
+      return;
     }
 
-    hits.sort(function(a,b){ return a.mins - b.mins; });
-    var seen = {};
-    hits = hits.filter(function(h){
-      if (seen[h.name]) return false;
-      seen[h.name] = true;
-      return true;
+    var hits = getTrackFanHits(startLL, endLL).map(function(h){
+      var etaMinutes = (h.t * stats.arrowMiles / stats.stormMph) * 60;
+      return {
+        name: h.name,
+        mins: Math.max(0, etaMinutes)
+      };
     }).slice(0, 14);
 
     if (!hits.length){
       stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">No nearby cities on this track</div><div class="sta-time">—</div></div>';
     } else {
       stormTrackArrivalBody.innerHTML = hits.map(function(h){
-        return '<div class="sta-row"><div class="sta-city">' + h.name + '</div><div class="sta-time">' + formatEtaLabel(h.mins) + '</div></div>';
+        return '<div class="sta-row"><div class="sta-city">' + h.name + '</div><div class="sta-time">' + formatDisplayEta(curZ, h.mins) + '</div></div>';
       }).join('');
     }
     if (stormTrackArrivalBox) stormTrackArrivalBox.classList.add("open");
