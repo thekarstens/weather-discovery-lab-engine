@@ -2247,11 +2247,11 @@ body.track-active #map{ cursor: crosshair; }
           </div>
           <div class="inv-section-label" style="margin-top:10px;">Report Filters</div>
           <div class="inv-chips">
-            <button class="inv-chip" type="button" data-report-filter="all" onclick="setReportsFilter('all')">ALL REPORTS</button>
-            <button class="inv-chip" type="button" data-report-filter="tornado" onclick="setReportsFilter('tornado')">TORNADO</button>
-            <button class="inv-chip" type="button" data-report-filter="wind" onclick="setReportsFilter('wind')">SEVERE T-STORMS</button>
-            <button class="inv-chip" type="button" data-report-filter="hail" onclick="setReportsFilter('hail')">HAIL</button>
-            <button class="inv-chip" type="button" data-report-filter="flood" onclick="setReportsFilter('flood')">FLOOD</button>
+            <button class="inv-chip" type="button" data-report-filter="all" onclick="selectReportFilter('all')">ALL REPORTS</button>
+            <button class="inv-chip" type="button" data-report-filter="tornado" onclick="selectReportFilter('tornado')">TORNADO</button>
+            <button class="inv-chip" type="button" data-report-filter="wind" onclick="selectReportFilter('wind')">SEVERE T-STORMS</button>
+            <button class="inv-chip" type="button" data-report-filter="hail" onclick="selectReportFilter('hail')">HAIL</button>
+            <button class="inv-chip" type="button" data-report-filter="flood" onclick="selectReportFilter('flood')">FLOOD</button>
           </div>
         </div>
 
@@ -2262,15 +2262,7 @@ body.track-active #map{ cursor: crosshair; }
           <button class="inv-chip" type="button" disabled>WATCHES</button>
           <button class="inv-chip" type="button" disabled>WARNING TEXT</button>
         </div>
-
-        <div class="expand-section" id="tracking-reports-section">
-          <button class="inv-chip" type="button" disabled>ALL REPORTS</button>
-          <button class="inv-chip" type="button" disabled>WIND REPORTS</button>
-          <button class="inv-chip" type="button" disabled>HAIL REPORTS</button>
-          <button class="inv-chip" type="button" disabled>TORNADO REPORTS</button>
-        </div>
-
-        <div class="expand-section" id="tracking-obs-section">
+<div class="expand-section" id="tracking-obs-section">
           <button class="inv-chip" type="button" data-action="metars">METARS</button>
           <button class="inv-chip" type="button" disabled>DOT / ROAD WX</button>
           <button class="inv-chip" type="button" disabled>1-3 MIN OBS</button>
@@ -2349,6 +2341,23 @@ function toggleTrackingSection(name){
     if (s === name) el.classList.toggle('active');
     else el.classList.remove('active');
   });
+}
+</script>
+
+
+<script>
+function selectReportFilter(kind){
+  try{
+    if (typeof window.setReportsFilter === 'function') window.setReportsFilter(kind);
+  }catch(e){}
+  try{
+    var reports = document.getElementById('tracking-reports-section');
+    if (reports) reports.classList.remove('active');
+  }catch(e){}
+  try{
+    var body = document.getElementById('investigationBody');
+    if (body) body.classList.add('collapsed');
+  }catch(e){}
 }
 </script>
 
