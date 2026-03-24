@@ -2002,6 +2002,50 @@ body.track-active #map{ cursor: crosshair; }
   margin-top:0 !important;
 }
 
+
+
+/* --- Temporary zoom level debug box --- */
+.zoom-level-debug{
+  position:absolute;
+  right:14px;
+  bottom:146px;
+  z-index:100004;
+  min-width:112px;
+  padding:9px 12px;
+  border-radius:14px;
+  background:rgba(11,28,45,0.92);
+  border:1px solid rgba(255,255,255,0.18);
+  box-shadow:0 10px 26px rgba(0,0,0,.25);
+  color:#fff;
+  font-family:"Lato", Arial, sans-serif;
+  text-align:center;
+  pointer-events:none;
+  user-select:none;
+}
+.zoom-level-debug .zld-label{
+  font:900 11px/1 Arial,sans-serif;
+  letter-spacing:.85px;
+  text-transform:uppercase;
+  opacity:.88;
+}
+.zoom-level-debug .zld-value{
+  margin-top:4px;
+  font:900 24px/1 Arial,sans-serif;
+  letter-spacing:.4px;
+  text-shadow:0 2px 6px rgba(0,0,0,.45);
+}
+@media (max-width: 640px){
+  .zoom-level-debug{
+    right:10px;
+    bottom:138px;
+    min-width:96px;
+    padding:8px 10px;
+  }
+  .zoom-level-debug .zld-value{
+    font-size:20px;
+  }
+}
+
 </style>
 <link href="./leaflet-velocity.min.css" rel="stylesheet"/>
 <script src="./leaflet-velocity.min.js"></script>
@@ -2054,6 +2098,11 @@ body.track-active #map{ cursor: crosshair; }
 <div aria-label="Map controls row" class="map-control-row" id="mapControlRow">
 <div aria-label="Map tools" class="tool-box" id="toolBox"><span class="tool-label">TOOLS</span><button class="tool-btn" id="toolMeasure" title="Measure distance">RULER</button><button class="tool-btn" id="toolProbe" title="Pixel query / probe">PROBE</button><button class="tool-btn" id="toolTrack" title="Storm tracker">TRACK</button><button class="tool-btn" id="toolDraw" title="Teacher telestrator">DRAW</button><button class="tool-btn" id="toolErase" title="Erase drawings">ERASE</button><button class="tool-btn" id="toolHome" title="Reset view">HOME</button></div>
 <div aria-label="Zoom controls" class="zoom-box" id="zoomBox" style="display:none !important;"><span class="zoom-label">ZOOM</span><button class="zoom-btn" id="zoomMinus" title="Zoom out">−</button><button class="zoom-btn" id="zoomPlus" title="Zoom in">+</button></div>
+</div>
+
+<div aria-label="Current zoom level" class="zoom-level-debug" id="zoomLevelDebug">
+<span class="zld-label">Zoom Level</span>
+<div class="zld-value" id="zoomLevelValue">--</div>
 </div>
 <!-- Custom zoom buttons in lower-right corner -->
 <div aria-label="Zoom controls" class="zoom-corner" id="zoomCorner">
@@ -2378,6 +2427,40 @@ function toggleRecapSection(name){
 <script src="./metars.js"></script>
 <script src="./map-ui.js"></script>
 <script src="./engine.js"></script>
+<script>
+(function initZoomLevelDebug(){
+  function attach(){
+    if (!window.map || typeof window.map.getZoom !== 'function') return false;
+    var valueEl = document.getElementById('zoomLevelValue');
+    if (!valueEl) return false;
+
+    function updateZoomLevelDebug(){
+      try{
+        valueEl.textContent = window.map.getZoom();
+      }catch(err){}
+    }
+
+    if (!window.__zoomLevelDebugBound){
+      window.map.on('zoomend', updateZoomLevelDebug);
+      window.map.on('load', updateZoomLevelDebug);
+      window.__zoomLevelDebugBound = true;
+    }
+
+    updateZoomLevelDebug();
+    return true;
+  }
+
+  if (attach()) return;
+
+  var tries = 0;
+  var timer = setInterval(function(){
+    tries += 1;
+    if (attach() || tries > 120){
+      clearInterval(timer);
+    }
+  }, 250);
+})();
+</script>
 
 
 <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed">
