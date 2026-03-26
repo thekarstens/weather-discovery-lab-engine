@@ -2203,21 +2203,25 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
+var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
 
 function getActiveProductKey(){
-  // Priority: global > snow > jet > temp > radar (matches your product label logic)
+  // Priority: global > snow > jet > future hrrr > radar
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof jet500Enabled !== "undefined" && jet500Enabled) return "jet";
-  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return "temp";
+  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : "hrrrTemp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
 }
 
 function setTempOpacity(op){
-  if (!hrrrTempGeo) return;
+  if (typeof hrrrTempLayer !== 'undefined' && hrrrTempLayer && hrrrTempLayer.setOpacity) {
+    hrrrTempLayer.setOpacity(op);
+    return;
+  }
+  if (typeof hrrrTempGeo === 'undefined' || !hrrrTempGeo) return;
   // base halo is softer, core is stronger
   var baseOp = Math.max(0.10, Math.min(0.85, op * 0.55));
   var coreOp = Math.max(0.20, Math.min(1.00, op));
@@ -2246,7 +2250,7 @@ function applyActiveOpacity(){
     if (radarSweepCanvas) radarSweepCanvas.style.opacity = String(op);
   } else if (key === "snow"){
     if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
-  } else if (key === "temp"){
+  } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar"){
     setTempOpacity(op);
   } else if (key === "global"){
     ensureEra5Overlays();
@@ -3218,20 +3222,57 @@ async function setMetarsEnabled(on){
   window.hrrrTempGeo = hrrrTempGeo;
   window.hrrrPoints = hrrrPoints;
   window.__HRRR_FRAMES__ = hrrrFrames;
+  var hrrrProductMode = 'temp';
+  window.hrrrProductMode = hrrrProductMode;
 
   function _normLon(lon){ lon = Number(lon); if (!isFinite(lon)) return lon; return lon > 180 ? lon - 360 : lon; }
+  function getConfiguredHrrrManifestPath(product){
+    product = String(product || hrrrProductMode || 'temp').toLowerCase();
+    try{
+      var cfg = (CFG && CFG.hrrr) ? CFG.hrrr : {};
+      var fromProducts = cfg.products && cfg.products[product] ? (cfg.products[product].manifest || cfg.products[product].url || cfg.products[product].file) : '';
+      if (fromProducts) return fromProducts;
+
+      if (product === 'temp') {
+        if (cfg.tempManifest) return cfg.tempManifest;
+        if (cfg.temperatureManifest) return cfg.temperatureManifest;
+      }
+      if (product === 'radar') {
+        if (cfg.radarManifest) return cfg.radarManifest;
+        if (cfg.reflectivityManifest) return cfg.reflectivityManifest;
+      }
+
+      var generic = cfg.manifest || cfg.url || cfg.file || '';
+      if (generic) {
+        var s = String(generic).toLowerCase();
+        if (product === 'radar' && s.indexOf('/radar/') !== -1) return generic;
+        if (product === 'temp' && s.indexOf('/radar/') === -1) return generic;
+      }
+    }catch(e){}
+    return product === 'radar' ? 'hrrr/radar/manifest.json' : 'hrrr/temp/manifest.json';
+  }
+
+  function resetHrrrManifestState(){
+    hrrrLoadPromise = null;
+    hrrrManifest = null;
+    hrrrManifestUrl = '';
+    hrrrManifestBaseUrl = '';
+    hrrrBounds = null;
+    hrrrFrames = [];
+    hrrrPoints = [];
+    currentHrrrFrameIndex = 0;
+    window.__HRRR_FRAMES__ = hrrrFrames;
+    window.__HRRR_MANIFEST_URL__ = hrrrManifestUrl;
+    window.__HRRR_MANIFEST_BASE_URL__ = hrrrManifestBaseUrl;
+    window.hrrrPoints = hrrrPoints;
+  }
   function _baseUrl(url){
     url = String(url || '');
     return url.split('/').slice(0, -1).join('/') + '/';
   }
-  function getHrrrManifestUrl(){
-    try{
-      if (CFG && CFG.hrrr){
-        var u = CFG.hrrr.manifest || CFG.hrrr.url || CFG.hrrr.file;
-        if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
-      }
-    }catch(e){}
-    return _joinUrl(DATA_BASE, 'hrrr/temp/manifest.json');
+  function getHrrrManifestUrl(product){
+    var u = getConfiguredHrrrManifestPath(product || hrrrProductMode || 'temp');
+    return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
   }
   function parseHrrrBounds(raw){
     if (!raw) return null;
@@ -3437,14 +3478,16 @@ function parseHrrrPointsPayload(raw){
     img.onload = function(){
       if (token !== hrrrLoadToken) return;
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      var op = productOpacity.temp || 0.70;
+      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : 'hrrrTemp';
+      var op = productOpacity[activeKey] || 0.70;
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
       loadHrrrPointsForFrame(frame).then(function(pts){
-        if (Array.isArray(pts) && pts.length) setStatus('HRRR Temp: ' + (frame.label || url) + ' · probe ready');
-        else setStatus('HRRR Temp: ' + (frame.label || url));
+        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : 'Future Temperatures';
+        if (Array.isArray(pts) && pts.length) setStatus(name + ': ' + (frame.label || url) + ' · probe ready');
+        else setStatus(name + ': ' + (frame.label || url));
       });
       try{ updateProductLabel(); }catch(e){}
     };
@@ -3454,14 +3497,22 @@ function parseHrrrPointsPayload(raw){
     };
     img.src = url;
   }
-  async function setHrrrTempEnabled(on){
-    hrrrTempEnabled = !!on;
+  async function setHrrrProductEnabled(product, on){
+    product = String(product || 'temp').toLowerCase();
+    var turningOn = !!on;
+    if (turningOn){
+      hrrrProductMode = (product === 'radar') ? 'radar' : 'temp';
+      window.hrrrProductMode = hrrrProductMode;
+      resetHrrrManifestState();
+    }
+    hrrrTempEnabled = turningOn;
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      setStatus('HRRR Temp off');
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : 'Future Temperatures off');
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
+      try{ syncDockUi(); }catch(e){}
       return;
     }
     try{
@@ -3469,17 +3520,26 @@ function parseHrrrPointsPayload(raw){
       currentHrrrFrameIndex = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
       updateHrrrOverlay();
-      setStatus('HRRR Temp on');
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : 'Future Temperatures on');
     }catch(err){
       hrrrTempEnabled = false;
       window.hrrrTempEnabled = false;
       console.error(err);
-      setStatus('HRRR Temp failed');
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : 'Future Temperatures failed');
     }
     try{ updateProductLabel(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
+    try{ syncDockUi(); }catch(e){}
   }
+  async function setHrrrTempEnabled(on){
+    return setHrrrProductEnabled('temp', on);
+  }
+  async function setHrrrRadarEnabled(on){
+    return setHrrrProductEnabled('radar', on);
+  }
+  window.setHrrrProductEnabled = setHrrrProductEnabled;
   window.setHrrrTempEnabled = setHrrrTempEnabled;
+  window.setHrrrRadarEnabled = setHrrrRadarEnabled;
 
   async function setSatelliteEnabled(on){
     goesEnabled = !!on;
@@ -3516,7 +3576,8 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof reportsEnabled !== "undefined" && reportsEnabled), label: "REPORTS" },
     { on: (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)), label: "METARS" },
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
-    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer)), label: "TEMP" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'temp'), label: "FUTURE TEMP" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -3536,8 +3597,8 @@ function parseHrrrPointsPayload(raw){
     var title = "";
 
     var key = getActiveProductKey();
-    if (key === "radar"){
-      title = "Radar reflectivity";
+    if (key === "radar" || key === "hrrrRadar"){
+      title = (key === "hrrrRadar") ? "Future radar reflectivity" : "Radar reflectivity";
       if (bar) bar.style.background = "linear-gradient(90deg, #2b83ba, #4ecdc4, #a8e6a3, #ffd166, #ef476f)";
       el.style.display = "";
     } else if (key === "snow"){
@@ -3551,8 +3612,8 @@ function parseHrrrPointsPayload(raw){
       title = "Global 2m Temperature (°F) — ERA5";
       if (bar) bar.style.background = "linear-gradient(90deg, #2d004b 0%, #542788 12%, #2166ac 26%, #67a9cf 40%, #d1e5f0 52%, #fff7bc 62%, #fec44f 72%, #f16913 84%, #d73027 100%)";
       el.style.display = "";
-    } else { // temp
-      title = "2m Temperature (°F)";
+    } else { // temp / future temp
+      title = (key === "hrrrTemp") ? "Future 2m Temperature (°F)" : "2m Temperature (°F)";
       // WeatherBell-ish continuous temp ramp (cold blues -> greens -> yellows -> oranges -> reds -> purples)
       if (bar) bar.style.background = "linear-gradient(90deg, #0b2e83 0%, #1f66d3 15%, #6fb7ff 28%, #1f8a3a 42%, #7fe36d 52%, #ffe14a 63%, #ff9a1f 73%, #e31a1c 82%, #a4007c 92%, #ff66ff 100%)";
       el.style.display = "";
@@ -4365,7 +4426,8 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-report-filter]').forEach(function(el){ el.classList.toggle('active', !!window.reportsEnabled && el.getAttribute('data-report-filter') === (window.reportsFilter || 'all')); });
     dock.querySelectorAll('[data-action="sweep"]').forEach(function(el){ el.classList.toggle('active', !!window.radarSweepEnabled); });
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
-    dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled); });
+    dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'temp'); });
+    dock.querySelectorAll('[data-action="hrrr-radar"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar'); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
@@ -4440,7 +4502,15 @@ document.addEventListener('DOMContentLoaded', function(){
     }
     if (action === 'hrrr-temp'){
       if (typeof window.setHrrrTempEnabled === 'function') {
-        await window.setHrrrTempEnabled(!window.hrrrTempEnabled);
+        var nextOn = !(window.hrrrTempEnabled && window.hrrrProductMode === 'temp');
+        await window.setHrrrTempEnabled(nextOn);
+      }
+      return;
+    }
+    if (action === 'hrrr-radar'){
+      if (typeof window.setHrrrRadarEnabled === 'function') {
+        var nextRadarOn = !(window.hrrrTempEnabled && window.hrrrProductMode === 'radar');
+        await window.setHrrrRadarEnabled(nextRadarOn);
       }
       return;
     }
