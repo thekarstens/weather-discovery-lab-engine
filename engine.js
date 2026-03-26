@@ -3211,6 +3211,8 @@ async function setMetarsEnabled(on){
   var hrrrTempLayer = null;
   var hrrrTempGeo = null;
   var hrrrPoints = [];
+  var hrrrManifestUrl = null;
+  var hrrrManifestBaseUrl = null;
   window.hrrrTempLayer = hrrrTempLayer;
   window.hrrrTempEnabled = hrrrTempEnabled;
   window.hrrrTempGeo = hrrrTempGeo;
@@ -3218,6 +3220,10 @@ async function setMetarsEnabled(on){
   window.__HRRR_FRAMES__ = hrrrFrames;
 
   function _normLon(lon){ lon = Number(lon); if (!isFinite(lon)) return lon; return lon > 180 ? lon - 360 : lon; }
+  function _baseUrl(url){
+    url = String(url || '');
+    return url.split('/').slice(0, -1).join('/') + '/';
+  }
   function getHrrrManifestUrl(){
     try{
       if (CFG && CFG.hrrr){
@@ -3225,7 +3231,7 @@ async function setMetarsEnabled(on){
         if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
       }
     }catch(e){}
-    return _joinUrl(DATA_BASE, 'hrrr/manifest.json');
+    return _joinUrl(DATA_BASE, 'hrrr/temp/manifest.json');
   }
   function parseHrrrBounds(raw){
     if (!raw) return null;
@@ -3256,6 +3262,8 @@ async function setMetarsEnabled(on){
   async function loadHrrrManifest(){
     if (hrrrLoadPromise) return hrrrLoadPromise;
     var url = getHrrrManifestUrl();
+    hrrrManifestUrl = url;
+    hrrrManifestBaseUrl = _baseUrl(url);
     setStatus('Loading HRRR manifest…');
     hrrrLoadPromise = fetch(url, { cache:'no-store' }).then(function(r){
       if (!r.ok) throw new Error('HRRR manifest HTTP ' + r.status + ': ' + url);
@@ -3266,6 +3274,8 @@ async function setMetarsEnabled(on){
       hrrrFrames = parseHrrrFrames(raw);
       currentHrrrFrameIndex = 0;
       window.__HRRR_FRAMES__ = hrrrFrames;
+      window.__HRRR_MANIFEST_URL__ = hrrrManifestUrl;
+      window.__HRRR_MANIFEST_BASE_URL__ = hrrrManifestBaseUrl;
       if (!hrrrBounds) throw new Error('HRRR manifest missing bounds');
       if (!hrrrFrames.length) throw new Error('HRRR manifest has no frames');
       setStatus('HRRR loaded: ' + hrrrFrames.length + ' frames');
@@ -3298,7 +3308,9 @@ async function setMetarsEnabled(on){
   }
   function hrrrFrameUrl(frame){
     if (!frame) return null;
-    return _isAbsUrl(frame.file) ? frame.file : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), frame.file);
+    if (_isAbsUrl(frame.file)) return frame.file;
+    var base = hrrrManifestBaseUrl || _joinUrl(DATA_BASE, 'hrrr/temp/');
+    return _joinUrl(base, frame.file);
   }
   function hrrrPointsUrl(frame){
   if (!frame) return null;
@@ -3314,9 +3326,9 @@ async function setMetarsEnabled(on){
   }
 
   if (!candidate) return null;
-  return _isAbsUrl(candidate)
-    ? candidate
-    : _joinUrl(_joinUrl(DATA_BASE, 'hrrr/'), candidate);
+  if (_isAbsUrl(candidate)) return candidate;
+  var base = hrrrManifestBaseUrl || _joinUrl(DATA_BASE, 'hrrr/temp/');
+  return _joinUrl(base, candidate);
 }
 function parseHrrrPointsPayload(raw){
   var pts = [];
