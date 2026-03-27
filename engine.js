@@ -1476,12 +1476,12 @@ function setDrawMode(on){
       }
     }
 
-    // Require active HRRR product with points
+    // Require HRRR temp layer + points
     try{
       if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
           .setLatLng(e.latlng)
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>Future Temperatures</b>, <b>Future Wind Gusts</b>, or <b>500 mb Winds</b>.</div>")
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 16px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> or <b>500 mb Winds</b>.</div>")
           .openOn(map);
         return;
       }
@@ -1497,14 +1497,10 @@ function setDrawMode(on){
     }
     if (!best) return;
 
-    var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : 'Temperature';
-    var probeUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : '°F');
-    var probeValue = (typeof best.value === "number") ? best.value : ((probeUnit === 'mph') ? best.mph : best.tF);
-    var probeText = (probeValue == null || !isFinite(probeValue)) ? "—" : (Math.round(probeValue) + probeUnit);
-
+    var tf = (typeof best.tF === "number") ? best.tF : null;
     var content =
-      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + probeTitle + "</div>" +
-      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + probeText + "</div>";
+      "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Probe</div>" +
+      "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (tf==null ? "—" : Math.round(tf) + "°F") + "</div>";
 
     L.popup({ closeButton:true, className:"hrrr-popup" })
       .setLatLng([best.lat, best.lon])
@@ -1526,7 +1522,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (!(canProbeHrrr || canProbeJet)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
           .setLatLng(map.getCenter())
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>Future Temperatures</b>, <b>Future Wind Gusts</b>, or <b>500 mb Winds</b> to probe.</div>")
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>HRRR Temp (2m)</b> or <b>500 mb Winds</b> to probe.</div>")
           .openOn(map);
         setProbeMode(false);
         return;
@@ -2207,14 +2203,14 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
+var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
 
 function getActiveProductKey(){
   // Priority: global > snow > jet > future hrrr > radar
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof jet500Enabled !== "undefined" && jet500Enabled) return "jet";
-  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : ((window.hrrrProductMode === 'winds') ? "hrrrWinds" : "hrrrTemp");
+  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : "hrrrTemp";
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
@@ -3245,11 +3241,6 @@ async function setMetarsEnabled(on){
         if (cfg.radarManifest) return cfg.radarManifest;
         if (cfg.reflectivityManifest) return cfg.reflectivityManifest;
       }
-      if (product === 'winds') {
-        if (cfg.windsManifest) return cfg.windsManifest;
-        if (cfg.windManifest) return cfg.windManifest;
-        if (cfg.windGustManifest) return cfg.windGustManifest;
-      }
 
       var generic = cfg.manifest || cfg.url || cfg.file || '';
       if (generic) {
@@ -3258,7 +3249,7 @@ async function setMetarsEnabled(on){
         if (product === 'temp' && s.indexOf('/radar/') === -1) return generic;
       }
     }catch(e){}
-    return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : 'hrrr/temp/manifest.json');
+    return product === 'radar' ? 'hrrr/radar/manifest.json' : 'hrrr/temp/manifest.json';
   }
 
   function resetHrrrManifestState(){
@@ -3400,14 +3391,32 @@ function parseHrrrPointsPayload(raw){
     return NaN;
   }
 
-  function pushPoint(lat, lon, temp){
+  function pickProbeValue(obj){
+    if (!obj) return NaN;
+    if (window.hrrrProductMode === 'winds') {
+      return Number(
+        obj.mph ?? obj.gustMph ?? obj.windGustMph ?? obj.maxWindGustMph ??
+        obj.max_surface_wind_gust ?? obj.max_surface_wind_gust_mph ??
+        obj.sfcWindGust ?? obj.wind_gust ?? obj.gust ?? obj.value
+      );
+    }
+    return Number(obj.tF ?? obj.tempF ?? obj.value ?? obj.temp ?? obj.temperature ?? obj["2_meter_temperature"]);
+  }
+
+  function pushPoint(lat, lon, value, unit){
     lat = Number(lat);
     lon = Number(lon);
-    temp = Number(temp);
-    if (isFinite(lat) && isFinite(lon) && isFinite(temp)) {
-      pts.push({ lat: lat, lon: _normLon(lon), tF: temp });
+    value = Number(value);
+    if (isFinite(lat) && isFinite(lon) && isFinite(value)) {
+      var pt = { lat: lat, lon: _normLon(lon), value: value };
+      if (unit === 'mph') pt.mph = value;
+      else pt.tF = value;
+      if (unit) pt.unit = unit;
+      pts.push(pt);
     }
   }
+
+  var defaultUnit = (window.hrrrProductMode === 'winds') ? 'mph' : '°F';
 
   if (!raw) return pts;
 
@@ -3425,13 +3434,15 @@ function parseHrrrPointsPayload(raw){
         pushPoint(
           p.geometry.coordinates[1],
           p.geometry.coordinates[0],
-          pickTemp(pr)
+          pickProbeValue(pr),
+          defaultUnit
         );
       } else {
         pushPoint(
           p.lat ?? p.latitude,
           p.lon ?? p.lng ?? p.longitude,
-          pickTemp(p)
+          pickProbeValue(p),
+          defaultUnit
         );
       }
     });
@@ -3440,20 +3451,20 @@ function parseHrrrPointsPayload(raw){
 
   var lat = raw.lat || raw.latitude;
   var lon = raw.lon || raw.longitude || raw.lng;
-  var temp = raw.tF || raw.tempF || raw.value || raw.temp || raw.temperature || raw["2_meter_temperature"];
+  var temp = pickProbeValue(raw);
 
   if (Array.isArray(lat) && Array.isArray(lon) && Array.isArray(temp)) {
     for (var i = 0; i < lat.length; i++){
       if (Array.isArray(lat[i]) && Array.isArray(lon[i]) && Array.isArray(temp[i])) {
         for (var j = 0; j < lat[i].length; j++){
-          pushPoint(lat[i][j], lon[i][j], temp[i][j]);
+          pushPoint(lat[i][j], lon[i][j], temp[i][j], defaultUnit);
         }
       } else {
-        pushPoint(lat[i], lon[i], temp[i]);
+        pushPoint(lat[i], lon[i], temp[i], defaultUnit);
       }
     }
   } else {
-    pushPoint(lat, lon, temp);
+    pushPoint(lat, lon, temp, defaultUnit);
   }
 
   return pts;
@@ -3487,14 +3498,14 @@ function parseHrrrPointsPayload(raw){
     img.onload = function(){
       if (token !== hrrrLoadToken) return;
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : 'hrrrTemp');
+      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : 'hrrrTemp';
       var op = productOpacity[activeKey] || 0.70;
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
       loadHrrrPointsForFrame(frame).then(function(pts){
-        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts' : 'Future Temperatures');
+        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : 'Future Temperatures';
         if (Array.isArray(pts) && pts.length) setStatus(name + ': ' + (frame.label || url) + ' · probe ready');
         else setStatus(name + ': ' + (frame.label || url));
       });
@@ -3510,7 +3521,7 @@ function parseHrrrPointsPayload(raw){
     product = String(product || 'temp').toLowerCase();
     var turningOn = !!on;
     if (turningOn){
-      hrrrProductMode = (product === 'radar') ? 'radar' : ((product === 'winds') ? 'winds' : 'temp');
+      hrrrProductMode = (product === 'radar') ? 'radar' : 'temp';
       window.hrrrProductMode = hrrrProductMode;
       resetHrrrManifestState();
     }
@@ -3518,7 +3529,7 @@ function parseHrrrPointsPayload(raw){
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts off' : 'Future Temperatures off'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : 'Future Temperatures off');
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       try{ syncDockUi(); }catch(e){}
@@ -3529,12 +3540,12 @@ function parseHrrrPointsPayload(raw){
       currentHrrrFrameIndex = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
       updateHrrrOverlay();
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : 'Future Temperatures on'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : 'Future Temperatures on');
     }catch(err){
       hrrrTempEnabled = false;
       window.hrrrTempEnabled = false;
       console.error(err);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts failed' : 'Future Temperatures failed'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : 'Future Temperatures failed');
     }
     try{ updateProductLabel(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
@@ -3546,13 +3557,9 @@ function parseHrrrPointsPayload(raw){
   async function setHrrrRadarEnabled(on){
     return setHrrrProductEnabled('radar', on);
   }
-  async function setHrrrWindsEnabled(on){
-    return setHrrrProductEnabled('winds', on);
-  }
   window.setHrrrProductEnabled = setHrrrProductEnabled;
   window.setHrrrTempEnabled = setHrrrTempEnabled;
   window.setHrrrRadarEnabled = setHrrrRadarEnabled;
-  window.setHrrrWindsEnabled = setHrrrWindsEnabled;
 
   async function setSatelliteEnabled(on){
     goesEnabled = !!on;
@@ -3591,7 +3598,6 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof ptypeEnabled !== "undefined" && ptypeEnabled), label: "P-TYPE" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'temp'), label: "FUTURE TEMP" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
-    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'winds'), label: "FUTURE WIND GUSTS" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -4442,7 +4448,6 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="metars"]').forEach(function(el){ el.classList.toggle('active', !!window.metarVisible); });
     dock.querySelectorAll('[data-action="hrrr-temp"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'temp'); });
     dock.querySelectorAll('[data-action="hrrr-radar"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar'); });
-    dock.querySelectorAll('[data-action="hrrr-winds"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'winds'); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
@@ -4526,13 +4531,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof window.setHrrrRadarEnabled === 'function') {
         var nextRadarOn = !(window.hrrrTempEnabled && window.hrrrProductMode === 'radar');
         await window.setHrrrRadarEnabled(nextRadarOn);
-      }
-      return;
-    }
-    if (action === 'hrrr-winds'){
-      if (typeof window.setHrrrWindsEnabled === 'function') {
-        var nextWindsOn = !(window.hrrrTempEnabled && window.hrrrProductMode === 'winds');
-        await window.setHrrrWindsEnabled(nextWindsOn);
       }
       return;
     }
@@ -4631,8 +4629,6 @@ document.addEventListener('DOMContentLoaded', function(){
     wrapAsync('setRadarEnabled');
     wrapAsync('setMetarsEnabled');
     wrapAsync('setHrrrTempEnabled');
-    wrapAsync('setHrrrRadarEnabled');
-    wrapAsync('setHrrrWindsEnabled');
     wrapAsync('setSpcDay1Enabled');
 
     leafletMap.on('zoomend', refreshAutoBoundaries);
