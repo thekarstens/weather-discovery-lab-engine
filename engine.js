@@ -2983,7 +2983,33 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   
+// ---------- METARs (module hookup) ----------
+var metarsModule = null;
 
+if (window.createMetarsModule) {
+  metarsModule = window.createMetarsModule({
+    map: map,
+    CFG: CFG,
+    DATA_BASE: DATA_BASE,
+    _isAbsUrl: _isAbsUrl,
+    _joinUrl: _joinUrl,
+    setStatus: setStatus,
+    updateProductLabel: updateProductLabel,
+    setTimeLabel: (typeof setTimeLabel === 'function' ? setTimeLabel : function(){})
+  });
+
+  try {
+    metarsModule.installMapEvents();
+  } catch (e) {
+    console.warn('METAR module map events install failed', e);
+  }
+
+  window.metarsModule = metarsModule;
+  window.toggleMetars = function(){ return metarsModule.toggleMetars(); };
+  window.setMetarsEnabled = function(on){ return metarsModule.setMetarsEnabled(on); };
+} else {
+  console.warn('METAR module not found: window.createMetarsModule is missing');
+}
   var spcDay1Layer = null;
   var spcDay1Enabled = false;
 
