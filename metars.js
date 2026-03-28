@@ -40,12 +40,24 @@ window.createMetarsModule = function(opts){
     KSPW:"Spencer", KSLB:"Storm Lake", KALO:"Waterloo", KMCW:"Mason City", KICL:"Clarinda",
     KOFK:"Norfolk", KLNK:"Lincoln", KGRI:"Grand Island", KEAR:"Kearney", KATY:"Watertown",
     KMBG:"Mobridge", KPHP:"Philip", KRAP:"Rapid City", KCPR:"Casper", KDDC:"Dodge City",
-    KGLD:"Goodland", CKP:"Cherokee"
+    KGLD:"Goodland", CKP:"Cherokee",
+    FSD:"Sioux Falls", SUX:"Sioux City", OMA:"Omaha", DSM:"Des Moines", RST:"Rochester",
+    HON:"Huron", PIR:"Pierre", ABR:"Aberdeen", BKX:"Brookings", YKN:"Yankton",
+    MKT:"Mankato", MSP:"Minneapolis", RWF:"Redwood Falls", OTG:"Worthington",
+    SPW:"Spencer", SLB:"Storm Lake", ALO:"Waterloo", MCW:"Mason City", ICL:"Clarinda",
+    OFK:"Norfolk", LNK:"Lincoln", GRI:"Grand Island", EAR:"Kearney", ATY:"Watertown",
+    MBG:"Mobridge", PHP:"Philip", RAP:"Rapid City", CPR:"Casper", DDC:"Dodge City",
+    GLD:"Goodland"
   };
 
   function metarStationName(r){
-    var id = String(r && (r.id || r.station || r.stid || '') || '').toUpperCase();
-    return (r && (r.city || r.name)) || STATION_NAMES[id] || id || "Station";
+    var rawId = String(r && (r.id || r.station || r.stid || '') || '').toUpperCase().trim();
+    var id = rawId;
+    if (id && !STATION_NAMES[id] && id.length === 3) {
+      if (STATION_NAMES['K' + id]) id = 'K' + id;
+      else if (STATION_NAMES['C' + id]) id = 'C' + id;
+    }
+    return (r && (r.city || r.name || r.town)) || STATION_NAMES[id] || STATION_NAMES[rawId] || rawId || "Station";
   }
 
   function metarWindDirText(deg){
@@ -69,7 +81,8 @@ window.createMetarsModule = function(opts){
   function metarWindArrow(deg){
     var d = Number(deg);
     if (!isFinite(d)) return "•";
-    var arrows = ["↑","↗","→","↘","↓","↙","←","↖"];
+    // Show the arrow pointing toward where the wind is blowing, not where it comes from.
+    var arrows = ["↓","↙","←","↖","↑","↗","→","↘"];
     return arrows[Math.round(d / 45) % 8];
   }
 
