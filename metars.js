@@ -26,8 +26,11 @@ window.createMetarsModule = function(opts){
   var currentMetarIndex = 0;
   var currentMetarFile = null;
   var currentMetarTime = null;
+  var metarDisplayMode = 'temp';
+  var metarModeButtonsBound = false;
   window.metarVisible = false;
   window.currentMetarIndex = 0;
+  window.metarDisplayMode = metarDisplayMode;
 
   function syncWindowState(){
     window.metarVisible = metarVisible;
@@ -79,16 +82,7 @@ window.createMetarsModule = function(opts){
     BBW:"Broken Bow", VTN:"Valentine", AIA:"Alliance", BFF:"Scottsbluff", CDR:"Chadron",
     IML:"Imperial", MCK:"McCook", HSI:"Hastings", AHQ:"Wahoo", JYR:"York", SNY:"Sidney",
     ANW:"Ainsworth", OLU:"Columbus", LBL:"Liberal", GCK:"Garden City", HYS:"Hays",
-    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson",
-    LYV:"Luverne", LVN:"Airlake", JYG:"St. James", OWA:"Owatonna", STP:"St. Paul Downtown",
-    FCM:"Flying Cloud", MIC:"Crystal", FBL:"Faribault", AQP:"Appleton", ETH:"Wheaton",
-    BDE:"Baudette", CDD:"Crane Lake", FOZ:"Bigfork", XVG:"Longville", ORB:"Orr",
-    DVP:"Slayton", CNB:"Canby", CKN:"Crookston", ICR:"Winner", CUT:"Custer",
-    FNB:"Falls City", ODX:"Ord", TQE:"Tekamah", LWD:"Lamoni", HIB:"Hibbing",
-    LYV:"Luverne", MCK:"McCook", BFF:"Scottsbluff", AIA:"Alliance", HEI:"Hettinger",
-    IEN:"Pine Ridge", N60:"Garrison", JMR:"Mora", PKD:"Park Rapids", BRD:"Brainerd",
-    AMW:"Ames", OTM:"Ottumwa", MCW:"Mason City", ALO:"Waterloo",
-    "9V9":"Chamberlain", "8D3":"Sisseton", "6V4":"Wall", "5H4":"Harvey", "9MN":"Long Prairie"
+    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson"
   };
 
   function metarStationName(r){
@@ -312,6 +306,8 @@ window.createMetarsModule = function(opts){
       return r.json();
     }).then(function(rows){
       metarData = Array.isArray(rows) ? rows : [];
+      window.__METAR_FILE_CACHE__ = window.__METAR_FILE_CACHE__ || {};
+      window.__METAR_FILE_CACHE__[url] = metarData;
       currentMetarFile = url;
       currentMetarTime = null;
       setStatus('METARs loaded: ' + metarData.length + ' stations');
@@ -411,6 +407,8 @@ window.createMetarsModule = function(opts){
       return r.json();
     }).then(function(rows){
       metarData = Array.isArray(rows) ? rows : [];
+      window.__METAR_FILE_CACHE__ = window.__METAR_FILE_CACHE__ || {};
+      window.__METAR_FILE_CACHE__[url] = metarData;
       currentMetarFile = url;
       currentMetarTime = entry.time || entry.utc || entry.valid || null;
       setStatus('METARs loaded: ' + metarData.length + ' stations');
@@ -429,6 +427,178 @@ window.createMetarsModule = function(opts){
     if (z <= 7) return 24;
     if (z <= 8) return 18;
     return 12;
+  }
+
+  function getMetarPreviousRow(r){
+    if (!metarTimeline || !metarTimeline.length) return null;
+    var prevIdx = Math.max(0, (currentMetarIndex|0) - 1);
+    if (prevIdx === (currentMetarIndex|0)) return null;
+    try{
+      var prevEntry = metarTimeline[prevIdx];
+      if (!prevEntry) return null;
+      var prevRel = prevEntry.file || prevEntry.url || null;
+      if (!prevRel) return null;
+      var prevUrl = _isAbsUrl(prevRel) ? prevRel : _joinUrl(_joinUrl(DATA_BASE, 'metars/'), prevRel);
+      var cache = window.__METAR_FILE_CACHE__ || {};
+      var prevRows = cache[prevUrl];
+      if (!Array.isArray(prevRows)) return null;
+      var id = String(r && (r.id || r.station || r.stid || r.sid || '') || '').toUpperCase().trim();
+      for (var i=0; i<prevRows.length; i++){
+        var pr = prevRows[i];
+        var pid = String(pr && (pr.id || pr.station || pr.stid || pr.sid || '') || '').toUpperCase().trim();
+        if (pid === id) return pr;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function metarPressureTrend(r){
+    var cur = Number(r && r.alti);
+    if (!isFinite(cur)) return { trend:'steady', delta:0 };
+    var prev = getMetarPreviousRow(r);
+    var old = Number(prev && prev.alti);
+    if (!isFinite(old)) return { trend:'steady', delta:0 };
+    var delta = cur - old;
+    if (delta >= 0.03) return { trend:'rising', delta:delta };
+    if (delta <= -0.03) return { trend:'falling', delta:delta };
+    return { trend:'steady', delta:delta };
+  }
+
+  function metarPressureColor(r){
+    var t = metarPressureTrend(r);
+    if (t.trend === 'rising') return '#a5d6a7';
+    if (t.trend === 'falling') return '#ef9a9a';
+    return '#e0e0e0';
+  }
+
+  function metarPressureStroke(r){
+    var t = metarPressureTrend(r);
+    if (t.trend === 'rising') return '#2e7d32';
+    if (t.trend === 'falling') return '#b71c1c';
+    return '#616161';
+  }
+
+  function getMetarModeInfo(r){
+    var mode = String(metarDisplayMode || 'temp').toLowerCase();
+
+    if (mode === 'dewpoint'){
+      var dew = (r.dwpf == null || r.dwpf === '') ? '—' : String(Math.round(Number(r.dwpf)));
+      return {
+        mode: mode,
+        text: dew,
+        fill: metarTempColorF(r.dwpf),
+        stroke: metarOutlineColor(r.dwpf),
+        cls: 'metar-temp-dot',
+        html: '<div class="metar-temp-dot" style="background:' + metarTempColorF(r.dwpf) + ';border-color:' + metarOutlineColor(r.dwpf) + ';">' + dew + '</div>'
+      };
+    }
+
+    if (mode === 'pressure'){
+      var p = Number(r.alti);
+      var txt = isFinite(p) ? p.toFixed(2) : '—';
+      var fill = metarPressureColor(r);
+      var stroke = metarPressureStroke(r);
+      return {
+        mode: mode,
+        text: txt,
+        fill: fill,
+        stroke: stroke,
+        cls: 'metar-pressure-dot',
+        html: '<div class="metar-pressure-dot" style="min-width:48px;height:36px;padding:0 8px;display:flex;align-items:center;justify-content:center;border-radius:14px;border:2px solid ' + stroke + ';background:' + fill + ';color:#122033;font:900 13px/1 Lato,Arial,sans-serif;box-sizing:border-box;">' + txt + '</div>'
+      };
+    }
+
+    if (mode === 'wind'){
+      var arrow = metarWindArrow(r.drct);
+      var spd = Number(r && (r.sknt ?? r.wind_speed_kt));
+      var mph = isFinite(spd) ? Math.round(spd * 1.15078) : '';
+      return {
+        mode: mode,
+        text: arrow,
+        fill: 'rgba(255,255,255,0.92)',
+        stroke: '#243447',
+        cls: 'metar-wind-dot',
+        html: '<div class="metar-wind-dot" style="width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:999px;border:2px solid #243447;background:rgba(255,255,255,0.92);color:#122033;box-sizing:border-box;line-height:1;"><div style="font:900 18px/1 Lato,Arial,sans-serif;">' + arrow + '</div><div style="font:900 10px/1 Lato,Arial,sans-serif;margin-top:2px;">' + mph + '</div></div>'
+      };
+    }
+
+    var temp = (r.tmpf == null || r.tmpf === '') ? '—' : String(Math.round(Number(r.tmpf)));
+    var fill = metarTempColorF(r.tmpf);
+    var stroke = metarOutlineColor(r.tmpf);
+    return {
+      mode: 'temp',
+      text: temp,
+      fill: fill,
+      stroke: stroke,
+      cls: 'metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : ''),
+      html: '<div class="metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '') + '" style="background:' + fill + ';border-color:' + stroke + ';">' + temp + '</div>'
+    };
+  }
+
+  function setMetarDisplayMode(mode){
+    metarDisplayMode = String(mode || 'temp').toLowerCase();
+    window.metarDisplayMode = metarDisplayMode;
+    refreshMetarModeButtons();
+    if (metarVisible) refreshMetarLayer();
+  }
+
+  function refreshMetarModeButtons(){
+    try{
+      var chips = Array.prototype.slice.call(document.querySelectorAll('.inv-chip'));
+      chips.forEach(function(btn){
+        var txt = String(btn.textContent || '').trim().toUpperCase();
+        if (!txt) return;
+        var isTarget = txt === 'METARS' || txt === 'TEMP PLOT' || txt === 'DEW POINT PLOT' || txt === 'PRESSURE PLOT' || txt === 'WIND ARROWS';
+        if (!isTarget) return;
+
+        var active = (
+          (txt === 'METARS' && metarDisplayMode === 'temp') ||
+          (txt === 'TEMP PLOT' && metarDisplayMode === 'temp') ||
+          (txt === 'DEW POINT PLOT' && metarDisplayMode === 'dewpoint') ||
+          (txt === 'PRESSURE PLOT' && metarDisplayMode === 'pressure') ||
+          (txt === 'WIND ARROWS' && metarDisplayMode === 'wind')
+        );
+        btn.classList.toggle('active', !!active);
+        btn.disabled = false;
+      });
+    }catch(e){}
+  }
+
+  function bindMetarModeButtons(){
+    if (metarModeButtonsBound) return;
+    metarModeButtonsBound = true;
+    try{
+      var chips = Array.prototype.slice.call(document.querySelectorAll('.inv-chip'));
+      chips.forEach(function(btn){
+        var txt = String(btn.textContent || '').trim().toUpperCase();
+        if (txt === 'METARS' || txt === 'TEMP PLOT'){
+          btn.disabled = false;
+          btn.addEventListener('click', function(){
+            setMetarDisplayMode('temp');
+            if (!metarVisible) setMetarsEnabled(true);
+          });
+        } else if (txt === 'DEW POINT PLOT'){
+          btn.disabled = false;
+          btn.addEventListener('click', function(){
+            setMetarDisplayMode('dewpoint');
+            if (!metarVisible) setMetarsEnabled(true);
+          });
+        } else if (txt === 'PRESSURE PLOT'){
+          btn.disabled = false;
+          btn.addEventListener('click', function(){
+            setMetarDisplayMode('pressure');
+            if (!metarVisible) setMetarsEnabled(true);
+          });
+        } else if (txt === 'WIND ARROWS'){
+          btn.disabled = false;
+          btn.addEventListener('click', function(){
+            setMetarDisplayMode('wind');
+            if (!metarVisible) setMetarsEnabled(true);
+          });
+        }
+      });
+      refreshMetarModeButtons();
+    }catch(e){}
   }
 
   function buildMetarLayer(){
@@ -452,17 +622,13 @@ window.createMetarsModule = function(opts){
       }
       placed.push(pt);
 
-      var fill = metarTempColorF(r.tmpf);
-      var stroke = metarOutlineColor(r.tmpf);
-      var tempText = (r.tmpf == null || r.tmpf === '') ? '—' : String(Math.round(Number(r.tmpf)));
-      var cls = 'metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '');
-      var html = '<div class="' + cls + '" style="background:' + fill + ';border-color:' + stroke + ';">' + tempText + '</div>';
+      var info = getMetarModeInfo(r);
       var marker = L.marker([lat, lon], {
         icon: L.divIcon({
-          className: 'metar-temp-wrap',
-          html: html,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
+          className: 'metar-temp-wrap metar-mode-' + info.mode,
+          html: info.html,
+          iconSize: info.mode === 'pressure' ? [48, 36] : [40, 40],
+          iconAnchor: info.mode === 'pressure' ? [24, 18] : [20, 20],
           popupAnchor: [0, -18]
         }),
         pane: 'markerPane',
@@ -507,6 +673,12 @@ window.createMetarsModule = function(opts){
         '<button id="metarPrevBtn" class="mhc-btn" type="button">◀ HOUR</button>' +
         '<div id="metarHourLabel" class="mhc-label">—</div>' +
         '<button id="metarNextBtn" class="mhc-btn" type="button">HOUR ▶</button>' +
+      '</div>' +
+      '<div class="mhc-row" style="margin-top:8px;gap:6px;flex-wrap:wrap;">' +
+        '<button id="metarModeTempBtn" class="mhc-btn" type="button">TEMP</button>' +
+        '<button id="metarModeDewBtn" class="mhc-btn" type="button">DEW POINT</button>' +
+        '<button id="metarModeWindBtn" class="mhc-btn" type="button">WIND</button>' +
+        '<button id="metarModePressureBtn" class="mhc-btn" type="button">PRESSURE</button>' +
       '</div>';
 
     var target = document.body || document.documentElement;
@@ -525,6 +697,16 @@ window.createMetarsModule = function(opts){
       await stepMetarTime(1);
       updateMetarControls();
     };
+
+    var tempBtn = document.getElementById("metarModeTempBtn");
+    var dewBtn = document.getElementById("metarModeDewBtn");
+    var windBtn = document.getElementById("metarModeWindBtn");
+    var pressureBtn = document.getElementById("metarModePressureBtn");
+
+    if (tempBtn) tempBtn.onclick = function(){ setMetarDisplayMode('temp'); };
+    if (dewBtn) dewBtn.onclick = function(){ setMetarDisplayMode('dewpoint'); };
+    if (windBtn) windBtn.onclick = function(){ setMetarDisplayMode('wind'); };
+    if (pressureBtn) pressureBtn.onclick = function(){ setMetarDisplayMode('pressure'); };
 
     return box;
   }
@@ -545,6 +727,23 @@ window.createMetarsModule = function(opts){
     if (label) label.textContent = formatMetarHourLabel(entry);
     if (prev) prev.disabled = !(timeline.length && idx > 0);
     if (next) next.disabled = !(timeline.length && idx < timeline.length - 1);
+
+    try{
+      var modes = {
+        metarModeTempBtn: metarDisplayMode === 'temp',
+        metarModeDewBtn: metarDisplayMode === 'dewpoint',
+        metarModeWindBtn: metarDisplayMode === 'wind',
+        metarModePressureBtn: metarDisplayMode === 'pressure'
+      };
+      Object.keys(modes).forEach(function(id){
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = modes[id] ? '1' : '0.72';
+        el.style.boxShadow = modes[id] ? '0 0 0 2px rgba(255,255,255,0.18) inset' : '';
+      });
+    }catch(e){}
+
+    refreshMetarModeButtons();
   }
 
   async function loadMetarsAtIndex(idx){
@@ -573,6 +772,7 @@ window.createMetarsModule = function(opts){
         // Simple mode: METARs use their own hour controls, not the shared bottom scrubber
         await loadMetarManifest();
         ensureMetarControls();
+        bindMetarModeButtons();
 
         if (metarTimeline && metarTimeline.length){
           await loadMetarsAtIndex(0);
@@ -620,6 +820,7 @@ window.createMetarsModule = function(opts){
   }
 
   function installMapEvents(){
+    bindMetarModeButtons();
     map.on('zoomend moveend', function(){
       if (metarVisible) refreshMetarLayer();
     });
@@ -630,6 +831,7 @@ window.createMetarsModule = function(opts){
     metarTempColorF:metarTempColorF,
     metarOutlineColor:metarOutlineColor,
     metarPopupHtml:metarPopupHtml,
+    setMetarDisplayMode:setMetarDisplayMode,
     loadMetars:loadMetars,
     metarMinSepForZoom:metarMinSepForZoom,
     buildMetarLayer:buildMetarLayer,
