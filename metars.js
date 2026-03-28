@@ -51,8 +51,8 @@ window.createMetarsModule = function(opts){
     KMSN:"Madison", KLSE:"La Crosse", KJMS:"Jamestown", KBIS:"Bismarck", KDIK:"Dickinson",
     KISN:"Williston", KMOT:"Minot", KXWA:"Williston Basin", KGFK:"Grand Forks", KFAR:"Fargo",
     KBJI:"Bemidji", KTVF:"Thief River Falls", KPKD:"Park Rapids", KBRD:"Brainerd", KHIB:"Hibbing",
-    KDLH:"Duluth", KRRT:"Warroad", KRGK:"Red Wing", KMHE:"Mitchell", K"9V9":"Chamberlain",
-    K"8D3":"Sisseton", K"6V4":"Wall", K5H4:"Harvey", KHEI:"Hettinger", KJHW:"Jamestown",
+    KDLH:"Duluth", KRRT:"Warroad", KRGK:"Red Wing", KMHE:"Mitchell", K9V9:"Chamberlain",
+    K8D3:"Sisseton", K6V4:"Wall", K5H4:"Harvey", KHEI:"Hettinger", KJHW:"Jamestown",
     KBUB:"Burwell", KBBW:"Broken Bow", KVTN:"Valentine", KAIA:"Alliance", KBFF:"Scottsbluff",
     KCDR:"Chadron", KIML:"Imperial", KMCK:"McCook", KHSI:"Hastings", KAHQ:"Wahoo",
     KJYR:"York", KSNY:"Sidney", KANW:"Ainsworth", KOLU:"Columbus", KJLN:"Joplin",
@@ -79,22 +79,7 @@ window.createMetarsModule = function(opts){
     BBW:"Broken Bow", VTN:"Valentine", AIA:"Alliance", BFF:"Scottsbluff", CDR:"Chadron",
     IML:"Imperial", MCK:"McCook", HSI:"Hastings", AHQ:"Wahoo", JYR:"York", SNY:"Sidney",
     ANW:"Ainsworth", OLU:"Columbus", LBL:"Liberal", GCK:"Garden City", HYS:"Hays",
-    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend",
-    LYV:"Luverne", LVN:"Airlake", JYG:"St. James", OWA:"Owatonna", SYN:"Stanton", FCM:"Flying Cloud",
-    MIC:"Crystal", STP:"St. Paul Downtown", FBL:"Faribault", AQP:"Appleton", ETH:"Wheaton",
-    DVP:"Slayton", CNB:"Canby", CKN:"Crookston", FSE:"Fosston", FOZ:"Bigfork", CDD:"Crane Lake",
-    ORB:"Orr", XVG:"Longville", ACQ:"Waseca", ADC:"Wadena", AEL:"Albert Lea", AUM:"Austin",
-    BDE:"Baudette", DTL:"Detroit Lakes", DXX:"Madison", ELO:"Ely", FFM:"Fergus Falls", GPZ:"Grand Rapids",
-    GNA:"Granite Falls", HCO:"Hallock", INL:"International Falls", JKJ:"Moorhead", LXL:"Little Falls",
-    OEO:"Osceola", PWC:"Pine River", RNH:"New Richmond", ROX:"Roseau", RRT:"Warroad", TVF:"Thief River Falls",
-    ULM:"New Ulm", WLD:"Winsted", WPO:"Northome", CFE:"Buffalo", ICR:"Winner", CUT:"Custer",
-    IEN:"Pine Ridge", MBV:"Mobridge", "9V9":"Chamberlain", "1D8":"Redfield", "6V4":"Wall", "8D3":"Sisseton",
-    AIO:"Atlantic", CIN:"Carroll", CWI:"Clinton", EBS:"Webster City", EOK:"Keokuk", FXY:"Forest City",
-    GGI:"Grinnell", HPT:"Hampton", IFA:"Iowa Falls", IIB:"Independence", IKV:"Ankeny", MXO:"Monticello",
-    OXV:"Knoxville", PRO:"Perry", RDK:"Red Oak", TNU:"Newton", VTI:"Vinton", ODX:"Ord", BTA:"Blair",
-    BIE:"Beatrice", BVN:"Albion", HJH:"Hebron", HNR:"Harlan", HDE:"Holdrege", AFK:"Nebraska City",
-    AIT:"Aitkin", "9MN":"Long Prairie"
-
+    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson"
   };
 
   function metarStationName(r){
