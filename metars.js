@@ -478,18 +478,53 @@ window.createMetarsModule = function(opts){
     return '#616161';
   }
 
+  function metarDewpointColorF(dwpf){
+    var d = Number(dwpf);
+    if (!isFinite(d)) return '#e7dbc4';
+    if (d < 20) return '#7a4a1f';
+    if (d < 30) return '#91602b';
+    if (d < 40) return '#a9783b';
+    if (d < 50) return '#c59a5a';
+    if (d < 55) return '#dcc48d';
+    if (d < 60) return '#cfe8ae';
+    if (d < 65) return '#9fd47a';
+    if (d < 70) return '#5fb34f';
+    return '#237a2c';
+  }
+
+  function metarDewpointStroke(dwpf){
+    var d = Number(dwpf);
+    if (!isFinite(d)) return '#7d6d58';
+    if (d < 40) return '#6b431d';
+    if (d < 55) return '#8a6a2e';
+    if (d < 65) return '#4d7d2f';
+    return '#145a1e';
+  }
+
+  function metarWindDisplayColor(mph){
+    var w = Number(mph);
+    if (!isFinite(w)) return { fill:'#e7eef8', stroke:'#334155', text:'#122033' };
+    if (w < 15) return { fill:'#d7ecff', stroke:'#2563eb', text:'#0f3f8a' };
+    if (w < 25) return { fill:'#c9f5d1', stroke:'#2f9e44', text:'#1f6d2d' };
+    if (w < 35) return { fill:'#fff3bf', stroke:'#d69e2e', text:'#8a5a00' };
+    if (w < 50) return { fill:'#ffd7a8', stroke:'#dd6b20', text:'#8c3b00' };
+    return { fill:'#ffc9c9', stroke:'#dc2626', text:'#7f1d1d' };
+  }
+
   function getMetarModeInfo(r){
     var mode = String(metarDisplayMode || 'temp').toLowerCase();
 
     if (mode === 'dewpoint'){
       var dew = (r.dwpf == null || r.dwpf === '') ? '—' : String(Math.round(Number(r.dwpf)));
+      var fill = metarDewpointColorF(r.dwpf);
+      var stroke = metarDewpointStroke(r.dwpf);
       return {
         mode: mode,
         text: dew,
-        fill: metarTempColorF(r.dwpf),
-        stroke: metarOutlineColor(r.dwpf),
+        fill: fill,
+        stroke: stroke,
         cls: 'metar-temp-dot',
-        html: '<div class="metar-temp-dot" style="background:' + metarTempColorF(r.dwpf) + ';border-color:' + metarOutlineColor(r.dwpf) + ';">' + dew + '</div>'
+        html: '<div class="metar-temp-dot" style="background:' + fill + ';border-color:' + stroke + ';">' + dew + '</div>'
       };
     }
 
@@ -511,14 +546,21 @@ window.createMetarsModule = function(opts){
     if (mode === 'wind'){
       var arrow = metarWindArrow(r.drct);
       var spd = Number(r && (r.sknt ?? r.wind_speed_kt));
-      var mph = isFinite(spd) ? Math.round(spd * 1.15078) : '';
+      var mph = isFinite(spd) ? Math.round(spd * 1.15078) : null;
+      var gust = Number(r && (r.gust ?? r.gust_kt));
+      var gustMph = isFinite(gust) ? Math.round(gust * 1.15078) : null;
+      var displayMph = isFinite(gustMph) ? gustMph : mph;
+      var palette = metarWindDisplayColor(displayMph);
       return {
         mode: mode,
         text: arrow,
-        fill: 'rgba(255,255,255,0.92)',
-        stroke: '#243447',
+        fill: palette.fill,
+        stroke: palette.stroke,
         cls: 'metar-wind-dot',
-        html: '<div class="metar-wind-dot" style="width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:999px;border:2px solid #243447;background:rgba(255,255,255,0.92);color:#122033;box-sizing:border-box;line-height:1;"><div style="font:900 18px/1 Lato,Arial,sans-serif;">' + arrow + '</div><div style="font:900 10px/1 Lato,Arial,sans-serif;margin-top:2px;">' + mph + '</div></div>'
+        html: '<div class="metar-wind-dot" style="width:46px;height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:999px;border:3px solid ' + palette.stroke + ';background:' + palette.fill + ';color:' + palette.text + ';box-sizing:border-box;line-height:1;box-shadow:0 3px 10px rgba(0,0,0,.18);">' +
+              '<div style="font:900 24px/1 Lato,Arial,sans-serif;text-shadow:0 1px 0 rgba(255,255,255,.55);">' + arrow + '</div>' +
+              '<div style="font:900 11px/1 Lato,Arial,sans-serif;margin-top:2px;letter-spacing:.2px;">' + (displayMph != null ? displayMph : '—') + '</div>' +
+              '</div>'
       };
     }
 
