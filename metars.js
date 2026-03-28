@@ -79,7 +79,16 @@ window.createMetarsModule = function(opts){
     BBW:"Broken Bow", VTN:"Valentine", AIA:"Alliance", BFF:"Scottsbluff", CDR:"Chadron",
     IML:"Imperial", MCK:"McCook", HSI:"Hastings", AHQ:"Wahoo", JYR:"York", SNY:"Sidney",
     ANW:"Ainsworth", OLU:"Columbus", LBL:"Liberal", GCK:"Garden City", HYS:"Hays",
-    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson"
+    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson",
+    LYV:"Luverne", LVN:"Airlake", JYG:"St. James", OWA:"Owatonna", STP:"St. Paul Downtown",
+    FCM:"Flying Cloud", MIC:"Crystal", FBL:"Faribault", AQP:"Appleton", ETH:"Wheaton",
+    BDE:"Baudette", CDD:"Crane Lake", FOZ:"Bigfork", XVG:"Longville", ORB:"Orr",
+    DVP:"Slayton", CNB:"Canby", CKN:"Crookston", ICR:"Winner", CUT:"Custer",
+    FNB:"Falls City", ODX:"Ord", TQE:"Tekamah", LWD:"Lamoni", HIB:"Hibbing",
+    LYV:"Luverne", MCK:"McCook", BFF:"Scottsbluff", AIA:"Alliance", HEI:"Hettinger",
+    IEN:"Pine Ridge", N60:"Garrison", JMR:"Mora", PKD:"Park Rapids", BRD:"Brainerd",
+    AMW:"Ames", OTM:"Ottumwa", MCW:"Mason City", ALO:"Waterloo",
+    "9V9":"Chamberlain", "8D3":"Sisseton", "6V4":"Wall", "5H4":"Harvey", "9MN":"Long Prairie"
   };
 
   function metarStationName(r){
