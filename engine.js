@@ -1476,6 +1476,23 @@ function setDrawMode(on){
       }
     }
 
+    if (radarVelocityEnabled && radarVelocityLayer){
+      var velProbe = getRadarVelocityProbeAtLatLng(e.latlng);
+      if (velProbe){
+        var velVal = velProbe.value;
+        var dirText = velVal > 0 ? 'Away from radar' : (velVal < 0 ? 'Toward radar' : 'Neutral');
+        var velContent =
+          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>KFSD Radial Velocity</div>" +
+          "<div style='font:900 30px/1.05 Arial,sans-serif'>" + (velVal>0?'+':'') + Math.round(velVal) + " mph</div>" +
+          "<div style='font:900 14px/1.05 Arial,sans-serif;opacity:.9'>" + dirText + "</div>";
+        L.popup({ closeButton:true, className:"hrrr-popup" })
+          .setLatLng([velProbe.lat, velProbe.lon])
+          .setContent(velContent)
+          .openOn(map);
+        return;
+      }
+    }
+
     // Require active HRRR product with points
     try{
       if (!(typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
@@ -2207,13 +2224,14 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
+var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
 
 function getActiveProductKey(){
   // Priority: global > snow > jet > future hrrr > radar
   if (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)) return "global";
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof jet500Enabled !== "undefined" && jet500Enabled) return "jet";
+  if (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled && typeof radarVelocityLayer !== "undefined" && radarVelocityLayer && map.hasLayer(radarVelocityLayer)) return "radarVelocity";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : ((window.hrrrProductMode === 'winds') ? "hrrrWinds" : "hrrrTemp");
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
@@ -2256,6 +2274,8 @@ function applyActiveOpacity(){
     if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
   } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar"){
     setTempOpacity(op);
+  } else if (key === "radarVelocity"){
+    if (typeof radarVelocityLayer !== 'undefined' && radarVelocityLayer && radarVelocityLayer.setOpacity) radarVelocityLayer.setOpacity(op);
   } else if (key === "global"){
     ensureEra5Overlays();
     if (era5Apr10Overlay) era5Apr10Overlay.setOpacity(op);
@@ -3207,7 +3227,214 @@ async function setMetarsEnabled(on){
     try{ updateProductLabel(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
   }
+
   window.setRadarEnabled = setRadarEnabled;
+
+  var radarVelocityEnabled = false;
+  var radarVelocityManifest = null;
+  var radarVelocityManifestUrl = '';
+  var radarVelocityManifestBaseUrl = '';
+  var radarVelocityFrames = [];
+  var radarVelocityBounds = null;
+  var radarVelocityLayer = null;
+  var radarVelocityPoints = null;
+  var radarVelocityLoadPromise = null;
+  var radarVelocityPointsPromise = null;
+  var currentRadarVelocityFrame = null;
+  window.radarVelocityEnabled = radarVelocityEnabled;
+  window.radarVelocityLayer = radarVelocityLayer;
+  window.radarVelocityPoints = radarVelocityPoints;
+
+  function getRadarVelocityManifestPath(){
+    try{
+      var r = (CFG && CFG.radarVelocity) ? CFG.radarVelocity : ((CFG && CFG.radar && CFG.radar.velocity) ? CFG.radar.velocity : {});
+      var u = r.manifest || r.manifestFile || r.url || r.file || '';
+      if (u) return u;
+    }catch(e){}
+    return 'radar/kfsd-velocity/manifest.json';
+  }
+  function getRadarVelocityManifestUrl(){
+    var u = getRadarVelocityManifestPath();
+    return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+  }
+  function parseRadarVelocityBounds(raw){
+    if (!raw) return null;
+    var b = raw.bounds || raw.bbox || raw.leaflet_bounds || raw;
+    if (Array.isArray(b) && b.length === 2 && Array.isArray(b[0]) && Array.isArray(b[1])) return b;
+    var south = Number(b.south ?? b.min_latitude ?? b.minLat ?? NaN);
+    var north = Number(b.north ?? b.max_latitude ?? b.maxLat ?? NaN);
+    var west  = _normLon(b.west ?? b.min_longitude ?? b.minLon ?? NaN);
+    var east  = _normLon(b.east ?? b.max_longitude ?? b.maxLon ?? NaN);
+    if ([south,north,west,east].every(isFinite)) return [[south, west],[north, east]];
+    return null;
+  }
+  function parseRadarVelocityFrames(raw){
+    var frames = [];
+    if (raw && raw.image){
+      frames.push({ file: raw.image, points: raw.pointsFile || raw.pointFile || raw.points || null, time: raw.time || raw.utc || raw.scan_time_utc || null, label: raw.label || 'Velocity Test', bounds: parseRadarVelocityBounds(raw) });
+      return frames;
+    }
+    var src = (raw && (raw.frames || raw.images || raw.files)) || [];
+    if (!Array.isArray(src)) return frames;
+    src.forEach(function(f, i){
+      if (typeof f === 'string') f = { file:f };
+      if (!f) return;
+      var file = f.file || f.url || f.png || f.image || f.name;
+      if (!file) return;
+      frames.push({
+        file: file,
+        points: f.pointsFile || f.pointFile || f.points || raw.pointsFile || raw.pointFile || raw.points || null,
+        time: f.time || f.utc || f.scan_time_utc || null,
+        label: f.label || ('Velocity ' + (i+1)),
+        bounds: parseRadarVelocityBounds(f) || parseRadarVelocityBounds(raw)
+      });
+    });
+    return frames;
+  }
+  async function loadRadarVelocityManifestIfNeeded(){
+    if (radarVelocityManifest) return radarVelocityManifest;
+    if (radarVelocityLoadPromise) return radarVelocityLoadPromise;
+    radarVelocityManifestUrl = getRadarVelocityManifestUrl();
+    radarVelocityManifestBaseUrl = radarVelocityManifestUrl.split('/').slice(0,-1).join('/') + '/';
+    setStatus('Loading velocity test…');
+    radarVelocityLoadPromise = fetch(radarVelocityManifestUrl + (radarVelocityManifestUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' })
+      .then(function(r){
+        if (!r.ok) throw new Error('Velocity manifest HTTP ' + r.status + ': ' + radarVelocityManifestUrl);
+        return r.json();
+      })
+      .then(function(raw){
+        radarVelocityManifest = raw || {};
+        radarVelocityFrames = parseRadarVelocityFrames(radarVelocityManifest);
+        currentRadarVelocityFrame = radarVelocityFrames[0] || null;
+        radarVelocityBounds = (currentRadarVelocityFrame && currentRadarVelocityFrame.bounds) || parseRadarVelocityBounds(radarVelocityManifest);
+        window.__RADAR_VELOCITY_MANIFEST__ = radarVelocityManifest;
+        window.__RADAR_VELOCITY_FRAMES__ = radarVelocityFrames;
+        window.__RADAR_VELOCITY_MANIFEST_URL__ = radarVelocityManifestUrl;
+        return radarVelocityManifest;
+      })
+      .catch(function(err){
+        console.error('Velocity manifest load failed:', err);
+        radarVelocityLoadPromise = null;
+        radarVelocityManifest = null;
+        radarVelocityFrames = [];
+        currentRadarVelocityFrame = null;
+        radarVelocityBounds = null;
+        setStatus('Velocity test failed');
+        throw err;
+      });
+    return radarVelocityLoadPromise;
+  }
+  async function loadRadarVelocityPointsIfNeeded(){
+    if (radarVelocityPoints) return radarVelocityPoints;
+    if (radarVelocityPointsPromise) return radarVelocityPointsPromise;
+    if (!currentRadarVelocityFrame || !currentRadarVelocityFrame.points) return null;
+    var pointsUrl = _isAbsUrl(currentRadarVelocityFrame.points) ? currentRadarVelocityFrame.points : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.points);
+    radarVelocityPointsPromise = fetch(pointsUrl + (pointsUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' })
+      .then(function(r){
+        if (!r.ok) throw new Error('Velocity points HTTP ' + r.status + ': ' + pointsUrl);
+        return r.json();
+      })
+      .then(function(raw){
+        radarVelocityPoints = raw || null;
+        window.radarVelocityPoints = radarVelocityPoints;
+        return radarVelocityPoints;
+      })
+      .catch(function(err){
+        console.error('Velocity points load failed:', err);
+        radarVelocityPointsPromise = null;
+        radarVelocityPoints = null;
+        window.radarVelocityPoints = null;
+        throw err;
+      });
+    return radarVelocityPointsPromise;
+  }
+  function clearRadarVelocityLayer(){
+    try{ if (radarVelocityLayer && map && map.hasLayer(radarVelocityLayer)) map.removeLayer(radarVelocityLayer); }catch(e){}
+    radarVelocityLayer = null;
+    window.radarVelocityLayer = null;
+  }
+  function disableRadarVelocityState(){
+    radarVelocityEnabled = false;
+    window.radarVelocityEnabled = false;
+    clearRadarVelocityLayer();
+  }
+  async function updateRadarVelocity(){
+    await loadRadarVelocityManifestIfNeeded();
+    if (!currentRadarVelocityFrame || !currentRadarVelocityFrame.file) throw new Error('Velocity manifest missing frame image');
+    if (!radarVelocityBounds) throw new Error('Velocity manifest missing bounds');
+    var imgUrl = _isAbsUrl(currentRadarVelocityFrame.file) ? currentRadarVelocityFrame.file : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.file);
+    clearRadarVelocityLayer();
+    radarVelocityLayer = L.imageOverlay(imgUrl, radarVelocityBounds, { opacity: productOpacity.radarVelocity || 0.70, interactive:false });
+    radarVelocityLayer.addTo(map);
+    window.radarVelocityLayer = radarVelocityLayer;
+    if (currentRadarVelocityFrame.points) {
+      try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
+    }
+    setStatus('Velocity test on');
+  }
+  async function setRadarVelocityEnabled(on){
+    radarVelocityEnabled = !!on;
+    window.radarVelocityEnabled = radarVelocityEnabled;
+    if (!radarVelocityEnabled){
+      clearRadarVelocityLayer();
+      setStatus('Velocity test off');
+      try{ updateProductLabel(); }catch(e){}
+      try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+      return;
+    }
+    try{
+      if (typeof window.setRadarEnabled === 'function' && window.obsRadarEnabled) await window.setRadarEnabled(false);
+    }catch(e){}
+    try{
+      await updateRadarVelocity();
+    }catch(err){
+      console.error(err);
+      radarVelocityEnabled = false;
+      window.radarVelocityEnabled = false;
+      clearRadarVelocityLayer();
+      setStatus('Velocity test failed');
+    }
+    try{ updateProductLabel(); }catch(e){}
+    try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+  }
+  window.setRadarVelocityEnabled = setRadarVelocityEnabled;
+
+  function getRadarVelocityProbeAtLatLng(latlng){
+    var raw = radarVelocityPoints;
+    if (!raw || !latlng) return null;
+    var lats = raw.latitude, lons = raw.longitude, vals = raw.values_mph || raw.values || raw.velocity_mph || raw.velocity || null;
+    if (!Array.isArray(lats) || !Array.isArray(lons) || !Array.isArray(vals) || !lats.length || !lons.length || !vals.length) return null;
+    var rows = Math.min(lats.length, lons.length, vals.length);
+    var cols = Array.isArray(lats[0]) ? lats[0].length : 0;
+    if (!rows || !cols) return null;
+    var b = radarVelocityBounds || parseRadarVelocityBounds(raw) || currentRadarVelocityFrame && currentRadarVelocityFrame.bounds;
+    if (!b) return null;
+    var south = Number(b[0][0]), west = Number(b[0][1]), north = Number(b[1][0]), east = Number(b[1][1]);
+    var rowGuess = Math.round((north - latlng.lat) / Math.max(1e-9, (north - south)) * (rows - 1));
+    var colGuess = Math.round((latlng.lng - west) / Math.max(1e-9, (east - west)) * (cols - 1));
+    rowGuess = Math.max(0, Math.min(rows - 1, rowGuess));
+    colGuess = Math.max(0, Math.min(cols - 1, colGuess));
+    var best = null, bestD = Infinity, win = 10;
+    for (var r = Math.max(0, rowGuess - win); r <= Math.min(rows - 1, rowGuess + win); r++){
+      var latRow = lats[r], lonRow = lons[r], valRow = vals[r];
+      if (!Array.isArray(latRow) || !Array.isArray(lonRow) || !Array.isArray(valRow)) continue;
+      for (var c = Math.max(0, colGuess - win); c <= Math.min(cols - 1, colGuess + win); c++){
+        var v = valRow[c];
+        if (v == null || !isFinite(v)) continue;
+        var plat = Number(latRow[c]), plon = Number(lonRow[c]);
+        if (!isFinite(plat) || !isFinite(plon)) continue;
+        var d = map.distance(latlng, L.latLng(plat, plon));
+        if (d < bestD){ bestD = d; best = { lat: plat, lon: plon, value: Number(v), unit: 'mph' }; }
+      }
+    }
+    if (!best){
+      var v0 = vals[rowGuess] && vals[rowGuess][colGuess];
+      var plat0 = lats[rowGuess] && lats[rowGuess][colGuess];
+      var plon0 = lons[rowGuess] && lons[rowGuess][colGuess];
+      if (v0 != null && isFinite(v0) && isFinite(plat0) && isFinite(plon0)) best = { lat:Number(plat0), lon:Number(plon0), value:Number(v0), unit:'mph' };
+    }
+    return best;
+  }
 
   var hrrrManifest = null;
   var hrrrFrames = [];
@@ -3604,6 +3831,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'temp'), label: "FUTURE TEMP" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'winds'), label: "FUTURE WIND GUSTS" },
+    { on: (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled), label: "RADAR VELOCITY" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -3626,6 +3854,10 @@ function parseHrrrPointsPayload(raw){
     if (key === "radar" || key === "hrrrRadar"){
       title = (key === "hrrrRadar") ? "Future radar reflectivity" : "Radar reflectivity";
       if (bar) bar.style.background = "linear-gradient(90deg, #2b83ba, #4ecdc4, #a8e6a3, #ffd166, #ef476f)";
+      el.style.display = "";
+    } else if (key === "radarVelocity"){
+      title = "Radar velocity (mph)";
+      if (bar) bar.style.background = "linear-gradient(90deg, #1f5fd6, #7fb3ff, #f2f2f2, #ffb0b0, #d71f1f)";
       el.style.display = "";
     } else if (key === "snow"){
       title = "Snow (forecast)";
@@ -4456,6 +4688,7 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="hrrr-radar"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar'); });
     dock.querySelectorAll('[data-action="hrrr-winds"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'winds'); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
+    dock.querySelectorAll('[data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
@@ -4487,7 +4720,15 @@ document.addEventListener('DOMContentLoaded', function(){
     }
     if (action === 'radar'){
       if (typeof window.setRadarEnabled === 'function') {
+        if (window.radarVelocityEnabled && typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
         await window.setRadarEnabled(!window.obsRadarEnabled);
+      }
+      return;
+    }
+    if (action === 'radar-velocity-test'){
+      if (typeof window.setRadarVelocityEnabled === 'function') {
+        var nextVelOn = !window.radarVelocityEnabled;
+        await window.setRadarVelocityEnabled(nextVelOn);
       }
       return;
     }
