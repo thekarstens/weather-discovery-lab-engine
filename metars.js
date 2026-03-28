@@ -40,24 +40,68 @@ window.createMetarsModule = function(opts){
     KSPW:"Spencer", KSLB:"Storm Lake", KALO:"Waterloo", KMCW:"Mason City", KICL:"Clarinda",
     KOFK:"Norfolk", KLNK:"Lincoln", KGRI:"Grand Island", KEAR:"Kearney", KATY:"Watertown",
     KMBG:"Mobridge", KPHP:"Philip", KRAP:"Rapid City", KCPR:"Casper", KDDC:"Dodge City",
-    KGLD:"Goodland", CKP:"Cherokee",
+    KGLD:"Goodland", KSTC:"St. Cloud", KAXN:"Alexandria", KOTM:"Ottumwa", KAMW:"Ames",
+    KCID:"Cedar Rapids", KDBQ:"Dubuque", KIOW:"Iowa City", KMXO:"Monticello", KDVN:"Davenport",
+    KBNW:"Boone", KFFL:"Fairfield", KSHL:"Sheldon", KSDA:"Shenandoah", KAWG:"Washington",
+    KFSW:"Fort Madison", KEST:"Estherville", KDEH:"Decorah", KDNS:"Denison", KCSQ:"Creston",
+    KCCY:"Charles City", KCBF:"Council Bluffs", KOXB:"Osceola", KTNU:"Newton", KRDK:"Red Oak",
+    KSUX:"Sioux City", KFOD:"Fort Dodge", KMIW:"Marshalltown", KMML:"Marshall", KFRM:"Fairmont",
+    KRXE:"Roseau", KJMR:"Mora", KRWF:"Redwood Falls", KOTG:"Worthington", KMOX:"Morris",
+    KDVP:"Slayton", KHCD:"Hutchinson", KGHW:"Glenwood", KTOB:"Dodge Center", KONA:"Winona",
+    KMSN:"Madison", KLSE:"La Crosse", KJMS:"Jamestown", KBIS:"Bismarck", KDIK:"Dickinson",
+    KISN:"Williston", KMOT:"Minot", KXWA:"Williston Basin", KGFK:"Grand Forks", KFAR:"Fargo",
+    KBJI:"Bemidji", KTVF:"Thief River Falls", KPKD:"Park Rapids", KBRD:"Brainerd", KHIB:"Hibbing",
+    KDLH:"Duluth", KRRT:"Warroad", KRGK:"Red Wing", KMHE:"Mitchell", K9V9:"Chamberlain",
+    K8D3:"Sisseton", K6V4:"Wall", K5H4:"Harvey", KHEI:"Hettinger", KJHW:"Jamestown",
+    KBUB:"Burwell", KBBW:"Broken Bow", KVTN:"Valentine", KAIA:"Alliance", KBFF:"Scottsbluff",
+    KCDR:"Chadron", KIML:"Imperial", KMCK:"McCook", KHSI:"Hastings", KAHQ:"Wahoo",
+    KJYR:"York", KSNY:"Sidney", KANW:"Ainsworth", KOLU:"Columbus", KJLN:"Joplin",
+    KDDC:"Dodge City", KLBL:"Liberal", KGCK:"Garden City", KHYS:"Hays", KICT:"Wichita",
+    KTOP:"Topeka", KFOE:"Topeka", KCNK:"Concordia", KGBD:"Great Bend", KHUT:"Hutchinson",
+    CKP:"Cherokee",
     FSD:"Sioux Falls", SUX:"Sioux City", OMA:"Omaha", DSM:"Des Moines", RST:"Rochester",
     HON:"Huron", PIR:"Pierre", ABR:"Aberdeen", BKX:"Brookings", YKN:"Yankton",
     MKT:"Mankato", MSP:"Minneapolis", RWF:"Redwood Falls", OTG:"Worthington",
     SPW:"Spencer", SLB:"Storm Lake", ALO:"Waterloo", MCW:"Mason City", ICL:"Clarinda",
     OFK:"Norfolk", LNK:"Lincoln", GRI:"Grand Island", EAR:"Kearney", ATY:"Watertown",
     MBG:"Mobridge", PHP:"Philip", RAP:"Rapid City", CPR:"Casper", DDC:"Dodge City",
-    GLD:"Goodland"
+    GLD:"Goodland", STC:"St. Cloud", AXN:"Alexandria", OTM:"Ottumwa", AMW:"Ames",
+    CID:"Cedar Rapids", DBQ:"Dubuque", IOW:"Iowa City", MXO:"Monticello", DVN:"Davenport",
+    BNW:"Boone", FFL:"Fairfield", SHL:"Sheldon", SDA:"Shenandoah", AWG:"Washington",
+    FSW:"Fort Madison", EST:"Estherville", DEH:"Decorah", DNS:"Denison", CSQ:"Creston",
+    CCY:"Charles City", CBF:"Council Bluffs", OXB:"Osceola", TNU:"Newton", RDK:"Red Oak",
+    FOD:"Fort Dodge", MIW:"Marshalltown", MML:"Marshall", FRM:"Fairmont", RXE:"Roseau",
+    JMR:"Mora", MOX:"Morris", DVP:"Slayton", HCD:"Hutchinson", GHW:"Glenwood", TOB:"Dodge Center",
+    ONA:"Winona", MSN:"Madison", LSE:"La Crosse", JMS:"Jamestown", BIS:"Bismarck",
+    DIK:"Dickinson", ISN:"Williston", MOT:"Minot", GFK:"Grand Forks", FAR:"Fargo",
+    BJI:"Bemidji", TVF:"Thief River Falls", PKD:"Park Rapids", BRD:"Brainerd", HIB:"Hibbing",
+    DLH:"Duluth", RRT:"Warroad", RGK:"Red Wing", MHE:"Mitchell", BUB:"Burwell",
+    BBW:"Broken Bow", VTN:"Valentine", AIA:"Alliance", BFF:"Scottsbluff", CDR:"Chadron",
+    IML:"Imperial", MCK:"McCook", HSI:"Hastings", AHQ:"Wahoo", JYR:"York", SNY:"Sidney",
+    ANW:"Ainsworth", OLU:"Columbus", LBL:"Liberal", GCK:"Garden City", HYS:"Hays",
+    ICT:"Wichita", TOP:"Topeka", FOE:"Topeka", CNK:"Concordia", GBD:"Great Bend", HUT:"Hutchinson"
   };
 
   function metarStationName(r){
-    var rawId = String(r && (r.id || r.station || r.stid || '') || '').toUpperCase().trim();
+    var rawId = String(r && (r.id || r.station || r.stid || r.sid || '') || '').toUpperCase().trim();
     var id = rawId;
+
+    // Prefer any plain-language place fields coming from the data itself.
+    var candidate = r && (r.city || r.name || r.town || r.station_name || r.location || r.site || r.label || '');
+    candidate = String(candidate || '').trim();
+    if (candidate && !/^[A-Z0-9]{3,4}$/.test(candidate)) return candidate;
+
+    // Try common FAA prefixes/suffixes.
     if (id && !STATION_NAMES[id] && id.length === 3) {
       if (STATION_NAMES['K' + id]) id = 'K' + id;
       else if (STATION_NAMES['C' + id]) id = 'C' + id;
+      else if (STATION_NAMES['P' + id]) id = 'P' + id;
     }
-    return (r && (r.city || r.name || r.town)) || STATION_NAMES[id] || STATION_NAMES[rawId] || rawId || "Station";
+    if (id && !STATION_NAMES[id] && id.length === 4 && id[0] === 'K' && STATION_NAMES[id.slice(1)]) {
+      id = id.slice(1);
+    }
+
+    return STATION_NAMES[id] || STATION_NAMES[rawId] || candidate || rawId || "Station";
   }
 
   function metarWindDirText(deg){
@@ -102,6 +146,34 @@ window.createMetarsModule = function(opts){
   function metarBaroText(r){
     var v = Number(r && r.alti);
     return isFinite(v) ? v.toFixed(2) + '"' : "—";
+  }
+
+  function metarRelativeHumidity(r){
+    var t = Number(r && (r.tmpf ?? r.temp_f));
+    var d = Number(r && (r.dwpf ?? r.dewpoint_f));
+    if (!isFinite(t) || !isFinite(d)) return "—";
+    var tc = (t - 32) * 5 / 9;
+    var dc = (d - 32) * 5 / 9;
+    var es = 6.112 * Math.exp((17.67 * tc) / (tc + 243.5));
+    var e = 6.112 * Math.exp((17.67 * dc) / (dc + 243.5));
+    var rh = Math.max(0, Math.min(100, Math.round((e / es) * 100)));
+    return rh + "%";
+  }
+
+  function metarWeatherInfo(r){
+    var raw = String(r && (r.wx || r.wxcodes || r.weather || r.wx_string || r.presentwx || '') || '').trim();
+    if (!raw) return { icon: "⛅", label: "Fair / Clouds", raw: "" };
+
+    var code = raw.toUpperCase();
+    if (/(TS|VCTS|LTG)/.test(code)) return { icon: "⛈", label: "Thunderstorm", raw: raw };
+    if (/(FZRA|PL|SN|BLSN|SG|IP)/.test(code)) return { icon: "🌨", label: "Snow / Ice", raw: raw };
+    if (/(RA|SHRA|DZ)/.test(code)) return { icon: "🌧", label: "Rain", raw: raw };
+    if (/(FG|BR|HZ|FU|DU|SA)/.test(code)) return { icon: "🌫", label: "Fog / Haze", raw: raw };
+    if (/(OVC|BKN)/.test(code)) return { icon: "☁️", label: "Cloudy", raw: raw };
+    if (/(SCT|FEW)/.test(code)) return { icon: "⛅", label: "Partly Cloudy", raw: raw };
+    if (/(CLR|SKC)/.test(code)) return { icon: "☀️", label: "Sunny / Clear", raw: raw };
+
+    return { icon: "⛅", label: raw, raw: raw };
   }
 
   function metarWindBarbSvg(r){
@@ -196,19 +268,26 @@ window.createMetarsModule = function(opts){
     var validTxt = metarValidText(r);
     var windTxt = metarWindText(r);
     var baroTxt = metarBaroText(r);
+    var rhTxt = metarRelativeHumidity(r);
+    var wx = metarWeatherInfo(r);
     var windArrow = metarWindArrow(r.drct);
     var windBarb = metarWindBarbSvg(r);
 
-    return '<div class="hrrr-popup" style="min-width:250px;font-family:Lato,Arial,sans-serif;">' +
+    return '<div class="hrrr-popup" style="min-width:270px;font-family:Lato,Arial,sans-serif;">' +
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">' +
         '<div style="font:900 19px/1.05 Lato,Arial,sans-serif;color:#202833;text-shadow:0 1px 0 rgba(255,255,255,.45);">' + name + '</div>' +
         '<div style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:rgba(255,255,255,.65);border:1px solid rgba(0,0,0,.10);">' + windBarb + '</div>' +
       '</div>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px 0">' + tempChip + dewChip + '</div>' +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 8px 0">' + tempChip + dewChip + '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin:0 0 10px 0;padding:7px 10px;border-radius:12px;background:rgba(17,24,39,.05);border:1px solid rgba(0,0,0,.06);">' +
+        '<div style="font-size:22px;line-height:1">' + wx.icon + '</div>' +
+        '<div style="font:900 13px/1.15 Lato,Arial,sans-serif;color:#243447;">' + wx.label + '</div>' +
+      '</div>' +
       '<div style="font:900 14px/1.15 Lato,Arial,sans-serif;color:#243447;letter-spacing:.2px;margin-bottom:8px;">' + validTxt + '</div>' +
       '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:800 13px/1.25 Lato,Arial,sans-serif;color:#28384b;">' +
         '<div style="opacity:.72;">Wind</div><div style="font-weight:900;">' + windArrow + ' ' + windTxt + '</div>' +
         '<div style="opacity:.72;">Visibility</div><div style="font-weight:900;">' + (r.vsby != null ? r.vsby + ' mi' : '—') + '</div>' +
+        '<div style="opacity:.72;">Humidity</div><div style="font-weight:900;">' + rhTxt + '</div>' +
         '<div style="opacity:.72;">Barometer</div><div style="font-weight:900;">' + baroTxt + '</div>' +
       '</div>' +
     '</div>';
