@@ -593,11 +593,10 @@ window.createMetarsModule = function(opts){
       chips.forEach(function(btn){
         var txt = String(btn.textContent || '').trim().toUpperCase();
         if (!txt) return;
-        var isTarget = txt === 'METARS' || txt === 'TEMP PLOT' || txt === 'DEW POINT PLOT' || txt === 'PRESSURE PLOT' || txt === 'WIND ARROWS';
+        var isTarget = txt === 'TEMP PLOT' || txt === 'DEW POINT PLOT' || txt === 'PRESSURE PLOT' || txt === 'WIND ARROWS';
         if (!isTarget) return;
 
         var active = (
-          (txt === 'METARS' && metarDisplayMode === 'temp') ||
           (txt === 'TEMP PLOT' && metarDisplayMode === 'temp') ||
           (txt === 'DEW POINT PLOT' && metarDisplayMode === 'dewpoint') ||
           (txt === 'PRESSURE PLOT' && metarDisplayMode === 'pressure') ||
@@ -616,7 +615,7 @@ window.createMetarsModule = function(opts){
       var chips = Array.prototype.slice.call(document.querySelectorAll('.inv-chip'));
       chips.forEach(function(btn){
         var txt = String(btn.textContent || '').trim().toUpperCase();
-        if (txt === 'METARS' || txt === 'TEMP PLOT'){
+        if (txt === 'TEMP PLOT'){
           btn.disabled = false;
           btn.addEventListener('click', function(){
             setMetarDisplayMode('temp');
@@ -710,10 +709,20 @@ window.createMetarsModule = function(opts){
     if (!metarVisible || !metarUseMasterScrubber) return false;
     var d = getMasterScrubberTime();
     if (!d) return false;
-    await loadMetarsForTime(d);
-    refreshMetarLayer();
+
+    await loadMetarManifest();
+    if (!metarTimeline || !metarTimeline.length) return false;
+
+    var targetIdx = findNearestMetarIndexForTime(d);
+    var changed = (targetIdx !== (currentMetarIndex|0));
+
+    if (changed){
+      await loadMetarsAtIndex(targetIdx);
+      return true;
+    }
+
     updateMetarControls();
-    return true;
+    return false;
   }
 
   function startMetarMasterSync(){
@@ -895,8 +904,17 @@ window.createMetarsModule = function(opts){
         bindMetarModeButtons();
 
         if (metarUseMasterScrubber){
+          await loadMetarManifest();
+          var masterNow = getMasterScrubberTime();
+          if (masterNow && metarTimeline && metarTimeline.length){
+            await loadMetarsAtIndex(findNearestMetarIndexForTime(masterNow));
+          } else if (metarTimeline && metarTimeline.length){
+            await loadMetarsAtIndex(0);
+          } else {
+            await loadMetars();
+            refreshMetarLayer();
+          }
           startMetarMasterSync();
-          await syncMetarsToMasterScrubber();
         } else if (metarTimeline && metarTimeline.length){
           await loadMetarsAtIndex(0);
         } else {
