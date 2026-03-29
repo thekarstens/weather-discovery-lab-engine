@@ -748,6 +748,8 @@ window.createMetarsModule = function(opts){
     updateMetarControls();
   }
 
+  window.syncMetarsToMasterScrubber = syncMetarsToMasterScrubber;
+
 
   function formatMetarHourLabel(entry){
     var t = metarEntryTime(entry);
