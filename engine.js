@@ -3999,6 +3999,7 @@ window.setWarningsEnabled = setWarningsEnabled;
 
   function updateAll(){
     setTimeLabel();
+    try{ window.curZ = new Date(curZ.getTime()); }catch(e){}
     // Keep jet particles in sync with the master banner clock
     if (typeof syncJetParticlesToClock === "function") syncJetParticlesToClock();
     updateRadar();
@@ -4008,6 +4009,9 @@ window.setWarningsEnabled = setWarningsEnabled;
     updateHrrrOverlay();
     updateAlerts();
     updateReportsLayer();
+    if (typeof syncMetarsToMasterScrubber === "function") {
+      try{ syncMetarsToMasterScrubber(); }catch(e){}
+    }
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
   }
@@ -4067,8 +4071,12 @@ window.setWarningsEnabled = setWarningsEnabled;
       }
       if (mode === 'hrrr'){
         setCurrentHrrrFrameIndex(v);
+        try{ window.curZ = new Date(curZ.getTime()); }catch(e){}
         setTimeLabel();
         updateHrrrOverlay();
+        if (typeof syncMetarsToMasterScrubber === "function") {
+          try{ syncMetarsToMasterScrubber(); }catch(e){}
+        }
         updateProductLabel();
         return;
       }
@@ -4114,6 +4122,7 @@ function syncSweepButton(){
   // Initial
   ensureAlertsLoaded();
   setTimeLabel();
+  try{ window.curZ = new Date(curZ.getTime()); }catch(e){}
   // Add overlays based on default checkboxes
   // Alerts starts OFF; radar starts ON.
   updateAll();
