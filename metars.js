@@ -28,7 +28,10 @@ window.createMetarsModule = function(opts){
   var currentMetarTime = null;
   var metarDisplayMode = 'temp';
   var metarModeButtonsBound = false;
+  var metarUseMasterScrubber = !!(CFG && CFG.metars && CFG.metars.useMasterScrubber);
+  var metarSyncTimer = null;
   window.metarVisible = false;
+  window.metarUseMasterScrubber = metarUseMasterScrubber;
   window.currentMetarIndex = 0;
   window.metarDisplayMode = metarDisplayMode;
 
@@ -692,6 +695,59 @@ window.createMetarsModule = function(opts){
     if (metarLayer) metarLayer.addTo(map);
   }
 
+  function getMasterScrubberTime(){
+    try{
+      if (window.curZ instanceof Date && !isNaN(window.curZ)) return new Date(window.curZ.getTime());
+      if (typeof window.curZ === 'string'){
+        var d = new Date(window.curZ);
+        if (!isNaN(d)) return d;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  async function syncMetarsToMasterScrubber(){
+    if (!metarVisible || !metarUseMasterScrubber) return false;
+    var d = getMasterScrubberTime();
+    if (!d) return false;
+    await loadMetarsForTime(d);
+    refreshMetarLayer();
+    updateMetarControls();
+    return true;
+  }
+
+  function startMetarMasterSync(){
+    stopMetarMasterSync();
+    if (!metarUseMasterScrubber) return;
+    metarSyncTimer = setInterval(function(){
+      syncMetarsToMasterScrubber().catch(function(){});
+    }, 500);
+  }
+
+  function stopMetarMasterSync(){
+    if (metarSyncTimer){
+      clearInterval(metarSyncTimer);
+      metarSyncTimer = null;
+    }
+  }
+
+  function setMetarUseMasterScrubber(on){
+    metarUseMasterScrubber = !!on;
+    window.metarUseMasterScrubber = metarUseMasterScrubber;
+    if (metarVisible){
+      if (metarUseMasterScrubber){
+        startMetarMasterSync();
+        syncMetarsToMasterScrubber().catch(function(){});
+      } else {
+        stopMetarMasterSync();
+        updateMetarControls();
+      }
+    } else {
+      stopMetarMasterSync();
+    }
+    updateMetarControls();
+  }
+
 
   function formatMetarHourLabel(entry){
     var t = metarEntryTime(entry);
@@ -721,6 +777,9 @@ window.createMetarsModule = function(opts){
         '<button id="metarModeDewBtn" class="mhc-btn" type="button">DEW POINT</button>' +
         '<button id="metarModeWindBtn" class="mhc-btn" type="button">WIND</button>' +
         '<button id="metarModePressureBtn" class="mhc-btn" type="button">PRESSURE</button>' +
+      '</div>' +
+      '<div class="mhc-row" style="margin-top:8px;gap:6px;flex-wrap:wrap;">' +
+        '<button id="metarSyncToggleBtn" class="mhc-btn" type="button">MASTER SCRUBBER: OFF</button>' +
       '</div>';
 
     var target = document.body || document.documentElement;
@@ -744,11 +803,13 @@ window.createMetarsModule = function(opts){
     var dewBtn = document.getElementById("metarModeDewBtn");
     var windBtn = document.getElementById("metarModeWindBtn");
     var pressureBtn = document.getElementById("metarModePressureBtn");
+    var syncBtn = document.getElementById("metarSyncToggleBtn");
 
     if (tempBtn) tempBtn.onclick = function(){ setMetarDisplayMode('temp'); };
     if (dewBtn) dewBtn.onclick = function(){ setMetarDisplayMode('dewpoint'); };
     if (windBtn) windBtn.onclick = function(){ setMetarDisplayMode('wind'); };
     if (pressureBtn) pressureBtn.onclick = function(){ setMetarDisplayMode('pressure'); };
+    if (syncBtn) syncBtn.onclick = function(){ setMetarUseMasterScrubber(!metarUseMasterScrubber); };
 
     return box;
   }
@@ -766,11 +827,24 @@ window.createMetarsModule = function(opts){
     var idx = Math.max(0, Math.min(timeline.length - 1, currentMetarIndex|0));
     var entry = timeline[idx] || null;
 
-    if (label) label.textContent = formatMetarHourLabel(entry);
-    if (prev) prev.disabled = !(timeline.length && idx > 0);
-    if (next) next.disabled = !(timeline.length && idx < timeline.length - 1);
+    if (label) {
+      if (metarUseMasterScrubber) {
+        var masterD = getMasterScrubberTime();
+        label.textContent = masterD ? ('SYNC • ' + formatMetarHourLabel({ time: masterD.toISOString() })) : 'SYNC • —';
+      } else {
+        label.textContent = formatMetarHourLabel(entry);
+      }
+    }
+    if (prev) prev.disabled = !!metarUseMasterScrubber || !(timeline.length && idx > 0);
+    if (next) next.disabled = !!metarUseMasterScrubber || !(timeline.length && idx < timeline.length - 1);
 
     try{
+      var syncBtn = document.getElementById('metarSyncToggleBtn');
+      if (syncBtn){
+        syncBtn.textContent = 'MASTER SCRUBBER: ' + (metarUseMasterScrubber ? 'ON' : 'OFF');
+        syncBtn.style.opacity = metarUseMasterScrubber ? '1' : '0.85';
+        syncBtn.style.boxShadow = metarUseMasterScrubber ? '0 0 0 2px rgba(255,255,255,0.18) inset' : '';
+      }
       var modes = {
         metarModeTempBtn: metarDisplayMode === 'temp',
         metarModeDewBtn: metarDisplayMode === 'dewpoint',
@@ -796,7 +870,9 @@ window.createMetarsModule = function(opts){
     var t = metarEntryTime(entry);
     if (isFinite(t)){
       currentMetarTime = new Date(t).toISOString();
-      try{ window.curZ = new Date(t); }catch(e){}
+      if (!metarUseMasterScrubber){
+        try{ window.curZ = new Date(t); }catch(e){}
+      }
     }
     await loadMetarsForTime(new Date(t));
     if (metarVisible) refreshMetarLayer();
@@ -816,7 +892,10 @@ window.createMetarsModule = function(opts){
         ensureMetarControls();
         bindMetarModeButtons();
 
-        if (metarTimeline && metarTimeline.length){
+        if (metarUseMasterScrubber){
+          startMetarMasterSync();
+          await syncMetarsToMasterScrubber();
+        } else if (metarTimeline && metarTimeline.length){
           await loadMetarsAtIndex(0);
         } else {
           await loadMetars();
@@ -826,7 +905,10 @@ window.createMetarsModule = function(opts){
         updateMetarControls();
         requestAnimationFrame(function(){
           if (metarVisible) {
-            try{ refreshMetarLayer(); }catch(e){}
+            try{
+              if (metarUseMasterScrubber) syncMetarsToMasterScrubber().catch(function(){});
+              else refreshMetarLayer();
+            }catch(e){}
             try{ updateMetarControls(); }catch(e){}
           }
         });
@@ -840,6 +922,7 @@ window.createMetarsModule = function(opts){
         console.error(err);
       }
     } else {
+      stopMetarMasterSync();
       if (metarLayer && map.hasLayer(metarLayer)) map.removeLayer(metarLayer);
       metarVisible = false;
       syncWindowState();
@@ -854,6 +937,7 @@ window.createMetarsModule = function(opts){
   }
 
   async function stepMetarTime(delta){
+    if (metarUseMasterScrubber) return false;
     await loadMetarManifest();
     if (!metarTimeline || !metarTimeline.length) return false;
     var nextIdx = Math.max(0, Math.min(metarTimeline.length - 1, (currentMetarIndex|0) + delta));
@@ -864,7 +948,9 @@ window.createMetarsModule = function(opts){
   function installMapEvents(){
     bindMetarModeButtons();
     map.on('zoomend moveend', function(){
-      if (metarVisible) refreshMetarLayer();
+      if (!metarVisible) return;
+      if (metarUseMasterScrubber) syncMetarsToMasterScrubber().catch(function(){});
+      else refreshMetarLayer();
     });
   }
 
@@ -874,6 +960,7 @@ window.createMetarsModule = function(opts){
     metarOutlineColor:metarOutlineColor,
     metarPopupHtml:metarPopupHtml,
     setMetarDisplayMode:setMetarDisplayMode,
+    setMetarUseMasterScrubber:setMetarUseMasterScrubber,
     loadMetars:loadMetars,
     metarMinSepForZoom:metarMinSepForZoom,
     buildMetarLayer:buildMetarLayer,
