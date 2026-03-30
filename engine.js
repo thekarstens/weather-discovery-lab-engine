@@ -766,6 +766,435 @@ window.toggleReports = toggleReports;
 window.setReportsFilter = setReportsFilter;
 
 
+  // ---------- Lightning ----------
+  var lightningEnabled = false;
+  var lightningManifest = null;
+  var lightningEvents = [];
+  var lightningFreshLayer = null;
+  var lightningRecentLayer = null;
+  var lightningLoadPromise = null;
+  var lightningCounterControl = null;
+  var lightningStylesInjected = false;
+  var lightningFreshWindowMs = 30 * 1000;
+  var lightningRecentWindowMs = 2 * 60 * 1000;
+  var lightningCounterWindowMs = 5 * 60 * 1000;
+  var lightningJumpWindowMs = 5 * 60 * 1000;
+  var lightningSoundEnabled = false;
+  var lightningLastSoundAt = 0;
+  var lightningAudioContext = null;
+  var lightningLastRenderedStamp = '';
+  var lightningFreshMarkerIndex = Object.create(null);
+  var lightningRecentMarkerIndex = Object.create(null);
+  window.lightningEnabled = lightningEnabled;
+  window.lightningSoundEnabled = lightningSoundEnabled;
+
+  function getLightningManifestUrl(){
+    try{
+      var l = (CFG && CFG.layers && CFG.layers.lightning) ? CFG.layers.lightning : ((CFG && CFG.lightning) ? CFG.lightning : {});
+      var u = l.manifest || l.manifestFile || l.url || '';
+      if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
+    }catch(e){}
+    return _joinUrl(DATA_BASE, 'lightning/manifest.json');
+  }
+
+  function injectLightningStyles(){
+    if (lightningStylesInjected) return;
+    if (document.getElementById('wdl-lightning-styles')){ lightningStylesInjected = true; return; }
+    var style = document.createElement('style');
+    style.id = 'wdl-lightning-styles';
+    style.textContent = `
+      .wdl-lightning-icon{ background:transparent; border:0; }
+      .wdl-lightning-icon .wdl-lightning-bolt{
+        position:relative; width:20px; height:20px; pointer-events:none;
+        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
+        filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.95))
+                drop-shadow(0 0 calc(8px + 10px * var(--glow,1)) rgba(130,230,255,.75));
+        animation: wdlLightningPulse var(--flash-ms,650ms) ease-out forwards;
+      }
+      .wdl-lightning-icon .wdl-lightning-bolt:before{
+        content:'⚡';
+        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        font: 900 20px/1 Arial,sans-serif; color: var(--bolt-color,#fff8c6);
+        text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,240,120,.95), 0 0 20px rgba(119,230,255,.85);
+      }
+      .wdl-lightning-recent{
+        box-shadow: 0 0 10px rgba(255,235,120,.65);
+      }
+      .lightning-counter{
+        background: linear-gradient(180deg, rgba(3,13,32,.90), rgba(10,22,48,.82));
+        color:#f7fbff; padding:8px 10px; border-radius:12px; min-width:140px;
+        border:1px solid rgba(118,224,255,.35);
+        box-shadow: 0 0 12px rgba(90,209,255,.20), inset 0 0 18px rgba(255,255,255,.05);
+        font: 800 12px/1.25 Lato, Arial, sans-serif;
+        letter-spacing:.02em;
+      }
+      .lightning-counter .lc-title{font:900 13px/1 Lato, Arial, sans-serif; margin-bottom:5px; color:#fff68d; text-transform:uppercase;}
+      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:10px; margin-top:2px;}
+      .lightning-counter .lc-jump{margin-top:6px; font:900 11px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
+      @keyframes wdlLightningPulse{
+        0%{opacity:0; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 0.65));}
+        10%{opacity:1;}
+        45%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.12));}
+        100%{opacity:.18; transform:translate(-2px,-2px) scale(var(--bolt-scale,1));}
+      }
+    `;
+    document.head.appendChild(style);
+    lightningStylesInjected = true;
+  }
+
+  function normalizeLightningRecord(d, idx){
+    if (!d) return null;
+    var utc = d.utc || d.time || d.valid || d.datetime || null;
+    var t = utc ? Date.parse(utc) : NaN;
+    var lat = Number(d.lat != null ? d.lat : (Array.isArray(d.coordinates) ? d.coordinates[1] : NaN));
+    var lon = Number(d.lon != null ? d.lon : (Array.isArray(d.coordinates) ? d.coordinates[0] : NaN));
+    if (!isFinite(t) || !isFinite(lat) || !isFinite(lon)) return null;
+    var energy = Number(d.energy);
+    var area = Number(d.area);
+    var peakCurrent = Number(d.peakCurrent != null ? d.peakCurrent : (d.peak_current != null ? d.peak_current : NaN));
+    return {
+      id: String(d.id || ('ltg_' + idx)),
+      utc: new Date(t).toISOString(),
+      timeMs: t,
+      lat: lat,
+      lon: lon,
+      energy: isFinite(energy) ? energy : null,
+      area: isFinite(area) ? area : null,
+      polarity: d.polarity || d.sign || null,
+      peakCurrent: isFinite(peakCurrent) ? peakCurrent : null,
+      source: d.source || 'GOES-16 GLM',
+      kind: d.kind || d.type || 'total_lightning'
+    };
+  }
+
+  function lightningEnergyRange(){
+    var min = Infinity, max = -Infinity;
+    lightningEvents.forEach(function(d){
+      if (d && isFinite(d.energy)){
+        if (d.energy < min) min = d.energy;
+        if (d.energy > max) max = d.energy;
+      }
+    });
+    if (!isFinite(min) || !isFinite(max) || max <= min){
+      min = 0; max = 1;
+    }
+    return { min:min, max:max };
+  }
+
+  function lightningStrengthFor(d){
+    if (!d) return 0.6;
+    if (isFinite(d.peakCurrent)){
+      return Math.max(0.35, Math.min(1.55, Math.abs(d.peakCurrent) / 40));
+    }
+    if (!window.__lightningEnergyRange__) window.__lightningEnergyRange__ = lightningEnergyRange();
+    if (isFinite(d.energy)){
+      var r = window.__lightningEnergyRange__;
+      if (r.max <= r.min) return 0.8;
+      var n = (d.energy - r.min) / (r.max - r.min);
+      return Math.max(0.4, Math.min(1.5, 0.45 + n * 1.1));
+    }
+    return 0.75;
+  }
+
+  function buildLightningPopup(d){
+    function fmt(v){ return (v == null || v === '') ? '' : String(v); }
+    var lines = [];
+    lines.push("<div style='font:900 14px/1 Lato,Arial,sans-serif;opacity:.98'>⚡ Lightning Flash</div>");
+    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:6px'><b>Time:</b> " + escapeHtml(formatCentralLabel(new Date(d.timeMs))) + "</div>");
+    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Type:</b> " + escapeHtml(String(d.kind || 'total_lightning').replaceAll('_',' ')) + "</div>");
+    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Coordinates:</b> " + d.lat.toFixed(3) + ", " + d.lon.toFixed(3) + "</div>");
+    if (isFinite(d.energy)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Energy:</b> " + escapeHtml(d.energy.toExponential(2)) + "</div>");
+    if (isFinite(d.area)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Area:</b> " + escapeHtml(d.area.toFixed(1)) + "</div>");
+    if (fmt(d.polarity)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Polarity:</b> " + escapeHtml(fmt(d.polarity)) + "</div>");
+    if (isFinite(d.peakCurrent)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Peak Current:</b> " + escapeHtml(d.peakCurrent.toFixed(1)) + " kA</div>");
+    if (fmt(d.source)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Source:</b> " + escapeHtml(fmt(d.source)) + "</div>");
+    return lines.join('');
+  }
+
+  function createLightningIcon(d){
+    var strength = lightningStrengthFor(d);
+    var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
+    return L.divIcon({
+      className: 'wdl-lightning-icon',
+      html: '<div class="wdl-lightning-bolt" style="--glow:' + strength.toFixed(2) + ';--bolt-scale:' + (0.92 + strength * 0.22).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [22,22],
+      iconAnchor: [11,11],
+      popupAnchor: [0,-10]
+    });
+  }
+
+  function getLightningRecentStyle(d){
+    var strength = lightningStrengthFor(d);
+    var op = Math.max(0.14, Math.min(0.78, (productOpacity.lightning || 0.9) * (0.28 + strength * 0.22)));
+    return {
+      radius: Math.max(2, Math.min(6, 2.2 + strength * 2.2)),
+      color: '#fff3a3',
+      fillColor: '#fff06a',
+      weight: 1,
+      opacity: Math.max(0.25, op),
+      fillOpacity: op,
+      className: 'wdl-lightning-recent'
+    };
+  }
+
+  function clearLightningLayers(){
+    try{ if (lightningFreshLayer && map.hasLayer(lightningFreshLayer)) map.removeLayer(lightningFreshLayer); }catch(e){}
+    try{ if (lightningRecentLayer && map.hasLayer(lightningRecentLayer)) map.removeLayer(lightningRecentLayer); }catch(e){}
+    lightningFreshLayer = null;
+    lightningRecentLayer = null;
+    lightningFreshMarkerIndex = Object.create(null);
+    lightningRecentMarkerIndex = Object.create(null);
+  }
+
+  function ensureLightningCounter(){
+    if (lightningCounterControl) return;
+    lightningCounterControl = L.control({ position:'bottomleft' });
+    lightningCounterControl.onAdd = function(){
+      var div = L.DomUtil.create('div', 'lightning-counter');
+      div.innerHTML = '';
+      return div;
+    };
+    lightningCounterControl.addTo(map);
+  }
+
+  function hideLightningCounter(){
+    try{
+      if (lightningCounterControl && lightningCounterControl.getContainer){
+        var c = lightningCounterControl.getContainer();
+        if (c) c.style.display = 'none';
+      }
+    }catch(e){}
+  }
+
+  function renderLightningCounter(nowCount, recentCount, last5Count, totalCount, jumpInfo){
+    ensureLightningCounter();
+    var div = lightningCounterControl.getContainer();
+    if (!div) return;
+    div.style.display = '';
+    div.innerHTML =
+      '<div class="lc-title">⚡ Lightning</div>' +
+      '<div class="lc-row"><span>Now</span><span>' + nowCount + '</span></div>' +
+      '<div class="lc-row"><span>Recent</span><span>' + recentCount + '</span></div>' +
+      '<div class="lc-row"><span>Last 5 min</span><span>' + last5Count + '</span></div>' +
+      '<div class="lc-row"><span>Total</span><span>' + totalCount + '</span></div>' +
+      (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs prev 5 min</div>' : '');
+  }
+
+  function evaluateLightningJump(nowMs){
+    var curStart = nowMs - lightningJumpWindowMs;
+    var prevStart = nowMs - lightningJumpWindowMs * 2;
+    var recent = 0, prior = 0;
+    for (var i=0;i<lightningEvents.length;i++){
+      var t = lightningEvents[i].timeMs;
+      if (t > nowMs) break;
+      if (t > curStart) recent++;
+      else if (t > prevStart) prior++;
+    }
+    var delta = recent - prior;
+    var active = recent >= 8 && delta >= 5 && recent >= (prior * 1.5);
+    return { active: active, recent: recent, prior: prior, delta: delta };
+  }
+
+  function playLightningSound(count){
+    if (!lightningSoundEnabled || !count) return;
+    var now = Date.now();
+    if (now - lightningLastSoundAt < 550) return;
+    lightningLastSoundAt = now;
+    try{
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!lightningAudioContext) lightningAudioContext = new Ctx();
+      var ctx = lightningAudioContext;
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'triangle';
+      var base = Math.min(880, 420 + Math.min(count, 8) * 35);
+      osc.frequency.setValueAtTime(base, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.35, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.16);
+    }catch(e){}
+  }
+
+  function setLightningOpacity(op){
+    productOpacity.lightning = Math.max(0.15, Math.min(1, Number(op) || 0.9));
+    if (!lightningEnabled) return;
+    Object.keys(lightningFreshMarkerIndex).forEach(function(k){
+      var m = lightningFreshMarkerIndex[k];
+      try{ if (m && m.getElement) { var el = m.getElement(); if (el) el.style.opacity = String(productOpacity.lightning); } }catch(e){}
+    });
+    Object.keys(lightningRecentMarkerIndex).forEach(function(k){
+      var m = lightningRecentMarkerIndex[k];
+      try{ if (m && m.setStyle) m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) }); }catch(e){}
+    });
+  }
+  window.setLightningOpacity = setLightningOpacity;
+
+  function upsertLightningFresh(fresh){
+    var seen = Object.create(null);
+    if (!lightningFreshLayer){ lightningFreshLayer = L.layerGroup().addTo(map); }
+    fresh.forEach(function(d){
+      seen[d.id] = true;
+      var marker = lightningFreshMarkerIndex[d.id];
+      if (!marker){
+        marker = L.marker([d.lat, d.lon], { icon:createLightningIcon(d), keyboard:false, interactive:true });
+        marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
+        lightningFreshMarkerIndex[d.id] = marker;
+        lightningFreshLayer.addLayer(marker);
+      } else {
+        marker.setLatLng([d.lat, d.lon]);
+        marker.setIcon(createLightningIcon(d));
+      }
+      try{ var el = marker.getElement && marker.getElement(); if (el) el.style.opacity = String(productOpacity.lightning || 0.9); }catch(e){}
+    });
+    Object.keys(lightningFreshMarkerIndex).forEach(function(id){
+      if (seen[id]) return;
+      var marker = lightningFreshMarkerIndex[id];
+      try{ if (lightningFreshLayer && marker) lightningFreshLayer.removeLayer(marker); }catch(e){}
+      delete lightningFreshMarkerIndex[id];
+    });
+  }
+
+  function upsertLightningRecent(recent){
+    var seen = Object.create(null);
+    if (!lightningRecentLayer){ lightningRecentLayer = L.layerGroup().addTo(map); }
+    recent.forEach(function(d){
+      seen[d.id] = true;
+      var marker = lightningRecentMarkerIndex[d.id];
+      var style = getLightningRecentStyle(d);
+      if (!marker){
+        marker = L.circleMarker([d.lat, d.lon], style);
+        marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
+        lightningRecentMarkerIndex[d.id] = marker;
+        lightningRecentLayer.addLayer(marker);
+      } else {
+        marker.setLatLng([d.lat, d.lon]);
+        marker.setStyle(style);
+      }
+    });
+    Object.keys(lightningRecentMarkerIndex).forEach(function(id){
+      if (seen[id]) return;
+      var marker = lightningRecentMarkerIndex[id];
+      try{ if (lightningRecentLayer && marker) lightningRecentLayer.removeLayer(marker); }catch(e){}
+      delete lightningRecentMarkerIndex[id];
+    });
+  }
+
+  async function loadLightningManifest(){
+    if (lightningManifest) return lightningManifest;
+    if (lightningLoadPromise) return lightningLoadPromise;
+    var url = getLightningManifestUrl();
+    setStatus('Loading lightning…');
+    lightningLoadPromise = fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' })
+      .then(function(r){
+        if (!r.ok) throw new Error('Lightning manifest HTTP ' + r.status + ': ' + url);
+        return r.json();
+      })
+      .then(async function(manifest){
+        lightningManifest = manifest || {};
+        var style = lightningManifest.style || {};
+        lightningFreshWindowMs = Math.max(10 * 1000, Math.min(60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 30 * 1000)));
+        lightningRecentWindowMs = Math.max(30 * 1000, Math.min(10 * 60 * 1000, Number(style.recentMinutes || 2) * 60 * 1000));
+        lightningCounterWindowMs = Math.max(60 * 1000, Math.min(15 * 60 * 1000, Number(style.counterWindowMinutes || 5) * 60 * 1000));
+        var files = Array.isArray(lightningManifest.files) ? lightningManifest.files : [];
+        if (!files.length || !files[0].file) throw new Error('Lightning manifest missing files[0].file');
+        var folder = url.split('/').slice(0,-1).join('/') + '/';
+        var dataUrl = _isAbsUrl(files[0].file) ? files[0].file : _joinUrl(folder, files[0].file);
+        var res = await fetch(dataUrl + (dataUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+        if (!res.ok) throw new Error('Lightning data HTTP ' + res.status + ': ' + dataUrl);
+        var raw = await res.json();
+        var arr = Array.isArray(raw) ? raw : (Array.isArray(raw.features) ? raw.features.map(function(f){
+          var p = f.properties || {};
+          if (f.geometry && f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)){
+            p.lon = f.geometry.coordinates[0];
+            p.lat = f.geometry.coordinates[1];
+          }
+          return p;
+        }) : []);
+        lightningEvents = arr.map(normalizeLightningRecord).filter(Boolean).sort(function(a,b){ return a.timeMs - b.timeMs; });
+        window.__lightningEnergyRange__ = lightningEnergyRange();
+        setStatus('Lightning loaded');
+        return lightningManifest;
+      })
+      .catch(function(err){
+        console.error('Lightning load failed:', err);
+        lightningLoadPromise = null;
+        lightningManifest = null;
+        lightningEvents = [];
+        setStatus('Lightning failed');
+        throw err;
+      });
+    return lightningLoadPromise;
+  }
+
+  function updateLightning(){
+    if (!lightningEnabled){
+      clearLightningLayers();
+      hideLightningCounter();
+      return;
+    }
+    if (!lightningEvents.length) return;
+    injectLightningStyles();
+    var nowMs = curZ.getTime();
+    var fresh = [];
+    var recent = [];
+    var last5 = 0;
+    var total = 0;
+    for (var i=0;i<lightningEvents.length;i++){
+      var d = lightningEvents[i];
+      if (d.timeMs > nowMs) break;
+      total++;
+      var age = nowMs - d.timeMs;
+      if (age <= lightningCounterWindowMs) last5++;
+      if (age <= lightningFreshWindowMs) fresh.push(d);
+      else if (age <= lightningRecentWindowMs) recent.push(d);
+    }
+    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',');
+    var isNewFrame = stamp !== lightningLastRenderedStamp;
+    lightningLastRenderedStamp = stamp;
+    upsertLightningFresh(fresh);
+    upsertLightningRecent(recent);
+    setLightningOpacity(productOpacity.lightning || 0.9);
+    var jumpInfo = evaluateLightningJump(nowMs);
+    renderLightningCounter(fresh.length, recent.length, last5, total, jumpInfo);
+    if (isNewFrame && fresh.length) playLightningSound(fresh.length);
+  }
+
+  async function setLightningEnabled(on){
+    lightningEnabled = !!on;
+    window.lightningEnabled = lightningEnabled;
+    if (lightningEnabled){
+      injectLightningStyles();
+      await loadLightningManifest();
+      updateLightning();
+      setStatus('Lightning on');
+    } else {
+      clearLightningLayers();
+      hideLightningCounter();
+      setStatus('Lightning off');
+    }
+    try{ updateProductLabel(); }catch(e){}
+    try{ updateLegend(); }catch(e){}
+    try{ syncOpacitySliderToActive(); }catch(e){}
+    try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+  }
+
+  function setLightningSoundEnabled(on){
+    lightningSoundEnabled = !!on;
+    window.lightningSoundEnabled = lightningSoundEnabled;
+    try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+  }
+
+  window.setLightningEnabled = setLightningEnabled;
+  window.setLightningSoundEnabled = setLightningSoundEnabled;
+  window.updateLightning = updateLightning;
+
+
   // ---------- GOES / Satellite ----------
   var goesEnabled = false;
   var goesOverlay = null;
@@ -2224,7 +2653,7 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75 };
+var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75, lightning: 0.90 };
 
 function getActiveProductKey(){
   // Priority: global > snow > jet > future hrrr > radar
@@ -2234,6 +2663,7 @@ function getActiveProductKey(){
   if (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled && typeof radarVelocityLayer !== "undefined" && radarVelocityLayer && map.hasLayer(radarVelocityLayer)) return "radarVelocity";
   if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : ((window.hrrrProductMode === 'winds') ? "hrrrWinds" : "hrrrTemp");
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
+  if (typeof lightningEnabled !== "undefined" && lightningEnabled) return "lightning";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
   return "radar";
 }
@@ -3709,6 +4139,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
     { on: (typeof jet500Enabled !== "undefined" && jet500Enabled), label: "500 MB WINDS" },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
+    { on: (typeof lightningEnabled !== "undefined" && lightningEnabled), label: "LIGHTNING" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
     { on: (typeof warningsEnabled !== "undefined" && warningsEnabled), label: "WARNINGS" },
     { on: (typeof reportsEnabled !== "undefined" && reportsEnabled), label: "REPORTS" },
@@ -4006,6 +4437,7 @@ window.setWarningsEnabled = setWarningsEnabled;
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
     if (typeof updateGoes === "function") updateGoes();
+    if (typeof updateLightning === "function") updateLightning();
     updateHrrrOverlay();
     updateAlerts();
     updateReportsLayer();
@@ -4586,6 +5018,8 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
+    dock.querySelectorAll('[data-action="lightning"]').forEach(function(el){ el.classList.toggle('active', !!window.lightningEnabled); });
+    dock.querySelectorAll('[data-action="lightning-sound"]').forEach(function(el){ el.classList.toggle('active', !!window.lightningSoundEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
   }
@@ -4636,6 +5070,18 @@ document.addEventListener('DOMContentLoaded', function(){
     if (action === 'jet-500'){
       if (typeof window.setJet500Enabled === 'function') {
         await window.setJet500Enabled(!window.jet500Enabled);
+      }
+      return;
+    }
+    if (action === 'lightning'){
+      if (typeof window.setLightningEnabled === 'function') {
+        await window.setLightningEnabled(!window.lightningEnabled);
+      }
+      return;
+    }
+    if (action === 'lightning-sound'){
+      if (typeof window.setLightningSoundEnabled === 'function') {
+        window.setLightningSoundEnabled(!window.lightningSoundEnabled);
       }
       return;
     }
@@ -4744,7 +5190,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }catch(e){}
 
     function wantsStates(){
-      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled);
+      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled || window.lightningEnabled);
     }
     function wantsCounties(){
       return !!window.obsRadarEnabled;
