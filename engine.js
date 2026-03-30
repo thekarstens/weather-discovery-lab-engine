@@ -805,17 +805,19 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:20px; height:20px; pointer-events:none;
-        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
-        filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.95))
-                drop-shadow(0 0 calc(8px + 10px * var(--glow,1)) rgba(130,230,255,.75));
-        animation: wdlLightningPulse var(--flash-ms,650ms) ease-out forwards;
+        position:relative; width:14px; height:24px; pointer-events:none;
+        transform: translate(-1px,-2px) scale(var(--bolt-scale,1));
+        transform-origin:50% 50%;
+        filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.98))
+                drop-shadow(0 0 calc(8px + 12px * var(--glow,1)) rgba(130,230,255,.82));
+        animation: wdlLightningLivePulse var(--flash-ms,800ms) linear infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt:before{
-        content:'⚡';
-        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-        font: 900 20px/1 Arial,sans-serif; color: var(--bolt-color,#fff8c6);
-        text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,240,120,.95), 0 0 20px rgba(119,230,255,.85);
+        content:'';
+        position:absolute; left:0; top:0; width:14px; height:24px;
+        background: var(--bolt-color,#fff4a8);
+        clip-path: polygon(56% 0%, 34% 34%, 57% 34%, 24% 100%, 42% 57%, 21% 57%);
+        box-shadow: inset 0 0 1px rgba(255,255,255,.9);
       }
       .wdl-lightning-recent{
         box-shadow: 0 0 10px rgba(255,235,120,.65);
@@ -831,11 +833,12 @@ window.setReportsFilter = setReportsFilter;
       .lightning-counter .lc-title{font:900 13px/1 Lato, Arial, sans-serif; margin-bottom:5px; color:#fff68d; text-transform:uppercase;}
       .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:10px; margin-top:2px;}
       .lightning-counter .lc-jump{margin-top:6px; font:900 11px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
-      @keyframes wdlLightningPulse{
-        0%{opacity:0; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 0.65));}
-        10%{opacity:1;}
-        45%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.12));}
-        100%{opacity:.18; transform:translate(-2px,-2px) scale(var(--bolt-scale,1));}
+      @keyframes wdlLightningLivePulse{
+        0%{opacity:1; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 1.00));}
+        12%{opacity:.08; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 0.90));}
+        24%{opacity:1; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 1.05));}
+        52%{opacity:.22; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 0.96));}
+        100%{opacity:1; transform:translate(-1px,-2px) scale(var(--bolt-scale,1));}
       }
     `;
     document.head.appendChild(style);
@@ -925,13 +928,13 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
+    var flashMs = Math.max(450, Math.min(1100, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 800)));
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--glow:' + strength.toFixed(2) + ';--bolt-scale:' + (0.92 + strength * 0.22).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [22,22],
-      iconAnchor: [11,11],
-      popupAnchor: [0,-10]
+      html: '<div class="wdl-lightning-bolt" style="--glow:' + strength.toFixed(2) + ';--bolt-scale:' + (0.86 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [16,26],
+      iconAnchor: [8,13],
+      popupAnchor: [0,-12]
     });
   }
 
