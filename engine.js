@@ -776,7 +776,7 @@ window.setReportsFilter = setReportsFilter;
   var lightningCounterControl = null;
   var lightningStylesInjected = false;
   var lightningFreshWindowMs = 30 * 1000;
-  var lightningRecentWindowMs = 2 * 60 * 1000;
+  var lightningRecentWindowMs = 20 * 60 * 1000;
   var lightningCounterWindowMs = 5 * 60 * 1000;
   var lightningJumpWindowMs = 5 * 60 * 1000;
   var lightningSoundEnabled = false;
@@ -805,26 +805,24 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:14px; height:24px; pointer-events:none;
-        transform: translate(-1px,-2px) scale(var(--bolt-scale,1));
-        transform-origin:50% 50%;
-        filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.98))
-                drop-shadow(0 0 calc(8px + 12px * var(--glow,1)) rgba(130,230,255,.82));
-        animation: wdlLightningLivePulse var(--flash-ms,800ms) linear infinite;
+        position:relative; width:30px; height:34px; pointer-events:none;
+        transform: translate(-3px,-5px);
+        filter: drop-shadow(0 0 calc(5px + 7px * var(--glow,1)) var(--glow-color-1, rgba(255,240,120,.92)))
+                drop-shadow(0 0 calc(10px + 14px * var(--glow,1)) var(--glow-color-2, rgba(130,230,255,.72)));
+        animation: var(--bolt-anim, none);
       }
       .wdl-lightning-icon .wdl-lightning-bolt:before{
-        content:'';
-        position:absolute; left:0; top:0; width:14px; height:24px;
-        background: var(--bolt-color,#fff4a8);
-        clip-path: polygon(56% 0%, 34% 34%, 57% 34%, 24% 100%, 42% 57%, 21% 57%);
-        box-shadow: inset 0 0 1px rgba(255,255,255,.9);
+        content:'⚡';
+        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        font: 900 32px/1 Arial,sans-serif; color: var(--bolt-color,#fff8c6);
+        transform: scaleX(var(--bolt-x-scale,0.72)) scaleY(var(--bolt-scale,1));
+        transform-origin:center center;
+        text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px var(--glow-color-1, rgba(255,240,120,.95)), 0 0 20px var(--glow-color-2, rgba(119,230,255,.85));
       }
-      .wdl-lightning-recent{
-        box-shadow: 0 0 10px rgba(255,235,120,.65);
-      }
+      .wdl-lightning-recent{ }
       .lightning-counter{
         background: linear-gradient(180deg, rgba(3,13,32,.90), rgba(10,22,48,.82));
-        color:#f7fbff; padding:8px 10px; border-radius:12px; min-width:140px;
+        color:#f7fbff; padding:8px 10px; border-radius:12px; min-width:150px;
         border:1px solid rgba(118,224,255,.35);
         box-shadow: 0 0 12px rgba(90,209,255,.20), inset 0 0 18px rgba(255,255,255,.05);
         font: 800 12px/1.25 Lato, Arial, sans-serif;
@@ -833,12 +831,13 @@ window.setReportsFilter = setReportsFilter;
       .lightning-counter .lc-title{font:900 13px/1 Lato, Arial, sans-serif; margin-bottom:5px; color:#fff68d; text-transform:uppercase;}
       .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:10px; margin-top:2px;}
       .lightning-counter .lc-jump{margin-top:6px; font:900 11px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
-      @keyframes wdlLightningLivePulse{
-        0%{opacity:1; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 1.00));}
-        12%{opacity:.08; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 0.90));}
-        24%{opacity:1; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 1.05));}
-        52%{opacity:.22; transform:translate(-1px,-2px) scale(calc(var(--bolt-scale,1) * 0.96));}
-        100%{opacity:1; transform:translate(-1px,-2px) scale(var(--bolt-scale,1));}
+      @keyframes wdlLightningPulse{
+        0%{opacity:.22;}
+        16%{opacity:1;}
+        32%{opacity:.18;}
+        48%{opacity:1;}
+        70%{opacity:.28;}
+        100%{opacity:1;}
       }
     `;
     document.head.appendChild(style);
@@ -928,28 +927,51 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(450, Math.min(1100, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 800)));
+    var flashMs = Math.max(450, Math.min(1200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 850)));
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--glow:' + strength.toFixed(2) + ';--bolt-scale:' + (0.86 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [16,26],
-      iconAnchor: [8,13],
-      popupAnchor: [0,-12]
+      html: '<div class="wdl-lightning-bolt" style="--glow:' + Math.max(0.8, strength * 1.08).toFixed(2) + ';--bolt-scale:' + (1.08 + strength * 0.28).toFixed(2) + ';--bolt-x-scale:0.68;--flash-ms:' + flashMs + 'ms;--bolt-color:#fff7b8;--glow-color-1:rgba(255,235,120,.95);--glow-color-2:rgba(110,232,255,.82);--bolt-anim:wdlLightningPulse ' + flashMs + 'ms linear infinite"></div>',
+      iconSize: [30,34],
+      iconAnchor: [15,17],
+      popupAnchor: [0,-14]
     });
   }
 
-  function getLightningRecentStyle(d){
+  function lightningAgePalette(ageMs){
+    var span = Math.max(lightningFreshWindowMs + 1, lightningRecentWindowMs - lightningFreshWindowMs);
+    var t = Math.max(0, Math.min(1, (ageMs - lightningFreshWindowMs) / span));
+    function lerp(a,b,x){ return a + (b-a)*x; }
+    function hex(rgb){
+      return '#' + rgb.map(function(v){ var s=Math.round(v).toString(16).padStart(2,'0'); return s; }).join('');
+    }
+    var stops = [
+      { t:0.00, c:[255,196,64] },
+      { t:0.45, c:[168,88,255] },
+      { t:1.00, c:[148,148,148] }
+    ];
+    var a=stops[0], b=stops[stops.length-1];
+    for (var i=1;i<stops.length;i++){
+      if (t <= stops[i].t){ a=stops[i-1]; b=stops[i]; break; }
+    }
+    var local = (t - a.t) / Math.max(0.0001, (b.t - a.t));
+    var rgb = [0,1,2].map(function(ix){ return lerp(a.c[ix], b.c[ix], local); });
+    var glow1 = 'rgba(' + Math.round(rgb[0]) + ',' + Math.round(rgb[1]) + ',' + Math.round(rgb[2]) + ',' + (0.88 - t * 0.35).toFixed(2) + ')';
+    var glow2 = 'rgba(' + Math.round(lerp(170, 95, t)) + ',' + Math.round(lerp(120, 110, t)) + ',' + Math.round(lerp(255, 120, t)) + ',' + (0.60 - t * 0.22).toFixed(2) + ')';
+    return { boltColor: hex(rgb), glow1: glow1, glow2: glow2, t:t };
+  }
+
+  function createLightningRecentIcon(d, ageMs){
     var strength = lightningStrengthFor(d);
-    var op = Math.max(0.14, Math.min(0.78, (productOpacity.lightning || 0.9) * (0.28 + strength * 0.22)));
-    return {
-      radius: Math.max(2, Math.min(6, 2.2 + strength * 2.2)),
-      color: '#fff3a3',
-      fillColor: '#fff06a',
-      weight: 1,
-      opacity: Math.max(0.25, op),
-      fillOpacity: op,
-      className: 'wdl-lightning-recent'
-    };
+    var pal = lightningAgePalette(ageMs);
+    var opacity = Math.max(0.25, Math.min(0.92, (productOpacity.lightning || 0.9) * (0.9 - pal.t * 0.55)));
+    var scale = 0.84 + strength * 0.18 - pal.t * 0.14;
+    return L.divIcon({
+      className: 'wdl-lightning-icon wdl-lightning-recent',
+      html: '<div class="wdl-lightning-bolt" style="opacity:' + opacity.toFixed(2) + ';--glow:' + Math.max(0.45, strength * (0.95 - pal.t * 0.4)).toFixed(2) + ';--bolt-scale:' + scale.toFixed(2) + ';--bolt-x-scale:0.68;--bolt-color:' + pal.boltColor + ';--glow-color-1:' + pal.glow1 + ';--glow-color-2:' + pal.glow2 + ';--bolt-anim:none"></div>',
+      iconSize: [26,30],
+      iconAnchor: [13,15],
+      popupAnchor: [0,-12]
+    });
   }
 
   function clearLightningLayers(){
@@ -1045,10 +1067,24 @@ window.setReportsFilter = setReportsFilter;
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(k){
       var m = lightningRecentMarkerIndex[k];
-      try{ if (m && m.setStyle) m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) }); }catch(e){}
+      try{ if (m && m.getElement) { var el = m.getElement(); if (el) el.style.opacity = String(Math.max(0.2, productOpacity.lightning)); } }catch(e){}
     });
   }
   window.setLightningOpacity = setLightningOpacity;
+
+  function setLightningLookbackMinutes(mins){
+    var n = Math.max(1, Math.min(120, Number(mins) || 20));
+    lightningRecentWindowMs = n * 60 * 1000;
+    if (lightningEnabled) updateLightning();
+    return n;
+  }
+
+  function getLightningLookbackMinutes(){
+    return Math.round(lightningRecentWindowMs / 60000);
+  }
+
+  window.setLightningLookbackMinutes = setLightningLookbackMinutes;
+  window.getLightningLookbackMinutes = getLightningLookbackMinutes;
 
   function upsertLightningFresh(fresh){
     var seen = Object.create(null);
@@ -1075,22 +1111,24 @@ window.setReportsFilter = setReportsFilter;
     });
   }
 
-  function upsertLightningRecent(recent){
+  function upsertLightningRecent(recent, nowMs){
     var seen = Object.create(null);
     if (!lightningRecentLayer){ lightningRecentLayer = L.layerGroup().addTo(map); }
     recent.forEach(function(d){
       seen[d.id] = true;
       var marker = lightningRecentMarkerIndex[d.id];
-      var style = getLightningRecentStyle(d);
+      var ageMs = Math.max(0, (nowMs || curZ.getTime()) - d.timeMs);
+      var icon = createLightningRecentIcon(d, ageMs);
       if (!marker){
-        marker = L.circleMarker([d.lat, d.lon], style);
+        marker = L.marker([d.lat, d.lon], { icon:icon, keyboard:false, interactive:true });
         marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
         lightningRecentMarkerIndex[d.id] = marker;
         lightningRecentLayer.addLayer(marker);
       } else {
         marker.setLatLng([d.lat, d.lon]);
-        marker.setStyle(style);
+        marker.setIcon(icon);
       }
+      try{ var el = marker.getElement && marker.getElement(); if (el) el.style.opacity = String(Math.max(0.2, productOpacity.lightning || 0.9)); }catch(e){}
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(id){
       if (seen[id]) return;
@@ -1114,7 +1152,7 @@ window.setReportsFilter = setReportsFilter;
         lightningManifest = manifest || {};
         var style = lightningManifest.style || {};
         lightningFreshWindowMs = Math.max(10 * 1000, Math.min(60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 30 * 1000)));
-        lightningRecentWindowMs = Math.max(30 * 1000, Math.min(10 * 60 * 1000, Number(style.recentMinutes || 2) * 60 * 1000));
+        lightningRecentWindowMs = Math.max(60 * 1000, Math.min(120 * 60 * 1000, Number(style.recentMinutes || 20) * 60 * 1000));
         lightningCounterWindowMs = Math.max(60 * 1000, Math.min(15 * 60 * 1000, Number(style.counterWindowMinutes || 5) * 60 * 1000));
         var files = Array.isArray(lightningManifest.files) ? lightningManifest.files : [];
         if (!files.length || !files[0].file) throw new Error('Lightning manifest missing files[0].file');
@@ -1173,7 +1211,7 @@ window.setReportsFilter = setReportsFilter;
     var isNewFrame = stamp !== lightningLastRenderedStamp;
     lightningLastRenderedStamp = stamp;
     upsertLightningFresh(fresh);
-    upsertLightningRecent(recent);
+    upsertLightningRecent(recent, nowMs);
     setLightningOpacity(productOpacity.lightning || 0.9);
     var jumpInfo = evaluateLightningJump(nowMs);
     renderLightningCounter(fresh.length, recent.length, last5, total, jumpInfo);
