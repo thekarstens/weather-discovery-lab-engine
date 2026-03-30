@@ -2270,6 +2270,7 @@ body.track-active #map{ cursor: crosshair; }
             <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('radar')">RADAR</button>
             <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('live')">LIVE DOPPLER</button>
             <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('warnings')">WARNINGS</button>
+            <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('lightning')">LIGHTNING</button>
             <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('reports')">STORM REPORTS</button>
             <button class="inv-chip category-chip-track" type="button" onclick="toggleTrackingSection('obs')">OBSERVATIONS</button>
           </div>
@@ -2287,6 +2288,14 @@ body.track-active #map{ cursor: crosshair; }
           <button class="inv-chip" type="button" data-action="sweep">LIVE DOPPLER</button>
           <button class="inv-chip" type="button" disabled>DOPPLER TEACHING MODE</button>
           <button class="inv-chip" type="button" disabled>HOW RADAR SPINS</button>
+        </div>
+
+        <div class="expand-section" id="tracking-lightning-section">
+          <div class="inv-chips">
+            <button class="inv-chip" type="button" data-action="lightning">LIGHTNING FLASHES</button>
+            <button class="inv-chip" type="button" data-action="lightning-sound">LIGHTNING SOUND</button>
+          </div>
+          <div class="inv-foot" style="margin-top:10px;">Animated GLM lightning flashes synced to the master clock. Click strikes for details.</div>
         </div>
         <!-- Storm Reports Section -->
         
@@ -2383,7 +2392,7 @@ function toggleForecastSection(name){
 
 <script>
 function toggleTrackingSection(name){
-  var sections = ['radar','live','warnings','reports','obs'];
+  var sections = ['radar','live','warnings','lightning','reports','obs'];
   sections.forEach(function(s){
     var el = document.getElementById('tracking-' + s + '-section');
     if (!el) return;
