@@ -870,7 +870,7 @@ window.setReportsFilter = setReportsFilter;
   function lightningEnergyRange(){
     var min = Infinity, max = -Infinity;
     lightningEvents.forEach(function(d){
-      if (d && isFinite(d.energy)){
+      if (d && typeof d.energy === 'number' && Number.isFinite(d.energy)){
         if (d.energy < min) min = d.energy;
         if (d.energy > max) max = d.energy;
       }
@@ -883,11 +883,11 @@ window.setReportsFilter = setReportsFilter;
 
   function lightningStrengthFor(d){
     if (!d) return 0.6;
-    if (isFinite(d.peakCurrent)){
+    if (typeof d.peakCurrent === 'number' && Number.isFinite(d.peakCurrent)){
       return Math.max(0.35, Math.min(1.55, Math.abs(d.peakCurrent) / 40));
     }
     if (!window.__lightningEnergyRange__) window.__lightningEnergyRange__ = lightningEnergyRange();
-    if (isFinite(d.energy)){
+    if (typeof d.energy === 'number' && Number.isFinite(d.energy)){
       var r = window.__lightningEnergyRange__;
       if (r.max <= r.min) return 0.8;
       var n = (d.energy - r.min) / (r.max - r.min);
@@ -898,16 +898,28 @@ window.setReportsFilter = setReportsFilter;
 
   function buildLightningPopup(d){
     function fmt(v){ return (v == null || v === '') ? '' : String(v); }
+    function finiteNum(v){
+      return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+    }
+    var lat = finiteNum(d && d.lat);
+    var lon = finiteNum(d && d.lon);
+    var energy = finiteNum(d && d.energy);
+    var area = finiteNum(d && d.area);
+    var peakCurrent = finiteNum(d && d.peakCurrent);
+    var when = (d && Number.isFinite(d.timeMs)) ? formatCentralLabel(new Date(d.timeMs)) : (d && d.utc ? d.utc : 'Unknown');
+
     var lines = [];
     lines.push("<div style='font:900 14px/1 Lato,Arial,sans-serif;opacity:.98'>⚡ Lightning Flash</div>");
-    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:6px'><b>Time:</b> " + escapeHtml(formatCentralLabel(new Date(d.timeMs))) + "</div>");
-    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Type:</b> " + escapeHtml(String(d.kind || 'total_lightning').replaceAll('_',' ')) + "</div>");
-    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Coordinates:</b> " + d.lat.toFixed(3) + ", " + d.lon.toFixed(3) + "</div>");
-    if (isFinite(d.energy)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Energy:</b> " + escapeHtml(d.energy.toExponential(2)) + "</div>");
-    if (isFinite(d.area)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Area:</b> " + escapeHtml(d.area.toFixed(1)) + "</div>");
-    if (fmt(d.polarity)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Polarity:</b> " + escapeHtml(fmt(d.polarity)) + "</div>");
-    if (isFinite(d.peakCurrent)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Peak Current:</b> " + escapeHtml(d.peakCurrent.toFixed(1)) + " kA</div>");
-    if (fmt(d.source)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Source:</b> " + escapeHtml(fmt(d.source)) + "</div>");
+    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:6px'><b>Time:</b> " + escapeHtml(when) + "</div>");
+    lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Type:</b> " + escapeHtml(String((d && d.kind) || 'total_lightning').replaceAll('_',' ')) + "</div>");
+    if (lat != null && lon != null) {
+      lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Coordinates:</b> " + lat.toFixed(3) + ", " + lon.toFixed(3) + "</div>");
+    }
+    if (energy != null) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Energy:</b> " + escapeHtml(energy.toExponential(2)) + "</div>");
+    if (area != null) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Area:</b> " + escapeHtml(area.toFixed(1)) + "</div>");
+    if (fmt(d && d.polarity)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Polarity:</b> " + escapeHtml(fmt(d.polarity)) + "</div>");
+    if (peakCurrent != null) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Peak Current:</b> " + escapeHtml(peakCurrent.toFixed(1)) + " kA</div>");
+    if (fmt(d && d.source)) lines.push("<div style='font:800 12px/1.2 Lato,Arial,sans-serif;margin-top:4px'><b>Source:</b> " + escapeHtml(fmt(d.source)) + "</div>");
     return lines.join('');
   }
 
