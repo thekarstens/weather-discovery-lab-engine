@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Weather Discovery Lab — Derecho Case Study</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="./leaflet.css" />
+  <link rel="stylesheet" href="./leaflet-velocity.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet" />
+
+  <script src="./leaflet.js"></script>
+  <script src="./leaflet-velocity.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0b1c2d;
+      font-family: "Lato", Arial, sans-serif;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+      background: #fff;
+    }
+
+    .tvbanner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 99999;
+      background: rgba(11, 28, 45, 0.92);
+      color: #fff;
+      border-bottom: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+    }
+
+    .tvbanner::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #2f4e94;
+    }
+
+    .banner-topline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 12px 18px 8px 18px;
+    }
+
+    .banner-center {
+      text-align: center;
+      max-width: 1050px;
+      padding: 0 220px 0 220px;
+    }
+
+    .brand-line {
+      font: 900 24px/1 Arial, sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .case-line {
+      margin-top: 4px;
+      font: 900 18px/1.1 Arial, sans-serif;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .region-line {
+      margin-top: 4px;
+      font: 800 13px/1.2 Arial, sans-serif;
+      letter-spacing: 0.3px;
+      opacity: 0.95;
+      text-transform: none;
+    }
+
+    .question-line {
+      margin-top: 6px;
+      font: 800 14px/1.25 Arial, sans-serif;
+      text-transform: none;
+      opacity: 0.95;
+    }
+
+    .question-line .qlabel {
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 6px;
+    }
+
+    .open-lesson-btn {
+      position: absolute;
+      left: 18px;
+      top: 12px;
+      border: 1px solid rgba(0,0,0,0.35);
+      background: #fdd835;
+      color: #111;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: 900 14px/1 Arial, sans-serif;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.22);
+    }
+
+    .terms-btn {
+      position: absolute;
+      left: 190px;
+      top: 12px;
+      border: 1px solid rgba(255,255,255,0.26);
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8 55%, #0b3b91);
+      color: #fff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: 900 14px/1 Arial, sans-serif;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.22);
+    }
+
+    .banner-bottomline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 8px 18px 12px 18px;
+      flex-wrap: wrap;
+    }
+
+    .sim-btn {
+      border: 1px solid rgba(255,255,255,0.24);
+      background: rgba(0,0,0,0.22);
+      color: #fff;
+      border-radius: 14px;
+      padding: 11px 16px;
+      font: 900 13px/1 Arial, sans-serif;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .sim-btn.hero {
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8 55%, #0b3b91);
+    }
+
+    .sim-btn.gold {
+      background: linear-gradient(180deg, #ffe66b, #fdd835 45%, #f59e0b);
+      color: #111;
+      border-color: rgba(0,0,0,0.28);
+    }
+
+    .sim-clock {
+      min-width: 280px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.22);
+      text-align: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .sim-clock .mode {
+      font: 900 11px/1 Arial, sans-serif;
+      letter-spacing: 0.9px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .sim-clock .time {
+      margin-top: 4px;
+      font: 900 26px/1 Arial, sans-serif;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .sim-clock .state {
+      margin-top: 4px;
+      font: 800 12px/1 Arial, sans-serif;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      opacity: 0.92;
+    }
+
+    .hero-product {
+      position: absolute;
+      top: 128px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5000;
+      pointer-events: none;
+      color: #fff;
+      text-shadow: 0 3px 12px rgba(0,0,0,0.45);
+      font: 900 52px/1 Arial, sans-serif;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .storyPanel {
+      position: absolute;
+      top: 155px;
+      left: 12px;
+      width: 340px;
+      max-width: 84vw;
+      max-height: calc(100vh - 185px);
+      overflow: auto;
+      z-index: 100001;
+      background: rgba(255,255,255,0.97);
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 16px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+      padding: 12px;
+      transform: translateX(-110%);
+      transition: transform 180ms ease;
+    }
+
+    .storyPanel.story-open {
+      transform: translateX(0);
+    }
+
+    .story-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .story-title {
+      font: 900 16px/1.15 Arial, sans-serif;
+    }
+
+    .story-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .story-action,
+    .btn {
+      border: 1px solid rgba(0,0,0,0.25);
+      background: #fff;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font: 900 12px/1 Arial, sans-serif;
+      cursor: pointer;
+    }
+
+    .story-body {
+      margin-top: 10px;
+      font: 700 13px/1.35 Arial, sans-serif;
+      color: #111;
+    }
+
+    .story-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .story-nav .btn {
+      flex: 1;
+    }
+
+    #storyStep {
+      margin-top: 8px;
+      font: 700 11px/1.2 Arial, sans-serif;
+      opacity: 0.78;
+    }
+
+    .map-control-row {
+      position: absolute;
+      top: 205px;
+      right: 12px;
+      z-index: 100000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .tool-box,
+    .zoom-level-debug,
+    .zoom-corner {
+      background: rgba(11, 28, 45, 0.92);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 16px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.22);
+      color: #fff;
+    }
+
+    .tool-box {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 146px;
+    }
+
+    .tool-label,
+    .zld-label,
+    .zoom-corner-label {
+      font: 900 11px/1 Arial, sans-serif;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      opacity: 0.92;
+      text-align: center;
+    }
+
+    .tool-btn,
+    .zoom-corner-btn {
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font: 900 12px/1 Arial, sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.4px;
+    }
+
+    .tool-btn.active {
+      background: #fdd835;
+      color: #111;
+      border-color: rgba(0,0,0,0.35);
+    }
+
+    .tool-btn.teacher-only {
+      display: none;
+    }
+
+    .zoom-level-debug {
+      padding: 10px 14px;
+      text-align: center;
+    }
+
+    .zld-value {
+      margin-top: 6px;
+      font: 900 32px/1 Arial, sans-serif;
+    }
+
+    .zoom-corner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px;
+      align-items: center;
+    }
+
+    .zoom-corner-label {
+      grid-column: 1 / span 2;
+    }
+
+    #storyTab,
+    #zoomBox,
+    #radarSweepControls,
+    .leaflet-control-zoom,
+    .storm-track-speed,
+    .storm-track-arrivals,
+    .dock-shell,
+    .investigation-shell {
+      display: none !important;
+    }
+
+    .map-legend {
+      position: absolute;
+      right: 10px;
+      bottom: 68px;
+      z-index: 900;
+      background: rgba(11,28,45,0.80);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 8px 10px;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: none;
+    }
+
+    .map-legend-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .leg-mini-label {
+      font: 900 12px/1 Arial, sans-serif;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      opacity: 0.95;
+    }
+
+    .leg-mini-bar {
+      width: 120px;
+      height: 10px;
+      border-radius: 7px;
+      background: linear-gradient(90deg,#2b83ba,#ffd166,#ef476f);
+    }
+
+    #brandLogo {
+      position: absolute;
+      right: 14px;
+      bottom: 0;
+      width: 200px;
+      z-index: 900;
+      pointer-events: none;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+    }
+
+    body.measure-active #map,
+    body.probe-active #map,
+    body.draw-active #map {
+      cursor: crosshair;
+    }
+
+    @media (max-width: 1100px) {
+      .banner-center {
+        padding: 0 18px;
+      }
+      .open-lesson-btn,
+      .terms-btn {
+        position: static;
+      }
+      .banner-topline {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .hero-product {
+        top: 168px;
+        font-size: 40px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .hero-product {
+        display: none;
+      }
+      .storyPanel {
+        width: auto;
+        right: 12px;
+      }
+      .map-control-row {
+        top: auto;
+        bottom: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <div class="tvbanner">
+    <div class="banner-topline">
+      <button id="openLessonBtn" class="open-lesson-btn" type="button">Open Lesson</button>
+      <button id="termsBtn" class="terms-btn" type="button">Weather Discovery Terms</button>
+
+      <div class="banner-center">
+        <div class="brand-line">Weather Discovery Lab</div>
+        <div class="case-line">Derecho Case Study — May 12, 2022</div>
+        <div class="region-line">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
+        <div class="question-line">
+          <span class="qlabel">Question:</span>
+          <span>Why can thunderstorms organize into a long-lasting windstorm (derecho)?</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="banner-bottomline">
+      <button id="simPlayBtn" class="sim-btn hero" type="button">Start Simulator</button>
+      <button id="simPauseBtn" class="sim-btn" type="button">Pause</button>
+      <button id="simResetBtn" class="sim-btn" type="button">Reset</button>
+
+      <button id="sceneSetupBtn" class="sim-btn" type="button">Setup</button>
+      <button id="sceneDopplerBtn" class="sim-btn gold" type="button">Live Doppler</button>
+      <button id="sceneWarningsBtn" class="sim-btn" type="button">Warnings</button>
+      <button id="sceneReportsBtn" class="sim-btn" type="button">Reports</button>
+      <button id="sceneRecapBtn" class="sim-btn" type="button">Recap</button>
+      <button id="sceneInvestigateBtn" class="sim-btn" type="button">Investigate</button>
+
+      <div class="sim-clock" id="simClockBox">
+        <div class="mode">Simulator Mode</div>
+        <div class="time" id="simClockReadout">May 12 3:00 PM</div>
+        <div class="state" id="simClockState">Paused</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-product" id="heroProductLabel">Live Doppler</div>
+
+  <div class="map-legend" id="mapLegend" title="Radar reflectivity">
+    <div class="map-legend-row">
+      <span class="leg-mini-label">Light</span>
+      <span class="leg-mini-bar" aria-hidden="true"></span>
+      <span class="leg-mini-label">Heavy</span>
+    </div>
+  </div>
+
+  <div class="map-legend" id="goesControls" style="left:10px; right:auto; bottom:70px; display:none; width:280px;" title="GOES controls">
+    <div class="map-legend-row" style="justify-content:space-between;">
+      <span class="leg-mini-label">GOES</span>
+      <span class="leg-mini-label" id="goesFrameLabel" style="opacity:.85; font-weight:800;">—</span>
+    </div>
+    <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+      <button class="btn" id="goesPlayBtn" style="flex:1;">Play</button>
+      <button class="btn" id="goesPauseBtn" style="flex:1;">Pause</button>
+    </div>
+    <div class="map-legend-row" style="margin-top:8px; gap:8px; flex-wrap:wrap;">
+      <button class="btn" id="goesFitBtn" style="flex:1;">Fit</button>
+      <button class="btn" id="goesSaveBtn" style="flex:1;">Save</button>
+      <button class="btn" id="goesResetBtn" style="flex:1;">Reset</button>
+    </div>
+    <div style="margin-top:6px; opacity:.85; font:700 11px/1.2 Arial,sans-serif;">
+      Tip: Click <b>Fit</b> then drag SW/NE corners. <b>Save</b> stores the fit on this device.
+    </div>
+  </div>
+
+  <div id="storyPanel" class="storyPanel" aria-label="Story panel">
+    <div class="story-head">
+      <div class="story-title" id="storyTitle">Storm Story</div>
+      <div class="story-actions">
+        <button class="story-action" id="exploreBtn" title="Explore mode">Investigate</button>
+        <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
+      </div>
+    </div>
+    <div class="story-body" id="storyBody">
+      <p><b>3:00 PM setup.</b> A Particularly Dangerous Situation watch helps set the stage for what is to come.</p>
+      <p>Use the simulator to guide students through the storm story, then pause for discussion and probing.</p>
+    </div>
+    <div class="story-nav">
+      <button class="btn" id="storyPrevBtn" type="button">Back</button>
+      <button class="btn" id="storyNextBtn" type="button">Next</button>
+    </div>
+    <div id="storyStep">Step 1 of 6</div>
+  </div>
+
+  <div id="storyTab" aria-label="Open lesson">OPEN LESSON</div>
+
+  <div class="map-control-row" id="mapControlRow" aria-label="Map controls row">
+    <div class="tool-box" id="toolBox" aria-label="Map tools">
+      <span class="tool-label">Tools</span>
+      <button class="tool-btn" id="toolMeasure" type="button" title="Measure distance">Ruler</button>
+      <button class="tool-btn" id="toolProbe" type="button" title="Pixel query / probe">Probe</button>
+      <button class="tool-btn" id="toolTrack" type="button" title="Storm tracker">Track</button>
+      <button class="tool-btn teacher-only" id="toolDraw" type="button" title="Teacher telestrator">Draw</button>
+      <button class="tool-btn teacher-only" id="toolErase" type="button" title="Erase drawings">Erase</button>
+      <button class="tool-btn" id="toolHome" type="button" title="Reset view">Home</button>
+    </div>
+
+    <div class="zoom-level-debug" id="zoomLevelDebug" aria-label="Current zoom level">
+      <span class="zld-label">Zoom Level</span>
+      <div class="zld-value" id="zoomLevelValue">--</div>
+    </div>
+
+    <div class="zoom-corner" id="zoomCorner" aria-label="Zoom controls">
+      <span class="zoom-corner-label">Zoom</span>
+      <button class="zoom-corner-btn" id="zoomCornerMinus" type="button" title="Zoom out">−</button>
+      <button class="zoom-corner-btn" id="zoomCornerPlus" type="button" title="Zoom in">+</button>
+    </div>
+  </div>
+
+  <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
+
+  <!-- Keep hidden placeholders for compatibility -->
+  <div id="radarSweepControls" style="display:none;">
+    <label>Spin speed <input id="sweepSpeedSlider" type="range" min="1" max="30" step="1" value="1" /></label>
+    <label>Beam thickness <input id="sweepBeamSlider" type="range" min="1" max="8" step="1" value="2" /></label>
+  </div>
+
+  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"></div>
+  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"></div>
+
+  <script>
+    var storyStarted = false;
+    function resolveJetFrameUrl(u){
+      if (!u) return u;
+      const dir = (typeof JET_ANIM_DIR !== "undefined") ? JET_ANIM_DIR : "jet_anim";
+      if (!u.includes("/") && !u.startsWith("http")) return dir + "/" + u;
+      return u;
+    }
+  </script>
+
+  <script src="./radar.js"></script>
+  <script src="./metars.js"></script>
+  <script src="./map-ui.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./classroom-ui.js"></script>
+</body>
+</html>
