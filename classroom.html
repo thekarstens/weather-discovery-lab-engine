@@ -62,7 +62,7 @@
     .banner-center {
       text-align: center;
       max-width: 1050px;
-      padding: 0 220px 0 220px;
+      padding: 0 180px 0 18px;
     }
 
     .brand-line {
@@ -412,12 +412,15 @@
 
     #brandLogo {
       position: absolute;
-      right: 14px;
-      bottom: 0;
-      width: 200px;
-      z-index: 900;
+      right: 18px;
+      top: 8px;
+      height: 80px;
+      width: auto;
+      z-index: 100000;
       pointer-events: none;
-      filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+      filter:
+        drop-shadow(0 4px 12px rgba(0,0,0,0.45))
+        drop-shadow(0 0 10px rgba(59,130,246,0.35));
     }
 
     body.measure-active #map,
@@ -465,8 +468,7 @@
 
   <div class="tvbanner">
     <div class="banner-topline">
-      <button id="openLessonBtn" class="open-lesson-btn" type="button">Open Lesson</button>
-      <button id="termsBtn" class="terms-btn" type="button">Weather Discovery Terms</button>
+      <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
 
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
@@ -572,7 +574,6 @@
     </div>
   </div>
 
-  <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
 
   <!-- Keep hidden placeholders for compatibility -->
   <div id="radarSweepControls" style="display:none;">
