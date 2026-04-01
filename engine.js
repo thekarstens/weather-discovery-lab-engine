@@ -2453,7 +2453,8 @@ function safeLink(url){
     var vid = resolveStoryAsset(item.video);
 
     if (img) {
-      html += "<div class='story-media'><img src='" + img + "' alt='Story image'>";
+      html += "<div class='story-media' style='margin:12px 0 10px 0;padding:8px;border-radius:14px;background:rgba(8,18,32,.06);overflow:hidden;'>" +
+              "<img src='" + img + "' alt='Story image' style='display:block;width:100%;max-width:100%;height:auto;max-height:190px;object-fit:contain;border-radius:10px;margin:0 auto;box-shadow:0 6px 18px rgba(0,0,0,.18);'>";
       if (item.imageCredit) {
         html += "<div class='story-credit' style='margin-top:6px;font:700 11px/1.3 Arial,sans-serif;opacity:.78'>Credit: " + escapeHtml(item.imageCredit) + "</div>";
       }
