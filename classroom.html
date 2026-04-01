@@ -35,11 +35,11 @@
       left: 0;
       right: 0;
       z-index: 99999;
-      background: rgba(11, 28, 45, 0.94);
+      background: rgba(11, 28, 45, 0.92);
       color: #fff;
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.20);
-      min-height: 84px;
+      border-bottom: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+      min-height: 86px;
     }
 
     .tvbanner::before {
@@ -57,44 +57,58 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      min-height: 84px;
-      padding: 8px 18px 8px 18px;
+      padding: 8px 16px 7px 16px;
+      min-height: 70px;
     }
 
     .banner-center {
       text-align: center;
-      max-width: 900px;
+      max-width: 980px;
       margin: 0 auto;
-      padding: 0 340px 0 210px;
+      padding: 0 360px 0 230px;
     }
 
     .brand-line {
-      font: 900 20px/1 Arial, sans-serif;
+      font: 900 21px/1 Arial, sans-serif;
       letter-spacing: 0.9px;
       text-transform: uppercase;
     }
 
     .case-line {
       margin-top: 2px;
-      font: 900 16px/1.05 Arial, sans-serif;
-      letter-spacing: 0.5px;
+      font: 900 15px/1.08 Arial, sans-serif;
+      letter-spacing: 0.45px;
       text-transform: uppercase;
     }
 
     .region-line {
       margin-top: 3px;
-      font: 800 12px/1.15 Arial, sans-serif;
+      font: 800 11px/1.15 Arial, sans-serif;
       letter-spacing: 0.25px;
-      opacity: 0.92;
+      opacity: 0.95;
       text-transform: none;
     }
 
-    .question-line {
-      display: none !important;
-    }
+    .question-line { display: none; }
 
-    .question-line .qlabel {
-      display: none !important;
+    .question-line .qlabel { display: none; }
+
+    .product-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 5px;
+      padding: 4px 12px;
+      min-height: 22px;
+      border-radius: 999px;
+      background: rgba(3, 16, 34, 0.78);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #f6fbff;
+      font: 900 11px/1 Arial, sans-serif;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      white-space: nowrap;
     }
 
     .open-lesson-btn {
@@ -112,16 +126,30 @@
       cursor: pointer;
       box-shadow: 0 8px 22px rgba(0,0,0,0.22);
       z-index: 100001;
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .open-lesson-btn.resume-ready {
+      background: linear-gradient(180deg, #2f67e9, #1647b8 60%, #0f2f74);
+      color: #fff;
+      border-color: rgba(255,255,255,0.22);
+    }
+
+    .open-lesson-btn.lesson-open {
+      background: linear-gradient(180deg, #2f67e9, #1647b8 60%, #0f2f74);
+      color: #fff;
+      border-color: rgba(255,255,255,0.22);
+      transform: translateY(-1px);
     }
 
     .banner-bottomline {
       position: absolute;
-      top: 9px;
-      right: 18px;
+      top: 10px;
+      right: 16px;
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 8px;
       padding: 0;
       z-index: 100000;
     }
@@ -129,14 +157,13 @@
     .sim-controls-wrap{
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:8px;
     }
 
-    .sim-play-wrap{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-shrink: 0;
+    #playPauseWrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .sim-controls-wrap.is-hidden,
@@ -148,89 +175,64 @@
     }
 
     .sim-clock {
-      min-width: 230px;
-      max-width: 250px;
-      padding: 10px 14px;
+      min-width: 246px;
+      max-width: 270px;
+      padding: 9px 14px;
       border-radius: 16px;
-      background: rgba(7, 20, 34, 0.92);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(11,28,45,0.88);
+      border: 1px solid rgba(255,255,255,0.18);
       text-align: center;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
-      flex-shrink: 0;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
     }
 
     .sim-clock .mode {
-      display: none !important;
+      display: none;
     }
 
     .sim-clock .time {
       margin-top: 0;
-      font: 900 22px/1 Arial, sans-serif;
-      letter-spacing: 0.35px;
+      font: 900 23px/1 Arial, sans-serif;
+      letter-spacing: 0.6px;
       text-transform: uppercase;
-      white-space: nowrap;
     }
 
     .sim-clock .state {
       margin-top: 2px;
-      font: 900 14px/1 Arial, sans-serif;
-      letter-spacing: 0.35px;
+      font: 900 15px/1 Arial, sans-serif;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
-      opacity: 0.88;
+      opacity: 0.92;
     }
 
     .sim-icon-btn {
-      width: 58px;
-      height: 58px;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: 16px;
+      width: 52px;
+      height: 52px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 18px;
       background: linear-gradient(180deg, #2563eb, #1d4ed8 55%, #0b3b91);
       color: #fff;
-      font: 900 30px/1 Arial, sans-serif;
+      font: 900 28px/1 Arial, sans-serif;
       cursor: pointer;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.20);
       display:flex;
       align-items:center;
       justify-content:center;
       padding:0;
-      flex-shrink: 0;
     }
 
     .sim-icon-btn.pause{
       background: rgba(11, 28, 45, 0.95);
     }
 
-    .hero-product {
-      position: absolute;
-      top: 86px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 99998;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 132px;
-      max-width: 280px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(8, 24, 38, 0.94);
-      border: 1px solid rgba(255,255,255,0.16);
-      color: #fff;
-      font: 900 12px/1 Arial, sans-serif;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
-      pointer-events: none;
-      white-space: nowrap;
-    }
+    .hero-product { display: none; }
 
     .storyPanel {
       position: absolute;
-      top: 138px;
+      top: 118px;
       left: 12px;
       width: 380px;
       max-width: 84vw;
-      max-height: calc(100vh - 205px);
+      max-height: calc(100vh - 148px);
       overflow: auto;
       z-index: 100001;
       background: rgba(255,255,255,0.97);
@@ -326,7 +328,7 @@
 
     .map-control-row {
       position: absolute;
-      top: 168px;
+      top: 148px;
       right: 10px;
       z-index: 100000;
       display: flex;
@@ -469,29 +471,35 @@
     }
 
     @media (max-width: 1200px) {
-      .banner-center { padding: 0 560px 0 180px; }
-      .banner-bottomline { right: 20px; }
-      .sim-clock { min-width: 270px; }
+      .banner-center { padding: 0 300px 0 178px; }
+      .banner-bottomline { right: 12px; }
+      .sim-clock { min-width: 220px; max-width: 240px; }
       #brandLogo { width: 280px; right: -8px; bottom: -8px; }
     }
 
     @media (max-width: 1000px) {
       .banner-topline {
         flex-direction: column;
-        gap: 8px;
-        padding-bottom: 56px;
+        gap: 6px;
+        padding-bottom: 10px;
       }
       .banner-center { padding: 0 16px; }
       .banner-bottomline {
         position: static;
         justify-content: center;
         padding-top: 4px;
-        padding-bottom: 4px;
       }
       #brandLogo {
         width: 230px;
         right: 4px;
         bottom: 4px;
+      }
+      .storyPanel {
+        top: 132px;
+        max-height: calc(100vh - 162px);
+      }
+      .map-control-row {
+        top: 160px;
       }
     }
 
@@ -504,9 +512,10 @@
         top: auto;
         bottom: 100px;
       }
-      .sim-clock { min-width: 200px; max-width: 220px; padding: 10px 12px; }
+      .sim-clock { min-width: 180px; max-width: 200px; padding: 8px 10px; }
       .sim-clock .time { font-size: 18px; }
-      .sim-icon-btn { width: 52px; height: 52px; font-size: 26px; }
+      .sim-clock .state { font-size: 13px; }
+      .sim-icon-btn { width: 44px; height: 44px; font-size: 24px; }
       #brandLogo { width: 180px; }
     }
   </style>
@@ -521,18 +530,19 @@
 
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
-        <div class="case-line top-lesson">Derecho Case Study — May 12, 2022</div>
+        <div class="case-line">Lesson 1: Derecho Case Study — May 12, 2022</div>
         <div class="region-line">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
-</div>
+        <div class="product-pill" id="productLabel">SPC Day 1 Outlook</div>
+      </div>
 
       <div class="banner-bottomline">
         <div class="sim-controls-wrap" id="simControlsWrap">
           <div class="sim-clock" id="simClockBox">
-            <div class="mode"></div>
+            <div class="mode">Simulator Mode</div>
             <div class="time" id="simClockReadout">May 12 2:30 PM</div>
             <div class="state" id="simClockState">❚❚</div>
           </div>
-          <div class="sim-play-wrap" id="playPauseWrap">
+          <div id="playPauseWrap">
             <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
             <button id="simPauseBtn" class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
           </div>
@@ -541,7 +551,7 @@
     </div>
   </div>
 
-  <div class="hero-product" id="productLabel">SPC Day 1</div>
+  <div class="hero-product" id="heroProductLabel">Live Doppler</div>
 
   <div class="map-legend" id="mapLegend" title="Radar reflectivity">
     <div class="map-legend-row">
