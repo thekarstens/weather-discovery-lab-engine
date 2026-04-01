@@ -2060,7 +2060,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (usStatesLoaded) return;
     usStatesLoaded = true;
 
-    fetch("gz_2010_us_040_00_5m.json?v="+Date.now())
+    var statesPath = (CFG && CFG.boundaries && CFG.boundaries.states) ? _joinUrl(DATA_BASE, CFG.boundaries.states) : "gz_2010_us_040_00_5m.json";
+    fetch(statesPath + (statesPath.indexOf('?') >= 0 ? '&' : '?') + "v=" + Date.now())
       .then(function(res){
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
@@ -2394,6 +2395,42 @@ function safeLink(url){
     return _joinUrl(DATA_BASE, u);
   }
 
+  async function applyStoryScene(item){
+    if (!item) return;
+
+    try {
+      if (item.utc) {
+        var nextTime = new Date(item.utc);
+        if (!isNaN(nextTime)) curZ = nextTime;
+      }
+      try { window.curZ = new Date(curZ.getTime()); } catch(e) {}
+    } catch(e) {}
+
+    var layers = Array.isArray(item.layers) ? item.layers.map(function(x){ return String(x || '').toLowerCase(); }) : [];
+    var wantsSpc = layers.indexOf('spc_outlook') !== -1 || String(item.product || '').toLowerCase().indexOf('spc') !== -1;
+
+    if (typeof window.setSpcDay1Enabled === 'function') {
+      try { await window.setSpcDay1Enabled(wantsSpc); } catch (e) { console.warn('SPC step apply failed', e); }
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('wdl:storychange', {
+        detail: {
+          index: storyIndex,
+          count: storyItems.length,
+          item: item,
+          utc: item.utc || null,
+          allowPlay: item.allowPlay,
+          pause: !!item.pause,
+          highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
+          showLegend: !!(item.ui && item.ui.showLegend)
+        }
+      }));
+    } catch(e) {}
+
+    updateAll();
+  }
+
   function renderStory(i, panTo){
     if (!storyItems.length) return;
     if (i < 0) i = 0;
@@ -2460,8 +2497,14 @@ function safeLink(url){
 
     if (storyStarted) { storyOpen(); }
 
+    applyStoryScene(item);
+
     if (panTo && item.lat != null && item.lon != null) {
-      map.panTo([item.lat, item.lon], { animate:true });
+      if (item.zoom != null && isFinite(item.zoom)) {
+        map.setView([item.lat, item.lon], item.zoom, { animate:true });
+      } else {
+        map.panTo([item.lat, item.lon], { animate:true });
+      }
     }
   }
 
@@ -2520,6 +2563,12 @@ function safeLink(url){
     } else if (typeof r.question === "string" && r.question.trim()){
       text += (text ? "\n\n" : "") + r.question;
     }
+    var layers = [];
+    if (Array.isArray(scene.layers)) layers = scene.layers.slice();
+    else if (typeof scene.layers === "string" && scene.layers.trim()) layers = [scene.layers.trim()];
+    else if (r.layer) layers = [r.layer];
+    else if (scene.product) layers = [scene.product];
+
     return {
       id: r.id || r.step || "",
       title: r.title || r.label || "",
@@ -2530,10 +2579,17 @@ function safeLink(url){
       video: r.video || (r.media && r.media.video) || "",
       terms: r.terms || "",
       layer: r.layer || scene.product || "",
+      layers: layers,
+      product: scene.product || r.product || "",
       zoom: (r.zoom != null && r.zoom !== "") ? Number(r.zoom) : ((scene.zoom != null && scene.zoom !== "") ? Number(scene.zoom) : null),
       order: parseFloat(orderRaw),
       raw: r,
-      pause: !!interaction.pause
+      pause: !!interaction.pause,
+      allowPlay: interaction.allowPlay !== false,
+      allowExplore: interaction.allowExplore !== false,
+      ui: (r && r.ui && typeof r.ui === "object") ? r.ui : {},
+      interaction: interaction,
+      utc: r.utc || scene.utc || ""
     };
   }
 
@@ -4606,6 +4662,16 @@ window.setWarningsEnabled = setWarningsEnabled;
     updateProductLabel();
   }
 
+  window.updateAll = updateAll;
+  window.setMasterTime = function(value){
+    var d = (value instanceof Date) ? new Date(value.getTime()) : new Date(value);
+    if (isNaN(d)) return false;
+    curZ = d;
+    clampTime();
+    updateAll();
+    return true;
+  };
+
   // ---------- Time controls ----------
   function clampTime(){
     if (curZ < startZ) curZ = new Date(startZ.getTime());
@@ -5101,7 +5167,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var dock = document.getElementById('investigationDock');
   var body = document.getElementById('investigationBody');
   if (!dock || !body){
-    console.warn('Dock not found');
+    console.debug('Dock not found; skipping investigation dock init');
     return;
   }
 
