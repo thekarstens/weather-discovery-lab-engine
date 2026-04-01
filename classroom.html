@@ -204,6 +204,62 @@
       opacity: 0.92;
     }
 
+    .sim-clock .scrub-wrap {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sim-clock.show-scrubber .scrub-wrap {
+      display: flex;
+    }
+
+    .sim-clock .scrub-wrap input[type="range"] {
+      width: 100%;
+      accent-color: #2f67e9;
+      cursor: pointer;
+    }
+
+    .sim-clock .scrub-mini {
+      font: 900 10px/1 Arial, sans-serif;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      opacity: 0.82;
+      white-space: nowrap;
+    }
+
+    .doppler-btn {
+      display: none;
+      margin-top: 8px;
+      width: 100%;
+      border: 1px solid rgba(90,160,255,0.55);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, rgba(31,91,255,0.95), rgba(12,48,145,0.95));
+      color: #fff;
+      font: 900 12px/1 Arial, sans-serif;
+      letter-spacing: 0.75px;
+      text-transform: uppercase;
+      box-shadow: 0 0 0 rgba(68,150,255,0.0), 0 8px 18px rgba(0,0,0,0.20);
+      cursor: pointer;
+    }
+
+    .sim-clock.show-doppler .doppler-btn {
+      display: block;
+    }
+
+    .doppler-btn.pulsing {
+      animation: dopplerPulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes dopplerPulse {
+      0% { box-shadow: 0 0 0 0 rgba(79,163,255,0.55), 0 8px 18px rgba(0,0,0,0.20); }
+      70% { box-shadow: 0 0 0 12px rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
+      100% { box-shadow: 0 0 0 0 rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
+    }
+
+
     .sim-icon-btn {
       width: 52px;
       height: 52px;
@@ -541,6 +597,12 @@
             <div class="mode">Simulator Mode</div>
             <div class="time" id="simClockReadout">May 12 2:30 PM</div>
             <div class="state" id="simClockState">❚❚</div>
+            <button id="sweepToggleBtn" class="doppler-btn" type="button">Live Doppler Off</button>
+            <div class="scrub-wrap" id="scrubWrap">
+              <span class="scrub-mini">Start</span>
+              <input id="cbScrubber" type="range" min="0" max="100" step="1" value="0" />
+              <span class="scrub-mini">End</span>
+            </div>
           </div>
           <div id="playPauseWrap">
             <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
