@@ -2407,10 +2407,18 @@ function safeLink(url){
     } catch(e) {}
 
     var layers = Array.isArray(item.layers) ? item.layers.map(function(x){ return String(x || '').toLowerCase(); }) : [];
-    var wantsSpc = layers.indexOf('spc_outlook') !== -1 || String(item.product || '').toLowerCase().indexOf('spc') !== -1;
+    var productName = String(item.product || '').toLowerCase();
+    var wantsSpc = layers.indexOf('spc_outlook') !== -1 || productName.indexOf('spc') !== -1;
+    var wantsRadar = layers.indexOf('radar') !== -1 || layers.indexOf('live_doppler') !== -1 || productName.indexOf('radar') !== -1 || productName.indexOf('doppler') !== -1;
 
     if (typeof window.setSpcDay1Enabled === 'function') {
       try { await window.setSpcDay1Enabled(wantsSpc); } catch (e) { console.warn('SPC step apply failed', e); }
+    }
+    if (typeof window.setRadarEnabled === 'function') {
+      try { await window.setRadarEnabled(wantsRadar); } catch (e) { console.warn('Radar step apply failed', e); }
+    }
+    if (!wantsRadar && typeof radarSweepEnabled !== 'undefined') {
+      try { radarSweepEnabled = false; syncSweepButton(); hideRadarSweepCanvas(); } catch(e) {}
     }
 
     try {
@@ -2428,7 +2436,9 @@ function safeLink(url){
           showLegend: !!(item.ui && item.ui.showLegend),
           showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : null),
           showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
-          startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null)
+          startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
+          showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
+          showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar)
         }
       }));
     } catch(e) {}
@@ -3393,6 +3403,11 @@ function nearestHrrrFrameIndexForTime(d){
       }
     }catch(e){}
   }
+
+  window.getActiveScrubberMode = getActiveScrubberMode;
+  window.stepRadarFrame = stepRadarFrame;
+  window.syncScrubberToActiveProduct = syncScrubberToActiveProduct;
+  window.setCurrentRadarFrameIndex = setCurrentRadarFrameIndex;
 
   function setTimeLabel(){
     var label = formatCentralLabel(curZ);
@@ -4510,6 +4525,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'winds'), label: "FUTURE WIND GUSTS" },
     { on: (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled), label: "RADAR VELOCITY" },
+    { on: (typeof radarSweepEnabled !== "undefined" && radarSweepEnabled), label: "LIVE DOPPLER" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
   ];
 
@@ -4904,6 +4920,13 @@ function syncSweepButton(){
     };
     syncSweepButton();
   }
+
+  window.toggleSweep = function(){
+    radarSweepEnabled = !radarSweepEnabled;
+    syncSweepButton();
+    updateRadar();
+    return radarSweepEnabled;
+  };
 
   map.on('zoom move resize', function(){
     resizeRadarSweepCanvas();
