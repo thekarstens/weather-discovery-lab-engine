@@ -1,9 +1,9 @@
 (function () {
   var playBtn = document.getElementById("simPlayBtn");
   var pauseBtn = document.getElementById("simPauseBtn");
-  var resetBtn = document.getElementById("simResetBtn");
-  var playWrap = document.getElementById("playPauseWrap") || null;
-  var controlsWrap = document.getElementById("simControlsWrap") || null;
+  var playWrap = document.getElementById("playPauseWrap");
+  var simControlsWrap = document.getElementById("simControlsWrap");
+  var simClockBox = document.getElementById("simClockBox");
 
   var storyPanel = document.getElementById("storyPanel");
   var hideGuideBtn = document.getElementById("hideGuideBtn");
@@ -12,7 +12,6 @@
 
   var simClockReadout = document.getElementById("simClockReadout");
   var simClockState = document.getElementById("simClockState");
-  var clockWrap = document.getElementById("simClockBox") || (simClockReadout ? simClockReadout.closest("div") : null);
 
   var simTimer = null;
   var simState = "paused";
@@ -20,13 +19,17 @@
   var simStartUtc = Date.parse("2022-05-12T19:30:00Z");
   var simUtc = simStartUtc;
   var currentExploreMode = false;
+  var lessonEverOpened = false;
 
-  function openGuide() {
-    if (storyPanel) storyPanel.classList.add("story-open");
-  }
-
-  function closeGuide() {
-    if (storyPanel) storyPanel.classList.remove("story-open");
+  function syncFromEngineClock() {
+    try {
+      if (window.curZ instanceof Date && !isNaN(window.curZ)) {
+        simUtc = window.curZ.getTime();
+      } else if (typeof window.curZ === "string" || typeof window.curZ === "number") {
+        var parsed = new Date(window.curZ);
+        if (!isNaN(parsed)) simUtc = parsed.getTime();
+      }
+    } catch (e) {}
   }
 
   function formatLocalSimTime(msUtc) {
@@ -44,36 +47,52 @@
     }
   }
 
-  function syncFromEngineClock() {
-    try {
-      if (window.curZ instanceof Date && !isNaN(window.curZ)) {
-        simUtc = window.curZ.getTime();
-      } else if (typeof window.curZ === "string" || typeof window.curZ === "number") {
-        var parsed = new Date(window.curZ);
-        if (!isNaN(parsed)) simUtc = parsed.getTime();
-      }
-    } catch (e) {}
-  }
-
   function updateClock() {
     syncFromEngineClock();
     if (simClockReadout) simClockReadout.textContent = formatLocalSimTime(simUtc);
     if (simClockState) {
-      simClockState.textContent = simState === "playing" ? "▶ ×" + simSpeedMinutes : "❚❚";
+      simClockState.textContent = simState === "playing" ? "▶ x" + simSpeedMinutes : "❚❚";
     }
   }
 
+  function updateLessonButton() {
+    if (!openLessonBtn || !storyPanel) return;
+    var isOpen = storyPanel.classList.contains("story-open");
+    openLessonBtn.classList.toggle("lesson-open", isOpen);
+    openLessonBtn.classList.toggle("resume-ready", !isOpen && lessonEverOpened);
+    if (isOpen) {
+      openLessonBtn.textContent = "Hide Lesson";
+    } else if (lessonEverOpened) {
+      openLessonBtn.textContent = "Resume Lesson";
+    } else {
+      openLessonBtn.textContent = "Open Lesson";
+    }
+  }
+
+  function openGuide() {
+    if (storyPanel) storyPanel.classList.add("story-open");
+    lessonEverOpened = true;
+    updateLessonButton();
+  }
+
+  function closeGuide() {
+    if (storyPanel) storyPanel.classList.remove("story-open");
+    updateLessonButton();
+  }
+
   function setPlayVisibility(visible) {
-    if (playWrap) playWrap.style.display = visible ? "flex" : "none";
+    if (playWrap) playWrap.classList.toggle("is-hidden", !visible);
     if (playBtn) playBtn.style.display = visible ? "" : "none";
     if (pauseBtn) pauseBtn.style.display = visible ? "" : "none";
-    if (resetBtn) resetBtn.style.display = visible ? "" : "none";
   }
 
   function setClockVisibility(visible) {
-    if (!clockWrap) return;
-    clockWrap.style.display = visible ? "" : "none";
-    if (controlsWrap) controlsWrap.classList.toggle("clock-hidden", !visible);
+    if (!simClockBox) return;
+    simClockBox.classList.toggle("is-hidden", !visible);
+    if (simControlsWrap) {
+      var hasPlay = !(playWrap && playWrap.classList.contains("is-hidden"));
+      simControlsWrap.classList.toggle("is-hidden", !visible && !hasPlay);
+    }
   }
 
   function findToolDock() {
@@ -114,24 +133,6 @@
     else openGuide();
   }
 
-
-
-  function updateProductPill(detail) {
-    var pill = document.getElementById("productLabel");
-    if (!pill) return;
-    var text = "";
-    if (detail) {
-      text = detail.highlightProduct || "";
-      if (!text && detail.item) {
-        text = (detail.item.ui && detail.item.ui.highlightProduct) || detail.item.title || detail.item.product || "";
-      }
-    }
-    if (!text) {
-      text = pill.textContent || "Weather Product";
-    }
-    pill.textContent = text;
-  }
-
   function pushTimeToEngine(msUtc) {
     if (typeof window.setMasterTime === "function") {
       window.setMasterTime(new Date(msUtc));
@@ -164,13 +165,6 @@
     updateClock();
   }
 
-  function resetSimulator() {
-    pauseSimulator();
-    simUtc = simStartUtc;
-    pushTimeToEngine(simUtc);
-    updateClock();
-  }
-
   if (openLessonBtn) {
     openLessonBtn.addEventListener("click", function () {
       if (storyPanel && storyPanel.classList.contains("story-open")) closeGuide();
@@ -188,7 +182,6 @@
 
   if (playBtn) playBtn.addEventListener("click", startSimulator);
   if (pauseBtn) pauseBtn.addEventListener("click", pauseSimulator);
-  if (resetBtn) resetBtn.addEventListener("click", resetSimulator);
 
   window.addEventListener("wdl:storychange", function (ev) {
     var detail = (ev && ev.detail) || {};
@@ -198,7 +191,7 @@
     }
     if (detail.pause) pauseSimulator();
 
-    var showPlay = detail.allowPlay !== false;
+    var showPlay = !!detail.allowPlay;
     var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : true;
     var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
     var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
@@ -206,13 +199,13 @@
     setPlayVisibility(showPlay);
     setClockVisibility(showClock);
     applyMode(nextExplore, { showTools: showTools });
-    updateProductPill(detail);
     updateClock();
+    updateLessonButton();
   });
 
   applyMode(false);
-  setPlayVisibility(true);
+  setPlayVisibility(false);
   setClockVisibility(true);
-  updateProductPill(null);
   updateClock();
+  updateLessonButton();
 })();
