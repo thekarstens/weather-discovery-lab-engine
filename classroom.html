@@ -62,7 +62,7 @@
     .banner-center {
       text-align: center;
       max-width: 1050px;
-      padding: 0 180px 0 18px;
+      padding: 0 220px 0 220px;
     }
 
     .brand-line {
@@ -412,15 +412,26 @@
 
     #brandLogo {
       position: absolute;
-      right: 18px;
-      top: 8px;
-      height: 80px;
-      width: auto;
-      z-index: 100000;
+      right: 14px;
+      bottom: 0;
+      width: 200px;
+      z-index: 900;
       pointer-events: none;
-      filter:
-        drop-shadow(0 4px 12px rgba(0,0,0,0.45))
-        drop-shadow(0 0 10px rgba(59,130,246,0.35));
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+    }
+
+
+
+    .town-label {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(0,0,0,0.24);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font: 900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 0.2px;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+      white-space: nowrap;
     }
 
     body.measure-active #map,
@@ -468,7 +479,8 @@
 
   <div class="tvbanner">
     <div class="banner-topline">
-      <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
+      <button id="openLessonBtn" class="open-lesson-btn" type="button">Open Lesson</button>
+      <button id="termsBtn" class="terms-btn" type="button">Weather Discovery Terms</button>
 
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
@@ -495,7 +507,7 @@
 
       <div class="sim-clock" id="simClockBox">
         <div class="mode">Simulator Mode</div>
-        <div class="time" id="simClockReadout">May 12 3:00 PM</div>
+        <div class="time" id="simClockReadout">May 12 2:30 PM</div>
         <div class="state" id="simClockState">Paused</div>
       </div>
     </div>
@@ -539,8 +551,8 @@
       </div>
     </div>
     <div class="story-body" id="storyBody">
-      <p><b>3:00 PM setup.</b> A Particularly Dangerous Situation watch helps set the stage for what is to come.</p>
-      <p>Use the simulator to guide students through the storm story, then pause for discussion and probing.</p>
+      <p><b>2:30 PM setup.</b> The SPC Day 1 outlook has already highlighted our area for dangerous severe weather later today.</p>
+      <p>Begin by asking what in the outlook suggests increasing concern before storms reach our area.</p>
     </div>
     <div class="story-nav">
       <button class="btn" id="storyPrevBtn" type="button">Back</button>
@@ -574,6 +586,7 @@
     </div>
   </div>
 
+  <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
 
   <!-- Keep hidden placeholders for compatibility -->
   <div id="radarSweepControls" style="display:none;">
