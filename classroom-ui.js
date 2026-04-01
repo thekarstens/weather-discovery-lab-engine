@@ -3,6 +3,7 @@
   var pauseBtn = document.getElementById("simPauseBtn");
   var resetBtn = document.getElementById("simResetBtn");
   var playWrap = document.getElementById("playPauseWrap") || null;
+  var controlsWrap = document.getElementById("simControlsWrap") || null;
 
   var storyPanel = document.getElementById("storyPanel");
   var hideGuideBtn = document.getElementById("hideGuideBtn");
@@ -11,7 +12,7 @@
 
   var simClockReadout = document.getElementById("simClockReadout");
   var simClockState = document.getElementById("simClockState");
-  var clockWrap = simClockReadout ? simClockReadout.closest("div") : null;
+  var clockWrap = document.getElementById("simClockBox") || (simClockReadout ? simClockReadout.closest("div") : null);
 
   var simTimer = null;
   var simState = "paused";
@@ -71,7 +72,8 @@
 
   function setClockVisibility(visible) {
     if (!clockWrap) return;
-    clockWrap.style.display = visible ? "flex" : "none";
+    clockWrap.style.display = visible ? "" : "none";
+    if (controlsWrap) controlsWrap.classList.toggle("clock-hidden", !visible);
   }
 
   function findToolDock() {
@@ -112,33 +114,22 @@
     else openGuide();
   }
 
-  function nudgeBannerLayout() {
-    try {
-      if (clockWrap) {
-        clockWrap.style.transform = "translateX(96px)";
-        clockWrap.style.maxWidth = "460px";
+
+
+  function updateProductPill(detail) {
+    var pill = document.getElementById("productLabel");
+    if (!pill) return;
+    var text = "";
+    if (detail) {
+      text = detail.highlightProduct || "";
+      if (!text && detail.item) {
+        text = (detail.item.ui && detail.item.ui.highlightProduct) || detail.item.title || detail.item.product || "";
       }
-      if (playWrap) {
-        playWrap.style.transform = "translateX(112px)";
-        playWrap.style.marginLeft = "18px";
-      }
-      var imgs = Array.prototype.slice.call(document.querySelectorAll("img"));
-      var logo = null;
-      for (var i = 0; i < imgs.length; i++) {
-        var img = imgs[i];
-        var src = String(img.getAttribute("src") || img.src || "");
-        var rect = img.getBoundingClientRect ? img.getBoundingClientRect() : null;
-        var looksLikeBottomRight = rect && rect.bottom > window.innerHeight * 0.65 && rect.right > window.innerWidth * 0.65;
-        if (/weather.?workshops|logo/i.test(src) || looksLikeBottomRight) {
-          logo = img;
-          if (looksLikeBottomRight) break;
-        }
-      }
-      if (logo) {
-        var target = logo.parentElement && logo.parentElement !== document.body ? logo.parentElement : logo;
-        target.style.transform = "translate(24px, 18px)";
-      }
-    } catch (e) {}
+    }
+    if (!text) {
+      text = pill.textContent || "Weather Product";
+    }
+    pill.textContent = text;
   }
 
   function pushTimeToEngine(msUtc) {
@@ -208,22 +199,20 @@
     if (detail.pause) pauseSimulator();
 
     var showPlay = detail.allowPlay !== false;
-    var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : (showPlay && Number(detail.index || 0) >= 2);
+    var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : true;
     var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
     var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
 
     setPlayVisibility(showPlay);
     setClockVisibility(showClock);
     applyMode(nextExplore, { showTools: showTools });
+    updateProductPill(detail);
     updateClock();
-    nudgeBannerLayout();
   });
 
   applyMode(false);
-  setPlayVisibility(false);
-  setClockVisibility(false);
+  setPlayVisibility(true);
+  setClockVisibility(true);
+  updateProductPill(null);
   updateClock();
-  setTimeout(nudgeBannerLayout, 150);
-  window.addEventListener("load", nudgeBannerLayout);
-  window.addEventListener("resize", nudgeBannerLayout);
 })();
