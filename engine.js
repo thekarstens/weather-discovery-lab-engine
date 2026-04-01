@@ -2337,14 +2337,21 @@ function updateCityLabels(){
     if (s.indexOf("/") === -1) return "storyboard/" + s;
     return s.replace(/^\.\//, "");
   }
+  var STORYBOARD_JSON = normalizeStoryboardPath(
+    (STORY_CFG.type === "json") ? (STORY_CFG.url || STORY_CFG.json || STORY_CFG.file || "storyboard/storyboard.json") : ""
+  );
   var STORYBOARD_CSV = normalizeStoryboardPath(
-    STORYBOARD_OVERRIDE ||
-    ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV :
-      (STORY_CFG.type === "csv"
-        ? (STORY_CFG.url || STORY_CFG.csv || STORY_CFG.file || "storyboard/storyboard.csv")
-        : ((lessonId && STORY_CFG.type !== "google") ? "storyboard/storyboard.csv" : "")
-      )
-    )
+    (STORY_CFG.type === "json")
+      ? ""
+      : (
+          STORYBOARD_OVERRIDE ||
+          ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV :
+            (STORY_CFG.type === "csv"
+              ? (STORY_CFG.url || STORY_CFG.csv || STORY_CFG.file || "storyboard/storyboard.csv")
+              : ""
+            )
+          )
+        )
   );
   var SHEET_ID = STORY_CFG.sheetId || STORY_CFG.googleSheetId || "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
   var SHEET_TAB = STORY_CFG.sheetTab || STORY_CFG.tab || "April Blizzard Story";
@@ -2352,6 +2359,7 @@ function updateCityLabels(){
   var storyMarkers = [];
   var storyIndex = 0;
   var focusRing = null;
+  window.__WDL_STORYBOARD_JSON__ = STORYBOARD_JSON;
   window.__WDL_STORYBOARD_CSV__ = STORYBOARD_CSV;
 
   var storyPanel = document.getElementById("storyPanel");
@@ -2499,21 +2507,33 @@ function safeLink(url){
   }
 
   function normalizeStoryRow(r){
-    var lat = parseFloat(r.lat);
-    var lon = parseFloat(r.lon);
-    var orderRaw = (r.order != null && r.order !== "") ? r.order : r.step;
+    var scene = (r && r.scene && typeof r.scene === "object") ? r.scene : {};
+    var interaction = (r && r.interaction && typeof r.interaction === "object") ? r.interaction : {};
+    var lat = parseFloat((r.lat != null ? r.lat : scene.lat));
+    var lon = parseFloat((r.lon != null ? r.lon : scene.lon));
+    var orderRaw = (r.order != null && r.order !== "") ? r.order : (r.step != null ? r.step : r.id);
+    var text = r.text || "";
+    if (!text && Array.isArray(r.narrative)) text = r.narrative.join("\n\n");
+    if (!text && typeof r.narrative === "string") text = r.narrative;
+    if (Array.isArray(r.question) && r.question.length){
+      text += (text ? "\n\n" : "") + r.question.map(function(q){ return "• " + q; }).join("\n");
+    } else if (typeof r.question === "string" && r.question.trim()){
+      text += (text ? "\n\n" : "") + r.question;
+    }
     return {
       id: r.id || r.step || "",
-      title: r.title || "",
-      text: r.text || "",
+      title: r.title || r.label || "",
+      text: text || "",
       lat: isFinite(lat) ? lat : null,
       lon: isFinite(lon) ? lon : null,
-      image: r.image || "",
-      video: r.video || "",
+      image: r.image || (r.media && r.media.image) || "",
+      video: r.video || (r.media && r.media.video) || "",
       terms: r.terms || "",
-      layer: r.layer || "",
-      zoom: (r.zoom != null && r.zoom !== "") ? Number(r.zoom) : null,
-      order: parseFloat(orderRaw)
+      layer: r.layer || scene.product || "",
+      zoom: (r.zoom != null && r.zoom !== "") ? Number(r.zoom) : ((scene.zoom != null && scene.zoom !== "") ? Number(scene.zoom) : null),
+      order: parseFloat(orderRaw),
+      raw: r,
+      pause: !!interaction.pause
     };
   }
 
@@ -2583,6 +2603,24 @@ function safeLink(url){
     });
   }
 
+  function loadJSONStoryboard(){
+    var jsonUrl = _joinUrl(DATA_BASE, STORYBOARD_JSON);
+    return fetch(jsonUrl, { cache: "no-store" }).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function(data){
+      var rows = [];
+      if (Array.isArray(data)) rows = data;
+      else if (data && Array.isArray(data.steps)) rows = data.steps;
+      else if (data && typeof data === "object") rows = [data];
+      applyStoryRows(rows, "No rows found in your storyboard JSON.");
+    }).catch(function(err){
+      storyBodyEl.innerHTML = "<p class='tiny'>Could not load storyboard JSON at '" + escapeHtml(jsonUrl) + "'.</p>";
+      setStatus("Story JSON load failed");
+      console.warn(err);
+    });
+  }
+
   function loadGoogleStoryboard(){
     var url = "https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(SHEET_TAB);
     return fetch(url).then(function(r){
@@ -2613,6 +2651,10 @@ function safeLink(url){
   }
 
   function loadStory(){
+    if (STORYBOARD_JSON) {
+      console.log("📖 Loading JSON storyboard:", STORYBOARD_JSON);
+      return loadJSONStoryboard();
+    }
     if (STORYBOARD_CSV) {
       console.log("📖 Loading CSV storyboard:", STORYBOARD_CSV);
       if (STORYBOARD_OVERRIDE) {
