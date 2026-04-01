@@ -3727,14 +3727,27 @@ if (window.createMetarsModule) {
         MDT:'Moderate Risk',
         HIGH:'High Risk'
       };
+      var riskTheme = {
+        TSTM:{bg:'linear-gradient(135deg,#49a85d 0%,#2f7f42 100%)', accent:'#dff5df', chip:'rgba(255,255,255,.16)'},
+        MRGL:{bg:'linear-gradient(135deg,#2d7a36 0%,#1f5a26 100%)', accent:'#d9f1dc', chip:'rgba(255,255,255,.16)'},
+        SLGT:{bg:'linear-gradient(135deg,#c79b14 0%,#9d7300 100%)', accent:'#fff3c5', chip:'rgba(255,255,255,.18)'},
+        ENH:{bg:'linear-gradient(135deg,#d66b1f 0%,#a84700 100%)', accent:'#ffe0cb', chip:'rgba(255,255,255,.18)'},
+        MDT:{bg:'linear-gradient(135deg,#a81f24 0%,#6f0f12 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)'},
+        HIGH:{bg:'linear-gradient(135deg,#8e2acb 0%,#5d1493 100%)', accent:'#f0d8ff', chip:'rgba(255,255,255,.20)'}
+      }[cat] || {bg:'linear-gradient(135deg,#173a63 0%,#0f2744 100%)', accent:'#d9e9ff', chip:'rgba(255,255,255,.18)'};
 
       existing.innerHTML =
-        "<div style='display:flex;justify-content:space-between;gap:12px;align-items:start'>" +
-          "<div><div style='font:900 18px/1.05 Lato,Arial,sans-serif'>" + escapeHtml(labelMap[cat] || 'SPC Day 1 Outlook') + "</div>" +
-          "<div style='font:800 12px/1.2 Arial,sans-serif;opacity:.8;margin-top:4px'>Loading outlook details…</div></div>" +
-          "<button class='spc-panel-close' style='border:1px solid rgba(0,0,0,.25);background:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
+        "<div style='margin:-12px -12px 0 -12px;padding:14px 16px 12px 16px;background:" + riskTheme.bg + ";color:#fff;border-radius:16px 16px 0 0;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)'>" +
+          "<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start'>" +
+            "<div>" +
+              "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.88'>SPC Outlook Details</div>" +
+              "<div style='font:900 22px/1.02 Lato,Arial,sans-serif;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.25)'>" + escapeHtml(labelMap[cat] || 'SPC Day 1 Outlook') + "</div>" +
+              "<div style='display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:" + riskTheme.chip + ";font:900 11px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase'>Loading details…</div>" +
+            "</div>" +
+            "<button class='spc-panel-close' style='border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
+          "</div>" +
         "</div>" +
-        "<div style='margin-top:10px;font:800 13px/1.35 Arial,sans-serif'>Fetching SPC text…</div>";
+        "<div style='margin-top:12px;font:800 13px/1.35 Arial,sans-serif'>Fetching SPC text…</div>";
 
       var closeBtn0 = existing.querySelector('.spc-panel-close');
       if (closeBtn0) closeBtn0.onclick = function(){ existing.style.display = 'none'; };
@@ -3754,33 +3767,44 @@ if (window.createMetarsModule) {
       var issued = payload && payload.issued ? String(payload.issued) : "";
       var category = payload && payload.category ? String(payload.category) : (labelMap[cat] || "");
       var sourceLabel = payload && payload.__url ? payload.__url.split('/').slice(-1)[0] : "";
+      var riskTheme = {
+        TSTM:{bg:'linear-gradient(135deg,#49a85d 0%,#2f7f42 100%)', accent:'#dff5df', chip:'rgba(255,255,255,.16)', body:'#f4fbf4', line:'rgba(33,93,43,.20)'},
+        MRGL:{bg:'linear-gradient(135deg,#2d7a36 0%,#1f5a26 100%)', accent:'#d9f1dc', chip:'rgba(255,255,255,.16)', body:'#f4fbf4', line:'rgba(33,93,43,.20)'},
+        SLGT:{bg:'linear-gradient(135deg,#c79b14 0%,#9d7300 100%)', accent:'#fff3c5', chip:'rgba(255,255,255,.18)', body:'#fffaf0', line:'rgba(157,115,0,.22)'},
+        ENH:{bg:'linear-gradient(135deg,#d66b1f 0%,#a84700 100%)', accent:'#ffe0cb', chip:'rgba(255,255,255,.18)', body:'#fff6f0', line:'rgba(168,71,0,.22)'},
+        MDT:{bg:'linear-gradient(135deg,#a81f24 0%,#6f0f12 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)', body:'#fff4f4', line:'rgba(111,15,18,.22)'},
+        HIGH:{bg:'linear-gradient(135deg,#8e2acb 0%,#5d1493 100%)', accent:'#f0d8ff', chip:'rgba(255,255,255,.20)', body:'#fbf5ff', line:'rgba(93,20,147,.22)'}
+      }[cat] || {bg:'linear-gradient(135deg,#173a63 0%,#0f2744 100%)', accent:'#d9e9ff', chip:'rgba(255,255,255,.18)', body:'#f7fafe', line:'rgba(15,39,68,.18)'};
 
-      var html = "<div style='display:flex;justify-content:space-between;gap:12px;align-items:start'>" +
-          "<div>" +
-            "<div style='font:900 18px/1.05 Lato,Arial,sans-serif'>" + escapeHtml(title) + "</div>" +
-            "<div style='font:800 12px/1.2 Arial,sans-serif;opacity:.82;margin-top:4px'>" + escapeHtml(category || (labelMap[cat] || 'SPC Outlook')) + "</div>" +
+      var html = "<div style='margin:-12px -12px 0 -12px;padding:14px 16px 12px 16px;background:" + riskTheme.bg + ";color:#fff;border-radius:16px 16px 0 0;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)'>" +
+          "<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start'>" +
+            "<div>" +
+              "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.88'>SPC Outlook Details</div>" +
+              "<div style='font:900 22px/1.02 Lato,Arial,sans-serif;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.25)'>" + escapeHtml(title) + "</div>" +
+              "<div style='display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:" + riskTheme.chip + ";font:900 11px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase'>" + escapeHtml(category || (labelMap[cat] || 'SPC Outlook')) + "</div>" +
+            "</div>" +
+            "<button class='spc-panel-close' style='border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
           "</div>" +
-          "<button class='spc-panel-close' style='border:1px solid rgba(0,0,0,.25);background:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
         "</div>";
 
       if (issued){
-        html += "<div style='margin-top:8px;font:700 11px/1.35 Arial,sans-serif;opacity:.72'>Issued: " + escapeHtml(issued) + "</div>";
+        html += "<div style='margin-top:10px;font:800 11px/1.35 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.68'>Issued " + escapeHtml(issued) + "</div>";
       }
 
-      html += "<div style='margin-top:10px;padding:10px 12px;background:rgba(23,58,99,.07);border:1px solid rgba(23,58,99,.12);border-radius:12px;font:800 13px/1.45 Arial,sans-serif'>" + escapeHtml(summary) + "</div>";
+      html += "<div style='margin-top:10px;padding:12px 13px;background:" + riskTheme.body + ";border:1px solid " + riskTheme.line + ";border-radius:14px;font:800 13px/1.48 Arial,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.04)'>" + escapeHtml(summary) + "</div>";
 
       if (hazards.length){
-        html += "<div style='margin-top:10px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;opacity:.72'>Main threats</div>";
-        html += "<ul style='margin:8px 0 0 18px;padding:0;font:800 13px/1.45 Arial,sans-serif'>";
+        html += "<div style='margin-top:12px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;opacity:.72'>Main threats</div>";
+        html += "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:8px'>";
         for (var i = 0; i < hazards.length; i++){
-          html += "<li style='margin:0 0 4px 0'>" + escapeHtml(String(hazards[i])) + "</li>";
+          html += "<div style='padding:6px 10px;border-radius:999px;background:" + riskTheme.body + ";border:1px solid " + riskTheme.line + ";font:800 12px/1.25 Arial,sans-serif'>" + escapeHtml(String(hazards[i])) + "</div>";
         }
-        html += "</ul>";
+        html += "</div>";
       }
 
       if (officialText){
-        html += "<div style='margin-top:12px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;opacity:.72'>Official outlook text</div>";
-        html += "<div class='spc-panel-scroll' style='margin-top:8px;white-space:pre-wrap;font:700 12px/1.45 "Courier New",monospace;background:#faf7f2;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px 12px;cursor:text'>" + escapeHtml(officialText) + "</div>";
+        html += "<div style='margin-top:14px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;opacity:.72'>Official outlook text</div>";
+        html += "<div class='spc-panel-scroll' style='margin-top:8px;white-space:pre-wrap;font:700 12px/1.48 \"Courier New\",monospace;background:#faf7f2;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px 12px;cursor:text;max-height:28vh;overflow:auto'>" + escapeHtml(officialText) + "</div>";
       } else {
         html += "<div style='margin-top:12px;font:800 13px/1.4 Arial,sans-serif'>Official text file not found yet for this step.</div>";
       }
