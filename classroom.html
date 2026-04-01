@@ -471,6 +471,93 @@
         bottom: 100px;
       }
     }
+  
+    .town-label{
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(0,0,0,0.24);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font: 900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 0.2px;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+      white-space: nowrap;
+    }
+
+    .banner-topline {
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      position:relative;
+      padding: 12px 20px 6px 20px;
+      min-height: 86px;
+    }
+
+    .banner-center {
+      text-align:center;
+      max-width: 980px;
+      padding: 0 210px 0 20px;
+    }
+
+    #brandLogo{
+      position:absolute;
+      top:8px;
+      right:18px;
+      height:78px;
+      width:auto;
+      z-index:100001;
+      pointer-events:none;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45)) drop-shadow(0 0 10px rgba(59,130,246,0.35));
+    }
+
+    .sim-toolbar{
+      position:absolute;
+      top:102px;
+      left:18px;
+      z-index:100002;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .sim-icon-btn{
+      width:64px;
+      height:64px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.26);
+      background: rgba(11,28,45,0.92);
+      color:#fff;
+      font:900 28px/1 Arial,sans-serif;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+    .sim-icon-btn.play{
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8 55%, #0b3b91);
+    }
+
+    .sim-clock {
+      min-width: 300px;
+      padding: 12px 18px;
+      border-radius: 16px;
+      background: rgba(11,28,45,0.92);
+      border: 1px solid rgba(255,255,255,0.22);
+      text-align: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .storyPanel {
+      top: 182px;
+      left: 18px;
+    }
+
+    .map-control-row {
+      top: 170px;
+    }
+
+    .zoom-level-debug, .open-lesson-btn, .terms-btn, .banner-bottomline, #storyTab, #zoomBox, .hero-product {
+      display:none !important;
+    }
+
   </style>
 </head>
 <body>
@@ -479,9 +566,6 @@
 
   <div class="tvbanner">
     <div class="banner-topline">
-      <button id="openLessonBtn" class="open-lesson-btn" type="button">Open Lesson</button>
-      <button id="termsBtn" class="terms-btn" type="button">Weather Discovery Terms</button>
-
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
         <div class="case-line">Derecho Case Study — May 12, 2022</div>
@@ -491,29 +575,21 @@
           <span>Why can thunderstorms organize into a long-lasting windstorm (derecho)?</span>
         </div>
       </div>
+      <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
     </div>
 
-    <div class="banner-bottomline">
-      <button id="simPlayBtn" class="sim-btn hero" type="button">Start Simulator</button>
-      <button id="simPauseBtn" class="sim-btn" type="button">Pause</button>
-      <button id="simResetBtn" class="sim-btn" type="button">Reset</button>
-
-      <button id="sceneSetupBtn" class="sim-btn" type="button">Setup</button>
-      <button id="sceneDopplerBtn" class="sim-btn gold" type="button">Live Doppler</button>
-      <button id="sceneWarningsBtn" class="sim-btn" type="button">Warnings</button>
-      <button id="sceneReportsBtn" class="sim-btn" type="button">Reports</button>
-      <button id="sceneRecapBtn" class="sim-btn" type="button">Recap</button>
-      <button id="sceneInvestigateBtn" class="sim-btn" type="button">Investigate</button>
+    <div class="sim-toolbar">
+      <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
+      <button id="simPauseBtn" class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
 
       <div class="sim-clock" id="simClockBox">
         <div class="mode">Simulator Mode</div>
         <div class="time" id="simClockReadout">May 12 2:30 PM</div>
-        <div class="state" id="simClockState">Paused</div>
+        <div class="state" id="simClockState">❚❚</div>
       </div>
     </div>
-  </div>
+  </div></div>
 
-  <div class="hero-product" id="heroProductLabel">Live Doppler</div>
 
   <div class="map-legend" id="mapLegend" title="Radar reflectivity">
     <div class="map-legend-row">
@@ -574,11 +650,6 @@
       <button class="tool-btn" id="toolHome" type="button" title="Reset view">Home</button>
     </div>
 
-    <div class="zoom-level-debug" id="zoomLevelDebug" aria-label="Current zoom level">
-      <span class="zld-label">Zoom Level</span>
-      <div class="zld-value" id="zoomLevelValue">--</div>
-    </div>
-
     <div class="zoom-corner" id="zoomCorner" aria-label="Zoom controls">
       <span class="zoom-corner-label">Zoom</span>
       <button class="zoom-corner-btn" id="zoomCornerMinus" type="button" title="Zoom out">−</button>
@@ -586,7 +657,6 @@
     </div>
   </div>
 
-  <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
 
   <!-- Keep hidden placeholders for compatibility -->
   <div id="radarSweepControls" style="display:none;">
