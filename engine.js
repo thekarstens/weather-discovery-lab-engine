@@ -2338,7 +2338,13 @@ function updateCityLabels(){
     return s.replace(/^\.\//, "");
   }
   var STORYBOARD_CSV = normalizeStoryboardPath(
-    STORYBOARD_OVERRIDE || ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV : (STORY_CFG.type === "csv" ? (STORY_CFG.url || STORY_CFG.csv || "") : ""))
+    STORYBOARD_OVERRIDE ||
+    ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV :
+      (STORY_CFG.type === "csv"
+        ? (STORY_CFG.url || STORY_CFG.csv || STORY_CFG.file || "storyboard/storyboard.csv")
+        : ((lessonId && STORY_CFG.type !== "google") ? "storyboard/storyboard.csv" : "")
+      )
+    )
   );
   var SHEET_ID = STORY_CFG.sheetId || STORY_CFG.googleSheetId || "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
   var SHEET_TAB = STORY_CFG.sheetTab || STORY_CFG.tab || "April Blizzard Story";
@@ -3461,14 +3467,19 @@ if (window.createMetarsModule) {
         for (var i=0;i<CFG.overlays.length;i++){
           var o = CFG.overlays[i] || {};
           var nm = String(o.name || '').toLowerCase();
-          if (nm.indexOf('day 1') !== -1 || nm.indexOf('spc') !== -1){
+          if (nm.indexOf('day 1') !== -1 || nm.indexOf('spc') !== -1 || nm.indexOf('outlook') !== -1){
             var u = o.url || o.file;
             if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
           }
         }
       }
+      if (CFG && CFG.layers && CFG.layers.spcDay1){
+        var s = CFG.layers.spcDay1;
+        var su = s.url || s.file || s.geojson || s.path;
+        if (su) return _isAbsUrl(su) ? su : _joinUrl(DATA_BASE, su);
+      }
     } catch(e){}
-    return _joinUrl(DATA_BASE, 'overlays/Day1.json');
+    return _joinUrl(DATA_BASE, 'spc/Day1.json');
   }
 
   function normalizeSpcCategory(props){
@@ -3493,14 +3504,89 @@ if (window.createMetarsModule) {
 
   function spcStyle(feature){
     var c = {
-      TSTM:{fill:'#C1E9C1',stroke:'#55AA55'},
-      MRGL:{fill:'#55BB55',stroke:'#005500'},
-      SLGT:{fill:'#FFF566',stroke:'#DDAA00'},
-      ENH:{fill:'#FFA366',stroke:'#CC6600'},
-      MDT:{fill:'#FF6666',stroke:'#CC0000'},
-      HIGH:{fill:'#FF66FF',stroke:'#CC00CC'}
-    }[normalizeSpcCategory(feature && feature.properties)] || {fill:'#C1E9C1',stroke:'#55AA55'};
-    return { color:c.stroke, weight:2, opacity:0.95, fillColor:c.fill, fillOpacity:0.28 };
+      TSTM:{fill:'#C1E9C1',stroke:'#55BB55'},
+      MRGL:{fill:'#66A366',stroke:'#005500'},
+      SLGT:{fill:'#FFE066',stroke:'#DDAA00'},
+      ENH:{fill:'#FFA366',stroke:'#FF6600'},
+      MDT:{fill:'#E06666',stroke:'#CC0000'},
+      HIGH:{fill:'#E066FF',stroke:'#CC00CC'}
+    }[normalizeSpcCategory(feature && feature.properties)] || {fill:'#C1E9C1',stroke:'#55BB55'};
+    return { color:c.stroke, weight:2, opacity:0.98, fillColor:c.fill, fillOpacity:0.42 };
+  }
+
+  function buildSpcPopupHtml(props){
+    props = props || {};
+    var cat = normalizeSpcCategory(props);
+    var labelMap = {
+      TSTM:'General Thunderstorms',
+      MRGL:'Marginal Risk',
+      SLGT:'Slight Risk',
+      ENH:'Enhanced Risk',
+      MDT:'Moderate Risk',
+      HIGH:'High Risk'
+    };
+    return "<div class='spc-mini-popup'>" +
+      "<div class='spc-mini-title'>" + (labelMap[cat] || (props.LABEL2 || props.LABEL || 'SPC Outlook')) + "</div>" +
+      "<div class='spc-mini-sub'>Click for details</div>" +
+    "</div>";
+  }
+
+  function openSpcInfoPanel(props){
+    try{
+      var existing = document.getElementById('spcInfoPanel');
+      if (!existing){
+        existing = document.createElement('div');
+        existing.id = 'spcInfoPanel';
+        existing.style.position = 'absolute';
+        existing.style.left = '18px';
+        existing.style.top = '132px';
+        existing.style.zIndex = '100004';
+        existing.style.maxWidth = '360px';
+        existing.style.maxHeight = '50vh';
+        existing.style.overflow = 'auto';
+        existing.style.background = 'rgba(255,255,255,0.97)';
+        existing.style.border = '1px solid rgba(0,0,0,0.18)';
+        existing.style.borderRadius = '16px';
+        existing.style.boxShadow = '0 10px 28px rgba(0,0,0,.18)';
+        existing.style.padding = '12px';
+        existing.style.cursor = 'move';
+        document.body.appendChild(existing);
+
+        var drag = { on:false, x:0, y:0, l:18, t:132 };
+        existing.addEventListener('mousedown', function(ev){
+          if (ev.target && ev.target.closest && ev.target.closest('.spc-panel-close')) return;
+          drag.on = true; drag.x = ev.clientX; drag.y = ev.clientY;
+          drag.l = parseInt(existing.style.left || '18', 10);
+          drag.t = parseInt(existing.style.top || '132', 10);
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function(ev){
+          if (!drag.on) return;
+          existing.style.left = (drag.l + ev.clientX - drag.x) + 'px';
+          existing.style.top = (drag.t + ev.clientY - drag.y) + 'px';
+        });
+        window.addEventListener('mouseup', function(){ drag.on = false; });
+      }
+
+      var cat = normalizeSpcCategory(props);
+      var labelMap = {
+        TSTM:'General Thunderstorms',
+        MRGL:'Marginal Risk',
+        SLGT:'Slight Risk',
+        ENH:'Enhanced Risk',
+        MDT:'Moderate Risk',
+        HIGH:'High Risk'
+      };
+      var html = "<div style='display:flex;justify-content:space-between;gap:12px;align-items:start'>" +
+          "<div><div style='font:900 18px/1.05 Lato,Arial,sans-serif'>" + (labelMap[cat] || 'SPC Day 1 Outlook') + "</div>" +
+          "<div style='font:800 12px/1.2 Arial,sans-serif;opacity:.8;margin-top:4px'>SPC Day 1 Outlook</div></div>" +
+          "<button class='spc-panel-close' style='border:1px solid rgba(0,0,0,.25);background:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button></div>" +
+          "<div style='margin-top:10px;font:800 13px/1.35 Arial,sans-serif'><b>Click for details.</b> This area highlights where severe weather is expected to be most concerning during the day.</div>";
+      existing.innerHTML = html;
+      var closeBtn = existing.querySelector('.spc-panel-close');
+      if (closeBtn) closeBtn.onclick = function(){ existing.style.display = 'none'; };
+      existing.style.display = 'block';
+    }catch(e){}
   }
 
   async function ensureSpcDay1Layer(){
@@ -3509,7 +3595,25 @@ if (window.createMetarsModule) {
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
     var gj = await res.json();
-    spcDay1Layer = L.geoJSON(gj, { style:spcStyle });
+    spcDay1Layer = L.geoJSON(gj, {
+      style:spcStyle,
+      onEachFeature:function(feature, layer){
+        layer.on('click', function(ev){
+          try{
+            var ll = ev && ev.latlng ? ev.latlng : layer.getBounds().getCenter();
+            var popup = L.popup({ closeButton:true, className:'hrrr-popup' })
+              .setLatLng(ll)
+              .setContent(buildSpcPopupHtml(feature && feature.properties))
+              .openOn(map);
+            setTimeout(function(){
+              var node = document.querySelector('.spc-mini-popup');
+              if (node) node.style.cursor = 'pointer';
+            }, 0);
+            openSpcInfoPanel(feature && feature.properties);
+          }catch(e){}
+        });
+      }
+    });
     return spcDay1Layer;
   }
 
