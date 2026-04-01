@@ -2414,6 +2414,8 @@ function safeLink(url){
     }
 
     try {
+      var interactionCfg = (item && item.interaction && typeof item.interaction === 'object') ? item.interaction : {};
+      var uiCfg = (item && item.ui && typeof item.ui === 'object') ? item.ui : {};
       window.dispatchEvent(new CustomEvent('wdl:storychange', {
         detail: {
           index: storyIndex,
@@ -2423,7 +2425,10 @@ function safeLink(url){
           allowPlay: item.allowPlay,
           pause: !!item.pause,
           highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
-          showLegend: !!(item.ui && item.ui.showLegend)
+          showLegend: !!(item.ui && item.ui.showLegend),
+          showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : null),
+          showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
+          startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null)
         }
       }));
     } catch(e) {}
@@ -2770,7 +2775,7 @@ if (exploreBtn) exploreBtn.onclick = function(){
 };
 
 // Default: guided mode
-document.body.classList.add("explore-mode");
+document.body.classList.remove("explore-mode");
 document.body.classList.remove("guide-collapsed");
 // Opacity slider (applies to the currently visible product)
 var radarOpacity = document.getElementById("radarOpacity");
