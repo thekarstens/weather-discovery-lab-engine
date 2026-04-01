@@ -12,6 +12,9 @@
 
   var simClockReadout = document.getElementById("simClockReadout");
   var simClockState = document.getElementById("simClockState");
+  var scrubWrap = document.getElementById("scrubWrap");
+  var scrubber = document.getElementById("cbScrubber");
+  var sweepToggleBtn = document.getElementById("sweepToggleBtn");
 
   var simTimer = null;
   var simState = "paused";
@@ -95,6 +98,27 @@
     }
   }
 
+  function setScrubberVisibility(visible) {
+    if (!simClockBox) return;
+    simClockBox.classList.toggle("show-scrubber", !!visible);
+    if (scrubWrap) scrubWrap.style.display = visible ? "flex" : "none";
+    try {
+      if (visible && typeof window.syncScrubberToActiveProduct === "function") {
+        window.syncScrubberToActiveProduct();
+      }
+    } catch (e) {}
+  }
+
+  function setDopplerVisibility(visible) {
+    if (!simClockBox) return;
+    simClockBox.classList.toggle("show-doppler", !!visible);
+    if (sweepToggleBtn) {
+      sweepToggleBtn.style.display = visible ? "block" : "none";
+      sweepToggleBtn.classList.toggle("pulsing", !!visible && !(window.radarSweepEnabled));
+    }
+  }
+
+
   function findToolDock() {
     var ids = ["toolMeasure", "toolProbe", "toolTrack", "toolHome"];
     var seed = document.getElementById("toolHome") || document.getElementById("toolProbe") || document.getElementById("toolMeasure");
@@ -150,10 +174,19 @@
     updateClock();
 
     simTimer = setInterval(function () {
+      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      if (mode === "radar" && typeof window.stepRadarFrame === "function") {
+        window.stepRadarFrame(1);
+        syncFromEngineClock();
+        try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
+        updateClock();
+        return;
+      }
       simUtc += simSpeedMinutes * 60 * 1000;
       pushTimeToEngine(simUtc);
+      try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
       updateClock();
-    }, 1000);
+    }, 900);
   }
 
   function pauseSimulator() {
@@ -183,6 +216,31 @@
   if (playBtn) playBtn.addEventListener("click", startSimulator);
   if (pauseBtn) pauseBtn.addEventListener("click", pauseSimulator);
 
+  if (scrubber) {
+    scrubber.addEventListener("input", function () {
+      try {
+        var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+        var v = parseInt(scrubber.value, 10);
+        if (!isFinite(v)) return;
+        if (mode === "radar" && typeof window.setCurrentRadarFrameIndex === "function") {
+          window.setCurrentRadarFrameIndex(v);
+          if (typeof window.updateAll === "function") window.updateAll();
+          syncFromEngineClock();
+          updateClock();
+          return;
+        }
+      } catch (e) {}
+    });
+  }
+
+  if (sweepToggleBtn) {
+    sweepToggleBtn.addEventListener("click", function () {
+      setTimeout(function () {
+        if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", !window.radarSweepEnabled);
+      }, 20);
+    });
+  }
+
   window.addEventListener("wdl:storychange", function (ev) {
     var detail = (ev && ev.detail) || {};
     if (detail.utc) {
@@ -195,10 +253,16 @@
     var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : true;
     var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
     var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
+    var showScrubber = !!detail.showScrubber;
+    var showDoppler = !!detail.showDoppler;
 
     setPlayVisibility(showPlay);
     setClockVisibility(showClock);
+    setScrubberVisibility(showScrubber);
+    setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
+    if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
+    try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
     updateClock();
     updateLessonButton();
   });
@@ -206,6 +270,8 @@
   applyMode(false);
   setPlayVisibility(false);
   setClockVisibility(true);
+  setScrubberVisibility(false);
+  setDopplerVisibility(false);
   updateClock();
   updateLessonButton();
 })();
