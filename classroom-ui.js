@@ -58,12 +58,6 @@
     }
   }
 
-  function refreshSweepButtonUi() {
-    if (!sweepToggleBtn) return;
-    sweepToggleBtn.classList.toggle("active", !!window.radarSweepEnabled);
-    sweepToggleBtn.classList.toggle("pulsing", sweepToggleBtn.style.display !== "none" && !window.radarSweepEnabled);
-  }
-
   function updateLessonButton() {
     if (!openLessonBtn || !storyPanel) return;
     var isOpen = storyPanel.classList.contains("story-open");
@@ -120,7 +114,7 @@
     simClockBox.classList.toggle("show-doppler", !!visible);
     if (sweepToggleBtn) {
       sweepToggleBtn.style.display = visible ? "block" : "none";
-      refreshSweepButtonUi();
+      sweepToggleBtn.classList.toggle("pulsing", !!visible && !(window.radarSweepEnabled));
     }
   }
 
@@ -153,7 +147,7 @@
   function applyMode(isExplore, opts) {
     currentExploreMode = !!isExplore;
     document.body.classList.toggle("explore-mode", currentExploreMode);
-    if (exploreBtn) exploreBtn.textContent = currentExploreMode ? "Guided" : "Explore";
+    if (exploreBtn) { exploreBtn.textContent = currentExploreMode ? "Guided" : "Explore"; exploreBtn.classList.toggle("active", currentExploreMode); }
 
     var showTools = currentExploreMode;
     if (opts && typeof opts.showTools === "boolean") showTools = opts.showTools;
@@ -241,7 +235,9 @@
 
   if (sweepToggleBtn) {
     sweepToggleBtn.addEventListener("click", function () {
-      setTimeout(refreshSweepButtonUi, 20);
+      setTimeout(function () {
+        if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", !window.radarSweepEnabled);
+      }, 20);
     });
   }
 
@@ -265,7 +261,7 @@
     setScrubberVisibility(showScrubber);
     setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
-    refreshSweepButtonUi();
+    if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
     try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
     updateClock();
     updateLessonButton();
