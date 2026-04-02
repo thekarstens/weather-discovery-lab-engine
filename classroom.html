@@ -97,17 +97,17 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-top: 6px;
-      padding: 7px 18px;
-      min-height: 30px;
+      margin-top: 5px;
+      padding: 4px 12px;
+      min-height: 22px;
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(6, 25, 49, 0.92), rgba(3, 16, 34, 0.88));
-      border: 1px solid rgba(123,185,255,0.22);
+      background: rgba(3, 16, 34, 0.78);
+      border: 1px solid rgba(255,255,255,0.12);
       color: #f6fbff;
-      font: 900 14px/1 Arial, sans-serif;
-      letter-spacing: 0.95px;
+      font: 900 11px/1 Arial, sans-serif;
+      letter-spacing: 0.7px;
       text-transform: uppercase;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
       white-space: nowrap;
     }
 
@@ -175,9 +175,9 @@
     }
 
     .sim-clock {
-      min-width: 292px;
-      max-width: 320px;
-      padding: 10px 14px;
+      min-width: 246px;
+      max-width: 270px;
+      padding: 9px 14px;
       border-radius: 16px;
       background: rgba(11,28,45,0.88);
       border: 1px solid rgba(255,255,255,0.18);
@@ -233,19 +233,15 @@
       display: none;
       margin-top: 8px;
       width: 100%;
-      border: 1px solid rgba(92, 201, 255, 0.88);
+      border: 1px solid rgba(90,160,255,0.55);
       border-radius: 999px;
-      padding: 10px 14px;
-      background: linear-gradient(180deg, rgba(33,132,255,0.98), rgba(0,76,199,0.98) 58%, rgba(2,44,120,0.98));
-      color: #f5fcff;
-      font: 900 14px/1 Arial, sans-serif;
-      letter-spacing: 0.85px;
-      text-transform: none;
-      text-shadow: 0 0 10px rgba(255,255,255,0.28);
-      box-shadow:
-        inset 0 0 10px rgba(255,255,255,0.18),
-        0 0 12px rgba(0, 194, 255, 0.55),
-        0 8px 18px rgba(0,0,0,0.20);
+      padding: 8px 12px;
+      background: linear-gradient(180deg, rgba(31,91,255,0.95), rgba(12,48,145,0.95));
+      color: #fff;
+      font: 900 12px/1 Arial, sans-serif;
+      letter-spacing: 0.75px;
+      text-transform: uppercase;
+      box-shadow: 0 0 0 rgba(68,150,255,0.0), 0 8px 18px rgba(0,0,0,0.20);
       cursor: pointer;
     }
 
@@ -253,40 +249,14 @@
       display: block;
     }
 
-    .doppler-btn.active {
-      box-shadow:
-        inset 0 0 10px rgba(255,255,255,0.22),
-        0 0 16px rgba(0, 210, 255, 0.88),
-        0 0 30px rgba(0, 170, 255, 0.55),
-        0 8px 18px rgba(0,0,0,0.20);
-    }
-
     .doppler-btn.pulsing {
-      animation: dopplerPulse 1.45s ease-in-out infinite;
+      animation: dopplerPulse 1.6s ease-in-out infinite;
     }
 
     @keyframes dopplerPulse {
-      0% {
-        box-shadow:
-          inset 0 0 10px rgba(255,255,255,0.18),
-          0 0 10px rgba(0, 194, 255, 0.50),
-          0 0 0 0 rgba(34, 198, 255, 0.52),
-          0 8px 18px rgba(0,0,0,0.20);
-      }
-      55% {
-        box-shadow:
-          inset 0 0 10px rgba(255,255,255,0.18),
-          0 0 18px rgba(0, 206, 255, 0.85),
-          0 0 0 12px rgba(34, 198, 255, 0.0),
-          0 8px 18px rgba(0,0,0,0.20);
-      }
-      100% {
-        box-shadow:
-          inset 0 0 10px rgba(255,255,255,0.18),
-          0 0 10px rgba(0, 194, 255, 0.50),
-          0 0 0 0 rgba(34, 198, 255, 0.0),
-          0 8px 18px rgba(0,0,0,0.20);
-      }
+      0% { box-shadow: 0 0 0 0 rgba(79,163,255,0.55), 0 8px 18px rgba(0,0,0,0.20); }
+      70% { box-shadow: 0 0 0 12px rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
+      100% { box-shadow: 0 0 0 0 rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
     }
 
 
@@ -313,34 +283,78 @@
     .hero-product { display: none; }
 
     .storyPanel {
+      --story-accent: #2f67e9;
+      --story-accent-2: #123d9d;
+      --story-shell-bg: rgba(255,255,255,0.98);
       position: absolute;
       top: 118px;
       left: 12px;
-      width: 380px;
+      width: 392px;
       max-width: 84vw;
       max-height: calc(100vh - 148px);
       overflow: auto;
       z-index: 100001;
-      background: rgba(255,255,255,0.97);
+      background: var(--story-shell-bg);
       border: 1px solid rgba(0,0,0,0.18);
-      border-radius: 16px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
-      padding: 12px;
+      border-radius: 18px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.20);
+      padding: 0;
       transform: translateX(-110%);
       transition: transform 180ms ease;
     }
+    .storyPanel.story-theme-blue { --story-accent:#2f67e9; --story-accent-2:#123d9d; }
+    .storyPanel.story-theme-cyan { --story-accent:#12c9ff; --story-accent-2:#0562b8; }
+    .storyPanel.story-theme-orange { --story-accent:#ff9f1c; --story-accent-2:#cc5a00; }
+    .storyPanel.story-theme-red { --story-accent:#ff5c77; --story-accent-2:#9b1732; }
+    .storyPanel.story-theme-purple { --story-accent:#b781ff; --story-accent-2:#5a2aa8; }
 
     .storyPanel.story-open { transform: translateX(0); }
 
-    .story-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .story-shell-header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       gap: 10px;
+      align-items: center;
+      padding: 12px 12px 10px 12px;
+      background: linear-gradient(135deg, var(--story-accent), var(--story-accent-2));
+      color: #fff;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .story-station-chip {
+      min-width: 78px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      text-align: center;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.26);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+      font: 900 12px/1 Arial, sans-serif;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .story-shell-banner {
+      min-width: 0;
+    }
+
+    .story-shell-kicker {
+      font: 900 10px/1 Arial, sans-serif;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      opacity: 0.88;
     }
 
     .story-title {
-      font: 900 16px/1.15 Arial, sans-serif;
+      margin-top: 3px;
+      font: 900 20px/1.02 Arial, sans-serif;
+      letter-spacing: 0.2px;
+      color: #fff;
+      text-wrap: balance;
     }
 
     .story-actions {
@@ -349,27 +363,33 @@
       gap: 8px;
     }
 
+    .story-shell-btn,
     .story-action,
     .btn {
       border: 1px solid rgba(0,0,0,0.22);
       background: linear-gradient(180deg, #ffffff, #f1f4f8);
       border-radius: 12px;
-      padding: 7px 12px;
+      padding: 8px 12px;
       font: 900 12px/1 Arial, sans-serif;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
 
-    .story-action.active {
+    .story-action.active,
+    .story-shell-btn.active {
       background: linear-gradient(180deg, #0f2b48, #0b1c2d);
       color: #fff;
       border-color: rgba(255,255,255,0.12);
       box-shadow: 0 3px 10px rgba(0,0,0,0.18);
     }
 
+    .story-content {
+      padding: 12px;
+    }
+
     .story-body {
-      margin-top: 10px;
-      font: 700 13px/1.45 Arial, sans-serif;
+      margin-top: 0;
+      font: 700 13px/1.5 Arial, sans-serif;
       color: #111;
     }
 
@@ -397,19 +417,51 @@
       text-align: right;
     }
 
-    .story-nav {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 10px;
+    .story-shell-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 10px 12px 12px 12px;
+      background: linear-gradient(180deg, rgba(244,247,251,0.96), rgba(238,242,247,0.99));
+      border-top: 1px solid rgba(0,0,0,0.08);
+      border-radius: 0 0 18px 18px;
     }
 
-    .story-nav .btn { flex: 1; }
+    .story-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 0;
+    }
+
+    .story-nav .btn {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    .story-footer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .story-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
     #storyStep {
-      margin-top: 8px;
-      font: 700 11px/1.2 Arial, sans-serif;
-      opacity: 0.78;
+      font: 900 12px/1.2 Arial, sans-serif;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      opacity: 0.88;
+      color: #16345c;
     }
 
     .map-control-row {
@@ -487,6 +539,8 @@
     #zoomBox,
     #radarSweepControls,
     .leaflet-control-zoom,
+    .storm-track-speed,
+    .storm-track-arrivals,
     .dock-shell,
     .investigation-shell {
       display: none !important;
@@ -554,131 +608,6 @@
       cursor: crosshair;
     }
 
-
-    .storm-track-city-label {
-      background: rgba(7, 20, 38, 0.88);
-      border: 1px solid rgba(255,255,255,0.22);
-      color: #fff;
-      border-radius: 12px;
-      padding: 2px 8px;
-      font: 900 11px/1 "Lato", Arial, sans-serif;
-      letter-spacing: 0.25px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.28);
-      white-space: nowrap;
-      transform: translateY(-2px);
-    }
-
-    .storm-track-speed,
-    .storm-track-arrivals {
-      position: absolute;
-      z-index: 100002;
-      background: rgba(8, 20, 38, 0.94);
-      border: 1px solid rgba(255,255,255,0.16);
-      color: #fff;
-      border-radius: 16px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
-      backdrop-filter: blur(3px);
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(8px);
-      transition: opacity 160ms ease, transform 160ms ease;
-    }
-
-    .storm-track-speed.open,
-    .storm-track-arrivals.open {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0);
-    }
-
-    .storm-track-speed {
-      left: 418px;
-      bottom: 26px;
-      min-width: 120px;
-      padding: 10px 14px;
-      text-align: center;
-    }
-
-    .storm-track-speed-label {
-      font: 900 10px/1 Arial, sans-serif;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      opacity: 0.82;
-    }
-
-    .storm-track-speed-value {
-      margin-top: 4px;
-      font: 900 22px/1 Arial, sans-serif;
-      letter-spacing: 0.3px;
-      color: #9de8ff;
-      text-shadow: 0 0 10px rgba(0, 206, 255, 0.25);
-    }
-
-    .storm-track-arrivals {
-      left: 418px;
-      bottom: 92px;
-      width: 270px;
-      max-height: 230px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sta-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px 8px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.10);
-    }
-
-    .sta-title {
-      font: 900 11px/1 Arial, sans-serif;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      opacity: 0.92;
-    }
-
-    .sta-close {
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      border-radius: 10px;
-      padding: 4px 8px;
-      font: 900 11px/1 Arial, sans-serif;
-      cursor: pointer;
-    }
-
-    .sta-body {
-      padding: 8px 10px 10px 10px;
-      overflow: auto;
-    }
-
-    .sta-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-      padding: 6px 4px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      font: 800 12px/1.2 Arial, sans-serif;
-    }
-
-    .sta-row:last-child {
-      border-bottom: 0;
-    }
-
-    .sta-city {
-      color: #fff;
-    }
-
-    .sta-time {
-      color: #9de8ff;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-
     @media (max-width: 1200px) {
       .banner-center { padding: 0 300px 0 178px; }
       .banner-bottomline { right: 12px; }
@@ -710,8 +639,6 @@
       .map-control-row {
         top: 160px;
       }
-      .storm-track-speed { left: 16px; bottom: 16px; }
-      .storm-track-arrivals { left: 16px; bottom: 84px; width: 260px; }
     }
 
     @media (max-width: 700px) {
@@ -728,8 +655,6 @@
       .sim-clock .state { font-size: 13px; }
       .sim-icon-btn { width: 44px; height: 44px; font-size: 24px; }
       #brandLogo { width: 180px; }
-      .storm-track-speed { left: 12px; bottom: 12px; min-width: 108px; }
-      .storm-track-arrivals { left: 12px; right: 12px; width: auto; bottom: 78px; }
     }
   </style>
 </head>
@@ -799,23 +724,35 @@
     </div>
   </div>
 
-  <div id="storyPanel" class="storyPanel" aria-label="Story panel">
-    <div class="story-head">
-      <div class="story-title" id="storyTitle">Storm Story</div>
+  <div id="storyPanel" class="storyPanel story-theme-blue" aria-label="Story panel">
+    <div class="story-shell-header" id="storyShellHeader">
+      <div class="story-station-chip" id="storyStationChip">Station 1</div>
+      <div class="story-shell-banner">
+        <div class="story-shell-kicker" id="storyShellKicker">Forecast Setup</div>
+        <div class="story-title" id="storyTitle">Storm Story</div>
+      </div>
       <div class="story-actions">
-        <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
         <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
       </div>
     </div>
-    <div class="story-body" id="storyBody">
-      <p><b>2:30 PM setup.</b> The SPC Day 1 outlook has already highlighted our area for dangerous severe weather later today.</p>
-      <p>Begin by asking what in the outlook suggests increasing concern before storms reach our area.</p>
+    <div class="story-content">
+      <div class="story-body" id="storyBody">
+        <p><b>2:30 PM setup.</b> The SPC Day 1 outlook has already highlighted our area for dangerous severe weather later today.</p>
+        <p>Begin by asking what in the outlook suggests increasing concern before storms reach our area.</p>
+      </div>
     </div>
-    <div class="story-nav">
-      <button class="btn" id="storyPrevBtn" type="button">Back</button>
-      <button class="btn" id="storyNextBtn" type="button">Next</button>
+    <div class="story-shell-footer">
+      <div class="story-footer-top">
+        <div id="storyStep">Station 1 of 3</div>
+        <div class="story-footer-actions">
+          <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
+        </div>
+      </div>
+      <div class="story-nav">
+        <button class="btn" id="storyPrevBtn" type="button">◀ Back</button>
+        <button class="btn" id="storyNextBtn" type="button">Next ▶</button>
+      </div>
     </div>
-    <div id="storyStep">Step 1 of 6</div>
   </div>
 
   <div id="storyTab" aria-label="Open lesson">OPEN LESSON</div>
@@ -850,18 +787,8 @@
     <label>Beam thickness <input id="sweepBeamSlider" type="range" min="1" max="8" step="1" value="2" /></label>
   </div>
 
-  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed">
-    <div class="storm-track-speed-label">Storm Speed</div>
-    <div class="storm-track-speed-value" id="stormTrackSpeedValue">—</div>
-  </div>
-
-  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times">
-    <div class="sta-head">
-      <div class="sta-title">Arrival Times</div>
-      <button class="sta-close" id="stormTrackCloseBtn" type="button">Close</button>
-    </div>
-    <div class="sta-body" id="stormTrackArrivalBody"></div>
-  </div>
+  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"></div>
+  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"></div>
 
   <script>
     var storyStarted = false;
