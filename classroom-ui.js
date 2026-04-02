@@ -58,6 +58,12 @@
     }
   }
 
+  function refreshSweepButtonUi() {
+    if (!sweepToggleBtn) return;
+    sweepToggleBtn.classList.toggle("active", !!window.radarSweepEnabled);
+    sweepToggleBtn.classList.toggle("pulsing", sweepToggleBtn.style.display !== "none" && !window.radarSweepEnabled);
+  }
+
   function updateLessonButton() {
     if (!openLessonBtn || !storyPanel) return;
     var isOpen = storyPanel.classList.contains("story-open");
@@ -114,7 +120,7 @@
     simClockBox.classList.toggle("show-doppler", !!visible);
     if (sweepToggleBtn) {
       sweepToggleBtn.style.display = visible ? "block" : "none";
-      sweepToggleBtn.classList.toggle("pulsing", !!visible && !(window.radarSweepEnabled));
+      refreshSweepButtonUi();
     }
   }
 
@@ -235,9 +241,7 @@
 
   if (sweepToggleBtn) {
     sweepToggleBtn.addEventListener("click", function () {
-      setTimeout(function () {
-        if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", !window.radarSweepEnabled);
-      }, 20);
+      setTimeout(refreshSweepButtonUi, 20);
     });
   }
 
@@ -261,7 +265,7 @@
     setScrubberVisibility(showScrubber);
     setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
-    if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
+    refreshSweepButtonUi();
     try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
     updateClock();
     updateLessonButton();
