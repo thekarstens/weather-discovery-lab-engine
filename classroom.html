@@ -65,7 +65,7 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 360px 0 265px;
+      padding: 0 360px 0 300px;
     }
 
     .brand-line {
@@ -98,7 +98,7 @@
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:-28px; z-index:100002;
+      bottom:-34px; z-index:100002;
       padding:5px 18px 8px;
       border-radius:0 0 18px 18px;
       background:linear-gradient(180deg, rgba(220,228,240,0.28), rgba(80,90,105,0.18));
@@ -201,7 +201,7 @@
     .sim-clock {
       min-width: 230px;
       max-width: 260px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 16px;
       background: linear-gradient(180deg, rgba(124,12,18,0.95), rgba(76,7,11,0.95));
       border: 1px solid rgba(255,255,255,0.20);
@@ -389,7 +389,7 @@
       background: linear-gradient(180deg, #ffffff, #f1f4f8);
       border-radius: 12px;
       padding: 8px 12px;
-      font: 900 12px/1 Arial, sans-serif;
+      font: 800 11px/1 "Lato", Arial, sans-serif;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
@@ -417,7 +417,7 @@
       border: 1px solid rgba(0,0,0,0.10);
       background: #eef2f7;
       border-radius: 14px;
-      padding: 10px;
+      padding: 8px;
     }
 
     .story-media-wrap img {
@@ -505,11 +505,11 @@
     }
 
     .tool-box {
-      padding: 10px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 146px;
+      min-width: 116px;
     }
 
     .tool-label,
@@ -527,9 +527,9 @@
       border: 1px solid rgba(255,255,255,0.35);
       background: rgba(0,0,0,0.25);
       color: #fff;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 12px;
-      font: 900 12px/1 Arial, sans-serif;
+      font: 800 11px/1 "Lato", Arial, sans-serif;
       cursor: pointer;
       letter-spacing: 0.4px;
     }
@@ -548,7 +548,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      padding: 10px;
+      padding: 8px;
       align-items: center;
     }
 
@@ -586,7 +586,7 @@
     }
 
     .leg-mini-label {
-      font: 900 12px/1 Arial, sans-serif;
+      font: 800 11px/1 "Lato", Arial, sans-serif;
       letter-spacing: 0.7px;
       text-transform: uppercase;
       opacity: 0.95;
@@ -641,6 +641,9 @@
     .story-collapse-btn { background:#ffffff; color:#0e2d5b; min-width:84px; }
     .story-doppler-inline { display:none; }
     .story-doppler-inline.visible { display:inline-flex; }
+.story-doppler-dock{display:none; margin:10px 0 2px 0; justify-content:flex-start;}
+.storyPanel.story-open .story-doppler-dock.visible{display:flex;}
+.storyPanel.story-collapsed .story-doppler-dock{display:none !important;}
     .story-doppler-inline.active, .explore-doppler-float.active {
       box-shadow: 0 0 20px rgba(0,200,255,1), 0 0 40px rgba(0,150,255,0.8);
     }
@@ -777,12 +780,12 @@
         <div class="story-title" id="storyTitle">Storm Story</div>
       </div>
       <div class="story-actions">
-        <button class="story-action story-doppler-inline doppler-btn" id="storyDopplerBtn" title="Toggle Live Doppler">LIVE Doppler OFF</button>
         <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Hide</button>
       </div>
     </div>
     <div class="story-content">
-      <div class="story-body" id="storyBody">
+      <div class="story-doppler-dock" id="storyDopplerDock"><button class="story-action story-doppler-inline doppler-btn" id="storyDopplerBtn" title="Toggle Live Doppler">LIVE Doppler OFF</button></div>
+    <div class="story-body" id="storyBody">
         <p><b>2:30 PM setup.</b> The SPC Day 1 outlook has already highlighted our area for dangerous severe weather later today.</p>
         <p>Begin by asking what in the outlook suggests increasing concern before storms reach our area.</p>
       </div>
@@ -833,8 +836,8 @@
     <label>Beam thickness <input id="sweepBeamSlider" type="range" min="1" max="8" step="1" value="2" /></label>
   </div>
 
-  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"></div>
-  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"></div>
+  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"><div class="storm-track-speed-label">Speed</div><div class="storm-track-speed-value" id="stormTrackSpeedValue">—</div></div>
+  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"><div class="storm-track-arrivals-head"><span>Arrival Times</span><button type="button" id="stormTrackCloseBtn">×</button></div><div class="storm-track-arrivals-body" id="stormTrackArrivalBody"></div></div>
   <button id="exploreDopplerBtn" class="doppler-btn explore-doppler-float" type="button">LIVE Doppler OFF</button>
 
   <script>
