@@ -17,6 +17,8 @@
   var scrubWrap = document.getElementById("scrubWrap");
   var scrubber = document.getElementById("cbScrubber");
   var sweepToggleBtn = document.getElementById("sweepToggleBtn");
+  var floatingSweepBtn = document.getElementById("floatingSweepToggle");
+  var storyResumeBtn = document.getElementById("storyResumeBtn");
 
   var simTimer = null;
   var simState = "paused";
@@ -57,6 +59,23 @@
     if (loopBtn) loopBtn.classList.toggle("active", !!loopEnabled);
   }
 
+  function syncDopplerButtons(visible) {
+    var on = !!window.radarSweepEnabled;
+    [sweepToggleBtn, floatingSweepBtn].forEach(function(btn){
+      if (!btn) return;
+      btn.textContent = on ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+      btn.classList.toggle("active", on);
+      btn.classList.toggle("pulsing", !!visible && !on);
+      if (btn === floatingSweepBtn) btn.classList.toggle("visible", !!visible);
+      else btn.style.display = visible ? "inline-flex" : "none";
+    });
+  }
+
+  function updateCollapsedState(){
+    var collapsed = document.body.classList.contains("guide-collapsed");
+    if (storyResumeBtn) storyResumeBtn.style.display = collapsed ? "inline-flex" : "none";
+  }
+
   function updateLessonButton() {
     if (!openLessonBtn || !storyPanel) return;
     var isOpen = storyPanel.classList.contains("story-open");
@@ -73,13 +92,17 @@
 
   function openGuide() {
     if (storyPanel) storyPanel.classList.add("story-open");
+    document.body.classList.remove("guide-collapsed");
     lessonEverOpened = true;
     updateLessonButton();
+    updateCollapsedState();
   }
 
   function closeGuide() {
     if (storyPanel) storyPanel.classList.remove("story-open");
+    document.body.classList.add("guide-collapsed");
     updateLessonButton();
+    updateCollapsedState();
   }
 
   function setPlayVisibility(visible) {
@@ -111,10 +134,7 @@
   function setDopplerVisibility(visible) {
     if (!simClockBox) return;
     simClockBox.classList.toggle("show-doppler", !!visible);
-    if (sweepToggleBtn) {
-      sweepToggleBtn.style.display = visible ? "block" : "none";
-      sweepToggleBtn.classList.toggle("pulsing", !!visible && !(window.radarSweepEnabled));
-    }
+    syncDopplerButtons(visible);
   }
 
 
@@ -154,6 +174,7 @@
 
     if (currentExploreMode) closeGuide();
     else openGuide();
+    syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler"));
   }
 
   function pushTimeToEngine(msUtc) {
@@ -167,13 +188,25 @@
     } catch (e) {}
   }
 
+
+  function getEffectiveMode() {
+    var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+    try {
+      if (mode !== "radar" && simClockBox && simClockBox.classList.contains("show-scrubber") && typeof window.getRadarFramePool === "function") {
+        var pool = window.getRadarFramePool() || [];
+        if (pool.length) mode = "radar";
+      }
+    } catch (e) {}
+    return mode;
+  }
+
   function startSimulator() {
     if (simTimer) return;
     simState = "playing";
     updateClock();
 
     simTimer = setInterval(function () {
-      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      var mode = getEffectiveMode();
       if (mode === "radar" && typeof window.stepRadarFrame === "function") {
         var pool = (typeof window.getRadarFramePool === "function") ? window.getRadarFramePool() : [];
         var scrub = scrubber;
@@ -219,6 +252,7 @@
   }
 
   if (hideGuideBtn) hideGuideBtn.addEventListener("click", closeGuide);
+  if (storyResumeBtn) storyResumeBtn.addEventListener("click", openGuide);
 
   if (exploreBtn) {
     exploreBtn.addEventListener("click", function () {
@@ -231,7 +265,7 @@
   if (backBtn) backBtn.addEventListener("click", function(){
     pauseSimulator();
     try {
-      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      var mode = getEffectiveMode();
       if (mode === "radar" && typeof window.stepRadarFrame === "function") {
         window.stepRadarFrame(-1);
         if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct();
@@ -243,7 +277,7 @@
   if (fwdBtn) fwdBtn.addEventListener("click", function(){
     pauseSimulator();
     try {
-      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      var mode = getEffectiveMode();
       if (mode === "radar" && typeof window.stepRadarFrame === "function") {
         window.stepRadarFrame(1);
         if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct();
@@ -257,7 +291,7 @@
   if (scrubber) {
     scrubber.addEventListener("input", function () {
       try {
-        var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+        var mode = getEffectiveMode();
         var v = parseInt(scrubber.value, 10);
         if (!isFinite(v)) return;
         if (mode === "radar" && typeof window.setCurrentRadarFrameIndex === "function") {
@@ -273,11 +307,14 @@
 
   if (sweepToggleBtn) {
     sweepToggleBtn.addEventListener("click", function () {
-      setTimeout(function () {
-        if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", !window.radarSweepEnabled);
-      }, 20);
+      setTimeout(function () { syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler")); }, 20);
     });
   }
+  if (floatingSweepBtn) {
+    floatingSweepBtn.addEventListener("click", function(){ if (sweepToggleBtn) sweepToggleBtn.click(); });
+  }
+
+  window.addEventListener("wdl:dopplerchange", function(){ syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler")); });
 
   window.addEventListener("wdl:storychange", function (ev) {
     var detail = (ev && ev.detail) || {};
@@ -312,5 +349,8 @@
   setScrubberVisibility(false);
   setDopplerVisibility(false);
   updateClock();
-  updateLessonButton();
+  updateLessonButton
+
+  updateCollapsedState();
+  syncDopplerButtons(false);
 })();
