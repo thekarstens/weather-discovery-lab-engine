@@ -1658,7 +1658,7 @@ window.setReportsFilter = setReportsFilter;
     fillOpacity: 1
   }).addTo(trackLayerGroup);
 
-  // TV-style city labels inside fan
+  // Yellow city dots inside fan (names stay in arrival box to avoid overlap with map labels)
   var hits = getTrackFanHits(startLL, endLL).slice(0, 10);
   hits.forEach(function(h){
     var ll = L.latLng(h.lat, h.lon);
@@ -1668,15 +1668,6 @@ window.setReportsFilter = setReportsFilter;
       weight: 1.5,
       fillColor: "#fdd835",
       fillOpacity: 1
-    }).addTo(trackLayerGroup);
-
-    L.marker(ll, {
-      interactive: false,
-      icon: L.divIcon({
-        className: "storm-track-city-label",
-        html: h.name,
-        iconSize: null
-      })
     }).addTo(trackLayerGroup);
   });
 }
