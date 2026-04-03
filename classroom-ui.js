@@ -15,6 +15,7 @@
   var simClockReadout = document.getElementById("simClockReadout");
   var scrubWrap = document.getElementById("scrubWrap");
   var scrubber = document.getElementById("cbScrubber");
+  var storyDopplerDock = document.getElementById("storyDopplerDock");
   var storyDopplerBtn = document.getElementById("storyDopplerBtn");
   var floatingSweepBtn = document.getElementById("exploreDopplerBtn");
   var storyCollapseBtn = document.getElementById("storyCollapseBtn");
@@ -60,13 +61,13 @@
 
   function syncDopplerButtons(visible) {
     var on = !!window.radarSweepEnabled;
+    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !!visible && !document.body.classList.contains("guide-collapsed"));
     [storyDopplerBtn, floatingSweepBtn].forEach(function(btn){
       if (!btn) return;
       btn.textContent = on ? "LIVE Doppler ON" : "LIVE Doppler OFF";
       btn.classList.toggle("active", on);
       btn.classList.toggle("pulsing", !!visible && !on);
-      if (btn === floatingSweepBtn) btn.classList.toggle("visible", !!visible);
-      else btn.classList.toggle("visible", !!visible);
+      btn.classList.toggle("visible", !!visible);
     });
   }
 
@@ -74,6 +75,7 @@
     var collapsed = document.body.classList.contains("guide-collapsed");
     if (storyPanel) storyPanel.classList.toggle("story-collapsed", collapsed);
     if (storyCollapseBtn) storyCollapseBtn.textContent = collapsed ? "Resume" : "Hide";
+    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !collapsed && !!(simClockBox && simClockBox.classList.contains("show-doppler")));
   }
 
   function updateLessonButton() {
