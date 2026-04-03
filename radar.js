@@ -96,12 +96,15 @@ window.createRadarModule = function(opts){
   }
 
 function updateSweepUi(){
-  var btn = document.getElementById('sweepToggleBtn');
-  if (btn){
-    btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
-    btn.classList.toggle('active', !!radarSweepEnabled);
-    btn.classList.toggle('pulsing', !radarSweepEnabled);
-  }
+  ['storyDopplerBtn','exploreDopplerBtn','sweepToggleBtn'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if (btn){
+      btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
+      btn.classList.toggle('active', !!radarSweepEnabled);
+      btn.classList.toggle('pulsing', !radarSweepEnabled);
+      btn.classList.toggle('visible', true);
+    }
+  });
   try {
     window.dispatchEvent(new CustomEvent('wdl:dopplerchange', { detail: { enabled: !!radarSweepEnabled } }));
   } catch (e) {}
@@ -373,11 +376,14 @@ function updateSweepUi(){
 
 function syncSweepButton(){
   syncWindowState();
-  var btn = document.getElementById("sweepToggleBtn");
-  if (btn){
-    btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
-    btn.classList.toggle("active", !!radarSweepEnabled);
-  }
+  ['storyDopplerBtn','exploreDopplerBtn','sweepToggleBtn'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if (btn){
+      btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+      btn.classList.toggle("active", !!radarSweepEnabled);
+      btn.classList.toggle("pulsing", !radarSweepEnabled);
+    }
+  });
 }
 
   function installMapEvents(){
