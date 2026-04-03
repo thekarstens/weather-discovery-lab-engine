@@ -65,25 +65,26 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 420px 0 230px;
+      padding: 0 360px 0 210px;
     }
 
     .brand-line {
-      font: 900 21px/1 Arial, sans-serif;
-      letter-spacing: 0.9px;
+      font: 900 28px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.28);
     }
 
     .case-line {
       margin-top: 2px;
-      font: 900 15px/1.08 Arial, sans-serif;
+      font: 800 16px/1.08 "Lato", Arial, sans-serif;
       letter-spacing: 0.45px;
       text-transform: uppercase;
     }
 
     .region-line {
       margin-top: 3px;
-      font: 800 11px/1.15 Arial, sans-serif;
+      font: 700 12px/1.15 "Lato", Arial, sans-serif;
       letter-spacing: 0.25px;
       opacity: 0.95;
       text-transform: none;
@@ -93,22 +94,35 @@
 
     .question-line .qlabel { display: none; }
 
+    .product-slot {
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:-16px;
+      padding:4px 16px 6px;
+      border-radius:0 0 18px 18px;
+      background:linear-gradient(180deg, rgba(220,228,240,0.28), rgba(80,90,105,0.18));
+      border:1px solid rgba(255,255,255,0.16);
+      border-top:none;
+      box-shadow:0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(3px);
+    }
+
     .product-pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 8px 16px;
-      min-height: 28px;
+      padding: 8px 20px;
+      min-height: 32px;
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(7,22,46,0.95), rgba(2,12,28,0.92));
-      border: 1px solid rgba(120,205,255,0.30);
+      background: linear-gradient(180deg, rgba(7,22,46,0.98), rgba(2,12,28,0.95));
+      border: 1px solid rgba(120,205,255,0.40);
       color: #f6fbff;
-      font: 900 14px/1 Arial, sans-serif;
-      letter-spacing: 0.9px;
+      font: 800 15px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 1px;
       text-transform: uppercase;
       box-shadow: 0 0 18px rgba(0,170,255,0.12), 0 6px 14px rgba(0,0,0,0.18);
       white-space: nowrap;
-      align-self: flex-end;
     }
 
     .open-lesson-btn {
@@ -158,7 +172,7 @@
       display:flex;
       flex-direction:column;
       align-items:flex-end;
-      gap:8px;
+      gap:6px;
     }
 
     .sim-controls-wrap{
@@ -170,9 +184,10 @@
     #playPauseWrap {
       display: flex;
       align-items: center;
-      gap: 8px;
-      justify-content: flex-end;
+      gap: 6px;
+      justify-content: center;
       width: 100%;
+      margin-top: 6px;
     }
 
     .sim-controls-wrap.is-hidden,
@@ -184,9 +199,9 @@
     }
 
     .sim-clock {
-      min-width: 210px;
-      max-width: 250px;
-      padding: 10px 14px;
+      min-width: 230px;
+      max-width: 260px;
+      padding: 10px 12px;
       border-radius: 16px;
       background: linear-gradient(180deg, rgba(124,12,18,0.95), rgba(76,7,11,0.95));
       border: 1px solid rgba(255,255,255,0.20);
@@ -198,7 +213,7 @@
 
     .sim-clock .time {
       margin-top: 0;
-      font: 900 28px/1 Arial, sans-serif;
+      font: 900 34px/0.95 "Lato", Arial, sans-serif;
       letter-spacing: 0.6px;
       text-transform: uppercase;
       color:#fff8f8;
@@ -208,10 +223,10 @@
     .sim-clock .state { display:none; }
 
     .sim-clock .scrub-wrap {
-      margin-top: 8px;
+      margin-top: 6px;
       display: none;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .sim-clock.show-scrubber .scrub-wrap {
@@ -256,8 +271,8 @@
 
 
     .sim-icon-btn {
-      width: 54px;
-      height: 54px;
+      width: 46px;
+      height: 46px;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 999px;
       color: #fff;
@@ -310,6 +325,7 @@
     .storyPanel.story-open { transform: translateX(0); }
 
     .story-shell-header {
+      font-family:"Lato", Arial, sans-serif;
       position: sticky;
       top: 0;
       z-index: 3;
@@ -325,8 +341,8 @@
     }
 
     .story-station-chip {
-      width: 76px;
-      height: 76px;
+      width: 84px;
+      height: 84px;
       border-radius: 999px;
       display:flex;
       align-items:center;
@@ -335,7 +351,7 @@
       background: rgba(255,255,255,0.18);
       border: 2px solid rgba(255,255,255,0.45);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.18);
-      font: 900 32px/1 Arial, sans-serif;
+      font: 900 42px/1 "Lato", Arial, sans-serif;
       letter-spacing: 0;
       text-transform: none;
       flex: 0 0 76px;
@@ -346,15 +362,15 @@
     }
 
     .story-shell-kicker {
-      font: 900 10px/1 Arial, sans-serif;
+      font: 700 12px/1 "Lato", Arial, sans-serif;
       letter-spacing: 1.2px;
       text-transform: uppercase;
       opacity: 0.88;
     }
 
     .story-title {
-      margin-top: 3px;
-      font: 900 20px/1.02 Arial, sans-serif;
+      margin-top: 4px;
+      font: 700 22px/1.05 "Lato", Arial, sans-serif;
       letter-spacing: 0.2px;
       color: #fff;
       text-wrap: balance;
@@ -460,7 +476,7 @@
     }
 
     #storyStep {
-      font: 900 12px/1.2 Arial, sans-serif;
+      font: 700 12px/1.2 "Lato", Arial, sans-serif;
       letter-spacing: 0.7px;
       text-transform: uppercase;
       opacity: 0.88;
@@ -611,6 +627,30 @@
       cursor: crosshair;
     }
 
+    
+    .storyPanel.story-collapsed .story-content,
+    .storyPanel.story-collapsed .story-shell-footer {
+      display:none;
+    }
+    .storyPanel.story-collapsed {
+      max-height:none;
+      overflow:hidden;
+      width:392px;
+    }
+    .story-resume-inline { display:none; }
+    .storyPanel.story-collapsed .story-resume-inline { display:inline-flex; }
+    .story-collapse-btn { background:#ffffff; color:#0e2d5b; }
+    .story-doppler-inline { display:none; }
+    .story-doppler-inline.active, .explore-doppler-float.active {
+      box-shadow: 0 0 20px rgba(0,200,255,1), 0 0 40px rgba(0,150,255,0.8);
+    }
+    .explore-doppler-float {
+      position:absolute; right:18px; bottom:110px; z-index:100010; display:none;
+      min-width:190px;
+    }
+    body.explore-mode .explore-doppler-float.show { display:block; }
+    body:not(.explore-mode) .explore-doppler-float { display:none !important; }
+
     @media (max-width: 1200px) {
       .banner-center { padding: 0 300px 0 178px; }
       .banner-bottomline { right: 12px; }
@@ -679,10 +719,14 @@
         <div class="clock-stack">
           <div class="sim-controls-wrap" id="simControlsWrap">
             <div class="sim-clock" id="simClockBox">
-              <div class="mode">Simulator Mode</div>
               <div class="time" id="simClockReadout">2:30 PM</div>
-              <div class="state" id="simClockState">❚❚</div>
-              <button id="sweepToggleBtn" class="doppler-btn" type="button">LIVE Doppler OFF</button>
+              <div id="playPauseWrap">
+                <button id="simBackBtn" class="sim-icon-btn back" type="button" aria-label="Previous frame">⏮</button>
+                <button id="simPauseBtn" class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
+                <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
+                <button id="simLoopBtn" class="sim-icon-btn loop" type="button" aria-label="Loop current segment">↻</button>
+                <button id="simFwdBtn" class="sim-icon-btn fwd" type="button" aria-label="Next frame">⏭</button>
+              </div>
               <div class="scrub-wrap" id="scrubWrap">
                 <span class="scrub-mini">Start</span>
                 <input id="cbScrubber" type="range" min="0" max="100" step="1" value="0" />
@@ -690,16 +734,9 @@
               </div>
             </div>
           </div>
-          <div id="playPauseWrap">
-            <button id="simBackBtn" class="sim-icon-btn back" type="button" aria-label="Previous frame">⏮</button>
-            <button id="simPauseBtn" class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
-            <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
-            <button id="simLoopBtn" class="sim-icon-btn loop" type="button" aria-label="Loop current segment">↻</button>
-            <button id="simFwdBtn" class="sim-icon-btn fwd" type="button" aria-label="Next frame">⏭</button>
-          </div>
-          <div class="product-pill" id="productLabel">SPC DAY 1</div>
         </div>
       </div>
+      <div class="product-slot"><div class="product-pill" id="productLabel">SPC DAY 1</div></div>
     </div>
   </div>
 
@@ -740,6 +777,8 @@
         <div class="story-title" id="storyTitle">Storm Story</div>
       </div>
       <div class="story-actions">
+        <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Collapse</button>
+        <button class="story-action story-resume-inline" id="resumeLessonInlineBtn" title="Resume lesson">Resume</button>
         <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
       </div>
     </div>
@@ -753,6 +792,7 @@
       <div class="story-footer-top">
         <div id="storyStep">Station 1 of 3</div>
         <div class="story-footer-actions">
+          <button class="story-action story-doppler-inline doppler-btn" id="storyDopplerBtn" title="Toggle Live Doppler">LIVE Doppler OFF</button>
           <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
         </div>
       </div>
@@ -797,6 +837,7 @@
 
   <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"></div>
   <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"></div>
+  <button id="exploreDopplerBtn" class="doppler-btn explore-doppler-float" type="button">LIVE Doppler OFF</button>
 
   <script>
     var storyStarted = false;
