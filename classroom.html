@@ -39,7 +39,7 @@
       color: #fff;
       border-bottom: 2px solid rgba(255,255,255,0.12);
       box-shadow: 0 10px 28px rgba(0,0,0,0.22);
-      min-height: 86px;
+      min-height: 92px;
     }
 
     .tvbanner::before {
@@ -65,7 +65,7 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 360px 0 210px;
+      padding: 0 360px 0 265px;
     }
 
     .brand-line {
@@ -98,8 +98,8 @@
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:-16px;
-      padding:4px 16px 6px;
+      bottom:-28px; z-index:100002;
+      padding:5px 18px 8px;
       border-radius:0 0 18px 18px;
       background:linear-gradient(180deg, rgba(220,228,240,0.28), rgba(80,90,105,0.18));
       border:1px solid rgba(255,255,255,0.16);
@@ -408,7 +408,7 @@
 
     .story-body {
       margin-top: 0;
-      font: 700 13px/1.5 Arial, sans-serif;
+      font: 500 14px/1.58 "Lato", Arial, sans-serif;
       color: #111;
     }
 
@@ -431,7 +431,7 @@
 
     .story-media-credit {
       margin-top: 6px;
-      font: 700 10px/1.2 Arial, sans-serif;
+      font: 600 10px/1.25 "Lato", Arial, sans-serif;
       color: #445;
       text-align: right;
     }
@@ -636,11 +636,11 @@
       max-height:none;
       overflow:hidden;
       width:392px;
+      transform: translateX(0);
     }
-    .story-resume-inline { display:none; }
-    .storyPanel.story-collapsed .story-resume-inline { display:inline-flex; }
-    .story-collapse-btn { background:#ffffff; color:#0e2d5b; }
+    .story-collapse-btn { background:#ffffff; color:#0e2d5b; min-width:84px; }
     .story-doppler-inline { display:none; }
+    .story-doppler-inline.visible { display:inline-flex; }
     .story-doppler-inline.active, .explore-doppler-float.active {
       box-shadow: 0 0 20px rgba(0,200,255,1), 0 0 40px rgba(0,150,255,0.8);
     }
@@ -711,7 +711,7 @@
 
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
-        <div class="case-line">Lesson 1: Derecho Case Study — May 12, 2022</div>
+        <div class="case-line">Derecho Case Study — May 12, 2022</div>
         <div class="region-line">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
         </div>
 
@@ -777,9 +777,8 @@
         <div class="story-title" id="storyTitle">Storm Story</div>
       </div>
       <div class="story-actions">
-        <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Collapse</button>
-        <button class="story-action story-resume-inline" id="resumeLessonInlineBtn" title="Resume lesson">Resume</button>
-        <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
+        <button class="story-action story-doppler-inline doppler-btn" id="storyDopplerBtn" title="Toggle Live Doppler">LIVE Doppler OFF</button>
+        <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Hide</button>
       </div>
     </div>
     <div class="story-content">
@@ -792,7 +791,6 @@
       <div class="story-footer-top">
         <div id="storyStep">Station 1 of 3</div>
         <div class="story-footer-actions">
-          <button class="story-action story-doppler-inline doppler-btn" id="storyDopplerBtn" title="Toggle Live Doppler">LIVE Doppler OFF</button>
           <button class="story-action" id="exploreBtn" title="Explore mode">Explore</button>
         </div>
       </div>
