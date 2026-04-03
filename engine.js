@@ -155,6 +155,23 @@ var storyStarted = false; // do not auto-open storyboard
   var RADAR_MANIFEST_FOLDER = "";
   var currentRadarFrameIndex = 0;
   var useManifestFrameScrubber = false;
+  var RADAR_STEP_LIMIT = null;
+
+  function getRadarFramePool(){
+    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames)) return [];
+    var frames = RADAR_MANIFEST.frames;
+    if (!RADAR_STEP_LIMIT || !isFinite(RADAR_STEP_LIMIT.start) || !isFinite(RADAR_STEP_LIMIT.end)) return frames;
+    var filtered = frames.filter(function(f){
+      var rawT = f && (f.utc || f.t || f.time || null);
+      var t = rawT ? Date.parse(rawT) : NaN;
+      return isFinite(t) && t >= RADAR_STEP_LIMIT.start && t <= RADAR_STEP_LIMIT.end;
+    });
+    return filtered.length ? filtered : frames;
+  }
+
+  function setRadarStepLimit(limit){
+    RADAR_STEP_LIMIT = limit && isFinite(limit.start) && isFinite(limit.end) ? limit : null;
+  }
 
   function _isAbsUrl(u){
     return /^https?:\/\//i.test(String(u||"")) || String(u||"").startsWith("data:") || String(u||"").startsWith("blob:");
@@ -206,12 +223,13 @@ var storyStarted = false; // do not auto-open storyboard
   }
 
   function findNearestRadarFrame(d){
-    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return null;
+    var pool = getRadarFramePool();
+    if (!pool.length) return null;
     var target = d.getTime();
     var best = null;
     var bestDelta = Infinity;
-    for (var i=0;i<RADAR_MANIFEST.frames.length;i++){
-      var f = RADAR_MANIFEST.frames[i];
+    for (var i=0;i<pool.length;i++){
+      var f = pool[i];
       if (!f) continue;
       var rawT = f.utc || f.t || f.time || null;
       var png = f.png || f.file || f.filename || f.name || null;
@@ -225,9 +243,10 @@ var storyStarted = false; // do not auto-open storyboard
 
   // URL builders (templates per lesson, with fallback to your current 2018 defaults)
   function getManifestFrameAtIndex(idx){
-    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return null;
-    idx = Math.max(0, Math.min(RADAR_MANIFEST.frames.length - 1, idx|0));
-    return RADAR_MANIFEST.frames[idx] || null;
+    var pool = getRadarFramePool();
+    if (!pool.length) return null;
+    idx = Math.max(0, Math.min(pool.length - 1, idx|0));
+    return pool[idx] || null;
   }
 
   function getManifestFrameUtc(f){
@@ -235,15 +254,17 @@ var storyStarted = false; // do not auto-open storyboard
   }
 
   function setCurrentRadarFrameIndex(idx){
-    if (!RADAR_MANIFEST || !Array.isArray(RADAR_MANIFEST.frames) || !RADAR_MANIFEST.frames.length) return;
-    currentRadarFrameIndex = Math.max(0, Math.min(RADAR_MANIFEST.frames.length - 1, idx|0));
+    var pool = getRadarFramePool();
+    if (!pool.length) return;
+    currentRadarFrameIndex = Math.max(0, Math.min(pool.length - 1, idx|0));
     var f = getManifestFrameAtIndex(currentRadarFrameIndex);
     var rawUtc = getManifestFrameUtc(f);
     if (rawUtc) curZ = new Date(rawUtc);
   }
 
   function stepRadarFrame(delta){
-    if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
+    var pool = getRadarFramePool();
+    if (useManifestFrameScrubber && pool.length){
       setCurrentRadarFrameIndex(currentRadarFrameIndex + delta);
       updateAll();
       return true;
@@ -2416,6 +2437,9 @@ function safeLink(url){
     if (typeof window.setSpcDay1Enabled === 'function') {
       try { await window.setSpcDay1Enabled(wantsSpc); } catch (e) { console.warn('SPC step apply failed', e); }
     }
+    if (typeof window.setObsRadarEnabled === 'function') {
+      try { await window.setObsRadarEnabled(wantsRadar); } catch (e) { console.warn('Radar step apply failed', e); }
+    }
     if (typeof window.setRadarEnabled === 'function') {
       try { await window.setRadarEnabled(wantsRadar); } catch (e) { console.warn('Radar step apply failed', e); }
     }
@@ -2442,7 +2466,7 @@ function safeLink(url){
           showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
           showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
           stepTheme: item.stepTheme || "blue",
-          stepLabel: item.stepLabel || ("Station " + (storyIndex + 1)),
+          stepLabel: item.stepLabel || String(storyIndex + 1),
           stepKicker: item.stepKicker || item.label || ""
         }
       }));
@@ -2459,7 +2483,7 @@ function safeLink(url){
 
     var item = storyItems[storyIndex];
     storyTitleEl.textContent = item.title || "Storm Story";
-    if (storyStationChipEl) storyStationChipEl.textContent = (item.stepLabel || ("Station " + (storyIndex + 1)));
+    if (storyStationChipEl) storyStationChipEl.textContent = String(item.stepLabel || (storyIndex + 1)).replace(/^\D+/g, "").trim() || String(storyIndex + 1);
     if (storyShellKickerEl) storyShellKickerEl.textContent = item.stepKicker || item.label || "Lesson Flow";
     if (storyPanel) {
       storyPanel.classList.remove("story-theme-blue","story-theme-cyan","story-theme-orange","story-theme-red","story-theme-purple");
@@ -2492,7 +2516,7 @@ function safeLink(url){
     }
 
     storyBodyEl.innerHTML = html;
-    storyStepEl.textContent = (item.stepLabel || ("Station " + (storyIndex + 1))) + " of " + storyItems.length;
+    storyStepEl.textContent = "Step " + (storyIndex + 1) + " of " + storyItems.length;
 
     // Highlight markers
     storyMarkers.forEach(function(m, idx){
@@ -3391,7 +3415,8 @@ function nearestHrrrFrameIndexForTime(d){
 
   function getActiveScrubberMode(){
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
-    if (obsRadarEnabled && useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length) return 'radar';
+    var radarPool = getRadarFramePool();
+    if (obsRadarEnabled && useManifestFrameScrubber && radarPool.length) return 'radar';
     return 'lesson';
   }
 
@@ -3406,8 +3431,9 @@ function nearestHrrrFrameIndexForTime(d){
         scrub.max = String(Math.max(0, hrrrFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
       } else if (mode === 'radar'){
-        scrub.max = String(Math.max(0, RADAR_MANIFEST.frames.length - 1));
-        scrub.value = String(currentRadarFrameIndex);
+        var radarPool = getRadarFramePool();
+        scrub.max = String(Math.max(0, radarPool.length - 1));
+        scrub.value = String(Math.max(0, Math.min(Number(scrub.max||0), currentRadarFrameIndex)));
       } else {
         var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
         if (idx < 0) idx = 0;
@@ -3422,6 +3448,8 @@ function nearestHrrrFrameIndexForTime(d){
   window.stepRadarFrame = stepRadarFrame;
   window.syncScrubberToActiveProduct = syncScrubberToActiveProduct;
   window.setCurrentRadarFrameIndex = setCurrentRadarFrameIndex;
+  window.getRadarFramePool = getRadarFramePool;
+  window.setRadarStepLimit = setRadarStepLimit;
 
   function setTimeLabel(){
     var label = formatCentralLabel(curZ);
