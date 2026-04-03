@@ -96,13 +96,13 @@ window.createRadarModule = function(opts){
   }
 
 function updateSweepUi(){
-  ['storyDopplerBtn','exploreDopplerBtn','sweepToggleBtn'].forEach(function(id){
+  ['storyDopplerBtn','exploreDopplerBtn'].forEach(function(id){
     var btn = document.getElementById(id);
     if (btn){
       btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
       btn.classList.toggle('active', !!radarSweepEnabled);
       btn.classList.toggle('pulsing', !radarSweepEnabled);
-      btn.classList.toggle('visible', true);
+      btn.classList.add('visible');
     }
   });
   try {
@@ -376,7 +376,7 @@ function updateSweepUi(){
 
 function syncSweepButton(){
   syncWindowState();
-  ['storyDopplerBtn','exploreDopplerBtn','sweepToggleBtn'].forEach(function(id){
+  ['storyDopplerBtn','exploreDopplerBtn'].forEach(function(id){
     var btn = document.getElementById(id);
     if (btn){
       btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
