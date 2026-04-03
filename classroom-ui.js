@@ -9,16 +9,15 @@
   var simClockBox = document.getElementById("simClockBox");
 
   var storyPanel = document.getElementById("storyPanel");
-  var hideGuideBtn = document.getElementById("hideGuideBtn");
-  var openLessonBtn = document.getElementById("openLessonBtn");
+    var openLessonBtn = document.getElementById("openLessonBtn");
   var exploreBtn = document.getElementById("exploreBtn");
 
   var simClockReadout = document.getElementById("simClockReadout");
   var scrubWrap = document.getElementById("scrubWrap");
   var scrubber = document.getElementById("cbScrubber");
-  var sweepToggleBtn = document.getElementById("sweepToggleBtn");
-  var floatingSweepBtn = document.getElementById("floatingSweepToggle");
-  var storyResumeBtn = document.getElementById("storyResumeBtn");
+  var storyDopplerBtn = document.getElementById("storyDopplerBtn");
+  var floatingSweepBtn = document.getElementById("exploreDopplerBtn");
+  var storyCollapseBtn = document.getElementById("storyCollapseBtn");
 
   var simTimer = null;
   var simState = "paused";
@@ -61,29 +60,31 @@
 
   function syncDopplerButtons(visible) {
     var on = !!window.radarSweepEnabled;
-    [sweepToggleBtn, floatingSweepBtn].forEach(function(btn){
+    [storyDopplerBtn, floatingSweepBtn].forEach(function(btn){
       if (!btn) return;
       btn.textContent = on ? "LIVE Doppler ON" : "LIVE Doppler OFF";
       btn.classList.toggle("active", on);
       btn.classList.toggle("pulsing", !!visible && !on);
       if (btn === floatingSweepBtn) btn.classList.toggle("visible", !!visible);
-      else btn.style.display = visible ? "inline-flex" : "none";
+      else btn.classList.toggle("visible", !!visible);
     });
   }
 
   function updateCollapsedState(){
     var collapsed = document.body.classList.contains("guide-collapsed");
-    if (storyResumeBtn) storyResumeBtn.style.display = collapsed ? "inline-flex" : "none";
+    if (storyPanel) storyPanel.classList.toggle("story-collapsed", collapsed);
+    if (storyCollapseBtn) storyCollapseBtn.textContent = collapsed ? "Resume" : "Hide";
   }
 
   function updateLessonButton() {
     if (!openLessonBtn || !storyPanel) return;
     var isOpen = storyPanel.classList.contains("story-open");
+    var collapsed = storyPanel.classList.contains("story-collapsed") || document.body.classList.contains("guide-collapsed");
     openLessonBtn.classList.toggle("lesson-open", isOpen);
-    openLessonBtn.classList.toggle("resume-ready", !isOpen && lessonEverOpened);
+    openLessonBtn.classList.toggle("resume-ready", collapsed || (!isOpen && lessonEverOpened));
     if (isOpen) {
       openLessonBtn.textContent = "Hide Lesson";
-    } else if (lessonEverOpened) {
+    } else if (collapsed || lessonEverOpened) {
       openLessonBtn.textContent = "Resume Lesson";
     } else {
       openLessonBtn.textContent = "Open Lesson";
@@ -91,7 +92,10 @@
   }
 
   function openGuide() {
-    if (storyPanel) storyPanel.classList.add("story-open");
+    if (storyPanel) {
+      storyPanel.classList.add("story-open");
+      storyPanel.classList.remove("story-collapsed");
+    }
     document.body.classList.remove("guide-collapsed");
     lessonEverOpened = true;
     updateLessonButton();
@@ -99,7 +103,10 @@
   }
 
   function closeGuide() {
-    if (storyPanel) storyPanel.classList.remove("story-open");
+    if (storyPanel) {
+      storyPanel.classList.add("story-collapsed");
+      storyPanel.classList.remove("story-open");
+    }
     document.body.classList.add("guide-collapsed");
     updateLessonButton();
     updateCollapsedState();
@@ -172,9 +179,9 @@
     if (opts && typeof opts.showTools === "boolean") showTools = opts.showTools;
     setToolDockVisibility(showTools);
 
-    if (currentExploreMode) closeGuide();
-    else openGuide();
     syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler"));
+    if (currentExploreMode) document.body.classList.add("explore-mode");
+    else document.body.classList.remove("explore-mode");
   }
 
   function pushTimeToEngine(msUtc) {
@@ -251,8 +258,12 @@
     });
   }
 
-  if (hideGuideBtn) hideGuideBtn.addEventListener("click", closeGuide);
-  if (storyResumeBtn) storyResumeBtn.addEventListener("click", openGuide);
+  if (storyCollapseBtn) {
+    storyCollapseBtn.addEventListener("click", function () {
+      if (document.body.classList.contains("guide-collapsed")) openGuide();
+      else closeGuide();
+    });
+  }
 
   if (exploreBtn) {
     exploreBtn.addEventListener("click", function () {
@@ -305,14 +316,15 @@
     });
   }
 
-  if (sweepToggleBtn) {
-    sweepToggleBtn.addEventListener("click", function () {
-      setTimeout(function () { syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler")); }, 20);
+  [storyDopplerBtn, floatingSweepBtn].forEach(function(btn){
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      if (typeof window.toggleSweep === "function") {
+        window.toggleSweep();
+        setTimeout(function () { syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler")); }, 20);
+      }
     });
-  }
-  if (floatingSweepBtn) {
-    floatingSweepBtn.addEventListener("click", function(){ if (sweepToggleBtn) sweepToggleBtn.click(); });
-  }
+  });
 
   window.addEventListener("wdl:dopplerchange", function(){ syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler")); });
 
@@ -337,7 +349,7 @@
     setScrubberVisibility(showScrubber);
     setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
-    if (sweepToggleBtn) sweepToggleBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
+    if (storyDopplerBtn) storyDopplerBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
     try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
     updateClock();
     updateLessonButton();
@@ -349,8 +361,7 @@
   setScrubberVisibility(false);
   setDopplerVisibility(false);
   updateClock();
-  updateLessonButton
-
+  updateLessonButton();
   updateCollapsedState();
   syncDopplerButtons(false);
 })();
