@@ -65,7 +65,7 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 360px 0 230px;
+      padding: 0 420px 0 230px;
     }
 
     .brand-line {
@@ -97,18 +97,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-top: 5px;
-      padding: 4px 12px;
-      min-height: 22px;
+      padding: 8px 16px;
+      min-height: 28px;
       border-radius: 999px;
-      background: rgba(3, 16, 34, 0.78);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(7,22,46,0.95), rgba(2,12,28,0.92));
+      border: 1px solid rgba(120,205,255,0.30);
       color: #f6fbff;
-      font: 900 11px/1 Arial, sans-serif;
-      letter-spacing: 0.7px;
+      font: 900 14px/1 Arial, sans-serif;
+      letter-spacing: 0.9px;
       text-transform: uppercase;
-      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      box-shadow: 0 0 18px rgba(0,170,255,0.12), 0 6px 14px rgba(0,0,0,0.18);
       white-space: nowrap;
+      align-self: flex-end;
     }
 
     .open-lesson-btn {
@@ -147,11 +147,18 @@
       top: 10px;
       right: 16px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: flex-end;
       gap: 8px;
       padding: 0;
       z-index: 100000;
+    }
+
+    .clock-stack {
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:8px;
     }
 
     .sim-controls-wrap{
@@ -164,6 +171,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      justify-content: flex-end;
+      width: 100%;
     }
 
     .sim-controls-wrap.is-hidden,
@@ -175,34 +184,28 @@
     }
 
     .sim-clock {
-      min-width: 246px;
-      max-width: 270px;
-      padding: 9px 14px;
+      min-width: 210px;
+      max-width: 250px;
+      padding: 10px 14px;
       border-radius: 16px;
-      background: rgba(11,28,45,0.88);
-      border: 1px solid rgba(255,255,255,0.18);
+      background: linear-gradient(180deg, rgba(124,12,18,0.95), rgba(76,7,11,0.95));
+      border: 1px solid rgba(255,255,255,0.20);
       text-align: center;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
     }
 
-    .sim-clock .mode {
-      display: none;
-    }
+    .sim-clock .mode { display:none; }
 
     .sim-clock .time {
       margin-top: 0;
-      font: 900 23px/1 Arial, sans-serif;
+      font: 900 28px/1 Arial, sans-serif;
       letter-spacing: 0.6px;
       text-transform: uppercase;
+      color:#fff8f8;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.25);
     }
 
-    .sim-clock .state {
-      margin-top: 2px;
-      font: 900 15px/1 Arial, sans-serif;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      opacity: 0.92;
-    }
+    .sim-clock .state { display:none; }
 
     .sim-clock .scrub-wrap {
       margin-top: 8px;
@@ -230,55 +233,51 @@
     }
 
     .doppler-btn {
-      display: none;
-      margin-top: 8px;
-      width: 100%;
-      border: 1px solid rgba(90,160,255,0.55);
-      border-radius: 999px;
-      padding: 8px 12px;
-      background: linear-gradient(180deg, rgba(31,91,255,0.95), rgba(12,48,145,0.95));
-      color: #fff;
-      font: 900 12px/1 Arial, sans-serif;
-      letter-spacing: 0.75px;
-      text-transform: uppercase;
-      box-shadow: 0 0 0 rgba(68,150,255,0.0), 0 8px 18px rgba(0,0,0,0.20);
-      cursor: pointer;
+      display:none;
+      width:100%;
+      background: linear-gradient(180deg, #1ea4ff, #0b5bd3);
+      border: 1px solid rgba(0, 170, 255, 0.7);
+      color: #e6f7ff;
+      font: 900 16px/1 Arial, sans-serif;
+      letter-spacing: 1px;
+      padding: 10px 18px;
+      border-radius: 20px;
+      box-shadow: 0 0 12px rgba(0,180,255,0.6), inset 0 0 8px rgba(255,255,255,0.2);
+      transition: all 0.2s ease;
+      text-transform: none;
     }
-
-    .sim-clock.show-doppler .doppler-btn {
-      display: block;
-    }
-
-    .doppler-btn.pulsing {
-      animation: dopplerPulse 1.6s ease-in-out infinite;
-    }
-
+    .doppler-btn.active { box-shadow: 0 0 20px rgba(0,200,255,1), 0 0 40px rgba(0,150,255,0.8); }
+    .doppler-btn.pulsing, .doppler-btn.pulse { animation: dopplerPulse 1.4s infinite; }
     @keyframes dopplerPulse {
-      0% { box-shadow: 0 0 0 0 rgba(79,163,255,0.55), 0 8px 18px rgba(0,0,0,0.20); }
-      70% { box-shadow: 0 0 0 12px rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
-      100% { box-shadow: 0 0 0 0 rgba(79,163,255,0.0), 0 8px 18px rgba(0,0,0,0.20); }
+      0% { box-shadow: 0 0 8px rgba(0,200,255,0.6); }
+      50% { box-shadow: 0 0 28px rgba(0,200,255,1); }
+      100% { box-shadow: 0 0 8px rgba(0,200,255,0.6); }
     }
 
 
     .sim-icon-btn {
-      width: 52px;
-      height: 52px;
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 18px;
-      background: linear-gradient(180deg, #2563eb, #1d4ed8 55%, #0b3b91);
+      width: 54px;
+      height: 54px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
       color: #fff;
-      font: 900 28px/1 Arial, sans-serif;
+      font: 900 26px/1 Arial, sans-serif;
       cursor: pointer;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.20);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.20);
       display:flex;
       align-items:center;
       justify-content:center;
       padding:0;
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
     }
 
-    .sim-icon-btn.pause{
-      background: rgba(11, 28, 45, 0.95);
-    }
+    .sim-icon-btn:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    .sim-icon-btn.back { background: linear-gradient(180deg,#5d6470,#353b45); }
+    .sim-icon-btn.pause{ background: linear-gradient(180deg,#ffb020,#d97706); }
+    .sim-icon-btn.play{ background: linear-gradient(180deg,#22c55e,#15803d); }
+    .sim-icon-btn.loop{ background: linear-gradient(180deg,#7c3aed,#5b21b6); }
+    .sim-icon-btn.loop.active{ box-shadow: 0 0 18px rgba(170,100,255,0.55), 0 6px 14px rgba(0,0,0,0.20); }
+    .sim-icon-btn.fwd{ background: linear-gradient(180deg,#38bdf8,#0369a1); }
 
     .hero-product { display: none; }
 
@@ -326,16 +325,20 @@
     }
 
     .story-station-chip {
-      min-width: 78px;
-      padding: 8px 10px;
-      border-radius: 14px;
+      width: 76px;
+      height: 76px;
+      border-radius: 999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       text-align: center;
       background: rgba(255,255,255,0.18);
-      border: 1px solid rgba(255,255,255,0.26);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
-      font: 900 12px/1 Arial, sans-serif;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
+      border: 2px solid rgba(255,255,255,0.45);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.18);
+      font: 900 32px/1 Arial, sans-serif;
+      letter-spacing: 0;
+      text-transform: none;
+      flex: 0 0 76px;
     }
 
     .story-shell-banner {
@@ -670,26 +673,31 @@
         <div class="brand-line">Weather Discovery Lab</div>
         <div class="case-line">Lesson 1: Derecho Case Study — May 12, 2022</div>
         <div class="region-line">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
-        <div class="product-pill" id="productLabel">SPC Day 1 Outlook</div>
-      </div>
+        </div>
 
       <div class="banner-bottomline">
-        <div class="sim-controls-wrap" id="simControlsWrap">
-          <div class="sim-clock" id="simClockBox">
-            <div class="mode">Simulator Mode</div>
-            <div class="time" id="simClockReadout">May 12 2:30 PM</div>
-            <div class="state" id="simClockState">❚❚</div>
-            <button id="sweepToggleBtn" class="doppler-btn" type="button">Live Doppler Off</button>
-            <div class="scrub-wrap" id="scrubWrap">
-              <span class="scrub-mini">Start</span>
-              <input id="cbScrubber" type="range" min="0" max="100" step="1" value="0" />
-              <span class="scrub-mini">End</span>
+        <div class="clock-stack">
+          <div class="sim-controls-wrap" id="simControlsWrap">
+            <div class="sim-clock" id="simClockBox">
+              <div class="mode">Simulator Mode</div>
+              <div class="time" id="simClockReadout">2:30 PM</div>
+              <div class="state" id="simClockState">❚❚</div>
+              <button id="sweepToggleBtn" class="doppler-btn" type="button">LIVE Doppler OFF</button>
+              <div class="scrub-wrap" id="scrubWrap">
+                <span class="scrub-mini">Start</span>
+                <input id="cbScrubber" type="range" min="0" max="100" step="1" value="0" />
+                <span class="scrub-mini">End</span>
+              </div>
             </div>
           </div>
           <div id="playPauseWrap">
-            <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
+            <button id="simBackBtn" class="sim-icon-btn back" type="button" aria-label="Previous frame">⏮</button>
             <button id="simPauseBtn" class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
+            <button id="simPlayBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
+            <button id="simLoopBtn" class="sim-icon-btn loop" type="button" aria-label="Loop current segment">↻</button>
+            <button id="simFwdBtn" class="sim-icon-btn fwd" type="button" aria-label="Next frame">⏭</button>
           </div>
+          <div class="product-pill" id="productLabel">SPC DAY 1</div>
         </div>
       </div>
     </div>
@@ -726,7 +734,7 @@
 
   <div id="storyPanel" class="storyPanel story-theme-blue" aria-label="Story panel">
     <div class="story-shell-header" id="storyShellHeader">
-      <div class="story-station-chip" id="storyStationChip">Station 1</div>
+      <div class="story-station-chip" id="storyStationChip">1</div>
       <div class="story-shell-banner">
         <div class="story-shell-kicker" id="storyShellKicker">Forecast Setup</div>
         <div class="story-title" id="storyTitle">Storm Story</div>
