@@ -100,7 +100,11 @@ function updateSweepUi(){
   if (btn){
     btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
     btn.classList.toggle('active', !!radarSweepEnabled);
+    btn.classList.toggle('pulsing', !radarSweepEnabled);
   }
+  try {
+    window.dispatchEvent(new CustomEvent('wdl:dopplerchange', { detail: { enabled: !!radarSweepEnabled } }));
+  } catch (e) {}
 
   var panel = document.getElementById('radarSweepControls');
   if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
