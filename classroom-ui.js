@@ -1,6 +1,9 @@
 (function () {
-  var playBtn = document.getElementById("simPlayBtn");
+  var backBtn = document.getElementById("simBackBtn");
   var pauseBtn = document.getElementById("simPauseBtn");
+  var playBtn = document.getElementById("simPlayBtn");
+  var loopBtn = document.getElementById("simLoopBtn");
+  var fwdBtn = document.getElementById("simFwdBtn");
   var playWrap = document.getElementById("playPauseWrap");
   var simControlsWrap = document.getElementById("simControlsWrap");
   var simClockBox = document.getElementById("simClockBox");
@@ -11,7 +14,6 @@
   var exploreBtn = document.getElementById("exploreBtn");
 
   var simClockReadout = document.getElementById("simClockReadout");
-  var simClockState = document.getElementById("simClockState");
   var scrubWrap = document.getElementById("scrubWrap");
   var scrubber = document.getElementById("cbScrubber");
   var sweepToggleBtn = document.getElementById("sweepToggleBtn");
@@ -23,6 +25,7 @@
   var simUtc = simStartUtc;
   var currentExploreMode = false;
   var lessonEverOpened = false;
+  var loopEnabled = false;
 
   function syncFromEngineClock() {
     try {
@@ -37,14 +40,12 @@
 
   function formatLocalSimTime(msUtc) {
     try {
-      return new Date(msUtc).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
+      return new Date(msUtc).toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
         timeZone: "America/Chicago"
-      }).replace(",", "");
+      });
     } catch (e) {
       return "May 12 2:30 PM";
     }
@@ -53,9 +54,7 @@
   function updateClock() {
     syncFromEngineClock();
     if (simClockReadout) simClockReadout.textContent = formatLocalSimTime(simUtc);
-    if (simClockState) {
-      simClockState.textContent = simState === "playing" ? "▶ x" + simSpeedMinutes : "❚❚";
-    }
+    if (loopBtn) loopBtn.classList.toggle("active", !!loopEnabled);
   }
 
   function updateLessonButton() {
@@ -176,7 +175,21 @@
     simTimer = setInterval(function () {
       var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
       if (mode === "radar" && typeof window.stepRadarFrame === "function") {
-        window.stepRadarFrame(1);
+        var pool = (typeof window.getRadarFramePool === "function") ? window.getRadarFramePool() : [];
+        var scrub = scrubber;
+        var idx = scrub ? parseInt(scrub.value || "0", 10) : 0;
+        var max = scrub ? parseInt(scrub.max || "0", 10) : Math.max(0, pool.length - 1);
+        if (isFinite(max) && idx >= max) {
+          if (loopEnabled) {
+            if (typeof window.setCurrentRadarFrameIndex === "function") window.setCurrentRadarFrameIndex(0);
+            if (typeof window.updateAll === "function") window.updateAll();
+          } else {
+            pauseSimulator();
+            return;
+          }
+        } else {
+          window.stepRadarFrame(1);
+        }
         syncFromEngineClock();
         try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
         updateClock();
@@ -215,6 +228,31 @@
 
   if (playBtn) playBtn.addEventListener("click", startSimulator);
   if (pauseBtn) pauseBtn.addEventListener("click", pauseSimulator);
+  if (backBtn) backBtn.addEventListener("click", function(){
+    pauseSimulator();
+    try {
+      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      if (mode === "radar" && typeof window.stepRadarFrame === "function") {
+        window.stepRadarFrame(-1);
+        if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct();
+        syncFromEngineClock();
+        updateClock();
+      }
+    } catch(e) {}
+  });
+  if (fwdBtn) fwdBtn.addEventListener("click", function(){
+    pauseSimulator();
+    try {
+      var mode = (typeof window.getActiveScrubberMode === "function") ? window.getActiveScrubberMode() : "lesson";
+      if (mode === "radar" && typeof window.stepRadarFrame === "function") {
+        window.stepRadarFrame(1);
+        if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct();
+        syncFromEngineClock();
+        updateClock();
+      }
+    } catch(e) {}
+  });
+  if (loopBtn) loopBtn.addEventListener("click", function(){ loopEnabled = !loopEnabled; updateClock(); });
 
   if (scrubber) {
     scrubber.addEventListener("input", function () {
@@ -255,6 +293,7 @@
     var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
     var showScrubber = !!detail.showScrubber;
     var showDoppler = !!detail.showDoppler;
+    if (!showPlay) loopEnabled = false;
 
     setPlayVisibility(showPlay);
     setClockVisibility(showClock);
