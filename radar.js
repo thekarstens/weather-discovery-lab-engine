@@ -104,6 +104,7 @@ function updateSweepUi(){
       btn.classList.remove('pulsing');
       if (radarSweepEnabled) btn.classList.add('active');
       else btn.classList.add('pulsing');
+      btn.style.display = 'inline-flex';
     }
   });
   try {
