@@ -18,6 +18,8 @@
   var storyDopplerBtn = document.getElementById("storyDopplerBtn");
   var floatingSweepBtn = document.getElementById("exploreDopplerBtn");
   var storyCollapseBtn = document.getElementById("storyCollapseBtn");
+  var toolToggleBtn = document.getElementById("toolToggleBtn");
+  var toolBox = document.getElementById("toolBox");
 
   var stormTrackArrivalBox = document.getElementById("stormTrackArrivalBox");
   var stormTrackArrivalHead = document.querySelector(".storm-track-arrivals-head");
@@ -189,13 +191,21 @@
   function setToolDockVisibility(visible) {
     var dock = findToolDock();
     if (!dock) return;
-    dock.style.opacity = visible ? "1" : "0";
-    dock.style.pointerEvents = visible ? "auto" : "none";
-    dock.style.transform = visible ? "translateX(0)" : "translateX(18px)";
+    dock.style.opacity = "1";
+    dock.style.pointerEvents = "auto";
+    dock.style.transform = "translateX(0)";
     dock.style.transition = "opacity 180ms ease, transform 180ms ease";
   }
 
-  function applyMode(isExplore, opts) {
+  
+  function toggleToolBox(forceOpen){
+    if (!toolBox) return;
+    var open = typeof forceOpen === "boolean" ? forceOpen : toolBox.classList.contains("collapsed");
+    toolBox.classList.toggle("collapsed", !open);
+    if (toolToggleBtn) toolToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+function applyMode(isExplore, opts) {
     currentExploreMode = !!isExplore;
     document.body.classList.toggle("explore-mode", currentExploreMode);
     if (exploreBtn) {
@@ -380,6 +390,8 @@
   });
 
   makeStormTrackWindowDraggable();
+  if (toolToggleBtn) toolToggleBtn.addEventListener("click", function(){ toggleToolBox(); });
+  toggleToolBox(false);
   applyMode(false);
   setPlayVisibility(false);
   setClockVisibility(false);
