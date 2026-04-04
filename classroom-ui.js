@@ -1,7 +1,7 @@
 (function () {
   var backBtn = document.getElementById("simBackBtn");
   var pauseBtn = document.getElementById("simPauseBtn");
-  var playBtn = document.getElementById("simPlayBtn");
+  var playBtn = document.getElementById("simPlayPauseBtn");
   var loopBtn = document.getElementById("simLoopBtn");
   var fwdBtn = document.getElementById("simFwdBtn");
   var playWrap = document.getElementById("playPauseWrap");
@@ -20,6 +20,7 @@
   var storyCollapseBtn = document.getElementById("storyCollapseBtn");
   var toolToggleBtn = document.getElementById("toolToggleBtn");
   var toolBox = document.getElementById("toolBox");
+  var toolClear = document.getElementById("toolClear");
 
   var stormTrackArrivalBox = document.getElementById("stormTrackArrivalBox");
   var stormTrackArrivalHead = document.querySelector(".storm-track-arrivals-head");
@@ -402,3 +403,31 @@ function applyMode(isExplore, opts) {
   updateCollapsedState();
   syncDopplerButtons(false);
 })();
+
+  if (toolClear){
+    toolClear.addEventListener("click", function(){
+      try{
+        if (window.clearStormTrack) window.clearStormTrack();
+        if (window.clearMeasure) window.clearMeasure();
+        if (window.clearDrawings) window.clearDrawings();
+      }catch(e){}
+    });
+  }
+
+  function togglePlayPause(){
+    if (simState === "playing"){
+      simState = "paused";
+      clearInterval(simTimer);
+      if (playBtn) playBtn.textContent = "Play";
+    } else {
+      simState = "playing";
+      simTimer = setInterval(function(){
+        window.updateAll && window.updateAll();
+      }, simSpeedMinutes * 1000);
+      if (playBtn) playBtn.textContent = "Pause";
+    }
+  }
+
+  if (playBtn){
+    playBtn.addEventListener("click", togglePlayPause);
+  }
