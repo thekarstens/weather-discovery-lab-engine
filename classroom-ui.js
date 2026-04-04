@@ -99,14 +99,14 @@
   function updateCollapsedState(){
     var collapsed = document.body.classList.contains("guide-collapsed");
     if (storyPanel) {
-      storyPanel.classList.toggle("story-collapsed", collapsed);
       storyPanel.classList.add("story-open");
+      storyPanel.classList.toggle("story-collapsed", collapsed);
     }
     if (storyCollapseBtn) storyCollapseBtn.textContent = collapsed ? "Resume" : "Hide";
   }
 
   function updateLessonButton() {
-    if (!openLessonBtn || !storyPanel) return;
+    if (!openLessonBtn) return;
     var collapsed = document.body.classList.contains("guide-collapsed");
     openLessonBtn.classList.toggle("lesson-open", !collapsed);
     openLessonBtn.classList.toggle("resume-ready", collapsed || lessonEverOpened);
@@ -121,7 +121,6 @@
     document.body.classList.remove("guide-collapsed");
     lessonEverOpened = true;
     updateLessonButton();
-  makeStormTrackWindowDraggable();
     updateCollapsedState();
   }
 
@@ -203,12 +202,9 @@
       exploreBtn.textContent = currentExploreMode ? "Guided" : "Explore";
       exploreBtn.classList.toggle("active", currentExploreMode);
     }
-
     var showTools = currentExploreMode;
     if (opts && typeof opts.showTools === "boolean") showTools = opts.showTools;
     setToolDockVisibility(showTools);
-
-    // Do not change storyboard visibility here.
     syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler"));
   }
 
@@ -383,9 +379,10 @@
     updateLessonButton();
   });
 
+  makeStormTrackWindowDraggable();
   applyMode(false);
   setPlayVisibility(false);
-  setClockVisibility(true);
+  setClockVisibility(false);
   setScrubberVisibility(false);
   setDopplerVisibility(false);
   updateClock();
