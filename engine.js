@@ -5736,3 +5736,4 @@ document.addEventListener('DOMContentLoaded', function(){
 window.clearStormTrack = function(){ try{ clearStormTrackGraphics(); }catch(e){} };
 window.clearMeasure = function(){ try{ clearMeasureGraphics(); }catch(e){} };
 window.clearDrawings = function(){ try{ clearDrawings(); }catch(e){} };
+try{ window.toggleSweep = toggleSweep; }catch(e){}
