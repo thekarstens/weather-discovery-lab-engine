@@ -144,10 +144,13 @@
   function setClockVisibility(visible) {
     if (!simClockBox) return;
     simClockBox.classList.toggle("is-hidden", !visible);
-    if (simControlsWrap) {
-      var hasPlay = !(playWrap && playWrap.classList.contains("is-hidden"));
-      simControlsWrap.classList.toggle("is-hidden", !visible && !hasPlay);
+    if (!visible) {
+      setPlayVisibility(false);
+      setScrubberVisibility(false);
+      if (simControlsWrap) simControlsWrap.classList.add("is-hidden");
+      return;
     }
+    if (simControlsWrap) simControlsWrap.classList.remove("is-hidden");
   }
 
   function setScrubberVisibility(visible) {
