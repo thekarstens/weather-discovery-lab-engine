@@ -2517,11 +2517,11 @@ function safeLink(url){
           count: storyItems.length,
           item: item,
           utc: item.utc || null,
-          allowPlay: item.allowPlay,
-          pause: !!item.pause,
+          allowPlay: (interactionCfg.allowPlay != null) ? !!interactionCfg.allowPlay : !!item.allowPlay,
+          pause: (interactionCfg.pause != null) ? !!interactionCfg.pause : !!item.pause,
           highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
           showLegend: !!(item.ui && item.ui.showLegend),
-          showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : null),
+          showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
           showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
           startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
           showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
@@ -5732,3 +5732,14 @@ document.addEventListener('DOMContentLoaded', function(){
     console.log('✅ Auto-boundary mode enabled');
   });
 })();
+
+
+window.clearStormTrack = function(){
+  try { clearStormTrackGraphics(); } catch(e) {}
+};
+window.clearMeasure = function(){
+  try { clearMeasureGraphics(); } catch(e) {}
+};
+window.clearDrawings = function(){
+  try { clearDrawings(); } catch(e) {}
+};
