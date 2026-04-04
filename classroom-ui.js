@@ -15,7 +15,6 @@
   var simClockReadout = document.getElementById("simClockReadout");
   var scrubWrap = document.getElementById("scrubWrap");
   var scrubber = document.getElementById("cbScrubber");
-  var storyDopplerDock = document.getElementById("storyDopplerDock");
   var storyDopplerBtn = document.getElementById("storyDopplerBtn");
   var floatingSweepBtn = document.getElementById("exploreDopplerBtn");
   var storyCollapseBtn = document.getElementById("storyCollapseBtn");
@@ -61,16 +60,16 @@
 
   function syncDopplerButtons(visible) {
     var on = !!window.radarSweepEnabled;
-    var explore = document.body.classList.contains("explore-mode");
-    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !!visible && !document.body.classList.contains("guide-collapsed") && !explore);
     [storyDopplerBtn, floatingSweepBtn].forEach(function(btn){
       if (!btn) return;
       btn.textContent = on ? "LIVE Doppler ON" : "LIVE Doppler OFF";
-      btn.classList.toggle("active", on);
-      btn.classList.toggle("pulsing", !!visible && !on);
+      btn.classList.remove("active");
+      btn.classList.remove("pulsing");
+      if (on) btn.classList.add("active");
+      if (!!visible && !on) btn.classList.add("pulsing");
+      if (btn === floatingSweepBtn) btn.classList.toggle("visible", !!visible && currentExploreMode);
+      else btn.style.display = visible ? "inline-flex" : "none";
     });
-    if (storyDopplerBtn) storyDopplerBtn.classList.toggle("visible", !!visible && !explore);
-    if (floatingSweepBtn) floatingSweepBtn.classList.toggle("visible", !!visible && explore);
   }
 
   function updateCollapsedState(){
@@ -124,10 +123,6 @@
   function setClockVisibility(visible) {
     if (!simClockBox) return;
     simClockBox.classList.toggle("is-hidden", !visible);
-    if (!visible) {
-      setPlayVisibility(false);
-      setScrubberVisibility(false);
-    }
     if (simControlsWrap) {
       var hasPlay = !(playWrap && playWrap.classList.contains("is-hidden"));
       simControlsWrap.classList.toggle("is-hidden", !visible && !hasPlay);
@@ -186,9 +181,8 @@
     if (opts && typeof opts.showTools === "boolean") showTools = opts.showTools;
     setToolDockVisibility(showTools);
 
+    // Keep storyboard open/collapsed state independent of Explore toggle
     syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler"));
-    if (currentExploreMode) document.body.classList.add("explore-mode");
-    else document.body.classList.remove("explore-mode");
   }
 
   function pushTimeToEngine(msUtc) {
