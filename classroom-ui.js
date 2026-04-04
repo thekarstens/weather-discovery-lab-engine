@@ -61,21 +61,22 @@
 
   function syncDopplerButtons(visible) {
     var on = !!window.radarSweepEnabled;
-    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !!visible && !document.body.classList.contains("guide-collapsed"));
+    var explore = document.body.classList.contains("explore-mode");
+    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !!visible && !document.body.classList.contains("guide-collapsed") && !explore);
     [storyDopplerBtn, floatingSweepBtn].forEach(function(btn){
       if (!btn) return;
       btn.textContent = on ? "LIVE Doppler ON" : "LIVE Doppler OFF";
       btn.classList.toggle("active", on);
       btn.classList.toggle("pulsing", !!visible && !on);
-      btn.classList.toggle("visible", !!visible);
     });
+    if (storyDopplerBtn) storyDopplerBtn.classList.toggle("visible", !!visible && !explore);
+    if (floatingSweepBtn) floatingSweepBtn.classList.toggle("visible", !!visible && explore);
   }
 
   function updateCollapsedState(){
     var collapsed = document.body.classList.contains("guide-collapsed");
     if (storyPanel) storyPanel.classList.toggle("story-collapsed", collapsed);
     if (storyCollapseBtn) storyCollapseBtn.textContent = collapsed ? "Resume" : "Hide";
-    if (storyDopplerDock) storyDopplerDock.classList.toggle("visible", !collapsed && !!(simClockBox && simClockBox.classList.contains("show-doppler")));
   }
 
   function updateLessonButton() {
@@ -123,6 +124,10 @@
   function setClockVisibility(visible) {
     if (!simClockBox) return;
     simClockBox.classList.toggle("is-hidden", !visible);
+    if (!visible) {
+      setPlayVisibility(false);
+      setScrubberVisibility(false);
+    }
     if (simControlsWrap) {
       var hasPlay = !(playWrap && playWrap.classList.contains("is-hidden"));
       simControlsWrap.classList.toggle("is-hidden", !visible && !hasPlay);
