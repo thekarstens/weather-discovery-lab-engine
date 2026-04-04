@@ -1545,27 +1545,6 @@ window.setReportsFilter = setReportsFilter;
   }
 
 
-
-  function refreshStormTrackUiPositions(){
-    if (!stormTrackSpeedBox || !stormTrackArrivalBox) return;
-    var collapsed = document.body.classList.contains("guide-collapsed");
-    if (collapsed){
-      stormTrackArrivalBox.style.left = "12px";
-      stormTrackArrivalBox.style.top = "118px";
-      stormTrackArrivalBox.style.bottom = "auto";
-      stormTrackSpeedBox.style.left = "188px";
-      stormTrackSpeedBox.style.top = "112px";
-      stormTrackSpeedBox.style.transform = "none";
-    } else {
-      stormTrackArrivalBox.style.left = "14px";
-      stormTrackArrivalBox.style.top = "";
-      stormTrackArrivalBox.style.bottom = "18px";
-      stormTrackSpeedBox.style.left = "50%";
-      stormTrackSpeedBox.style.top = "50%";
-      stormTrackSpeedBox.style.transform = "translate(-50%,-50%)";
-    }
-  }
-
   function clearStormTrackGraphics(){
     try{ trackLayerGroup.clearLayers(); }catch(e){}
     trackArrowLine = null;
@@ -1617,7 +1596,6 @@ window.setReportsFilter = setReportsFilter;
   var stats = getTrackArrowStats(startLL, endLL);
   var mph = stats ? stats.stormMph : 0;
 
-  refreshStormTrackUiPositions();
   if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
   if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = Math.max(1, Math.round(mph)) + " mph";
 
@@ -1692,7 +1670,14 @@ window.setReportsFilter = setReportsFilter;
       fillOpacity: 1
     }).addTo(trackLayerGroup);
 
-
+    L.marker(ll, {
+      interactive: false,
+      icon: L.divIcon({
+        className: "storm-track-city-label",
+        html: h.name,
+        iconSize: null
+      })
+    }).addTo(trackLayerGroup);
   });
 }
 
@@ -1714,7 +1699,6 @@ window.setReportsFilter = setReportsFilter;
       };
     }).slice(0, 14);
 
-    refreshStormTrackUiPositions();
     if (!hits.length){
       stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">No nearby cities on this track</div><div class="sta-time">—</div></div>';
     } else {
