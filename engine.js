@@ -1545,6 +1545,27 @@ window.setReportsFilter = setReportsFilter;
   }
 
 
+
+  function refreshStormTrackUiPositions(){
+    if (!stormTrackSpeedBox || !stormTrackArrivalBox) return;
+    var collapsed = document.body.classList.contains("guide-collapsed");
+    if (collapsed){
+      stormTrackArrivalBox.style.left = "12px";
+      stormTrackArrivalBox.style.top = "118px";
+      stormTrackArrivalBox.style.bottom = "auto";
+      stormTrackSpeedBox.style.left = "188px";
+      stormTrackSpeedBox.style.top = "112px";
+      stormTrackSpeedBox.style.transform = "none";
+    } else {
+      stormTrackArrivalBox.style.left = "14px";
+      stormTrackArrivalBox.style.top = "";
+      stormTrackArrivalBox.style.bottom = "18px";
+      stormTrackSpeedBox.style.left = "50%";
+      stormTrackSpeedBox.style.top = "50%";
+      stormTrackSpeedBox.style.transform = "translate(-50%,-50%)";
+    }
+  }
+
   function clearStormTrackGraphics(){
     try{ trackLayerGroup.clearLayers(); }catch(e){}
     trackArrowLine = null;
@@ -1596,6 +1617,7 @@ window.setReportsFilter = setReportsFilter;
   var stats = getTrackArrowStats(startLL, endLL);
   var mph = stats ? stats.stormMph : 0;
 
+  refreshStormTrackUiPositions();
   if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
   if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = Math.max(1, Math.round(mph)) + " mph";
 
@@ -1658,7 +1680,7 @@ window.setReportsFilter = setReportsFilter;
     fillOpacity: 1
   }).addTo(trackLayerGroup);
 
-  // Yellow city dots inside fan (names stay in arrival box to avoid overlap with map labels)
+  // TV-style city labels inside fan
   var hits = getTrackFanHits(startLL, endLL).slice(0, 10);
   hits.forEach(function(h){
     var ll = L.latLng(h.lat, h.lon);
@@ -1669,6 +1691,8 @@ window.setReportsFilter = setReportsFilter;
       fillColor: "#fdd835",
       fillOpacity: 1
     }).addTo(trackLayerGroup);
+
+
   });
 }
 
@@ -1690,6 +1714,7 @@ window.setReportsFilter = setReportsFilter;
       };
     }).slice(0, 14);
 
+    refreshStormTrackUiPositions();
     if (!hits.length){
       stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">No nearby cities on this track</div><div class="sta-time">—</div></div>';
     } else {
