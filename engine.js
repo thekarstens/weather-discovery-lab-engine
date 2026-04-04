@@ -1670,14 +1670,7 @@ window.setReportsFilter = setReportsFilter;
       fillOpacity: 1
     }).addTo(trackLayerGroup);
 
-    L.marker(ll, {
-      interactive: false,
-      icon: L.divIcon({
-        className: "storm-track-city-label",
-        html: h.name,
-        iconSize: null
-      })
-    }).addTo(trackLayerGroup);
+
   });
 }
 
