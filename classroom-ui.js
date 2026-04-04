@@ -1,9 +1,7 @@
 (function () {
-  var backBtn = document.getElementById("simBackBtn");
-  var pauseBtn = document.getElementById("simPauseBtn");
+    var slowerBtn = document.getElementById("simSlowerBtn");
   var playBtn = document.getElementById("simPlayPauseBtn");
-  var loopBtn = document.getElementById("simLoopBtn");
-  var fwdBtn = document.getElementById("simFwdBtn");
+  var fasterBtn = document.getElementById("simFasterBtn");
   var playWrap = document.getElementById("playPauseWrap");
   var simControlsWrap = document.getElementById("simControlsWrap");
   var simClockBox = document.getElementById("simClockBox");
@@ -82,7 +80,7 @@
   function updateClock() {
     syncFromEngineClock();
     if (simClockReadout) simClockReadout.textContent = formatLocalSimTime(simUtc);
-    if (loopBtn) loopBtn.classList.toggle("active", !!loopEnabled);
+    
   }
 
   function syncDopplerButtons(visible) {
@@ -139,8 +137,6 @@
 
   function setPlayVisibility(visible) {
     if (playWrap) playWrap.classList.toggle("is-hidden", !visible);
-    if (playBtn) playBtn.style.display = visible ? "" : "none";
-    if (pauseBtn) pauseBtn.style.display = visible ? "" : "none";
   }
 
   function setClockVisibility(visible) {
@@ -148,8 +144,8 @@
     simClockBox.classList.toggle("is-hidden", !visible);
     if (!visible) {
       if (simControlsWrap) simControlsWrap.classList.add("is-hidden");
-      if (scrubWrap) scrubWrap.classList.add("is-hidden");
       if (playWrap) playWrap.classList.add("is-hidden");
+      if (scrubWrap) scrubWrap.classList.add("is-hidden");
       return;
     }
     if (simControlsWrap) simControlsWrap.classList.remove("is-hidden");
@@ -369,23 +365,18 @@ function applyMode(isExplore, opts) {
       var d = new Date(detail.utc);
       if (!isNaN(d)) simUtc = d.getTime();
     }
-    if (detail.pause) pauseSimulator();
-
+    var showClock = !!detail.showClock;
     var showPlay = !!detail.allowPlay;
-    var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : false;
-    var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
-    var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
     var showScrubber = !!detail.showScrubber;
     var showDoppler = !!detail.showDoppler;
-    if (!showPlay) loopEnabled = false;
+    var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
+    var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
 
-    setPlayVisibility(showPlay);
     setClockVisibility(showClock);
-    setScrubberVisibility(showClock && showScrubber);
+    setPlayVisibility(showClock && showPlay);
+    if (scrubWrap) scrubWrap.classList.toggle("is-hidden", !(showClock && showScrubber));
     setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
-    if (storyDopplerBtn) storyDopplerBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
-    try { if (typeof window.syncScrubberToActiveProduct === "function") window.syncScrubberToActiveProduct(); } catch (e) {}
     updateClock();
     updateLessonButton();
   });
@@ -393,6 +384,7 @@ function applyMode(isExplore, opts) {
   makeStormTrackWindowDraggable();
   if (toolToggleBtn) toolToggleBtn.addEventListener("click", function(){ toggleToolBox(); });
   toggleToolBox(false);
+  setClockVisibility(false);
   applyMode(false);
   setPlayVisibility(false);
   setClockVisibility(false);
