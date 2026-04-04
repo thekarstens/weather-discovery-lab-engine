@@ -1625,6 +1625,7 @@ window.setReportsFilter = setReportsFilter;
 
   if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
   if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = Math.max(1, Math.round(mph)) + " mph";
+  try { var ctr = getTrackPolygonCentroid(startLL, endLL); if (ctr && stormTrackSpeedBox) { stormTrackSpeedBox.style.left = ctr.x + "px"; stormTrackSpeedBox.style.top = ctr.y + "px"; stormTrackSpeedBox.style.transform = "translate(-50%,-50%)"; } } catch(e) {}
 
   try{ trackLayerGroup.clearLayers(); }catch(e){}
 
