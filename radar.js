@@ -100,16 +100,15 @@ function updateSweepUi(){
     var btn = document.getElementById(id);
     if (btn){
       btn.textContent = radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
-      btn.classList.toggle('active', !!radarSweepEnabled);
-      btn.classList.toggle('pulsing', !radarSweepEnabled);
-      btn.classList.add('visible');
+      btn.classList.remove('active');
+      btn.classList.remove('pulsing');
+      if (radarSweepEnabled) btn.classList.add('active');
+      else btn.classList.add('pulsing');
     }
   });
-
   try {
     window.dispatchEvent(new CustomEvent('wdl:dopplerchange', { detail: { enabled: !!radarSweepEnabled } }));
   } catch (e) {}
-
   var panel = document.getElementById('radarSweepControls');
   if (panel) panel.classList.toggle('open', !!radarSweepEnabled);
 }
