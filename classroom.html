@@ -226,7 +226,7 @@
     #simClockBox.is-hidden,
     #toolBox.is-hidden,
     #mapControlRow.guided-tools-hidden #toolBox {
-      display: none !important;
+      display: block !important;
     }
 
     .sim-clock {
@@ -536,11 +536,49 @@
     }
 
     .tool-box {
-      padding: 10px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 146px;
+      min-width: 0;
+      width: auto;
+      align-items: stretch;
+    }
+
+    .tool-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font: 800 11px/1 "Lato", Arial, sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .tool-caret{
+      font: 900 12px/1 Arial, sans-serif;
+      opacity:.9;
+      transition: transform 160ms ease;
+    }
+
+    .tool-box:not(.collapsed) .tool-caret{
+      transform: rotate(180deg);
+    }
+
+    .tool-list{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .tool-box.collapsed .tool-list{
+      display:none;
     }
 
     .tool-label,
@@ -558,11 +596,14 @@
       border: 1px solid rgba(255,255,255,0.35);
       background: rgba(0,0,0,0.25);
       color: #fff;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 12px;
-      font: 900 12px/1 Arial, sans-serif;
+      font: 800 11px/1 "Lato", Arial, sans-serif;
       cursor: pointer;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.2px;
+      width: auto;
+      min-width: 0;
+      align-self: flex-start;
     }
 
     .tool-btn.active {
@@ -795,6 +836,40 @@
     .guide-collapsed .storm-track-arrivals{left:12px;top:118px;bottom:auto;}
     .guide-collapsed .storm-track-speed{left:188px;top:112px;transform:none;}
     
+  
+    .storm-speed-marker {
+      background: transparent;
+      border: none;
+    }
+    .storm-speed-box{
+      min-width: 148px;
+      padding: 10px 16px 12px;
+      border-radius: 18px;
+      background: rgba(11,28,45,.94);
+      color: #ffe082;
+      border: 2px solid rgba(255,255,255,.16);
+      box-shadow: 0 8px 22px rgba(0,0,0,.30);
+      text-align: center;
+      transform: translate(-50%, -50%);
+      font-family: "Lato", Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      white-space: nowrap;
+    }
+    .storm-speed-label{
+      font: 700 10px/1 "Lato", Arial, sans-serif;
+      color: #ffffff;
+      opacity: .85;
+      letter-spacing: .9px;
+      margin-bottom: 5px;
+    }
+    .storm-speed-value{
+      font: 900 26px/1 "Lato", Arial, sans-serif;
+      color: #ffe082;
+      letter-spacing: .2px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.25);
+    }
+    
   </style>
 </head>
 <body>
@@ -900,14 +975,19 @@
   <div id="storyTab" aria-label="Open lesson">OPEN LESSON</div>
 
   <div class="map-control-row" id="mapControlRow" aria-label="Map controls row">
-    <div class="tool-box" id="toolBox" aria-label="Map tools">
-      <span class="tool-label">Tools</span>
-      <button class="tool-btn" id="toolMeasure" type="button" title="Measure distance">Ruler</button>
-      <button class="tool-btn" id="toolProbe" type="button" title="Pixel query / probe">Probe</button>
-      <button class="tool-btn" id="toolTrack" type="button" title="Storm tracker">Track</button>
-      <button class="tool-btn teacher-only" id="toolDraw" type="button" title="Teacher telestrator">Draw</button>
-      <button class="tool-btn teacher-only" id="toolErase" type="button" title="Erase drawings">Erase</button>
-      <button class="tool-btn" id="toolHome" type="button" title="Reset view">Home</button>
+    <div class="tool-box collapsed" id="toolBox" aria-label="Map tools">
+      <button class="tool-toggle" id="toolToggleBtn" type="button" aria-expanded="false" title="Show or hide tools">
+        <span class="tool-label">Tools</span>
+        <span class="tool-caret" id="toolCaret">▾</span>
+      </button>
+      <div class="tool-list" id="toolList">
+        <button class="tool-btn" id="toolMeasure" type="button" title="Measure distance">Ruler</button>
+        <button class="tool-btn" id="toolProbe" type="button" title="Pixel query / probe">Probe</button>
+        <button class="tool-btn" id="toolTrack" type="button" title="Storm tracker">Track</button>
+        <button class="tool-btn teacher-only" id="toolDraw" type="button" title="Teacher telestrator">Draw</button>
+        <button class="tool-btn teacher-only" id="toolErase" type="button" title="Erase drawings">Erase</button>
+        <button class="tool-btn" id="toolHome" type="button" title="Reset view">Home</button>
+      </div>
     </div>
 
     <div class="zoom-level-debug" id="zoomLevelDebug" aria-label="Current zoom level">
