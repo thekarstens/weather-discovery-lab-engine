@@ -870,7 +870,20 @@
       text-shadow: 0 1px 2px rgba(0,0,0,.25);
     }
     
-  </style>
+  
+    #playPauseWrap button{
+      border:1px solid rgba(255,255,255,.25);
+      background:rgba(0,0,0,.22);
+      color:#fff;
+      border-radius:12px;
+      padding:7px 10px;
+      font:800 11px/1 "Lato", Arial, sans-serif;
+      cursor:pointer;
+      min-width:72px;
+    }
+    #simPlayPauseBtn{ background:linear-gradient(180deg,#2b69ef,#1847b8); }
+    #simClockBox.is-hidden, #simControlsWrap.is-hidden, #playPauseWrap.is-hidden, #scrubWrap.is-hidden{ display:none !important; }
+    </style>
 </head>
 <body>
 
@@ -892,10 +905,13 @@
             <div class="sim-clock" id="simClockBox">
               <div class="time" id="simClockReadout">2:30 PM</div>
               <div id="playPauseWrap">
+              <button id="simSlowerBtn" type="button">Slower</button>
+              <button id="simPlayPauseBtn" type="button">Play</button>
+              <button id="simFasterBtn" type="button">Faster</button>
                 
                 <button  class="sim-icon-btn pause" type="button" aria-label="Pause simulator">❚❚</button>
                 <button id="simPlayPauseBtn" class="sim-icon-btn play" type="button" aria-label="Play simulator">▶</button>
-                <button id="simLoopBtn" class="sim-icon-btn loop" type="button" aria-label="Loop current segment">↻</button>
+                
                 
               </div>
               <div class="scrub-wrap" id="scrubWrap">
