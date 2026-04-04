@@ -94,45 +94,48 @@
 
     .question-line .qlabel { display: none; }
 
+    
     .product-slot {
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:-34px;
-      padding:4px 16px 6px;
-      border-radius:0 0 18px 18px;
-      background:linear-gradient(180deg, rgba(220,228,240,0.28), rgba(80,90,105,0.18));
-      border:1px solid rgba(255,255,255,0.16);
-      border-top:none;
-      box-shadow:0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08);
-      backdrop-filter: blur(3px);
+      bottom:-48px;
+      z-index:100002;
+      pointer-events:none;
     }
 
-    .story-action.story-doppler-inline{background:linear-gradient(180deg,#0d57d6,#0b7cff 55%,#083f9d); color:#eaf8ff; border:1px solid rgba(120,220,255,.85); box-shadow:0 0 14px rgba(0,170,255,.55), inset 0 0 10px rgba(255,255,255,.10);}
-.story-action.story-doppler-inline.active{background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18);}
-.story-action.story-doppler-inline.pulsing{animation:dopplerPulse 1.4s infinite;}
-@keyframes dopplerPulse{0%{box-shadow:0 0 10px rgba(0,170,255,.45);}50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}100%{box-shadow:0 0 10px rgba(0,170,255,.45);}}
-.product-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 20px;
-      min-height: 32px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(7,22,46,0.98), rgba(2,12,28,0.95));
-      border: 1px solid rgba(120,205,255,0.40);
-      color: #f6fbff;
-      font: 800 15px/1 "Lato", Arial, sans-serif;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      box-shadow: 0 0 18px rgba(0,170,255,0.12), 0 6px 14px rgba(0,0,0,0.18);
-      white-space: nowrap;
+    .product-pill {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-width:168px;
+      padding:10px 18px 12px;
+      border-radius:18px;
+      background:rgba(11,28,45,.88);
+      color:#fff;
+      border:2px solid rgba(255,255,255,.20);
+      box-shadow:0 8px 22px rgba(0,0,0,.28);
+      font-family:"Lato", Arial, sans-serif;
+      text-transform:uppercase;
+      letter-spacing:.6px;
+      white-space:nowrap;
     }
+
+    .product-pill::before{
+      content:"MAP LAYER";
+      display:block;
+      font:700 10px/1 "Lato", Arial, sans-serif;
+      letter-spacing:.9px;
+      opacity:.82;
+      margin-bottom:5px;
+    }
+    
 
     .open-lesson-btn {
       position: absolute;
       left: 16px;
-      top: 20px;
+      top: 18px;
       border: 1px solid rgba(0,0,0,0.35);
       background: #fdd835;
       color: #111;
@@ -417,7 +420,7 @@
     }
 
     .story-media-wrap {
-      margin-top: 12px;
+      margin-top: 18px;
       border: 1px solid rgba(0,0,0,0.10);
       background: #eef2f7;
       border-radius: 14px;
@@ -724,8 +727,8 @@
     .storm-track-speed-value{font:900 26px/1 "Lato",Arial,sans-serif;margin-top:4px;}
     .storm-track-arrivals{
       position:absolute;
-      left:14px;
-      bottom:18px;
+      left:50%; transform:translateX(-50%);
+      bottom:26px;
       z-index:100500;
       display:none;
       width:260px;
@@ -742,6 +745,9 @@
     .storm-track-arrivals-body{max-height:210px;overflow:auto;padding:10px 12px;font:600 13px/1.35 "Lato",Arial,sans-serif;}
     .sta-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08);}
     .sta-row:last-child{border-bottom:none;}
+.storm-track-arrivals{cursor:move;}
+.storm-track-arrivals-head{cursor:move; user-select:none;}
+
     .guide-collapsed .storm-track-arrivals{left:12px;top:118px;bottom:auto;}
     .guide-collapsed .storm-track-speed{left:188px;top:112px;transform:none;}
     
@@ -823,9 +829,7 @@
         <div class="story-title" id="storyTitle">Storm Story</div>
       </div>
       <div class="story-actions">
-        <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Collapse</button>
-        <button class="story-action story-resume-inline" id="resumeLessonInlineBtn" title="Resume lesson">Resume</button>
-        <button class="story-action" id="hideGuideBtn" title="Hide guide">Hide</button>
+        <button class="story-action story-collapse-btn" id="storyCollapseBtn" title="Collapse lesson">Hide</button>
       </div>
     </div>
     <div class="story-content">
