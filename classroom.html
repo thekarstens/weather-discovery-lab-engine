@@ -65,7 +65,7 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 340px 0 180px;
+      padding: 0 340px 0 120px;
     }
 
     .brand-line {
@@ -95,11 +95,12 @@
     .question-line .qlabel { display: none; }
 
     
+    
     .product-slot {
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:-54px;
+      bottom:-56px;
       z-index:100002;
       pointer-events:none;
     }
@@ -109,28 +110,36 @@
       flex-direction:column;
       align-items:center;
       justify-content:center;
-      min-width:172px;
+      min-width:182px;
       padding:10px 18px 12px;
       border-radius:18px;
-      background:rgba(11,28,45,.94);
-      color:#ffe082;
-      border:2px solid rgba(255,255,255,.16);
+      background:rgba(11,28,45,.92);
+      color:#9fe6ff;
+      border:2px solid rgba(255,255,255,.18);
       box-shadow:0 8px 22px rgba(0,0,0,.28);
       font-family:"Lato", Arial, sans-serif;
       text-transform:uppercase;
-      letter-spacing:.5px;
+      letter-spacing:.3px;
       white-space:nowrap;
       font-weight:900;
+      font-size:17px;
+      line-height:1.05;
     }
 
-    .product-pill::before{
+    .story-action.story-doppler-inline{background:linear-gradient(180deg,#0d57d6,#0b7cff 55%,#083f9d); color:#ffffff; border:1px solid rgba(160,235,255,.98); text-shadow:0 1px 4px rgba(0,0,0,.40); box-shadow:0 0 14px rgba(0,170,255,.60), inset 0 0 10px rgba(255,255,255,.10);}
+.story-action.story-doppler-inline.active{background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18);}
+.story-action.story-doppler-inline.pulsing{animation:dopplerPulse 1.4s infinite;}
+@keyframes dopplerPulse{0%{box-shadow:0 0 10px rgba(0,170,255,.45);}50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}100%{box-shadow:0 0 10px rgba(0,170,255,.45);}}
+.product-pill::before{
       content:"MAP LAYER";
       display:block;
       font:700 10px/1 "Lato", Arial, sans-serif;
       letter-spacing:.9px;
-      opacity:.78;
+      color:#ffffff;
+      opacity:.82;
       margin-bottom:5px;
     }
+    
     
 
     .open-lesson-btn {
@@ -733,8 +742,8 @@
       z-index:100500;
       display:none;
       width:260px;
-      background:rgba(255,255,255,.96);
-      color:#111;
+      background:rgba(11,28,45,.94);
+      color:#ffffff;
       border-radius:16px;
       box-shadow:0 10px 28px rgba(0,0,0,.26);
       border:2px solid rgba(255,255,255,.14);
@@ -766,7 +775,7 @@
 
       <div class="banner-center">
         <div class="brand-line">Weather Discovery Lab</div>
-        <div class="case-line">Lesson 1: Derecho Case Study — May 12, 2022</div>
+        <div class="case-line">Derecho Case Study — May 12, 2022</div>
         <div class="region-line">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
         </div>
 
