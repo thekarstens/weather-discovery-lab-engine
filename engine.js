@@ -1590,6 +1590,33 @@ window.setReportsFilter = setReportsFilter;
     return h12 + ":" + mm + " " + ap;
   }
 
+
+  function getTrackPolygonCentroid(startLL, endLL){
+    if (!startLL || !endLL) return null;
+    var p1 = map.latLngToLayerPoint(startLL);
+    var p2 = map.latLngToLayerPoint(endLL);
+    var dx = p2.x - p1.x;
+    var dy = p2.y - p1.y;
+    var len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var ux = dx / len;
+    var uy = dy / len;
+    var angle = 12 * Math.PI / 180;
+    function rotate(vx, vy, ang){
+      return {
+        x: vx * Math.cos(ang) - vy * Math.sin(ang),
+        y: vx * Math.sin(ang) + vy * Math.cos(ang)
+      };
+    }
+    var leftVec = rotate(ux, uy, angle);
+    var rightVec = rotate(ux, uy, -angle);
+    var leftPt = {x: p1.x + leftVec.x * len, y: p1.y + leftVec.y * len};
+    var rightPt = {x: p1.x + rightVec.x * len, y: p1.y + rightVec.y * len};
+    return {
+      x: (p1.x + leftPt.x + rightPt.x) / 3,
+      y: (p1.y + leftPt.y + rightPt.y) / 3
+    };
+  }
+
   function drawTrackPreview(startLL, endLL){
   if (!startLL || !endLL) return;
 
