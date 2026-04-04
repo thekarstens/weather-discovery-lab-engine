@@ -389,7 +389,7 @@
       background: linear-gradient(180deg, #ffffff, #f1f4f8);
       border-radius: 12px;
       padding: 8px 12px;
-      font: 800 11px/1 "Lato", Arial, sans-serif;
+      font: 900 12px/1 Arial, sans-serif;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
@@ -509,7 +509,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 116px;
+      min-width: 108px;
     }
 
     .tool-label,
@@ -529,7 +529,7 @@
       color: #fff;
       padding: 8px 10px;
       border-radius: 12px;
-      font: 800 11px/1 "Lato", Arial, sans-serif;
+      font: 900 12px/1 Arial, sans-serif;
       cursor: pointer;
       letter-spacing: 0.4px;
     }
@@ -586,7 +586,7 @@
     }
 
     .leg-mini-label {
-      font: 800 11px/1 "Lato", Arial, sans-serif;
+      font: 900 12px/1 Arial, sans-serif;
       letter-spacing: 0.7px;
       text-transform: uppercase;
       opacity: 0.95;
@@ -641,9 +641,6 @@
     .story-collapse-btn { background:#ffffff; color:#0e2d5b; min-width:84px; }
     .story-doppler-inline { display:none; }
     .story-doppler-inline.visible { display:inline-flex; }
-.story-doppler-dock{display:none; margin:10px 0 2px 0; justify-content:flex-start;}
-.storyPanel.story-open .story-doppler-dock.visible{display:flex;}
-.storyPanel.story-collapsed .story-doppler-dock{display:none !important;}
     .story-doppler-inline.active, .explore-doppler-float.active {
       box-shadow: 0 0 20px rgba(0,200,255,1), 0 0 40px rgba(0,150,255,0.8);
     }
@@ -702,7 +699,19 @@
       .sim-icon-btn { width: 44px; height: 44px; font-size: 24px; }
       #brandLogo { width: 180px; }
     }
-  </style>
+  
+    .storm-track-speed{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:100500; display:none; min-width:120px; text-align:center; background:rgba(11,28,45,.88); color:#fff; border:2px solid rgba(255,255,255,.28); border-radius:18px; box-shadow:0 8px 22px rgba(0,0,0,.28); padding:8px 12px; pointer-events:none;}
+    .storm-track-speed.open{display:block;}
+    .storm-track-speed-label{font:700 10px/1 "Lato",Arial,sans-serif; text-transform:uppercase; letter-spacing:.8px; opacity:.85;}
+    .storm-track-speed-value{font:900 26px/1 "Lato",Arial,sans-serif; margin-top:4px;}
+    .storm-track-arrivals{position:absolute; left:14px; bottom:18px; z-index:100500; display:none; width:260px; background:rgba(255,255,255,.96); color:#111; border-radius:16px; box-shadow:0 10px 28px rgba(0,0,0,.26); border:1px solid rgba(0,0,0,.18); overflow:hidden;}
+    .storm-track-arrivals.open{display:block;}
+    .storm-track-arrivals-head{display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:linear-gradient(180deg,#173a73,#0e2550); color:#fff; font:800 12px/1 "Lato",Arial,sans-serif; letter-spacing:.6px; text-transform:uppercase;}
+    .storm-track-arrivals-head button{border:none; background:transparent; color:#fff; font:800 14px/1 "Lato",Arial,sans-serif; cursor:pointer;}
+    .storm-track-arrivals-body{max-height:210px; overflow:auto; padding:10px 12px; font:600 13px/1.35 "Lato",Arial,sans-serif;}
+    .sta-row{display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(0,0,0,.08);}
+    .sta-row:last-child{border-bottom:none;}
+    </style>
 </head>
 <body>
 
@@ -836,8 +845,8 @@
     <label>Beam thickness <input id="sweepBeamSlider" type="range" min="1" max="8" step="1" value="2" /></label>
   </div>
 
-  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"><div class="storm-track-speed-label">Speed</div><div class="storm-track-speed-value" id="stormTrackSpeedValue">—</div></div>
-  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"><div class="storm-track-arrivals-head"><span>Arrival Times</span><button type="button" id="stormTrackCloseBtn">×</button></div><div class="storm-track-arrivals-body" id="stormTrackArrivalBody"></div></div>
+  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"><div class="storm-track-speed-label">Storm Speed</div><div class="storm-track-speed-value" id="stormTrackSpeedValue">—</div></div>
+  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"><div class="storm-track-arrivals-head"><span>Storm Track</span><button type="button" id="stormTrackCloseBtn">Close</button></div><div class="storm-track-arrivals-body" id="stormTrackArrivalBody"></div></div>
   <button id="exploreDopplerBtn" class="doppler-btn explore-doppler-float" type="button">LIVE Doppler OFF</button>
 
   <script>
