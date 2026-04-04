@@ -1467,6 +1467,7 @@ window.setReportsFilter = setReportsFilter;
   var trackArrowHead = null;
   var trackDotLayer = null;
   var trackDragging = false;
+  var stormTrackSpeedMarker = null;
 
   var stormTrackSpeedBox = document.getElementById("stormTrackSpeedBox");
   var stormTrackSpeedValue = document.getElementById("stormTrackSpeedValue");
@@ -1553,6 +1554,8 @@ window.setReportsFilter = setReportsFilter;
     trackStartLatLng = null;
     trackCurrentLatLng = null;
     trackDragging = false;
+    try{ if (stormTrackSpeedMarker && map && map.hasLayer(stormTrackSpeedMarker)) map.removeLayer(stormTrackSpeedMarker); }catch(e){}
+    stormTrackSpeedMarker = null;
     if (stormTrackSpeedBox) stormTrackSpeedBox.classList.remove("open");
     if (stormTrackArrivalBox) stormTrackArrivalBox.classList.remove("open");
     if (stormTrackArrivalBody) stormTrackArrivalBody.innerHTML = "";
@@ -1617,15 +1620,52 @@ window.setReportsFilter = setReportsFilter;
     };
   }
 
+
+  function getTrackSpeedLatLng(startLL, endLL){
+    if (!startLL || !endLL) return null;
+    var frac = 0.66; // forward along track, more meteorologist-style
+    return L.latLng(
+      startLL.lat + (endLL.lat - startLL.lat) * frac,
+      startLL.lng + (endLL.lng - startLL.lng) * frac
+    );
+  }
+
+  function placeStormTrackSpeedBubble(startLL, endLL, mph){
+    var ll = getTrackSpeedLatLng(startLL, endLL);
+    if (!ll || !isFinite(mph)) return;
+    var html = '<div class="storm-speed-box"><div class="storm-speed-label">STORM SPEED</div><div class="storm-speed-value">' +
+      Math.max(1, Math.round(mph)) + ' mph</div></div>';
+
+    if (!stormTrackSpeedMarker){
+      stormTrackSpeedMarker = L.marker(ll, {
+        interactive: false,
+        zIndexOffset: 1000,
+        icon: L.divIcon({
+          className: 'storm-speed-marker',
+          html: html,
+          iconSize: null
+        })
+      }).addTo(map);
+    } else {
+      stormTrackSpeedMarker.setLatLng(ll);
+      stormTrackSpeedMarker.setIcon(L.divIcon({
+        className: 'storm-speed-marker',
+        html: html,
+        iconSize: null
+      }));
+      try { if (!map.hasLayer(stormTrackSpeedMarker)) stormTrackSpeedMarker.addTo(map); } catch(e) {}
+    }
+
+    if (stormTrackSpeedBox) stormTrackSpeedBox.classList.remove('open');
+  }
+
   function drawTrackPreview(startLL, endLL){
   if (!startLL || !endLL) return;
 
   var stats = getTrackArrowStats(startLL, endLL);
   var mph = stats ? stats.stormMph : 0;
 
-  if (stormTrackSpeedBox) stormTrackSpeedBox.classList.add("open");
-  if (stormTrackSpeedValue) stormTrackSpeedValue.textContent = Math.max(1, Math.round(mph)) + " mph";
-  try { var ctr = getTrackPolygonCentroid(startLL, endLL); if (ctr && stormTrackSpeedBox) { stormTrackSpeedBox.style.left = ctr.x + "px"; stormTrackSpeedBox.style.top = ctr.y + "px"; stormTrackSpeedBox.style.transform = "translate(-50%,-50%)"; } } catch(e) {}
+  placeStormTrackSpeedBubble(startLL, endLL, mph)
 
   try{ trackLayerGroup.clearLayers(); }catch(e){}
 
