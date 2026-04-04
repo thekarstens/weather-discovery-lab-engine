@@ -19,6 +19,30 @@
   var floatingSweepBtn = document.getElementById("exploreDopplerBtn");
   var storyCollapseBtn = document.getElementById("storyCollapseBtn");
 
+  var stormTrackArrivalBox = document.getElementById("stormTrackArrivalBox");
+  var stormTrackArrivalHead = document.querySelector(".storm-track-arrivals-head");
+  function makeStormTrackWindowDraggable(){
+    if (!stormTrackArrivalBox || !stormTrackArrivalHead) return;
+    var dragging = false, startX = 0, startY = 0, origL = 0, origT = 0;
+    stormTrackArrivalHead.onmousedown = function(e){
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      var rect = stormTrackArrivalBox.getBoundingClientRect();
+      origL = rect.left; origT = rect.top;
+      stormTrackArrivalBox.style.left = origL + "px";
+      stormTrackArrivalBox.style.top = origT + "px";
+      stormTrackArrivalBox.style.bottom = "auto";
+      stormTrackArrivalBox.style.transform = "none";
+      e.preventDefault();
+    };
+    window.addEventListener("mousemove", function(e){
+      if (!dragging) return;
+      stormTrackArrivalBox.style.left = (origL + e.clientX - startX) + "px";
+      stormTrackArrivalBox.style.top = (origT + e.clientY - startY) + "px";
+    });
+    window.addEventListener("mouseup", function(){ dragging = false; });
+  }
+
   var simTimer = null;
   var simState = "paused";
   var simSpeedMinutes = 5;
@@ -74,23 +98,19 @@
 
   function updateCollapsedState(){
     var collapsed = document.body.classList.contains("guide-collapsed");
-    if (storyPanel) storyPanel.classList.toggle("story-collapsed", collapsed);
+    if (storyPanel) {
+      storyPanel.classList.toggle("story-collapsed", collapsed);
+      storyPanel.classList.add("story-open");
+    }
     if (storyCollapseBtn) storyCollapseBtn.textContent = collapsed ? "Resume" : "Hide";
   }
 
   function updateLessonButton() {
     if (!openLessonBtn || !storyPanel) return;
-    var isOpen = storyPanel.classList.contains("story-open");
-    var collapsed = storyPanel.classList.contains("story-collapsed") || document.body.classList.contains("guide-collapsed");
-    openLessonBtn.classList.toggle("lesson-open", isOpen);
-    openLessonBtn.classList.toggle("resume-ready", collapsed || (!isOpen && lessonEverOpened));
-    if (isOpen) {
-      openLessonBtn.textContent = "Hide Lesson";
-    } else if (collapsed || lessonEverOpened) {
-      openLessonBtn.textContent = "Resume Lesson";
-    } else {
-      openLessonBtn.textContent = "Open Lesson";
-    }
+    var collapsed = document.body.classList.contains("guide-collapsed");
+    openLessonBtn.classList.toggle("lesson-open", !collapsed);
+    openLessonBtn.classList.toggle("resume-ready", collapsed || lessonEverOpened);
+    openLessonBtn.textContent = collapsed ? "Resume Lesson" : "Hide Lesson";
   }
 
   function openGuide() {
@@ -101,13 +121,14 @@
     document.body.classList.remove("guide-collapsed");
     lessonEverOpened = true;
     updateLessonButton();
+  makeStormTrackWindowDraggable();
     updateCollapsedState();
   }
 
   function closeGuide() {
     if (storyPanel) {
+      storyPanel.classList.add("story-open");
       storyPanel.classList.add("story-collapsed");
-      storyPanel.classList.remove("story-open");
     }
     document.body.classList.add("guide-collapsed");
     updateLessonButton();
@@ -175,13 +196,16 @@
   function applyMode(isExplore, opts) {
     currentExploreMode = !!isExplore;
     document.body.classList.toggle("explore-mode", currentExploreMode);
-    if (exploreBtn) { exploreBtn.textContent = currentExploreMode ? "Guided" : "Explore"; exploreBtn.classList.toggle("active", currentExploreMode); }
+    if (exploreBtn) {
+      exploreBtn.textContent = currentExploreMode ? "Guided" : "Explore";
+      exploreBtn.classList.toggle("active", currentExploreMode);
+    }
 
     var showTools = currentExploreMode;
     if (opts && typeof opts.showTools === "boolean") showTools = opts.showTools;
     setToolDockVisibility(showTools);
 
-    // Keep storyboard open/collapsed state independent of Explore toggle
+    // Do not change storyboard visibility here.
     syncDopplerButtons(simClockBox && simClockBox.classList.contains("show-doppler"));
   }
 
