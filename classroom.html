@@ -65,7 +65,7 @@
       text-align: center;
       max-width: 980px;
       margin: 0 auto;
-      padding: 0 360px 0 210px;
+      padding: 0 340px 0 180px;
     }
 
     .brand-line {
@@ -99,7 +99,7 @@
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:-48px;
+      bottom:-54px;
       z-index:100002;
       pointer-events:none;
     }
@@ -109,17 +109,18 @@
       flex-direction:column;
       align-items:center;
       justify-content:center;
-      min-width:168px;
+      min-width:172px;
       padding:10px 18px 12px;
       border-radius:18px;
-      background:rgba(11,28,45,.88);
-      color:#fff;
-      border:2px solid rgba(255,255,255,.20);
+      background:rgba(11,28,45,.94);
+      color:#ffe082;
+      border:2px solid rgba(255,255,255,.16);
       box-shadow:0 8px 22px rgba(0,0,0,.28);
       font-family:"Lato", Arial, sans-serif;
       text-transform:uppercase;
-      letter-spacing:.6px;
+      letter-spacing:.5px;
       white-space:nowrap;
+      font-weight:900;
     }
 
     .product-pill::before{
@@ -127,7 +128,7 @@
       display:block;
       font:700 10px/1 "Lato", Arial, sans-serif;
       letter-spacing:.9px;
-      opacity:.82;
+      opacity:.78;
       margin-bottom:5px;
     }
     
@@ -736,15 +737,17 @@
       color:#111;
       border-radius:16px;
       box-shadow:0 10px 28px rgba(0,0,0,.26);
-      border:1px solid rgba(0,0,0,.18);
+      border:2px solid rgba(255,255,255,.14);
       overflow:hidden;
     }
     .storm-track-arrivals.open{display:block;}
-    .storm-track-arrivals-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:linear-gradient(180deg,#173a73,#0e2550);color:#fff;font:800 12px/1 "Lato",Arial,sans-serif;letter-spacing:.6px;text-transform:uppercase;}
+    .storm-track-arrivals-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:linear-gradient(180deg,#173a73,#0e2550);color:#fff;font:800 12px/1 "Lato",Arial,sans-serif;letter-spacing:.35px;text-transform:uppercase;}
     .storm-track-arrivals-head button{border:none;background:transparent;color:#fff;font:800 14px/1 "Lato",Arial,sans-serif;cursor:pointer;}
-    .storm-track-arrivals-body{max-height:210px;overflow:auto;padding:10px 12px;font:600 13px/1.35 "Lato",Arial,sans-serif;}
+    .storm-track-arrivals-body{max-height:210px;overflow:auto;padding:10px 12px;font:700 13px/1.35 "Lato",Arial,sans-serif;}
     .sta-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08);}
     .sta-row:last-child{border-bottom:none;}
+    .sta-city{color:#ffffff;font-weight:800;}
+    .sta-time{color:#ffe082;font-weight:900;}
 .storm-track-arrivals{cursor:move;}
 .storm-track-arrivals-head{cursor:move; user-select:none;}
 
