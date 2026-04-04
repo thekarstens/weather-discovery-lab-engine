@@ -147,9 +147,9 @@
     if (!simClockBox) return;
     simClockBox.classList.toggle("is-hidden", !visible);
     if (!visible) {
-      setPlayVisibility(false);
-      setScrubberVisibility(false);
       if (simControlsWrap) simControlsWrap.classList.add("is-hidden");
+      if (scrubWrap) scrubWrap.classList.add("is-hidden");
+      if (playWrap) playWrap.classList.add("is-hidden");
       return;
     }
     if (simControlsWrap) simControlsWrap.classList.remove("is-hidden");
@@ -372,7 +372,7 @@ function applyMode(isExplore, opts) {
     if (detail.pause) pauseSimulator();
 
     var showPlay = !!detail.allowPlay;
-    var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : true;
+    var showClock = (typeof detail.showClock === "boolean") ? detail.showClock : false;
     var showTools = (typeof detail.showTools === "boolean") ? detail.showTools : currentExploreMode;
     var nextExplore = (typeof detail.startInExplore === "boolean") ? detail.startInExplore : currentExploreMode;
     var showScrubber = !!detail.showScrubber;
@@ -381,7 +381,7 @@ function applyMode(isExplore, opts) {
 
     setPlayVisibility(showPlay);
     setClockVisibility(showClock);
-    setScrubberVisibility(showScrubber);
+    setScrubberVisibility(showClock && showScrubber);
     setDopplerVisibility(showDoppler);
     applyMode(nextExplore, { showTools: showTools });
     if (storyDopplerBtn) storyDopplerBtn.classList.toggle("pulsing", showDoppler && !window.radarSweepEnabled);
