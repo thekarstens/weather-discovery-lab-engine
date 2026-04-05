@@ -2545,8 +2545,20 @@ function safeLink(url){
       productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
 
     var showScrubber = (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber :
-      ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : (wantsRadar || wantsHrrrTemp || wantsHrrrWinds || wantsHrrrCape));
+      ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : (wantsRadar || wantsHrrrTemp || wantsHrrrWinds || wantsHrrrCape || wantsMetars));
 
+    try { if (typeof window.setMetarUseMasterScrubber === 'function') window.setMetarUseMasterScrubber(!!(wantsMetars && showScrubber)); } catch(e) {}
+
+    try {
+      if (typeof window.setMetarDisplayMode === 'function') {
+        if (_has(layers, ['metar_dewpoint'])) window.setMetarDisplayMode('dewpoint');
+        else if (_has(layers, ['metar_wind'])) window.setMetarDisplayMode('wind');
+        else if (_has(layers, ['metar_pressure'])) window.setMetarDisplayMode('pressure');
+        else window.setMetarDisplayMode('temp');
+      }
+    } catch(e) {}
+
+    try { if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(wantsMetars); } catch (e) {}
     try { if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(wantsSpc); } catch (e) {}
     try { if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(wantsRadar); } catch (e) {}
     try { if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(wantsRadar); } catch (e) {}
@@ -2554,21 +2566,6 @@ function safeLink(url){
     try { if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(wantsReports); } catch (e) {}
     try { if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(wantsLightning); } catch (e) {}
     try { if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(wantsSatellite); } catch (e) {}
-
-    try {
-      if (typeof window.setMetarUseMasterScrubber === 'function') {
-        window.setMetarUseMasterScrubber(!!showScrubber && !!wantsMetars);
-      }
-      if (typeof window.setMetarDisplayMode === 'function') {
-        if (_has(layers, ['metar_dewpoint'])) window.setMetarDisplayMode('dewpoint');
-        else if (_has(layers, ['metar_wind'])) window.setMetarDisplayMode('wind');
-        else if (_has(layers, ['metar_pressure'])) window.setMetarDisplayMode('pressure');
-        else window.setMetarDisplayMode('temp');
-      }
-      if (typeof window.setMetarsEnabled === 'function') {
-        await window.setMetarsEnabled(wantsMetars);
-      }
-    } catch (e) {}
 
     try { if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(wantsHrrrTemp); } catch (e) {}
     try { if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(wantsHrrrRadar); } catch (e) {}
@@ -4385,7 +4382,7 @@ if (window.createMetarsModule) {
         if (product === 'radar' && s.indexOf('/radar/') !== -1) return generic;
         if (product === 'winds' && s.indexOf('/winds/') !== -1) return generic;
         if (product === 'cape' && s.indexOf('/cape/') !== -1) return generic;
-        if (product === 'temp' && s.indexOf('/radar/') === -1 && s.indexOf('/winds/') === -1 && s.indexOf('/cape/') === -1) return generic;
+        if (product === 'temp' && s.indexOf('/radar/') == -1 && s.indexOf('/winds/') == -1 && s.indexOf('/cape/') == -1) return generic;
       }
     }catch(e){}
     return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : (product === 'cape' ? 'hrrr/cape/manifest.json' : 'hrrr/temp/manifest.json'));
