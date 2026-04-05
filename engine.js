@@ -2479,6 +2479,7 @@ function safeLink(url){
     return _joinUrl(DATA_BASE, u);
   }
 
+
   async function applyStoryScene(item){
     if (!item) return;
 
@@ -2490,27 +2491,118 @@ function safeLink(url){
       try { window.curZ = new Date(curZ.getTime()); } catch(e) {}
     } catch(e) {}
 
-    var layers = Array.isArray(item.layers) ? item.layers.map(function(x){ return String(x || '').toLowerCase(); }) : [];
-    var productName = String(item.product || '').toLowerCase();
-    var wantsSpc = layers.indexOf('spc_outlook') !== -1 || productName.indexOf('spc') !== -1;
-    var wantsRadar = layers.indexOf('radar') !== -1 || layers.indexOf('live_doppler') !== -1 || productName.indexOf('radar') !== -1 || productName.indexOf('doppler') !== -1;
+    function _norm(v){ return String(v || '').trim().toLowerCase(); }
+    function _has(list, names){
+      names = Array.isArray(names) ? names : [names];
+      for (var i = 0; i < names.length; i++){
+        if (list.indexOf(_norm(names[i])) !== -1) return true;
+      }
+      return false;
+    }
 
-    if (typeof window.setSpcDay1Enabled === 'function') {
-      try { await window.setSpcDay1Enabled(wantsSpc); } catch (e) { console.warn('SPC step apply failed', e); }
-    }
-    if (typeof window.setObsRadarEnabled === 'function') {
-      try { await window.setObsRadarEnabled(wantsRadar); } catch (e) { console.warn('Radar step apply failed', e); }
-    }
-    if (typeof window.setRadarEnabled === 'function') {
-      try { await window.setRadarEnabled(wantsRadar); } catch (e) { console.warn('Radar step apply failed', e); }
-    }
-    if (!wantsRadar && typeof radarSweepEnabled !== 'undefined') {
-      try { radarSweepEnabled = false; syncSweepButton(); hideRadarSweepCanvas(); } catch(e) {}
-    }
+    var layers = Array.isArray(item.layers) ? item.layers.map(_norm) : [];
+    var productName = _norm(item.product);
+    var interactionCfg = (item && item.interaction && typeof item.interaction === 'object') ? item.interaction : {};
+    var uiCfg = (item && item.ui && typeof item.ui === 'object') ? item.ui : {};
+
+    var wantsSpc = _has(layers, ['spc_outlook','spc_day1','day1_outlook']) ||
+      productName.indexOf('spc') !== -1 || productName.indexOf('outlook') !== -1;
+
+    var wantsRadar = _has(layers, ['radar','radar_reflectivity','obs_radar','reflectivity','live_doppler']) ||
+      productName.indexOf('radar') !== -1 || productName.indexOf('doppler') !== -1;
+
+    var wantsLiveDoppler = _has(layers, ['live_doppler','doppler']) ||
+      productName.indexOf('doppler') !== -1;
+
+    var wantsWarnings = _has(layers, ['warnings','alerts']) ||
+      productName.indexOf('warning') !== -1 || productName.indexOf('alert') !== -1;
+
+    var wantsReports = _has(layers, ['reports','storm_reports','lsr']) ||
+      productName.indexOf('report') !== -1 || productName.indexOf('lsr') !== -1;
+
+    var wantsLightning = _has(layers, ['lightning']) ||
+      productName.indexOf('lightning') !== -1;
+
+    var wantsSatellite = _has(layers, ['satellite','goes','truecolor']) ||
+      productName.indexOf('satellite') !== -1 || productName.indexOf('goes') !== -1;
+
+    var wantsMetars = _has(layers, ['metars','surface','metar_dewpoint','metar_wind','metar_temp','metar_pressure']) ||
+      productName.indexOf('metar') !== -1 || productName.indexOf('surface') !== -1;
+
+    var wantsHrrrTemp = _has(layers, ['hrrr_temp','future_temp','model_temp']) ||
+      productName === 'hrrr_temp' || productName === 'future_temp';
+
+    var wantsHrrrRadar = _has(layers, ['hrrr_radar','future_radar']) ||
+      productName === 'hrrr_radar' || productName === 'future_radar';
+
+    var wantsHrrrWinds = _has(layers, ['hrrr_winds','future_winds','windgust','future_wind_gusts']) ||
+      productName === 'hrrr_winds' || productName === 'future_winds';
+
+    var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
+      productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
 
     try {
-      var interactionCfg = (item && item.interaction && typeof item.interaction === 'object') ? item.interaction : {};
-      var uiCfg = (item && item.ui && typeof item.ui === 'object') ? item.ui : {};
+      if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(wantsSpc);
+    } catch (e) { console.warn('SPC step apply failed', e); }
+
+    try {
+      if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(wantsRadar);
+    } catch (e) { console.warn('Observed radar step apply failed', e); }
+
+    try {
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(wantsRadar);
+    } catch (e) { console.warn('Radar step apply failed', e); }
+
+    try {
+      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(wantsWarnings);
+    } catch (e) { console.warn('Warnings step apply failed', e); }
+
+    try {
+      if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(wantsReports);
+    } catch (e) { console.warn('Reports step apply failed', e); }
+
+    try {
+      if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(wantsLightning);
+    } catch (e) { console.warn('Lightning step apply failed', e); }
+
+    try {
+      if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(wantsSatellite);
+    } catch (e) { console.warn('Satellite step apply failed', e); }
+
+    try {
+      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(wantsMetars);
+    } catch (e) { console.warn('METAR step apply failed', e); }
+
+    try {
+      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(wantsHrrrTemp);
+    } catch (e) { console.warn('HRRR temp step apply failed', e); }
+
+    try {
+      if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(wantsHrrrRadar);
+    } catch (e) { console.warn('HRRR radar step apply failed', e); }
+
+    try {
+      if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(wantsHrrrWinds);
+    } catch (e) { console.warn('HRRR winds step apply failed', e); }
+
+    try {
+      if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(wantsJet);
+    } catch (e) { console.warn('Jet step apply failed', e); }
+
+    try {
+      var shouldSweep = wantsLiveDoppler || !!((interactionCfg && interactionCfg.showDoppler) || (uiCfg && uiCfg.showDoppler));
+      if (typeof radarSweepEnabled !== 'undefined') {
+        radarSweepEnabled = !!shouldSweep && !!wantsRadar;
+        try { syncSweepButton(); } catch(e) {}
+        if (wantsRadar) {
+          try { updateRadar(); } catch(e) {}
+        } else {
+          try { hideRadarSweepCanvas(); } catch(e) {}
+        }
+      }
+    } catch(e) {}
+
+    try {
       window.dispatchEvent(new CustomEvent('wdl:storychange', {
         detail: {
           index: storyIndex,
@@ -2533,8 +2625,15 @@ function safeLink(url){
       }));
     } catch(e) {}
 
-    updateAll();
+    try {
+      if (typeof updateProductLabel === 'function') updateProductLabel();
+      if (typeof updateLegend === 'function') updateLegend();
+      if (typeof setTimeLabel === 'function') setTimeLabel();
+      if (typeof updateAll === 'function') updateAll();
+      if (typeof syncDockUi === 'function') syncDockUi();
+    } catch(e) {}
   }
+
 
   function renderStory(i, panTo){
     if (!storyItems.length) return;
