@@ -2526,7 +2526,7 @@ function safeLink(url){
     var wantsSatellite = _has(layers, ['satellite','goes','truecolor']) ||
       productName.indexOf('satellite') !== -1 || productName.indexOf('goes') !== -1;
 
-    var wantsMetars = _has(layers, ['metars','surface','metar_dewpoint','metar_wind','metar_temp','metar_pressure']) ||
+    var wantsMetars = _has(layers, ['metars','surface','metar_temp','metar_dewpoint','metar_wind','metar_pressure']) ||
       productName.indexOf('metar') !== -1 || productName.indexOf('surface') !== -1;
 
     var wantsHrrrTemp = _has(layers, ['hrrr_temp','future_temp','model_temp']) ||
@@ -2540,6 +2540,9 @@ function safeLink(url){
 
     var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
       productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
+
+    var showScrubber = (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber :
+      ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar);
 
     try {
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(wantsSpc);
@@ -2570,7 +2573,20 @@ function safeLink(url){
     } catch (e) { console.warn('Satellite step apply failed', e); }
 
     try {
-      if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(wantsMetars);
+      if (typeof window.setMetarsEnabled === 'function') {
+        if (typeof window.setMetarUseMasterScrubber === 'function') {
+          try { window.setMetarUseMasterScrubber(!!showScrubber); } catch(e) {}
+        }
+
+        if (typeof window.setMetarDisplayMode === 'function') {
+          if (_has(layers, ['metar_dewpoint'])) window.setMetarDisplayMode('dewpoint');
+          else if (_has(layers, ['metar_wind'])) window.setMetarDisplayMode('wind');
+          else if (_has(layers, ['metar_pressure'])) window.setMetarDisplayMode('pressure');
+          else window.setMetarDisplayMode('temp');
+        }
+
+        await window.setMetarsEnabled(wantsMetars);
+      }
     } catch (e) { console.warn('METAR step apply failed', e); }
 
     try {
@@ -2588,6 +2604,18 @@ function safeLink(url){
     try {
       if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(wantsJet);
     } catch (e) { console.warn('Jet step apply failed', e); }
+
+    try {
+      if (typeof window.setStatesEnabled === 'function') {
+        await window.setStatesEnabled(!!(wantsMetars || wantsHrrrTemp || wantsSpc || wantsRadar || wantsLightning));
+      }
+      if (typeof window.setCountiesEnabled === 'function') {
+        await window.setCountiesEnabled(!!(wantsRadar || wantsHrrrTemp));
+      }
+      if (typeof window.refreshAutoBoundaries === 'function') {
+        await window.refreshAutoBoundaries();
+      }
+    } catch (e) { console.warn('Boundary step apply failed', e); }
 
     try {
       var shouldSweep = wantsLiveDoppler || !!((interactionCfg && interactionCfg.showDoppler) || (uiCfg && uiCfg.showDoppler));
@@ -2616,7 +2644,7 @@ function safeLink(url){
           showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
           showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
           startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
-          showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
+          showScrubber: showScrubber,
           showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
           stepTheme: item.stepTheme || "blue",
           stepLabel: item.stepLabel || String(storyIndex + 1),
@@ -5475,7 +5503,7 @@ function syncSweepButton(){
         }
       }
 
-      var showCounties = !!window.countiesEnabled && z >= 7;
+      var showCounties = !!window.countiesEnabled && (z >= 7 || !!window.hrrrTempEnabled);
       if (countiesLayer){
         if (showCounties) {
           safeAdd(countiesLayer);
@@ -5789,7 +5817,7 @@ document.addEventListener('DOMContentLoaded', function(){
       return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled || window.lightningEnabled);
     }
     function wantsCounties(){
-      return !!window.obsRadarEnabled;
+      return !!(window.obsRadarEnabled || window.hrrrTempEnabled);
     }
 
     async function refreshAutoBoundaries(){
