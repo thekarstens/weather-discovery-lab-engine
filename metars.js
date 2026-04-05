@@ -527,7 +527,7 @@ window.createMetarsModule = function(opts){
         fill: fill,
         stroke: stroke,
         cls: 'metar-temp-dot',
-        html: '<div class="metar-temp-dot" style="background:' + fill + ';border-color:' + stroke + ';">' + dew + '</div>'
+        html: '<div class="metar-temp-dot" style="min-width:40px;height:40px;padding:0 10px;display:flex;align-items:center;justify-content:center;border-radius:16px;border:3px solid ' + stroke + ';background:linear-gradient(180deg, rgba(255,255,255,0.55) 0%, ' + fill + ' 40%, ' + fill + ' 100%);color:#122033;font:900 18px/1 Lato,Arial,sans-serif;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.65);text-shadow:0 1px 0 rgba(255,255,255,0.55);">' + dew + '</div>'
       };
     }
 
@@ -542,7 +542,7 @@ window.createMetarsModule = function(opts){
         fill: fill,
         stroke: stroke,
         cls: 'metar-pressure-dot',
-        html: '<div class="metar-pressure-dot" style="min-width:48px;height:36px;padding:0 8px;display:flex;align-items:center;justify-content:center;border-radius:14px;border:2px solid ' + stroke + ';background:' + fill + ';color:#122033;font:900 13px/1 Lato,Arial,sans-serif;box-sizing:border-box;">' + txt + '</div>'
+        html: '<div class="metar-pressure-dot" style="min-width:56px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;border-radius:16px;border:3px solid ' + stroke + ';background:linear-gradient(180deg, rgba(255,255,255,0.55) 0%, ' + fill + ' 45%, ' + fill + ' 100%);color:#122033;font:900 13px/1 Lato,Arial,sans-serif;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.65);text-shadow:0 1px 0 rgba(255,255,255,0.55);">' + txt + '</div>'
       };
     }
 
@@ -576,7 +576,7 @@ window.createMetarsModule = function(opts){
       fill: fill,
       stroke: stroke,
       cls: 'metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : ''),
-      html: '<div class="metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '') + '" style="background:' + fill + ';border-color:' + stroke + ';">' + temp + '</div>'
+      html: '<div class="metar-temp-dot' + ((r.tmpf == null || r.tmpf === '') ? ' is-missing' : '') + '" style="min-width:40px;height:40px;padding:0 10px;display:flex;align-items:center;justify-content:center;border-radius:16px;border:3px solid ' + stroke + ';background:linear-gradient(180deg, rgba(255,255,255,0.55) 0%, ' + fill + ' 40%, ' + fill + ' 100%);color:#122033;font:900 18px/1 Lato,Arial,sans-serif;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.65);text-shadow:0 1px 0 rgba(255,255,255,0.55);">' + temp + '</div>'
     };
   }
 
