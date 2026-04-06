@@ -433,23 +433,6 @@
       box-shadow: 0 3px 10px rgba(0,0,0,0.18);
     }
 
-    .storyPanel.story-has-depth{padding-left:60px;}
-.story-depth-rail{position:absolute;left:-2px;top:120px;display:flex;flex-direction:column;gap:6px;}
-.story-depth-tab{width:50px;background:#2f67e9;color:#fff;border:none;padding:6px;cursor:pointer;}
-.story-depth-tab.is-active{transform:translateX(6px);}
-
-    .storyPanel.story-has-depth{padding-left:52px;overflow:visible;}
-    .story-depth-rail{position:absolute;left:-2px;top:118px;z-index:6;display:flex;flex-direction:column;gap:7px;width:54px;align-items:flex-start;}
-    .story-depth-caption{writing-mode:vertical-rl;transform:rotate(180deg);margin-left:8px;padding:9px 5px;border-radius:999px;background:rgba(11,28,45,.95);color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 14px rgba(0,0,0,.18);font:900 9px/1 "Lato", Arial, sans-serif;letter-spacing:1.1px;text-transform:uppercase;}
-    .story-depth-tab{width:52px;min-height:60px;border:none;border-radius:0 14px 14px 0;color:#fff;cursor:pointer;font-family:"Lato", Arial, sans-serif;font-weight:900;box-shadow:0 8px 16px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16);transition:transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;padding:7px 4px 8px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.35);border-left:0;}
-    .story-depth-tab:hover{transform:translateX(2px);filter:brightness(1.04);}
-    .story-depth-tab.is-active{transform:translateX(7px);box-shadow:0 12px 22px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.18);}
-    .story-depth-tab[data-depth="A"]{background:linear-gradient(180deg,#25c0ff,#0a7fe6 58%,#0855ac);}
-    .story-depth-tab[data-depth="B"]{background:linear-gradient(180deg,#2ad179,#16954d 58%,#0f6a36);}
-    .story-depth-tab[data-depth="C"]{background:linear-gradient(180deg,#ffd467,#d9a318 58%,#9a6f05);}
-    .story-depth-tab[data-depth="D"]{background:linear-gradient(180deg,#ff9d62,#d66024 58%,#9a3f12);}
-    .story-depth-key{display:block;font:900 21px/1 "Lato", Arial, sans-serif;letter-spacing:.2px;}
-    .story-depth-name{display:block;margin-top:2px;font:900 8px/1.05 "Lato", Arial, sans-serif;letter-spacing:.55px;text-transform:uppercase;}
     .story-content {
       padding: 12px;
     }
@@ -968,14 +951,7 @@
     </div>
   </div>
 
-  <div id="storyPanel" class="storyPanel story-theme-blue story-has-depth" aria-label="Story panel">
-<div class="story-depth-rail">
-<div>Go Deeper</div>
-<button class="story-depth-tab is-active" data-depth="A">A</button>
-<button class="story-depth-tab" data-depth="B">B</button>
-<button class="story-depth-tab" data-depth="C">C</button>
-<button class="story-depth-tab" data-depth="D">D</button>
-</div>
+  <div id="storyPanel" class="storyPanel story-theme-blue" aria-label="Story panel">
     <div class="story-shell-header" id="storyShellHeader">
       <div class="story-station-chip" id="storyStationChip">1</div>
       <div class="story-shell-banner">
