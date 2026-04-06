@@ -433,6 +433,133 @@
       box-shadow: 0 3px 10px rgba(0,0,0,0.18);
     }
 
+
+    .storyPanel.story-has-depth {
+      padding-left: 54px;
+      overflow: visible;
+    }
+
+    .story-depth-rail {
+      position: absolute;
+      left: -2px;
+      top: 120px;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      width: 56px;
+      align-items: flex-start;
+    }
+
+    .story-depth-caption {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      margin-left: 8px;
+      padding: 8px 5px;
+      border-radius: 999px;
+      background: rgba(11,28,45,.95);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 6px 14px rgba(0,0,0,.18);
+      font: 900 9px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+    }
+
+    .story-depth-tab {
+      width: 54px;
+      min-height: 62px;
+      border: none;
+      border-radius: 0 14px 14px 0;
+      color: #fff;
+      cursor: pointer;
+      font-family: "Lato", Arial, sans-serif;
+      font-weight: 900;
+      box-shadow: 0 8px 16px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16);
+      transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+      padding: 7px 4px 8px;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+    }
+
+    .story-depth-tab:hover { transform: translateX(2px); filter: brightness(1.04); }
+    .story-depth-tab.is-active { transform: translateX(7px); box-shadow: 0 12px 22px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.18); }
+    .story-depth-tab[data-depth="A"] { background: linear-gradient(180deg,#25c0ff,#0a7fe6 58%,#0855ac); }
+    .story-depth-tab[data-depth="B"] { background: linear-gradient(180deg,#2ad179,#16954d 58%,#0f6a36); }
+    .story-depth-tab[data-depth="C"] { background: linear-gradient(180deg,#ffd467,#d9a318 58%,#9a6f05); }
+    .story-depth-tab[data-depth="D"] { background: linear-gradient(180deg,#ff9d62,#d66024 58%,#9a3f12); }
+    .story-depth-key { display:block; font:900 21px/1 "Lato", Arial, sans-serif; }
+    .story-depth-name { display:block; margin-top:2px; font:900 8px/1.05 "Lato", Arial, sans-serif; letter-spacing:.55px; text-transform:uppercase; }
+
+    .story-levels {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(17,33,52,0.05), rgba(17,33,52,0.02));
+      border: 1px solid rgba(17,33,52,0.09);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .story-levels-label {
+      font: 900 10px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      color: #5a6d85;
+      margin-right: 4px;
+    }
+
+    .story-level-tab {
+      min-width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(16,37,63,0.16);
+      background: linear-gradient(180deg, #ffffff, #e8edf4);
+      color: #10253f;
+      font: 900 14px/1 "Lato", Arial, sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    }
+
+    .story-level-tab.is-active {
+      background: linear-gradient(180deg, #183965, #0b1c2d);
+      color: #fff;
+      border-color: rgba(255,255,255,0.14);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    }
+
+    .story-depth-helper-card {
+      margin: 0 0 12px 0;
+      padding: 10px 11px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(17,33,52,0.05), rgba(17,33,52,0.02));
+      border: 1px solid rgba(17,33,52,0.09);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .story-depth-helper-kicker {
+      font: 900 10px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      color: #5a6d85;
+    }
+
+    .story-depth-helper-title {
+      margin-top: 5px;
+      font: 900 18px/1.08 "Lato", Arial, sans-serif;
+      color: #10253f;
+    }
+
+    .story-depth-helper-text {
+      margin-top: 5px;
+      font: 800 11px/1.3 "Lato", Arial, sans-serif;
+      color: #49617a;
+    }
+
+
     .story-content {
       padding: 12px;
     }
@@ -951,7 +1078,14 @@
     </div>
   </div>
 
-  <div id="storyPanel" class="storyPanel story-theme-blue" aria-label="Story panel">
+  <div id="storyPanel" class="storyPanel story-theme-blue story-has-depth" aria-label="Story panel">
+    <div class="story-depth-rail" id="storyDepthRail" aria-label="Go deeper levels">
+      <div class="story-depth-caption">Go Deeper</div>
+      <button class="story-depth-tab is-active" id="storyDepthTabA" data-depth="A" type="button"><span class="story-depth-key">A</span><span class="story-depth-name">Observe</span></button>
+      <button class="story-depth-tab" id="storyDepthTabB" data-depth="B" type="button"><span class="story-depth-key">B</span><span class="story-depth-name">Explain</span></button>
+      <button class="story-depth-tab" id="storyDepthTabC" data-depth="C" type="button"><span class="story-depth-key">C</span><span class="story-depth-name">Analyze</span></button>
+      <button class="story-depth-tab" id="storyDepthTabD" data-depth="D" type="button"><span class="story-depth-key">D</span><span class="story-depth-name">Apply</span></button>
+    </div>
     <div class="story-shell-header" id="storyShellHeader">
       <div class="story-station-chip" id="storyStationChip">1</div>
       <div class="story-shell-banner">
@@ -963,6 +1097,14 @@
       </div>
     </div>
     <div class="story-content">
+      <div class="story-levels" id="storyLevels">
+        <div class="story-levels-label">Depth</div>
+        <button class="story-level-tab is-active" data-level="1" type="button">1</button>
+        <button class="story-level-tab" data-level="2" type="button">2</button>
+        <button class="story-level-tab" data-level="3" type="button">3</button>
+        <button class="story-level-tab" data-level="4" type="button">4</button>
+        <button class="story-level-tab" data-level="5" type="button">5</button>
+      </div>
       <div class="story-body" id="storyBody">
         <p><b>2:30 PM setup.</b> The SPC Day 1 outlook has already highlighted our area for dangerous severe weather later today.</p>
         <p>Begin by asking what in the outlook suggests increasing concern before storms reach our area.</p>
