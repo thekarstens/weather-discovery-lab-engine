@@ -433,7 +433,11 @@
       box-shadow: 0 3px 10px rgba(0,0,0,0.18);
     }
 
-    .story-content {
+    .storyPanel.story-has-depth{padding-left:60px;}
+.story-depth-rail{position:absolute;left:-2px;top:120px;display:flex;flex-direction:column;gap:6px;}
+.story-depth-tab{width:50px;background:#2f67e9;color:#fff;border:none;padding:6px;cursor:pointer;}
+.story-depth-tab.is-active{transform:translateX(6px);}
+.story-content {
       padding: 12px;
     }
 
@@ -951,7 +955,14 @@
     </div>
   </div>
 
-  <div id="storyPanel" class="storyPanel story-theme-blue" aria-label="Story panel">
+  <div id="storyPanel" class="storyPanel story-theme-blue story-has-depth" aria-label="Story panel">
+<div class="story-depth-rail">
+<div>Go Deeper</div>
+<button class="story-depth-tab is-active" data-depth="A">A</button>
+<button class="story-depth-tab" data-depth="B">B</button>
+<button class="story-depth-tab" data-depth="C">C</button>
+<button class="story-depth-tab" data-depth="D">D</button>
+</div>
     <div class="story-shell-header" id="storyShellHeader">
       <div class="story-station-chip" id="storyStationChip">1</div>
       <div class="story-shell-banner">
