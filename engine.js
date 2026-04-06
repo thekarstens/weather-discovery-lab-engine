@@ -2570,9 +2570,7 @@ function safeLink(url){
     } catch (e) { console.warn('Satellite step apply failed', e); }
 
     try {
-      if (typeof window.setMetarUseMasterScrubber === 'function') {
-        try { window.setMetarUseMasterScrubber(!!wantsMetars); } catch(e) {}
-      }
+      if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(!!wantsMetars); } catch(e) {} }
       if (typeof window.setMetarDisplayMode === 'function') {
         if (_has(layers, ['metar_dewpoint'])) window.setMetarDisplayMode('dewpoint');
         else if (_has(layers, ['metar_wind'])) window.setMetarDisplayMode('wind');
@@ -3583,16 +3581,15 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
-    if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
+    var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
+    if ((hrrrTempEnabled || window.hrrrTempEnabled === true) && liveHrrrFrames.length) return 'hrrr';
     if (typeof metarVisible !== 'undefined' &&
         metarVisible &&
         typeof window.metarUseMasterScrubber !== 'undefined' &&
         window.metarUseMasterScrubber &&
         window.metarsModule &&
         typeof window.metarsModule.getTimeline === 'function' &&
-        (window.metarsModule.getTimeline() || []).length) {
-      return 'metars';
-    }
+        (window.metarsModule.getTimeline() || []).length) return 'metars';
     var radarPool = getRadarFramePool();
     if (obsRadarEnabled && useManifestFrameScrubber && radarPool.length) return 'radar';
     return 'lesson';
@@ -3606,8 +3603,9 @@ function nearestHrrrFrameIndexForTime(d){
       scrub.min = "0";
       scrub.step = "1";
       if (mode === 'hrrr'){
-        scrub.max = String(Math.max(0, hrrrFrames.length - 1));
-        scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
+        var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
+        scrub.max = String(Math.max(0, liveHrrrFrames.length - 1));
+        scrub.value = String(Math.max(0, Math.min(Math.max(0, liveHrrrFrames.length - 1), currentHrrrFrameIndex|0)));
       } else if (mode === 'metars'){
         var mt = (window.metarsModule && typeof window.metarsModule.getTimeline === 'function') ? (window.metarsModule.getTimeline() || []) : [];
         var mi = (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function') ? (window.metarsModule.getCurrentMetarIndex()|0) : 0;
@@ -4687,6 +4685,7 @@ function parseHrrrPointsPayload(raw){
       await loadHrrrManifest();
       currentHrrrFrameIndex = nearestHrrrFrameIndexForTime(curZ);
       setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
+      try{ syncScrubberToActiveProduct(); }catch(e){}
       updateHrrrOverlay();
       setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : 'Future Temperatures on'));
     }catch(err){
