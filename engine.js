@@ -2581,16 +2581,19 @@ function safeLink(url){
     } catch (e) { console.warn('METAR step apply failed', e); }
 
     try {
-      if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(wantsHrrrTemp);
-    } catch (e) { console.warn('HRRR temp step apply failed', e); }
-
-    try {
-      if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(wantsHrrrRadar);
-    } catch (e) { console.warn('HRRR radar step apply failed', e); }
-
-    try {
-      if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(wantsHrrrWinds);
-    } catch (e) { console.warn('HRRR winds step apply failed', e); }
+      var wantsAnyHrrr = !!(wantsHrrrTemp || wantsHrrrRadar || wantsHrrrWinds);
+      if (wantsAnyHrrr) {
+        if (wantsHrrrRadar && typeof window.setHrrrRadarEnabled === 'function') {
+          await window.setHrrrRadarEnabled(true);
+        } else if (wantsHrrrWinds && typeof window.setHrrrWindsEnabled === 'function') {
+          await window.setHrrrWindsEnabled(true);
+        } else if (wantsHrrrTemp && typeof window.setHrrrTempEnabled === 'function') {
+          await window.setHrrrTempEnabled(true);
+        }
+      } else {
+        if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+      }
+    } catch (e) { console.warn('HRRR step apply failed', e); }
 
     try {
       if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(wantsJet);
