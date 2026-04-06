@@ -2107,7 +2107,12 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
   // OPEN LESSON button in banner toggles the storyteller panel
   if (openLessonBtn){
-    openLessonBtn.onclick = null;
+    openLessonBtn.onclick = function(){
+      try{
+        if (storyPanelEl && storyPanelEl.classList.contains("story-open")) closeGuide();
+        else openGuide();
+      }catch(e){}
+    };
   }
 
   // Disable teacher-only tools in student mode
@@ -3566,6 +3571,12 @@ function nearestHrrrFrameIndexForTime(d){
 
   function getActiveScrubberMode(){
     if (hrrrTempEnabled && hrrrFrames && hrrrFrames.length) return 'hrrr';
+    if (typeof metarVisible !== 'undefined' && metarVisible &&
+        typeof window.metarUseMasterScrubber !== 'undefined' && window.metarUseMasterScrubber &&
+        window.metarsModule && typeof window.metarsModule.getTimeline === 'function' &&
+        (window.metarsModule.getTimeline() || []).length) {
+      return 'metars';
+    }
     var radarPool = getRadarFramePool();
     if (obsRadarEnabled && useManifestFrameScrubber && radarPool.length) return 'radar';
     return 'lesson';
@@ -3581,6 +3592,11 @@ function nearestHrrrFrameIndexForTime(d){
       if (mode === 'hrrr'){
         scrub.max = String(Math.max(0, hrrrFrames.length - 1));
         scrub.value = String(Math.max(0, Math.min(hrrrFrames.length - 1, currentHrrrFrameIndex|0)));
+      } else if (mode === 'metars'){
+        var mt = (window.metarsModule && typeof window.metarsModule.getTimeline === 'function') ? (window.metarsModule.getTimeline() || []) : [];
+        var mi = (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function') ? (window.metarsModule.getCurrentMetarIndex()|0) : 0;
+        scrub.max = String(Math.max(0, mt.length - 1));
+        scrub.value = String(Math.max(0, Math.min(Math.max(0, mt.length - 1), mi)));
       } else if (mode === 'radar'){
         var radarPool = getRadarFramePool();
         scrub.max = String(Math.max(0, radarPool.length - 1));
@@ -3773,6 +3789,8 @@ if (window.createMetarsModule) {
   window.metarsModule = metarsModule;
   window.toggleMetars = function(){ return metarsModule.toggleMetars(); };
   window.setMetarsEnabled = function(on){ return metarsModule.setMetarsEnabled(on); };
+  window.setMetarUseMasterScrubber = function(on){ return metarsModule.setMetarUseMasterScrubber(on); };
+  window.setMetarDisplayMode = function(mode){ return metarsModule.setMetarDisplayMode(mode); };
   window.setMetarDisplayMode = function(mode){ return metarsModule.setMetarDisplayMode(mode); };
   window.setMetarUseMasterScrubber = function(on){ return metarsModule.setMetarUseMasterScrubber(on); };
   window.stepMetarTime = function(delta){ return metarsModule.stepMetarTime(delta); };
@@ -5057,6 +5075,14 @@ window.setWarningsEnabled = setWarningsEnabled;
       setCurrentHrrrFrameIndex(idx + delta);
       updateAll();
       return true;
+    } else if (mode === 'metars'){
+      try{
+        if (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function' && typeof window.metarsModule.loadMetarsAtIndex === 'function'){
+          var nextIdx = (window.metarsModule.getCurrentMetarIndex()|0) + delta;
+          window.metarsModule.loadMetarsAtIndex(nextIdx);
+          return true;
+        }
+      }catch(e){}
     }
     return false;
   }
@@ -5105,6 +5131,14 @@ window.setWarningsEnabled = setWarningsEnabled;
         }
         updateProductLabel();
         return;
+      }
+      if (mode === 'metars'){
+        try{
+          if (window.metarsModule && typeof window.metarsModule.loadMetarsAtIndex === 'function'){
+            window.metarsModule.loadMetarsAtIndex(v);
+            return;
+          }
+        }catch(e){}
       }
       curZ = new Date(startZ.getTime() + v*STEP_MS);
       clampTime(); updateAll();
