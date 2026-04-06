@@ -3004,7 +3004,7 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75, lightning: 0.90 };
+var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, hrrrCape: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75, lightning: 0.90 };
 
 function getActiveProductKey(){
   // Priority: global > snow > jet > future hrrr > radar
@@ -3053,7 +3053,7 @@ function applyActiveOpacity(){
     if (radarSweepCanvas) radarSweepCanvas.style.opacity = String(op);
   } else if (key === "snow"){
     if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
-  } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar"){
+  } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar" || key === "hrrrCape"){
     setTempOpacity(op);
   } else if (key === "radarVelocity"){
     if (typeof radarVelocityLayer !== 'undefined' && radarVelocityLayer && radarVelocityLayer.setOpacity) radarVelocityLayer.setOpacity(op);
@@ -4582,6 +4582,7 @@ function parseHrrrPointsPayload(raw){
     var v = Number(val);
     if (!isFinite(la) || !isFinite(lo) || !isFinite(v)) return;
     if (window.hrrrProductMode === 'winds') pts.push({ lat:la, lon:lo, mph:v, value:v, unit:'mph' });
+    else if (window.hrrrProductMode === 'cape') pts.push({ lat:la, lon:lo, cape:v, value:v, unit:'J/kg' });
     else pts.push({ lat:la, lon:lo, tF:v, value:v, unit:'°F' });
   }
 
@@ -4769,6 +4770,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'temp'), label: "FUTURE TEMP" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'winds'), label: "FUTURE WIND GUSTS" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'cape'), label: "CAPE" },
     { on: (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled), label: "RADAR VELOCITY" },
     { on: (typeof radarSweepEnabled !== "undefined" && radarSweepEnabled), label: "LIVE DOPPLER" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
@@ -4808,6 +4810,10 @@ function parseHrrrPointsPayload(raw){
     } else if (key === "global"){
       title = "Global 2m Temperature (°F) — ERA5";
       if (bar) bar.style.background = "linear-gradient(90deg, #2d004b 0%, #542788 12%, #2166ac 26%, #67a9cf 40%, #d1e5f0 52%, #fff7bc 62%, #fec44f 72%, #f16913 84%, #d73027 100%)";
+      el.style.display = "";
+    } else if (key === "hrrrCape") {
+      title = "Surface-Based CAPE (J/kg)";
+      if (bar) bar.style.background = "linear-gradient(90deg, #f7fcf5 0%, #c7e9c0 18%, #74c476 40%, #31a354 60%, #fdcc8a 78%, #fc8d59 90%, #d7301f 100%)";
       el.style.display = "";
     } else { // temp / future temp
       title = (key === "hrrrTemp") ? "Future 2m Temperature (°F)" : "2m Temperature (°F)";
