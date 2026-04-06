@@ -245,7 +245,10 @@
     });
   }
 
-  window.addEventListener("wdl:storychange", function (ev) {
+  var activeDepth="A";var latestItem=null;function renderDepth(){if(!latestItem)return;var body=document.getElementById("storyBody");var title=document.getElementById("storyTitle");var lvl=(latestItem.levels||{})[activeDepth];if(!lvl)return;title.textContent=lvl.title||latestItem.title;body.innerHTML=(lvl.narrative||[]).map(t=>"<p>"+t+"</p>").join("");}
+document.querySelectorAll(".story-depth-tab").forEach(btn=>{btn.onclick=()=>{activeDepth=btn.dataset.depth;document.querySelectorAll(".story-depth-tab").forEach(b=>b.classList.remove("is-active"));btn.classList.add("is-active");renderDepth();};});
+window.addEventListener("wdl:storychange", function (ev) {
+latestItem=ev.detail?.item||latestItem;activeDepth="A";renderDepth();
     var detail = (ev && ev.detail) || {};
     if (detail.utc) {
       var d = new Date(detail.utc);
