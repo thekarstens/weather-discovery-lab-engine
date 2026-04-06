@@ -245,10 +245,28 @@
     });
   }
 
+  window.addEventListener("wdl:storychange", function (ev) {
+    var detail = (ev && ev.detail) || {};
+    if (detail.utc) {
+      var d = new Date(detail.utc);
+      if (!isNaN(d)) simUtc = d.getTime();
+    }
+    var showClock = !!detail.showClock;
+    var showPlay = !!detail.allowPlay;
+    var showScrubber = !!detail.showScrubber;
+    var showDoppler = !!detail.showDoppler;
+    setClockVisibility(showClock);
+    setPlayVisibility(showClock && showPlay);
+    setScrubberVisibility(showClock && showScrubber);
+    if (simClockBox) simClockBox.classList.toggle("show-doppler", !!showDoppler);
+    setDopplerVisibility(showDoppler);
+    updateClock();
+    updateLessonButton();
+  });
+
   makeStormTrackWindowDraggable();
   toggleToolBox(false);
   setClockVisibility(false);
   applyMode(false);
   updateClock();
-  renderDepth();
 })();
