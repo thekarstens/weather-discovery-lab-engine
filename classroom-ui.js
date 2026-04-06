@@ -245,8 +245,110 @@
     });
   }
 
+
+  var depthTabs = Array.prototype.slice.call(document.querySelectorAll(".story-depth-tab"));
+  var levelTabs = Array.prototype.slice.call(document.querySelectorAll(".story-level-tab"));
+  var activeDepth = "A";
+  var activeLevel = "1";
+  var latestStoryItem = null;
+  var depthMeta = {
+    A: { label: "Observe", helper: "Start here. What do you notice?" },
+    B: { label: "Explain", helper: "Why is it happening?" },
+    C: { label: "Analyze", helper: "Go deeper into the science." },
+    D: { label: "Apply", helper: "Use the science like a forecaster." }
+  };
+
+  function escDepth(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function asLines(v){
+    if (Array.isArray(v)) return v.filter(Boolean).map(String);
+    if (typeof v === "string" && v.trim()) return [v.trim()];
+    return [];
+  }
+
+  function getNarrativeFor(item, depth, level){
+    if (!item || typeof item !== "object") return [];
+    var levels = item.levels || {};
+    var block = levels[depth];
+    if (!block) return asLines(item.narrative);
+    if (block && typeof block === "object" && block[level]) {
+      var nested = block[level];
+      return asLines(nested.narrative || nested.text || nested.body || nested);
+    }
+    return asLines(block.narrative || block.text || block.body || item.narrative);
+  }
+
+  function getTitleFor(item, depth, level){
+    if (!item || typeof item !== "object") return "";
+    var levels = item.levels || {};
+    var block = levels[depth];
+    if (!block) return item.title || "";
+    if (block && typeof block === "object" && block[level]) {
+      var nested = block[level];
+      return nested.title || block.title || item.title || "";
+    }
+    return block.title || item.title || "";
+  }
+
+  function renderLessonDepth(){
+    if (!latestStoryItem) return;
+    var title = document.getElementById("storyTitle");
+    var body = document.getElementById("storyBody");
+    if (!title || !body) return;
+
+    title.textContent = getTitleFor(latestStoryItem, activeDepth, activeLevel);
+
+    var lines = getNarrativeFor(latestStoryItem, activeDepth, activeLevel);
+    var meta = depthMeta[activeDepth] || depthMeta.A;
+
+    var html = '<div class="story-depth-helper-card">' +
+      '<div class="story-depth-helper-kicker">Go Deeper</div>' +
+      '<div class="story-depth-helper-title">' + escDepth(activeDepth + " — " + meta.label + " / Level " + activeLevel) + '</div>' +
+      '<div class="story-depth-helper-text">' + escDepth(meta.helper) + '</div>' +
+      '</div>';
+
+    if (!lines.length) lines = ["No lesson text has been added for this level yet."];
+    html += lines.map(function(line){ return "<p>" + escDepth(line) + "</p>"; }).join("");
+    body.innerHTML = html;
+
+    depthTabs.forEach(function(btn){
+      btn.classList.toggle("is-active", btn.getAttribute("data-depth") === activeDepth);
+    });
+    levelTabs.forEach(function(btn){
+      btn.classList.toggle("is-active", btn.getAttribute("data-level") === activeLevel);
+    });
+  }
+
+  depthTabs.forEach(function(btn){
+    btn.addEventListener("click", function(ev){
+      ev.preventDefault();
+      activeDepth = btn.getAttribute("data-depth") || "A";
+      activeLevel = "1";
+      renderLessonDepth();
+    });
+  });
+
+  levelTabs.forEach(function(btn){
+    btn.addEventListener("click", function(ev){
+      ev.preventDefault();
+      activeLevel = btn.getAttribute("data-level") || "1";
+      renderLessonDepth();
+    });
+  });
+
+
   window.addEventListener("wdl:storychange", function (ev) {
     var detail = (ev && ev.detail) || {};
+    latestStoryItem = detail.item || latestStoryItem;
+    activeDepth = "A";
+    activeLevel = "1";
     if (detail.utc) {
       var d = new Date(detail.utc);
       if (!isNaN(d)) simUtc = d.getTime();
@@ -260,6 +362,7 @@
     setScrubberVisibility(showClock && showScrubber);
     if (simClockBox) simClockBox.classList.toggle("show-doppler", !!showDoppler);
     setDopplerVisibility(showDoppler);
+    renderLessonDepth();
     updateClock();
     updateLessonButton();
   });
@@ -269,4 +372,5 @@
   setClockVisibility(false);
   applyMode(false);
   updateClock();
+  renderLessonDepth();
 })();
