@@ -2107,12 +2107,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
   // OPEN LESSON button in banner toggles the storyteller panel
   if (openLessonBtn){
-    openLessonBtn.onclick = function(){
-      try{
-        if (storyPanelEl && storyPanelEl.classList.contains("story-open")) closeGuide();
-        else openGuide();
-      }catch(e){}
-    };
+    openLessonBtn.onclick = null;
   }
 
   // Disable teacher-only tools in student mode
