@@ -2538,6 +2538,9 @@ function safeLink(url){
     var wantsHrrrWinds = _has(layers, ['hrrr_winds','future_winds','windgust','future_wind_gusts']) ||
       productName === 'hrrr_winds' || productName === 'future_winds';
 
+    var wantsHrrrCape = _has(layers, ['hrrr_cape','cape']) ||
+      productName === 'hrrr_cape' || productName === 'cape';
+
     var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
       productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
 
@@ -2581,12 +2584,14 @@ function safeLink(url){
     } catch (e) { console.warn('METAR step apply failed', e); }
 
     try {
-      var wantsAnyHrrr = !!(wantsHrrrTemp || wantsHrrrRadar || wantsHrrrWinds);
+      var wantsAnyHrrr = !!(wantsHrrrTemp || wantsHrrrRadar || wantsHrrrWinds || wantsHrrrCape);
       if (wantsAnyHrrr) {
         if (wantsHrrrRadar && typeof window.setHrrrRadarEnabled === 'function') {
           await window.setHrrrRadarEnabled(true);
         } else if (wantsHrrrWinds && typeof window.setHrrrWindsEnabled === 'function') {
           await window.setHrrrWindsEnabled(true);
+        } else if (wantsHrrrCape && typeof window.setHrrrCapeEnabled === 'function') {
+          await window.setHrrrCapeEnabled(true);
         } else if (wantsHrrrTemp && typeof window.setHrrrTempEnabled === 'function') {
           await window.setHrrrTempEnabled(true);
         }
@@ -4398,15 +4403,21 @@ if (window.createMetarsModule) {
         if (cfg.windManifest) return cfg.windManifest;
         if (cfg.windGustManifest) return cfg.windGustManifest;
       }
+      if (product === 'cape') {
+        if (cfg.capeManifest) return cfg.capeManifest;
+        if (cfg.products && cfg.products.cape) return (cfg.products.cape.manifest || cfg.products.cape.url || cfg.products.cape.file || '');
+      }
 
       var generic = cfg.manifest || cfg.url || cfg.file || '';
       if (generic) {
         var s = String(generic).toLowerCase();
         if (product === 'radar' && s.indexOf('/radar/') !== -1) return generic;
-        if (product === 'temp' && s.indexOf('/radar/') === -1) return generic;
+        if (product === 'winds' && s.indexOf('/winds/') !== -1) return generic;
+        if (product === 'cape' && s.indexOf('/cape/') !== -1) return generic;
+        if (product === 'temp' && s.indexOf('/radar/') === -1 && s.indexOf('/winds/') === -1 && s.indexOf('/cape/') === -1) return generic;
       }
     }catch(e){}
-    return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : 'hrrr/temp/manifest.json');
+    return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : (product === 'cape' ? 'hrrr/cape/manifest.json' : 'hrrr/temp/manifest.json'));
   }
 
   function resetHrrrManifestState(){
@@ -4647,14 +4658,14 @@ function parseHrrrPointsPayload(raw){
     img.onload = function(){
       if (token !== hrrrLoadToken) return;
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : 'hrrrTemp');
+      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : ((hrrrProductMode === 'cape') ? 'hrrrCape' : 'hrrrTemp'));
       var op = productOpacity[activeKey] || 0.70;
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
       loadHrrrPointsForFrame(frame).then(function(pts){
-        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts' : 'Future Temperatures');
+        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts' : ((hrrrProductMode === 'cape') ? 'CAPE' : 'Future Temperatures'));
         if (Array.isArray(pts) && pts.length) setStatus(name + ': ' + (frame.label || url) + ' · probe ready');
         else setStatus(name + ': ' + (frame.label || url));
       });
@@ -4670,7 +4681,7 @@ function parseHrrrPointsPayload(raw){
     product = String(product || 'temp').toLowerCase();
     var turningOn = !!on;
     if (turningOn){
-      hrrrProductMode = (product === 'radar') ? 'radar' : ((product === 'winds') ? 'winds' : 'temp');
+      hrrrProductMode = (product === 'radar') ? 'radar' : ((product === 'winds') ? 'winds' : ((product === 'cape') ? 'cape' : 'temp'));
       window.hrrrProductMode = hrrrProductMode;
       resetHrrrManifestState();
     }
@@ -4678,7 +4689,7 @@ function parseHrrrPointsPayload(raw){
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts off' : 'Future Temperatures off'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts off' : ((hrrrProductMode === 'cape') ? 'CAPE off' : 'Future Temperatures off')));
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       try{ syncDockUi(); }catch(e){}
@@ -4690,12 +4701,12 @@ function parseHrrrPointsPayload(raw){
       setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
       try{ syncScrubberToActiveProduct(); }catch(e){}
       updateHrrrOverlay();
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : 'Future Temperatures on'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : ((hrrrProductMode === 'cape') ? 'CAPE on' : 'Future Temperatures on')));
     }catch(err){
       hrrrTempEnabled = false;
       window.hrrrTempEnabled = false;
       console.error(err);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts failed' : 'Future Temperatures failed'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts failed' : ((hrrrProductMode === 'cape') ? 'CAPE failed' : 'Future Temperatures failed')));
     }
     try{ updateProductLabel(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
@@ -4710,10 +4721,14 @@ function parseHrrrPointsPayload(raw){
   async function setHrrrWindsEnabled(on){
     return setHrrrProductEnabled('winds', on);
   }
+  async function setHrrrCapeEnabled(on){
+    return setHrrrProductEnabled('cape', on);
+  }
   window.setHrrrProductEnabled = setHrrrProductEnabled;
   window.setHrrrTempEnabled = setHrrrTempEnabled;
   window.setHrrrRadarEnabled = setHrrrRadarEnabled;
   window.setHrrrWindsEnabled = setHrrrWindsEnabled;
+  window.setHrrrCapeEnabled = setHrrrCapeEnabled;
 
   async function setSatelliteEnabled(on){
     goesEnabled = !!on;
