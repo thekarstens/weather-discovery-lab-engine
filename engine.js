@@ -2570,6 +2570,15 @@ function safeLink(url){
     } catch (e) { console.warn('Satellite step apply failed', e); }
 
     try {
+      if (typeof window.setMetarUseMasterScrubber === 'function') {
+        try { window.setMetarUseMasterScrubber(!!wantsMetars); } catch(e) {}
+      }
+      if (typeof window.setMetarDisplayMode === 'function') {
+        if (_has(layers, ['metar_dewpoint'])) window.setMetarDisplayMode('dewpoint');
+        else if (_has(layers, ['metar_wind'])) window.setMetarDisplayMode('wind');
+        else if (_has(layers, ['metar_pressure'])) window.setMetarDisplayMode('pressure');
+        else window.setMetarDisplayMode('temp');
+      }
       if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(wantsMetars);
     } catch (e) { console.warn('METAR step apply failed', e); }
 
@@ -3798,7 +3807,6 @@ if (window.createMetarsModule) {
   window.setMetarsEnabled = function(on){ return metarsModule.setMetarsEnabled(on); };
   window.setMetarUseMasterScrubber = function(on){ return metarsModule.setMetarUseMasterScrubber(on); };
   window.setMetarDisplayMode = function(mode){ return metarsModule.setMetarDisplayMode(mode); };
-  window.stepMetarTime = function(delta){ return metarsModule.stepMetarTime(delta); };
   window.loadMetarsAtIndex = function(idx){ return metarsModule.loadMetarsAtIndex(idx); };
 } else {
   console.warn('METAR module not found: window.createMetarsModule is missing');
