@@ -2037,12 +2037,9 @@ function setDrawMode(on){
     }
     if (!best) return;
 
-    var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust'
-      : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
+    var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
     var probeUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
-    var probeValue = (typeof best.value === "number") ? best.value
-      : ((window.hrrrProductMode === 'winds') ? best.mph
-      : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
+    var probeValue = (typeof best.value === "number") ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
     var probeText = (probeValue == null || !isFinite(probeValue)) ? "—" : (Math.round(probeValue) + probeUnit);
 
     var content =
@@ -2541,6 +2538,9 @@ function safeLink(url){
     var wantsHrrrWinds = _has(layers, ['hrrr_winds','future_winds','windgust','future_wind_gusts']) ||
       productName === 'hrrr_winds' || productName === 'future_winds';
 
+    var wantsHrrrCape = _has(layers, ['hrrr_cape','cape']) ||
+      productName === 'hrrr_cape' || productName === 'cape';
+
     var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
       productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
 
@@ -2584,12 +2584,14 @@ function safeLink(url){
     } catch (e) { console.warn('METAR step apply failed', e); }
 
     try {
-      var wantsAnyHrrr = !!(wantsHrrrTemp || wantsHrrrRadar || wantsHrrrWinds);
+      var wantsAnyHrrr = !!(wantsHrrrTemp || wantsHrrrRadar || wantsHrrrWinds || wantsHrrrCape);
       if (wantsAnyHrrr) {
         if (wantsHrrrRadar && typeof window.setHrrrRadarEnabled === 'function') {
           await window.setHrrrRadarEnabled(true);
         } else if (wantsHrrrWinds && typeof window.setHrrrWindsEnabled === 'function') {
           await window.setHrrrWindsEnabled(true);
+        } else if (wantsHrrrCape && typeof window.setHrrrCapeEnabled === 'function') {
+          await window.setHrrrCapeEnabled(true);
         } else if (wantsHrrrTemp && typeof window.setHrrrTempEnabled === 'function') {
           await window.setHrrrTempEnabled(true);
         }
@@ -3002,7 +3004,7 @@ document.body.classList.remove("guide-collapsed");
 var radarOpacity = document.getElementById("radarOpacity");
 
 // Remember per-layer opacity so kids can flip products without losing their setting
-var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75, lightning: 0.90 };
+var productOpacity = { radar: 0.70, radarVelocity: 0.70, snow: 0.70, temp: 0.70, hrrrTemp: 0.70, hrrrRadar: 0.70, hrrrWinds: 0.70, hrrrCape: 0.70, global: 0.70, goes: 0.70, metars: 1.00, jet: 0.75, lightning: 0.90 };
 
 function getActiveProductKey(){
   // Priority: global > snow > jet > future hrrr > radar
@@ -3010,7 +3012,7 @@ function getActiveProductKey(){
   if (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled) return "snow";
   if (typeof jet500Enabled !== "undefined" && jet500Enabled) return "jet";
   if (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled && typeof radarVelocityLayer !== "undefined" && radarVelocityLayer && map.hasLayer(radarVelocityLayer)) return "radarVelocity";
-  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : ((window.hrrrProductMode === 'winds') ? "hrrrWinds" : "hrrrTemp");
+  if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) return (window.hrrrProductMode === 'radar') ? "hrrrRadar" : ((window.hrrrProductMode === 'winds') ? "hrrrWinds" : ((window.hrrrProductMode === 'cape') ? "hrrrCape" : "hrrrTemp"));
   if (typeof goesEnabled !== "undefined" && goesEnabled) return "goes";
   if (typeof lightningEnabled !== "undefined" && lightningEnabled) return "lightning";
   if (typeof metarVisible !== "undefined" && metarVisible && !(typeof obsRadarEnabled !== "undefined" && obsRadarEnabled)) return "metars";
@@ -3051,7 +3053,7 @@ function applyActiveOpacity(){
     if (radarSweepCanvas) radarSweepCanvas.style.opacity = String(op);
   } else if (key === "snow"){
     if (gfsSnowOverlay && gfsSnowEnabled) gfsSnowOverlay.setOpacity(op);
-  } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar"){
+  } else if (key === "temp" || key === "hrrrTemp" || key === "hrrrRadar" || key === "hrrrCape"){
     setTempOpacity(op);
   } else if (key === "radarVelocity"){
     if (typeof radarVelocityLayer !== 'undefined' && radarVelocityLayer && radarVelocityLayer.setOpacity) radarVelocityLayer.setOpacity(op);
@@ -3149,12 +3151,9 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
         }
       }
       if (!best) return;
-      var popupTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust'
-        : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
+      var popupTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
       var popupUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
-      var popupValue = (typeof best.value === 'number') ? best.value
-        : ((window.hrrrProductMode === 'winds') ? best.mph
-        : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
+      var popupValue = (typeof best.value === 'number') ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
       var popupText = (popupValue == null || !isFinite(popupValue)) ? "—" : (Math.round(popupValue) + popupUnit);
       L.popup({
         className: "hrrr-popup",
@@ -4407,15 +4406,21 @@ if (window.createMetarsModule) {
         if (cfg.windManifest) return cfg.windManifest;
         if (cfg.windGustManifest) return cfg.windGustManifest;
       }
+      if (product === 'cape') {
+        if (cfg.capeManifest) return cfg.capeManifest;
+        if (cfg.products && cfg.products.cape) return (cfg.products.cape.manifest || cfg.products.cape.url || cfg.products.cape.file || '');
+      }
 
       var generic = cfg.manifest || cfg.url || cfg.file || '';
       if (generic) {
         var s = String(generic).toLowerCase();
         if (product === 'radar' && s.indexOf('/radar/') !== -1) return generic;
-        if (product === 'temp' && s.indexOf('/radar/') === -1) return generic;
+        if (product === 'winds' && s.indexOf('/winds/') !== -1) return generic;
+        if (product === 'cape' && s.indexOf('/cape/') !== -1) return generic;
+        if (product === 'temp' && s.indexOf('/radar/') === -1 && s.indexOf('/winds/') === -1 && s.indexOf('/cape/') === -1) return generic;
       }
     }catch(e){}
-    return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : 'hrrr/temp/manifest.json');
+    return product === 'radar' ? 'hrrr/radar/manifest.json' : (product === 'winds' ? 'hrrr/winds/manifest.json' : (product === 'cape' ? 'hrrr/cape/manifest.json' : 'hrrr/temp/manifest.json'));
   }
 
   function resetHrrrManifestState(){
@@ -4580,6 +4585,7 @@ function parseHrrrPointsPayload(raw){
     var v = Number(val);
     if (!isFinite(la) || !isFinite(lo) || !isFinite(v)) return;
     if (window.hrrrProductMode === 'winds') pts.push({ lat:la, lon:lo, mph:v, value:v, unit:'mph' });
+    else if (window.hrrrProductMode === 'cape') pts.push({ lat:la, lon:lo, cape:v, value:v, unit:' J/kg' });
     else pts.push({ lat:la, lon:lo, tF:v, value:v, unit:'°F' });
   }
 
@@ -4656,14 +4662,14 @@ function parseHrrrPointsPayload(raw){
     img.onload = function(){
       if (token !== hrrrLoadToken) return;
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : 'hrrrTemp');
+      var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : ((hrrrProductMode === 'cape') ? 'hrrrCape' : 'hrrrTemp'));
       var op = productOpacity[activeKey] || 0.70;
       hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
       loadHrrrPointsForFrame(frame).then(function(pts){
-        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts' : 'Future Temperatures');
+        var name = (hrrrProductMode === 'radar') ? 'Future Radar' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts' : ((hrrrProductMode === 'cape') ? 'CAPE' : 'Future Temperatures'));
         if (Array.isArray(pts) && pts.length) setStatus(name + ': ' + (frame.label || url) + ' · probe ready');
         else setStatus(name + ': ' + (frame.label || url));
       });
@@ -4679,7 +4685,7 @@ function parseHrrrPointsPayload(raw){
     product = String(product || 'temp').toLowerCase();
     var turningOn = !!on;
     if (turningOn){
-      hrrrProductMode = (product === 'radar') ? 'radar' : ((product === 'winds') ? 'winds' : 'temp');
+      hrrrProductMode = (product === 'radar') ? 'radar' : ((product === 'winds') ? 'winds' : ((product === 'cape') ? 'cape' : 'temp'));
       window.hrrrProductMode = hrrrProductMode;
       resetHrrrManifestState();
     }
@@ -4687,7 +4693,7 @@ function parseHrrrPointsPayload(raw){
     window.hrrrTempEnabled = hrrrTempEnabled;
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts off' : 'Future Temperatures off'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar off' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts off' : ((hrrrProductMode === 'cape') ? 'CAPE off' : 'Future Temperatures off')));
       try{ updateProductLabel(); }catch(e){}
       try{ setTimeLabel(); }catch(e){}
       try{ syncDockUi(); }catch(e){}
@@ -4699,12 +4705,12 @@ function parseHrrrPointsPayload(raw){
       setCurrentHrrrFrameIndex(currentHrrrFrameIndex);
       try{ syncScrubberToActiveProduct(); }catch(e){}
       updateHrrrOverlay();
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : 'Future Temperatures on'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar on' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts on' : ((hrrrProductMode === 'cape') ? 'CAPE on' : 'Future Temperatures on')));
     }catch(err){
       hrrrTempEnabled = false;
       window.hrrrTempEnabled = false;
       console.error(err);
-      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts failed' : 'Future Temperatures failed'));
+      setStatus((hrrrProductMode === 'radar') ? 'Future Radar failed' : ((hrrrProductMode === 'winds') ? 'Future Wind Gusts failed' : ((hrrrProductMode === 'cape') ? 'CAPE failed' : 'Future Temperatures failed')));
     }
     try{ updateProductLabel(); }catch(e){}
     try{ setTimeLabel(); }catch(e){}
@@ -4719,10 +4725,14 @@ function parseHrrrPointsPayload(raw){
   async function setHrrrWindsEnabled(on){
     return setHrrrProductEnabled('winds', on);
   }
+  async function setHrrrCapeEnabled(on){
+    return setHrrrProductEnabled('cape', on);
+  }
   window.setHrrrProductEnabled = setHrrrProductEnabled;
   window.setHrrrTempEnabled = setHrrrTempEnabled;
   window.setHrrrRadarEnabled = setHrrrRadarEnabled;
   window.setHrrrWindsEnabled = setHrrrWindsEnabled;
+  window.setHrrrCapeEnabled = setHrrrCapeEnabled;
 
   async function setSatelliteEnabled(on){
     goesEnabled = !!on;
@@ -4763,6 +4773,7 @@ function parseHrrrPointsPayload(raw){
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'temp'), label: "FUTURE TEMP" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'radar'), label: "FUTURE RADAR" },
     { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'winds'), label: "FUTURE WIND GUSTS" },
+    { on: (typeof hrrrTempLayer !== "undefined" && hrrrTempLayer && map && map.hasLayer && map.hasLayer(hrrrTempLayer) && window.hrrrProductMode === 'cape'), label: "CAPE" },
     { on: (typeof radarVelocityEnabled !== "undefined" && radarVelocityEnabled), label: "RADAR VELOCITY" },
     { on: (typeof radarSweepEnabled !== "undefined" && radarSweepEnabled), label: "LIVE DOPPLER" },
     { on: (typeof obsRadarEnabled !== "undefined" && obsRadarEnabled), label: "RADAR" }
@@ -4802,6 +4813,10 @@ function parseHrrrPointsPayload(raw){
     } else if (key === "global"){
       title = "Global 2m Temperature (°F) — ERA5";
       if (bar) bar.style.background = "linear-gradient(90deg, #2d004b 0%, #542788 12%, #2166ac 26%, #67a9cf 40%, #d1e5f0 52%, #fff7bc 62%, #fec44f 72%, #f16913 84%, #d73027 100%)";
+      el.style.display = "";
+    } else if (key === "hrrrCape") {
+      title = "Surface-Based CAPE (J/kg)";
+      if (bar) bar.style.background = "linear-gradient(90deg, #f7fcf5 0%, #c7e9c0 18%, #74c476 40%, #31a354 60%, #fdcc8a 78%, #fc8d59 90%, #d7301f 100%)";
       el.style.display = "";
     } else { // temp / future temp
       title = (key === "hrrrTemp") ? "Future 2m Temperature (°F)" : "2m Temperature (°F)";
