@@ -44,7 +44,7 @@ var storyStarted = false; // do not auto-open storyboard
     if (elProd && productWord) elProd.textContent = productWord;
   }
 
-  const lessonId = (_qs("lesson") || "").trim();
+  const lessonId = (_qs("lesson") || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.lessonId) || "")).trim();
 
   if (!lessonId) {
     console.log("ℹ️ No ?lesson=... provided; using engine defaults.");
@@ -55,14 +55,14 @@ var storyStarted = false; // do not auto-open storyboard
         CFG = await window.lessonLoader.loadLessonConfig(lessonId);
       } else {
         // Fallback: fetch directly
-        const DATA_PACK_BASE = (_qs('data') || 'https://thekarstens.github.io/wdl-data-derecho-2022/');
+        const DATA_PACK_BASE = (_qs('data') || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.dataPackBase) || 'https://thekarstens.github.io/wdl-data-derecho-2022/'));
         const base = DATA_PACK_BASE.endsWith('/') ? DATA_PACK_BASE : (DATA_PACK_BASE + '/');
         const url = `${base}lessons/${encodeURIComponent(lessonId)}/lesson.json?v=${Date.now()}`;
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`Lesson config HTTP ${res.status}: ${url}`);
         CFG = await res.json();
         if (!CFG.dataBase){
-          const base = ( _qs('data') || 'https://thekarstens.github.io/wdl-data-derecho-2022/' );
+          const base = ( _qs('data') || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.dataPackBase) || 'https://thekarstens.github.io/wdl-data-derecho-2022/') );
           const b = base.endsWith('/') ? base : (base + '/');
           CFG.dataBase = `${b}lessons/${encodeURIComponent(lessonId)}/`;
         }
@@ -83,7 +83,7 @@ var storyStarted = false; // do not auto-open storyboard
   }
 
   // Data pack base (GitHub Pages). Can be overridden by lesson.json via cfg.dataBase
-  var DATA_PACK_BASE = "https://thekarstens.github.io/wdl-data-derecho-2022/";
+  var DATA_PACK_BASE = (_qs("data") || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.dataPackBase) || "https://thekarstens.github.io/wdl-data-derecho-2022/"));
   // Base for assets: prefer cfg.dataBase; otherwise default to data pack lesson folder when ?lesson= is used
   var DATA_BASE = String((CFG && CFG.dataBase)
     ? CFG.dataBase
@@ -133,6 +133,8 @@ var storyStarted = false; // do not auto-open storyboard
 
   var startZ = TIME_CFG.startZ ? new Date(TIME_CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
   var endZ   = TIME_CFG.endZ   ? new Date(TIME_CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
+  if (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.startZ) startZ = new Date(window.WDL_SIM_CONFIG.startZ);
+  if (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.endZ) endZ = new Date(window.WDL_SIM_CONFIG.endZ);
   var curZ   = new Date(startZ.getTime());
 
   // Radar bounds (optional per lesson)
@@ -2412,7 +2414,7 @@ function updateCityLabels(){
 
   // ---------- Story (Google Sheet / CSV) ----------
   var STORY_CFG = (CFG && CFG.storyboard) ? CFG.storyboard : {};
-  var STORYBOARD_OVERRIDE = (_qs("story") || "").trim();
+  var STORYBOARD_OVERRIDE = (_qs("story") || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.storyboardUrl) || "")).trim();
   function normalizeStoryboardPath(u){
     var s = String(u || "").trim();
     if (!s) return "";
@@ -2635,9 +2637,15 @@ function safeLink(url){
           showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
           stepTheme: item.stepTheme || "blue",
           stepLabel: item.stepLabel || String(storyIndex + 1),
-          stepKicker: item.stepKicker || item.label || ""
+          stepKicker: item.stepKicker || item.label || "",
+          simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
         }
       }));
+      try{
+        if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onStorySceneApplied === 'function'){
+          window.WDL_SIM_CONFIG.onStorySceneApplied({ item: item, index: storyIndex, count: storyItems.length, utc: item.utc || null });
+        }
+      }catch(simEventErr){ console.warn('Simulator story hook failed', simEventErr); }
     } catch(e) {}
 
     try {
@@ -2991,6 +2999,8 @@ function collapseGuide(){
   storyPanelEl.classList.remove("story-open");
   document.body.classList.add("guide-collapsed");
 }
+window.openGuide = openGuide;
+window.collapseGuide = collapseGuide;
 if (hideGuideBtn) hideGuideBtn.onclick = function(){ collapseGuide(); };
 if (storyTabEl) storyTabEl.onclick = function(){ storyStarted = true; storyToggle(); };
 
@@ -3648,6 +3658,62 @@ function nearestHrrrFrameIndexForTime(d){
   window.setCurrentRadarFrameIndex = setCurrentRadarFrameIndex;
   window.getRadarFramePool = getRadarFramePool;
   window.setRadarStepLimit = setRadarStepLimit;
+
+  function getActiveScrubberState(){
+    var mode = getActiveScrubberMode();
+    if (mode === 'hrrr'){
+      var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
+      return { mode: mode, min: 0, max: Math.max(0, liveHrrrFrames.length - 1), value: Math.max(0, Math.min(Math.max(0, liveHrrrFrames.length - 1), currentHrrrFrameIndex|0)) };
+    }
+    if (mode === 'metars'){
+      var mt = (window.metarsModule && typeof window.metarsModule.getTimeline === 'function') ? (window.metarsModule.getTimeline() || []) : [];
+      var mi = (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function') ? (window.metarsModule.getCurrentMetarIndex()|0) : 0;
+      return { mode: mode, min: 0, max: Math.max(0, mt.length - 1), value: Math.max(0, Math.min(Math.max(0, mt.length - 1), mi)) };
+    }
+    if (mode === 'radar'){
+      var radarPool = getRadarFramePool();
+      return { mode: mode, min: 0, max: Math.max(0, radarPool.length - 1), value: Math.max(0, Math.min(Math.max(0, radarPool.length - 1), currentRadarFrameIndex|0)) };
+    }
+    var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS || 1));
+    var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS || 1));
+    if (idx < 0) idx = 0;
+    if (idx > max) idx = max;
+    return { mode: 'lesson', min: 0, max: Math.max(0, max), value: idx };
+  }
+
+  function setActiveScrubberPercent(percent){
+    var pct = Number(percent);
+    if (!isFinite(pct)) return false;
+    pct = Math.max(0, Math.min(100, pct));
+    var state = getActiveScrubberState();
+    var target = state.min + ((state.max - state.min) * (pct / 100));
+    if (state.mode === 'hrrr'){
+      setCurrentHrrrFrameIndex(Math.round(target));
+      updateAll();
+      return true;
+    }
+    if (state.mode === 'metars'){
+      try{
+        if (window.metarsModule && typeof window.metarsModule.loadMetarsAtIndex === 'function'){
+          window.metarsModule.loadMetarsAtIndex(Math.round(target));
+          return true;
+        }
+      }catch(e){}
+      return false;
+    }
+    if (state.mode === 'radar'){
+      setCurrentRadarFrameIndex(Math.round(target));
+      updateAll();
+      return true;
+    }
+    curZ = new Date(startZ.getTime() + (Math.round(target) * STEP_MS));
+    clampTime();
+    updateAll();
+    return true;
+  }
+
+  window.getActiveScrubberState = getActiveScrubberState;
+  window.setActiveScrubberPercent = setActiveScrubberPercent;
 
   function setTimeLabel(){
     var label = formatCentralLabel(curZ);
@@ -5083,6 +5149,11 @@ window.setWarningsEnabled = setWarningsEnabled;
     }
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
+    try{
+      if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onUpdateAll === 'function'){
+        window.WDL_SIM_CONFIG.onUpdateAll({ curZ: new Date(curZ.getTime()) });
+      }
+    }catch(simUpdateErr){}
   }
 
   window.updateAll = updateAll;
@@ -5121,6 +5192,7 @@ window.setWarningsEnabled = setWarningsEnabled;
     }
     return false;
   }
+  window.stepActiveScrubber = stepActiveScrubber;
 
   var _back = document.getElementById('cbBackBtn') || document.getElementById('bBackBtn');
   if (_back) _back.title = "Back " + STEP_LABEL;
