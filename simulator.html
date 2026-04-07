@@ -458,8 +458,7 @@
         var item = detail.item || {};
         var lines = Array.isArray(item.narrative) ? item.narrative : (typeof item.narrative === 'string' && item.narrative.trim() ? [item.narrative] : []);
         if (!lines.length && typeof item.text === 'string' && item.text.trim()) {
-          lines = item.text.split(/
-+/).filter(Boolean);
+          lines = item.text.split(/\n+/).filter(Boolean);
         }
         var body = document.getElementById('storyBody');
         var title = document.getElementById('storyTitle');
