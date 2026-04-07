@@ -6,7 +6,12 @@ window.WDL_SIM_CONFIG = {
   endZ: "2022-05-12T23:20:00Z",
   defaultPanelOpen: true,
   autoplayOnLoad: false,
-  initialSpeedMs: 900,
+  nextEventDurationMs: 2200,
+  masterClock: {
+    label: "Master Simulator Clock",
+    displayStartZ: "2022-05-12T13:00:00-05:00",
+    displayEndZ: "2022-05-12T19:00:00-05:00"
+  },
   ui: {
     title: "Weather Discovery Lab",
     subtitle: "Live Severe Weather Simulator — May 12, 2022 Derecho",
