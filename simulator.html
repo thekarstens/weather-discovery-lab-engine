@@ -24,16 +24,29 @@
     .case-line { margin-top:2px; font:800 16px/1.08 "Lato", Arial, sans-serif; letter-spacing:.45px; text-transform:uppercase; }
     .region-line { margin-top:3px; font:700 12px/1.15 "Lato", Arial, sans-serif; letter-spacing:.25px; opacity:.95; }
     .open-lesson-btn { position:absolute; left:16px; top:18px; border:1px solid rgba(0,0,0,.35); background:#fdd835; color:#111; border-radius:14px; padding:11px 18px; font:900 14px/1 Arial, sans-serif; letter-spacing:.7px; text-transform:uppercase; cursor:pointer; box-shadow:0 8px 18px rgba(0,0,0,.18); }
-    .clock-stack { position:absolute; right:18px; top:10px; display:flex; align-items:flex-start; gap:10px; }
-    .sim-controls-wrap { display:flex; align-items:flex-start; gap:10px; }
-    .sim-clock { min-width:214px; border-radius:20px; background:linear-gradient(180deg,#3b0b10,#81131c 55%,#a61722); border:2px solid rgba(255,255,255,.18); box-shadow:0 12px 28px rgba(0,0,0,.28); padding:12px 14px 12px; }
-    .sim-clock .time { color:#fff; font:900 34px/1 "Lato", Arial, sans-serif; text-align:center; letter-spacing:.8px; text-shadow:0 2px 10px rgba(0,0,0,.35); }
-    #playPauseWrap { display:flex; gap:6px; justify-content:center; margin-top:10px; }
-    #playPauseWrap button, .story-action, .story-nav .btn { border:1px solid rgba(255,255,255,.16); border-radius:12px; cursor:pointer; font:900 13px/1 Arial, sans-serif; padding:10px 13px; background:#11243a; color:#fff; box-shadow:0 6px 16px rgba(0,0,0,.18); }
-    #playPauseWrap button:hover, .story-action:hover, .story-nav .btn:hover { filter:brightness(1.08); }
-    .scrub-wrap { margin-top:10px; display:flex; align-items:center; gap:8px; }
-    .scrub-wrap input { width:100%; }
-    .scrub-mini { font:800 11px/1 Arial, sans-serif; text-transform:uppercase; opacity:.85; }
+    .clock-stack { position:absolute; right:18px; top:10px; display:flex; align-items:flex-start; gap:12px; }
+    .sim-controls-wrap { display:flex; align-items:flex-start; gap:12px; }
+    .sim-clock { min-width:276px; border-radius:18px; background:linear-gradient(180deg,#020202,#101010 70%,#050505); border:2px solid rgba(255,64,64,.88); box-shadow:0 0 0 1px rgba(255,64,64,.35), 0 0 14px rgba(255,45,45,.45), 0 0 34px rgba(180,0,0,.28), inset 0 0 18px rgba(255,255,255,.03); padding:10px 16px 12px; position:relative; overflow:hidden; }
+    .sim-clock::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)); pointer-events:none; }
+    .sim-clock-label { color:#ffb8b8; font:800 10px/1 Arial, sans-serif; letter-spacing:1.35px; text-transform:uppercase; margin-bottom:6px; text-align:center; opacity:.95; }
+    .sim-clock .time { color:#ff4d4d; font:900 34px/1 "Lato", Arial, sans-serif; text-align:center; letter-spacing:1.1px; text-shadow:0 0 10px rgba(255,70,70,.48), 0 0 22px rgba(255,50,50,.28); font-variant-numeric:tabular-nums; }
+    #playPauseWrap { display:flex; gap:0; justify-content:center; margin-top:0; }
+    #simSlowerBtn, #simFasterBtn { display:none !important; }
+    #simPlayPauseBtn, .story-action, .story-nav .btn { border:1px solid rgba(255,255,255,.16); border-radius:12px; cursor:pointer; font:900 13px/1 Arial, sans-serif; padding:10px 13px; background:#11243a; color:#fff; box-shadow:0 6px 16px rgba(0,0,0,.18); }
+    #simPlayPauseBtn { min-width:132px; min-height:74px; border-radius:18px; background:linear-gradient(180deg,#0da7ff,#046fe6 58%,#0449a8); border:1px solid rgba(160,235,255,.98); color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.40); box-shadow:0 0 14px rgba(0,170,255,.52), 0 0 30px rgba(0,120,255,.26), inset 0 0 10px rgba(255,255,255,.10); text-transform:uppercase; letter-spacing:.9px; }
+    #simPlayPauseBtn:hover, .story-action:hover, .story-nav .btn:hover { filter:brightness(1.08); }
+    #simPlayPauseBtn.is-ready { animation:simPulse 1.45s infinite; }
+    #simPlayPauseBtn.is-running { background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18); animation:none; }
+    @keyframes simPulse { 0%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} 50%{ box-shadow:0 0 24px rgba(0,200,255,.92), 0 0 42px rgba(0,120,255,.42), inset 0 0 12px rgba(255,255,255,.14);} 100%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} }
+    .scrub-wrap { position:absolute; left:140px; right:178px; top:8px; height:22px; display:flex; align-items:center; z-index:100004; padding:0 14px; border-radius:999px; background:rgba(7,19,31,.66); border:1px solid rgba(255,255,255,.10); box-shadow:inset 0 0 0 1px rgba(255,255,255,.02), 0 6px 14px rgba(0,0,0,.18); }
+    .scrub-mini { display:none; }
+    .scrub-wrap input { width:100%; margin:0; background:transparent; }
+    .scrub-wrap::before { content:"SIM TIMELINE"; position:absolute; left:12px; top:-16px; font:800 10px/1 Arial, sans-serif; letter-spacing:1.1px; text-transform:uppercase; color:rgba(255,255,255,.78); }
+    #cbScrubber { -webkit-appearance:none; appearance:none; height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(70,110,160,.62), rgba(120,160,220,.9)); outline:none; }
+    #cbScrubber::-webkit-slider-runnable-track { height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; margin-top:-4px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
+    #cbScrubber::-moz-range-track { height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
     .product-slot { position:absolute; left:50%; transform:translateX(-50%); bottom:-58px; z-index:100002; pointer-events:none; }
     .product-pill { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:210px; padding:11px 20px 13px; border-radius:20px; background:rgba(11,28,45,.94); color:#9fe6ff; border:2px solid rgba(255,255,255,.18); box-shadow:0 8px 22px rgba(0,0,0,.30); text-transform:uppercase; white-space:nowrap; font-weight:900; font-size:18px; line-height:1.02; letter-spacing:.2px; }
     .product-pill::before { content:"MAP LAYER"; display:block; font:700 10px/1 "Lato", Arial, sans-serif; letter-spacing:.9px; color:#ffffff; opacity:.82; margin-bottom:6px; }
@@ -95,20 +108,21 @@
         <div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div>
         <div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
       </div>
+      <div class="scrub-wrap" id="scrubWrap">
+        <span class="scrub-mini">Start</span>
+        <input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" />
+        <span class="scrub-mini">End</span>
+      </div>
       <div class="clock-stack">
         <div class="sim-controls-wrap" id="simControlsWrap">
           <div class="sim-clock" id="simClockBox">
-            <div class="time" id="simClockReadout">3:00 PM</div>
-            <div id="playPauseWrap">
-              <button id="simSlowerBtn" type="button">Slower</button>
-              <button id="simPlayPauseBtn" type="button">Play</button>
-              <button id="simFasterBtn" type="button">Faster</button>
-            </div>
-            <div class="scrub-wrap" id="scrubWrap">
-              <span class="scrub-mini">Start</span>
-              <input id="cbScrubber" type="range" min="0" max="100" step="1" value="0" />
-              <span class="scrub-mini">End</span>
-            </div>
+            <div class="sim-clock-label" id="simClockLabel">Simulator Clock</div>
+            <div class="time" id="simClockReadout">1:00:00 PM</div>
+          </div>
+          <div id="playPauseWrap">
+            <button id="simSlowerBtn" type="button">Slower</button>
+            <button id="simPlayPauseBtn" class="is-ready" type="button">Play Next Event</button>
+            <button id="simFasterBtn" type="button">Faster</button>
           </div>
         </div>
       </div>
@@ -166,12 +180,11 @@
   <script src="./metars.js"></script>
   <script src="./map-ui.js"></script>
   <script src="./engine_simulator_patch.js"></script>
+  
   <script>
     (function(){
       var cfg = window.WDL_SIM_CONFIG || {};
       var playBtn = document.getElementById('simPlayPauseBtn');
-      var slowerBtn = document.getElementById('simSlowerBtn');
-      var fasterBtn = document.getElementById('simFasterBtn');
       var scrubber = document.getElementById('cbScrubber');
       var alertBox = document.getElementById('simAlertBox');
       var alertKicker = document.getElementById('simAlertKicker');
@@ -179,15 +192,25 @@
       var alertBody = document.getElementById('simAlertBody');
       var sceneLead = document.getElementById('simSceneLead');
       var clockReadout = document.getElementById('simClockReadout');
+      var clockLabel = document.getElementById('simClockLabel');
       var storyCollapseBtn = document.getElementById('storyCollapseBtn');
       var storyDopplerBtn = document.getElementById('storyDopplerBtn');
       var openLessonBtn = document.getElementById('openLessonBtn');
       var exploreBtn = document.getElementById('exploreBtn');
-      var playing = false;
-      var timer = null;
-      var speedMs = Number(cfg.initialSpeedMs || 900);
-      var exploreMode = false;
+      var storyPrevBtn = document.getElementById('storyPrevBtn');
+      var storyNextBtn = document.getElementById('storyNextBtn');
+
+      var storyboardSteps = [];
+      var currentSceneIndex = 0;
+      var animating = false;
+      var animationFrame = null;
       var alertTimer = null;
+      var exploreMode = false;
+      var displayPercent = 0;
+
+      function qstring(name){
+        try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; }
+      }
 
       function setBannerText(){
         var ui = cfg.ui || {};
@@ -197,67 +220,214 @@
         if (brand && ui.title) brand.textContent = ui.title;
         if (title && ui.subtitle) title.textContent = ui.subtitle;
         if (region && ui.region) region.textContent = ui.region;
+        if (clockLabel && cfg.masterClock && cfg.masterClock.label) clockLabel.textContent = cfg.masterClock.label;
       }
 
-      function formatLocalTime(d){
-        try {
-          return new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' });
-        } catch(e){ return '--:--'; }
+      function parseMs(v){
+        var d = new Date(v);
+        return isNaN(d) ? NaN : d.getTime();
       }
 
-      function getLiveClockValue(){
-        try {
-          if (window.curZ) return window.curZ;
-          if (window.__SIM_LAST_CLOCK__) return window.__SIM_LAST_CLOCK__;
-          if (window.__SIM_LAST_SCENE__ && window.__SIM_LAST_SCENE__.curZ) return window.__SIM_LAST_SCENE__.curZ;
-        } catch(e){}
-        return null;
+      function clamp01(v){
+        v = Number(v);
+        if (!isFinite(v)) return 0;
+        if (v < 0) return 0;
+        if (v > 1) return 1;
+        return v;
       }
 
-      function updateClockAndScrubber(){
+      function getActualWindow(){
+        var start = parseMs(cfg.startZ || '2022-05-12T20:00:00Z');
+        var end = parseMs(cfg.endZ || '2022-05-12T23:20:00Z');
+        if (!isFinite(start) || !isFinite(end) || end <= start){
+          start = parseMs('2022-05-12T20:00:00Z');
+          end = parseMs('2022-05-12T23:20:00Z');
+        }
+        return { start:start, end:end };
+      }
+
+      function getDisplayWindow(){
+        var mc = cfg.masterClock || {};
+        var start = parseMs(mc.displayStartZ || cfg.startZ || '2022-05-12T20:00:00Z');
+        var end = parseMs(mc.displayEndZ || cfg.endZ || '2022-05-12T23:20:00Z');
+        if (!isFinite(start) || !isFinite(end) || end <= start){
+          var actual = getActualWindow();
+          start = actual.start;
+          end = actual.end;
+        }
+        return { start:start, end:end };
+      }
+
+      function percentFromActualMs(ms){
+        var actual = getActualWindow();
+        if (!isFinite(ms) || actual.end <= actual.start) return 0;
+        return clamp01((ms - actual.start) / (actual.end - actual.start));
+      }
+
+      function actualMsFromPercent(p){
+        var actual = getActualWindow();
+        p = clamp01(p);
+        return Math.round(actual.start + ((actual.end - actual.start) * p));
+      }
+
+      function displayMsFromPercent(p){
+        var display = getDisplayWindow();
+        p = clamp01(p);
+        return Math.round(display.start + ((display.end - display.start) * p));
+      }
+
+      function formatDisplayClock(ms){
         try {
-          var liveClock = getLiveClockValue();
-          if (clockReadout && liveClock) clockReadout.textContent = formatLocalTime(liveClock);
-          if (scrubber && typeof window.getActiveScrubberState === 'function') {
-            var state = window.getActiveScrubberState();
-            if (state && isFinite(state.min) && isFinite(state.max) && state.max > state.min) {
-              scrubber.value = Math.max(0, Math.min(100, Math.round(((state.value - state.min) / (state.max - state.min)) * 100)));
-            } else {
-              scrubber.value = 0;
-            }
+          return new Date(ms).toLocaleTimeString('en-US', {
+            hour:'numeric',
+            minute:'2-digit',
+            second:'2-digit',
+            hour12:true,
+            timeZone:'America/Chicago'
+          });
+        } catch(e){
+          return '--:--:--';
+        }
+      }
+
+      function readLiveActualMs(){
+        try {
+          if (window.curZ) {
+            var d0 = new Date(window.curZ);
+            if (!isNaN(d0)) return d0.getTime();
+          }
+          if (window.__SIM_LAST_CLOCK__) {
+            var d1 = new Date(window.__SIM_LAST_CLOCK__);
+            if (!isNaN(d1)) return d1.getTime();
+          }
+          if (window.__SIM_LAST_SCENE__ && window.__SIM_LAST_SCENE__.utc) {
+            var d2 = new Date(window.__SIM_LAST_SCENE__.utc);
+            if (!isNaN(d2)) return d2.getTime();
           }
         } catch(e){}
+        return NaN;
       }
 
-      function stepPlayback(){
+      function updateClockAndScrubber(forcePercent){
         try {
-          if (typeof window.stepActiveScrubber === 'function') {
-            if (!window.stepActiveScrubber(1) && typeof window.updateAll === 'function') window.updateAll();
-          } else if (typeof window.stepRadarFrame === 'function') {
-            if (!window.stepRadarFrame(1) && typeof window.updateAll === 'function') window.updateAll();
-          } else if (typeof window.updateAll === 'function') {
-            window.updateAll();
+          var pct = (typeof forcePercent === 'number' && isFinite(forcePercent))
+            ? clamp01(forcePercent)
+            : percentFromActualMs(readLiveActualMs());
+
+          if (!isFinite(pct)) pct = displayPercent;
+          displayPercent = clamp01(pct);
+
+          if (clockReadout) clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
+          if (scrubber) scrubber.value = String(Math.round(displayPercent * 1000) / 10);
+        } catch(e){}
+      }
+
+      function syncEngineToPercent(pct){
+        pct = clamp01(pct);
+        try {
+          if (typeof window.setActiveScrubberPercent === 'function'){
+            window.setActiveScrubberPercent(pct * 100);
+            return true;
+          }
+          if (typeof window.setMasterTime === 'function'){
+            window.setMasterTime(new Date(actualMsFromPercent(pct)));
+            return true;
           }
         } catch(e){}
-        updateClockAndScrubber();
+        return false;
       }
 
-      function pausePlayback(){
-        playing = false;
-        if (timer) clearInterval(timer);
-        timer = null;
-        if (playBtn) playBtn.textContent = 'Play';
+      function jumpToActualMs(ms){
+        if (!isFinite(ms)) return;
+        var pct = percentFromActualMs(ms);
+        try {
+          if (typeof window.setMasterTime === 'function') {
+            window.setMasterTime(new Date(ms));
+          } else {
+            syncEngineToPercent(pct);
+          }
+        } catch(e){}
+        updateClockAndScrubber(pct);
       }
 
-      function playPlayback(){
-        pausePlayback();
-        playing = true;
-        if (playBtn) playBtn.textContent = 'Pause';
-        timer = setInterval(stepPlayback, speedMs);
+      async function loadStoryboardSteps(){
+        try {
+          var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/');
+          if (!base.endsWith('/')) base += '/';
+          var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim();
+          var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard.json').replace(/^\.\//,'');
+          var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel);
+          var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+          if (!res.ok) throw new Error('Storyboard HTTP ' + res.status);
+          var data = await res.json();
+          storyboardSteps = Array.isArray(data.steps) ? data.steps : [];
+        } catch(e){
+          console.warn('Simulator storyboard load failed', e);
+          storyboardSteps = [];
+        }
       }
 
-      function togglePlayback(){
-        if (playing) pausePlayback(); else playPlayback();
+      function updatePlayButton(running){
+        if (!playBtn) return;
+        playBtn.classList.toggle('is-running', !!running);
+        playBtn.classList.toggle('is-ready', !running);
+        playBtn.textContent = running ? 'Pause Travel' : 'Play Next Event';
+      }
+
+      function stopAnimation(){
+        animating = false;
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        updatePlayButton(false);
+      }
+
+      function animateToStep(targetIndex){
+        if (!storyboardSteps.length) return;
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= storyboardSteps.length) targetIndex = storyboardSteps.length - 1;
+        var targetStep = storyboardSteps[targetIndex] || null;
+        var targetMs = targetStep && targetStep.utc ? parseMs(targetStep.utc) : NaN;
+        if (!isFinite(targetMs)) return;
+
+        stopAnimation();
+
+        var startPct = displayPercent;
+        var endPct = percentFromActualMs(targetMs);
+        var duration = Math.max(800, Number(cfg.nextEventDurationMs || 2200));
+        var t0 = performance.now();
+        animating = true;
+        updatePlayButton(true);
+
+        function frame(now){
+          if (!animating) return;
+          var t = Math.min(1, (now - t0) / duration);
+          var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2);
+          var pct = startPct + ((endPct - startPct) * eased);
+          syncEngineToPercent(pct);
+          updateClockAndScrubber(pct);
+
+          if (t < 1){
+            animationFrame = requestAnimationFrame(frame);
+          } else {
+            stopAnimation();
+            jumpToActualMs(targetMs);
+          }
+        }
+
+        animationFrame = requestAnimationFrame(frame);
+      }
+
+      function playNextEvent(){
+        if (animating){
+          stopAnimation();
+          return;
+        }
+        var nextIndex = Math.min((currentSceneIndex || 0) + 1, Math.max(0, storyboardSteps.length - 1));
+        if (!storyboardSteps.length || nextIndex === currentSceneIndex){
+          updateClockAndScrubber();
+          return;
+        }
+        animateToStep(nextIndex);
       }
 
       function showAlert(eventData){
@@ -269,6 +439,19 @@
         if (alertBody) alertBody.textContent = eventData.message || '';
         if (alertTimer) clearTimeout(alertTimer);
         alertTimer = setTimeout(function(){ alertBox.className = 'sim-alert theme-' + theme; }, 5200);
+      }
+
+      function nearestSceneIndexForActualMs(ms){
+        if (!storyboardSteps.length || !isFinite(ms)) return 0;
+        var best = 0;
+        var bestDelta = Infinity;
+        for (var i = 0; i < storyboardSteps.length; i++){
+          var sMs = parseMs(storyboardSteps[i] && storyboardSteps[i].utc);
+          if (!isFinite(sMs)) continue;
+          var d = Math.abs(ms - sMs);
+          if (d < bestDelta){ best = i; bestDelta = d; }
+        }
+        return best;
       }
 
       function renderScene(detail){
@@ -285,42 +468,71 @@
         var step = document.getElementById('storyStep');
         var product = document.getElementById('productLabel');
         var panel = document.getElementById('storyPanel');
+        var detailIndex = (typeof detail.index === 'number') ? detail.index : nearestSceneIndexForActualMs(readLiveActualMs());
+        currentSceneIndex = detailIndex;
+
         if (title) title.textContent = item.title || 'Storm Story';
-        if (chip) chip.textContent = String(detail.stepLabel || (detail.index + 1 || 1));
+        if (chip) chip.textContent = String(detail.stepLabel || (detailIndex + 1 || 1));
         if (kicker) kicker.textContent = detail.stepKicker || ((cfg.ui || {}).stepKickerFallback || 'LIVE SIMULATION');
-        if (step) step.textContent = 'Step ' + ((detail.index || 0) + 1) + ' of ' + (detail.count || 0);
+        if (step) step.textContent = 'Step ' + ((detailIndex || 0) + 1) + ' of ' + (detail.count || storyboardSteps.length || 0);
         if (product) product.textContent = detail.highlightProduct || item.product || ((cfg.ui || {}).productFallback || 'RADAR');
-        if (sceneLead) sceneLead.textContent = detail.simulatorEvent && detail.simulatorEvent.headline ? detail.simulatorEvent.headline : ((detail.stepKicker || 'Current Scene') + ' • ' + formatLocalTime(detail.utc || window.curZ || Date.now()));
+        if (sceneLead) {
+          var leadMs = displayMsFromPercent(percentFromActualMs(parseMs(detail.utc || item.utc || readLiveActualMs())));
+          sceneLead.textContent = detail.simulatorEvent && detail.simulatorEvent.headline
+            ? detail.simulatorEvent.headline
+            : ((detail.stepKicker || 'Current Scene') + ' • ' + formatDisplayClock(leadMs));
+        }
         if (panel) {
           panel.classList.remove('story-theme-blue','story-theme-cyan','story-theme-orange','story-theme-red','story-theme-purple');
           panel.classList.add('story-theme-' + (detail.stepTheme || 'blue'));
         }
         if (body) {
           body.innerHTML = lines.map(function(line){
-            return '<p>' + String(line)
-              .replace(/&/g,'&amp;')
-              .replace(/</g,'&lt;')
-              .replace(/>/g,'&gt;') + '</p>';
+            return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
           }).join('') || '<p>No scene text yet.</p>';
         }
         if (storyDopplerBtn) storyDopplerBtn.textContent = detail.showDoppler ? 'LIVE Doppler READY' : 'LIVE Doppler OFF';
         if (detail.simulatorEvent) showAlert(detail.simulatorEvent);
-        if (detail.pause || (detail.simulatorEvent && detail.simulatorEvent.pauseOnEnter)) pausePlayback();
-        updateClockAndScrubber();
+        if (detail.pause || (detail.simulatorEvent && detail.simulatorEvent.pauseOnEnter)) stopAnimation();
+        updateClockAndScrubber(percentFromActualMs(parseMs(detail.utc || item.utc || readLiveActualMs())));
       }
 
-      if (playBtn) playBtn.addEventListener('click', togglePlayback);
-      if (slowerBtn) slowerBtn.addEventListener('click', function(){ speedMs = Math.min(2200, speedMs + 200); if (playing) playPlayback(); });
-      if (fasterBtn) fasterBtn.addEventListener('click', function(){ speedMs = Math.max(250, speedMs - 200); if (playing) playPlayback(); });
-      if (scrubber) scrubber.addEventListener('input', function(){ if (typeof window.setActiveScrubberPercent === 'function') window.setActiveScrubberPercent(Number(scrubber.value)); updateClockAndScrubber(); });
+      if (playBtn) playBtn.addEventListener('click', playNextEvent);
+      if (scrubber) scrubber.addEventListener('input', function(){
+        stopAnimation();
+        var pct = clamp01(Number(scrubber.value) / 100);
+        syncEngineToPercent(pct);
+        updateClockAndScrubber(pct);
+      });
       if (storyCollapseBtn) storyCollapseBtn.addEventListener('click', function(){ if (document.body.classList.contains('guide-collapsed')) window.openGuide && window.openGuide(); else window.collapseGuide && window.collapseGuide(); });
       if (openLessonBtn) openLessonBtn.addEventListener('click', function(){ if (document.body.classList.contains('guide-collapsed')) window.openGuide && window.openGuide(); else window.collapseGuide && window.collapseGuide(); });
       if (storyDopplerBtn) storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} });
       if (exploreBtn) exploreBtn.addEventListener('click', function(){ exploreMode = !exploreMode; document.body.classList.toggle('explore-mode', exploreMode); exploreBtn.textContent = exploreMode ? 'Guided' : 'Explore'; if (!exploreMode && window.openGuide) window.openGuide(); });
+      if (storyPrevBtn) storyPrevBtn.addEventListener('click', function(){
+        stopAnimation();
+        var prev = Math.max(0, (currentSceneIndex || 0) - 1);
+        if (storyboardSteps[prev] && storyboardSteps[prev].utc) jumpToActualMs(parseMs(storyboardSteps[prev].utc));
+      });
+      if (storyNextBtn) storyNextBtn.addEventListener('click', function(){
+        stopAnimation();
+        var next = Math.min(Math.max(0, storyboardSteps.length - 1), (currentSceneIndex || 0) + 1);
+        if (storyboardSteps[next] && storyboardSteps[next].utc) jumpToActualMs(parseMs(storyboardSteps[next].utc));
+      });
+
       window.addEventListener('wdl:storychange', function(ev){ renderScene((ev && ev.detail) || {}); });
-      window.addEventListener('load', function(){ setBannerText(); if (cfg.defaultPanelOpen === false && window.collapseGuide) window.collapseGuide(); updateClockAndScrubber(); if (cfg.autoplayOnLoad) playPlayback(); });
-      setInterval(updateClockAndScrubber, 1000);
+
+      window.addEventListener('load', async function(){
+        setBannerText();
+        await loadStoryboardSteps();
+        if (cfg.defaultPanelOpen === false && window.collapseGuide) window.collapseGuide();
+        updateClockAndScrubber(0);
+      });
+
+      setInterval(function(){
+        if (!animating) updateClockAndScrubber();
+      }, 250);
     })();
   </script>
+
 </body>
 </html>
