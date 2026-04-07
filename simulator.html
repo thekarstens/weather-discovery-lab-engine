@@ -205,9 +205,19 @@
         } catch(e){ return '--:--'; }
       }
 
+      function getLiveClockValue(){
+        try {
+          if (window.curZ) return window.curZ;
+          if (window.__SIM_LAST_CLOCK__) return window.__SIM_LAST_CLOCK__;
+          if (window.__SIM_LAST_SCENE__ && window.__SIM_LAST_SCENE__.curZ) return window.__SIM_LAST_SCENE__.curZ;
+        } catch(e){}
+        return null;
+      }
+
       function updateClockAndScrubber(){
         try {
-          if (clockReadout && window.curZ) clockReadout.textContent = formatLocalTime(window.curZ);
+          var liveClock = getLiveClockValue();
+          if (clockReadout && liveClock) clockReadout.textContent = formatLocalTime(liveClock);
           if (scrubber && typeof window.getActiveScrubberState === 'function') {
             var state = window.getActiveScrubberState();
             if (state && isFinite(state.min) && isFinite(state.max) && state.max > state.min) {
