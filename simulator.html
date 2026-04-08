@@ -122,6 +122,104 @@
       .storyPanel { top:174px; max-height:calc(100vh - 196px); }
       .sim-alert { top:184px; }
     }
+  
+    /* --- Simulator upgrade v2 --- */
+    .town-label {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(0,0,0,0.24);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font: 900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 0.2px;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+      white-space: nowrap;
+    }
+    .tvbanner{ min-height: 176px; overflow: visible; }
+    .banner-topline{ min-height: 176px; align-items:flex-start; }
+    #brandLogo{
+      position:absolute; left:10px; top:16px; width:108px; z-index:100010;
+      filter: drop-shadow(0 4px 14px rgba(0,0,0,.40));
+      pointer-events:none;
+    }
+    .banner-center{ top:16px; width:min(920px, calc(100% - 640px)); }
+    .clock-stack{ top:14px; right:16px; }
+    .scrub-wrap{ left:182px; right:402px; top:82px; }
+    .product-slot{ bottom:-30px; }
+    .product-row{
+      position:absolute; left:184px; right:220px; top:112px; z-index:100006;
+      display:flex; gap:10px; align-items:center; overflow-x:auto; padding-bottom:4px;
+      scrollbar-width:thin;
+    }
+    .product-row::-webkit-scrollbar{ height:6px; }
+    .product-row::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+    .sim-product-btn{
+      flex:0 0 auto; min-width:124px; border-radius:999px; border:1px solid rgba(255,255,255,.16);
+      background:linear-gradient(180deg, rgba(7,31,58,.96), rgba(10,42,82,.94));
+      color:#fff; font:900 14px/1 "Lato", Arial, sans-serif; letter-spacing:.65px;
+      text-transform:uppercase; padding:11px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20);
+      cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    }
+    .sim-product-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-product-btn.is-active{
+      background:linear-gradient(180deg, #1fb8ff, #1068d6 65%, #0c3f94);
+      box-shadow:0 0 16px rgba(42,190,255,.62), 0 8px 18px rgba(0,0,0,.24);
+      border-color:rgba(181,237,255,.96);
+    }
+    .story-action.story-doppler-inline{
+      background:linear-gradient(180deg,#0d57d6,#0b7cff 55%,#083f9d);
+      color:#ffffff; border:1px solid rgba(160,235,255,.98);
+      text-shadow:0 1px 4px rgba(0,0,0,.40);
+      box-shadow:0 0 14px rgba(0,170,255,.60), inset 0 0 10px rgba(255,255,255,.10);
+    }
+    .story-action.story-doppler-inline.active{
+      background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3);
+      box-shadow:0 0 22px rgba(0,200,255,.90),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18);
+    }
+    .story-action.story-doppler-inline.pulsing{ animation:dopplerPulse 1.4s infinite; }
+    @keyframes dopplerPulse{
+      0%{box-shadow:0 0 10px rgba(0,170,255,.45);}
+      50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}
+      100%{box-shadow:0 0 10px rgba(0,170,255,.45);}
+    }
+    .sim-alert{
+      top:238px; right:-560px; width:520px; border-radius:26px 0 0 26px;
+      background:linear-gradient(180deg, rgba(129,0,0,.98), rgba(185,0,0,.96));
+      border-left:5px solid rgba(255,255,255,.24); border-top:2px solid rgba(255,255,255,.14); border-bottom:2px solid rgba(255,255,255,.14);
+      box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 26px rgba(255,0,0,.28);
+      transition:right .36s ease, transform .2s ease, opacity .2s ease;
+      opacity:0;
+    }
+    .sim-alert.visible{ right:0; opacity:1; }
+    .sim-alert.theme-severe{ background:linear-gradient(180deg, rgba(177,90,0,.98), rgba(255,132,0,.96)); }
+    .sim-alert.theme-tornado{ background:linear-gradient(180deg, rgba(116,0,0,.98), rgba(220,0,0,.96)); animation:warnFlash 0.8s linear infinite alternate; }
+    .sim-alert.theme-reports{ background:linear-gradient(180deg, rgba(0,98,58,.98), rgba(0,165,96,.96)); }
+    .sim-alert.theme-info{ background:linear-gradient(180deg, rgba(0,63,128,.98), rgba(0,124,227,.96)); }
+    @keyframes warnFlash{
+      0%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 10px rgba(255,0,0,.18); }
+      100%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 34px rgba(255,0,0,.60); }
+    }
+    .ticker-wrap{
+      position:absolute; left:0; right:0; bottom:0; height:40px; z-index:100030;
+      background:linear-gradient(180deg, rgba(6,19,32,.97), rgba(4,14,24,.97));
+      border-top:2px solid rgba(255,255,255,.10); display:flex; align-items:center; overflow:hidden;
+      box-shadow:0 -8px 24px rgba(0,0,0,.22);
+    }
+    .ticker-label{
+      flex:0 0 auto; height:100%; display:flex; align-items:center; padding:0 14px;
+      background:linear-gradient(180deg,#9f0000,#dc1111); color:#fff; font:900 14px/1 "Lato", Arial, sans-serif;
+      letter-spacing:.8px; text-transform:uppercase;
+    }
+    .ticker-marquee{
+      position:relative; flex:1; overflow:hidden; white-space:nowrap;
+    }
+    .ticker-marquee-inner{
+      display:inline-block; min-width:100%; padding-left:100%;
+      color:#fff; font:800 15px/1 "Lato", Arial, sans-serif; letter-spacing:.25px;
+      animation:tickerScroll 24s linear infinite;
+    }
+    @keyframes tickerScroll{ from{ transform:translateX(0);} to{ transform:translateX(-100%);} }
+
   </style>
 </head>
 <body>
@@ -155,7 +253,17 @@
       <div class="product-slot"><div class="product-pill" id="productLabel">RADAR</div></div>
     </div>
   </div>
-  <div class="sim-alert" id="simAlertBox" aria-live="polite">
+  <div class="product-row" id="simProductRow">
+    <button class="sim-product-btn is-active" data-product="radar" id="btnRadar">Radar</button>
+    <button class="sim-product-btn" data-product="warnings" id="btnWarnings">Warnings</button>
+    <button class="sim-product-btn" data-product="reports" id="btnReports">Reports</button>
+    <button class="sim-product-btn" data-product="lightning" id="btnLightning">Lightning</button>
+    <button class="sim-product-btn" data-product="future_radar" id="btnFutureRadar">Future Radar</button>
+    <button class="sim-product-btn" data-product="temps" id="btnTemps">Temps</button>
+    <button class="sim-product-btn" data-product="satellite" id="btnSatellite">Satellite</button>
+    <button class="sim-product-btn" data-product="photos" id="btnPhotos">Storm Pics</button>
+  </div>
+  <div class="sim-alert id="simAlertBox" aria-live="polite">
     <div class="sim-alert-kicker" id="simAlertKicker">Live Alert</div>
     <div class="sim-alert-headline" id="simAlertHeadline">Simulation Ready</div>
     <div class="sim-alert-body" id="simAlertBody">Warnings and special moments will appear here.</div>
@@ -630,5 +738,10 @@
     })();
   </script>
 
+
+  <div class="ticker-wrap" id="simTickerWrap">
+    <div class="ticker-label">Weather Alert</div>
+    <div class="ticker-marquee"><div class="ticker-marquee-inner" id="simTickerText">Simulator ready • Scrub the timeline or use Play Next Event • Radar, warnings, reports, and live event tabs will appear here • Tornado warning and severe weather messages can be attached to timed event markers •</div></div>
+  </div>
 </body>
 </html>
