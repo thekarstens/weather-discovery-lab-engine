@@ -1583,11 +1583,20 @@ window.setReportsFilter = setReportsFilter;
 
   function formatDisplayEta(baseDate, minutes){
     var base = new Date(baseDate.getTime() + Math.round(minutes) * 60000);
-    var hh = base.getHours();
-    var mm = String(base.getMinutes()).padStart(2, "0");
-    var ap = hh >= 12 ? "PM" : "AM";
-    var h12 = hh % 12; if (h12 === 0) h12 = 12;
-    return h12 + ":" + mm + " " + ap;
+    try{
+      return base.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "America/Chicago"
+      });
+    }catch(e){
+      var hh = base.getHours();
+      var mm = String(base.getMinutes()).padStart(2, "0");
+      var ap = hh >= 12 ? "PM" : "AM";
+      var h12 = hh % 12; if (h12 === 0) h12 = 12;
+      return h12 + ":" + mm + " " + ap;
+    }
   }
 
   function getTrackArrowStats(startLL, endLL){
