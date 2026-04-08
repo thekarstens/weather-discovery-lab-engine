@@ -1477,6 +1477,65 @@ window.setReportsFilter = setReportsFilter;
   var stormTrackArrivalBody = document.getElementById("stormTrackArrivalBody");
   var stormTrackCloseBtn = document.getElementById("stormTrackCloseBtn");
 
+  function ensureStormTrackUi(){
+    try{
+      if (!document.getElementById("stormTrackUiStyles")){
+        var css = document.createElement("style");
+        css.id = "stormTrackUiStyles";
+        css.textContent =
+          '#stormTrackSpeedBox{position:absolute;z-index:100070;pointer-events:none;display:none;}' +
+          '#stormTrackSpeedBox.open{display:block;}' +
+          '#stormTrackSpeedValue{display:inline-block;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#0c1d34,#081525);border:2px solid rgba(255,255,255,.22);color:#fff;font:900 20px/1 "Lato",Arial,sans-serif;letter-spacing:.3px;box-shadow:0 10px 22px rgba(0,0,0,.26);text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;}' +
+          '#stormTrackArrivalBox{position:absolute;left:18px;bottom:58px;z-index:100071;width:290px;max-height:360px;display:none;border-radius:20px;background:linear-gradient(180deg,rgba(11,28,45,.97),rgba(6,18,30,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 34px rgba(0,0,0,.34);overflow:hidden;}' +
+          '#stormTrackArrivalBox.open{display:block;}' +
+          '#stormTrackArrivalHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);}' +
+          '#stormTrackArrivalTitle{color:#fff;font:900 16px/1 "Lato",Arial,sans-serif;text-transform:uppercase;letter-spacing:.7px;}' +
+          '#stormTrackCloseBtn{border:none;background:#133357;color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;font:900 14px/1 "Lato",Arial,sans-serif;}' +
+          '#stormTrackArrivalBody{padding:10px 12px 12px;overflow:auto;max-height:290px;}' +
+          '.sta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 8px;border-radius:12px;margin-bottom:6px;background:rgba(255,255,255,.04);}' +
+          '.sta-city{color:#fff;font:900 16px/1.05 "Lato",Arial,sans-serif;letter-spacing:.2px;}' +
+          '.sta-time{color:#8fe7ff;font:900 16px/1.05 "Lato",Arial,sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.3);}';
+        document.head.appendChild(css);
+      }
+
+      if (!stormTrackSpeedBox){
+        stormTrackSpeedBox = document.createElement("div");
+        stormTrackSpeedBox.id = "stormTrackSpeedBox";
+        stormTrackSpeedValue = document.createElement("div");
+        stormTrackSpeedValue.id = "stormTrackSpeedValue";
+        stormTrackSpeedValue.textContent = "46 mph";
+        stormTrackSpeedBox.appendChild(stormTrackSpeedValue);
+        document.body.appendChild(stormTrackSpeedBox);
+      } else if (!stormTrackSpeedValue){
+        stormTrackSpeedValue = document.createElement("div");
+        stormTrackSpeedValue.id = "stormTrackSpeedValue";
+        stormTrackSpeedValue.textContent = "46 mph";
+        stormTrackSpeedBox.appendChild(stormTrackSpeedValue);
+      }
+
+      if (!stormTrackArrivalBox){
+        stormTrackArrivalBox = document.createElement("div");
+        stormTrackArrivalBox.id = "stormTrackArrivalBox";
+        stormTrackArrivalBox.innerHTML =
+          '<div id="stormTrackArrivalHead">' +
+            '<div id="stormTrackArrivalTitle">Storm Arrival Times</div>' +
+            '<button id="stormTrackCloseBtn" type="button">Close</button>' +
+          '</div>' +
+          '<div id="stormTrackArrivalBody"></div>';
+        document.body.appendChild(stormTrackArrivalBox);
+        stormTrackArrivalBody = stormTrackArrivalBox.querySelector("#stormTrackArrivalBody");
+        stormTrackCloseBtn = stormTrackArrivalBox.querySelector("#stormTrackCloseBtn");
+      } else {
+        if (!stormTrackArrivalBody) stormTrackArrivalBody = stormTrackArrivalBox.querySelector("#stormTrackArrivalBody");
+        if (!stormTrackCloseBtn) stormTrackCloseBtn = stormTrackArrivalBox.querySelector("#stormTrackCloseBtn");
+      }
+    }catch(e){
+      console.warn("storm track ui creation failed", e);
+    }
+  }
+
+  ensureStormTrackUi();
+
   function allTrackCities(){
     var out = [];
     function add(list){
@@ -1774,6 +1833,7 @@ window.setReportsFilter = setReportsFilter;
 
   function startTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
+    try{ if (map && map.dragging) map.dragging.disable(); }catch(_){}
     if (!e || !e.latlng) return;
     if (e.originalEvent && e.originalEvent.preventDefault) e.originalEvent.preventDefault();
     if (e.originalEvent && e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
@@ -1792,6 +1852,7 @@ window.setReportsFilter = setReportsFilter;
 
   function endTrackDrag(e){
     if (!document.body.classList.contains("track-active")) return;
+    try{ if (map && map.dragging) map.dragging.enable(); }catch(_){}
     if (!trackDragging) return;
     trackDragging = false;
     if (e && e.latlng) trackCurrentLatLng = e.latlng;
@@ -1802,6 +1863,26 @@ window.setReportsFilter = setReportsFilter;
 
   if (stormTrackCloseBtn) stormTrackCloseBtn.onclick = function(){
     if (stormTrackArrivalBox) stormTrackArrivalBox.classList.remove("open");
+  };
+
+  window.clearStormTrackGraphics = clearStormTrackGraphics;
+  window.clearStormTrack = clearStormTrackGraphics;
+  window.setTrackMode = function(on){
+    try{
+      document.body.classList.toggle("track-active", !!on);
+      if (on){
+        document.body.classList.remove("measure-active");
+        document.body.classList.remove("probe-active");
+        document.body.classList.remove("draw-active");
+      } else {
+        clearStormTrackGraphics();
+      }
+      if (toolTrackBtn) setToolActive(toolTrackBtn, !!on);
+    }catch(e){}
+  };
+  window.toggleStormTrackMode = function(){
+    var on = !document.body.classList.contains("track-active");
+    window.setTrackMode(on);
   };
 
 
