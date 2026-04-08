@@ -1491,7 +1491,7 @@ window.setReportsFilter = setReportsFilter;
           '#stormTrackArrivalHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);cursor:move;user-select:none;}' +
           '#stormTrackArrivalTitle{color:#fff;font:900 16px/1 "Lato",Arial,sans-serif;text-transform:uppercase;letter-spacing:.7px;}' +
           '#stormTrackCloseBtn{border:none;background:#133357;color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;font:900 14px/1 "Lato",Arial,sans-serif;}' +
-          '#stormTrackArrivalBody{padding:10px 12px 12px;overflow:auto;max-height:290px;}' +
+          '#stormTrackArrivalBody{padding:10px 12px 12px;overflow:auto;max-height:290px;}' +' .storm-speed-marker{background:transparent;border:none;}' +' .storm-speed-box{transform:translate(-50%,-50%);padding:8px 12px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(6,18,32,.96),rgba(3,10,20,.98));border:2px solid rgba(255,255,255,.18);box-shadow:0 10px 22px rgba(0,0,0,.34);color:#fff;min-width:108px;text-align:center;pointer-events:none;}' +' .storm-speed-label{font:800 10px/1 \\"Lato\\",Arial,sans-serif;letter-spacing:1px;opacity:.82;margin-bottom:4px;text-transform:uppercase;}' +' .storm-speed-value{font:900 26px/1 \\"Lato\\",Arial,sans-serif;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.38);}' +' .storm-speed-value small{font:900 15px/1 \\"Lato\\",Arial,sans-serif;opacity:.96;}' +
           '.sta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 8px;border-radius:12px;margin-bottom:6px;background:rgba(255,255,255,.04);}' +
           '.sta-city{color:#fff;font:900 16px/1.05 "Lato",Arial,sans-serif;letter-spacing:.2px;}' +
           '.sta-time{color:#8fe7ff;font:900 16px/1.05 "Lato",Arial,sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.3);}';
@@ -1716,7 +1716,7 @@ window.setReportsFilter = setReportsFilter;
 
   function getTrackSpeedLatLng(startLL, endLL){
     if (!startLL || !endLL) return null;
-    var frac = 0.66; // forward along track, more meteorologist-style
+    var frac = 0.62; // forward along track, more meteorologist-style
     return L.latLng(
       startLL.lat + (endLL.lat - startLL.lat) * frac,
       startLL.lng + (endLL.lng - startLL.lng) * frac
@@ -1727,7 +1727,7 @@ window.setReportsFilter = setReportsFilter;
     var ll = getTrackSpeedLatLng(startLL, endLL);
     if (!ll || !isFinite(mph)) return;
     var html = '<div class="storm-speed-box"><div class="storm-speed-label">STORM SPEED</div><div class="storm-speed-value">' +
-      Math.max(1, Math.round(mph)) + ' mph</div></div>';
+      Math.max(1, Math.round(mph)) + ' <small>mph</small></div></div>';
 
     if (!stormTrackSpeedMarker){
       stormTrackSpeedMarker = L.marker(ll, {
@@ -1749,7 +1749,7 @@ window.setReportsFilter = setReportsFilter;
       try { if (!map.hasLayer(stormTrackSpeedMarker)) stormTrackSpeedMarker.addTo(map); } catch(e) {}
     }
 
-    if (stormTrackSpeedBox) stormTrackSpeedBox.classList.remove('open');
+    if (stormTrackSpeedBox) { stormTrackSpeedBox.classList.remove('open'); stormTrackSpeedBox.style.display = 'none'; }
   }
 
   function drawTrackPreview(startLL, endLL){
