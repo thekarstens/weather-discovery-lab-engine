@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Weather Discovery Lab — Live Severe Weather Simulator v3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./leaflet.css" />
+  <link rel="stylesheet" href="./leaflet-velocity.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet" />
+  <script src="./leaflet.js"></script>
+  <script src="./leaflet-velocity.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+  <style>
+    html, body { height:100%; margin:0; background:#07131f; font-family:"Lato", Arial, sans-serif; }
+    body.guide-collapsed .storyPanel { transform: translateX(0); }
+    body.guide-collapsed .storyPanel .story-content,
+    body.guide-collapsed .storyPanel .story-shell-footer { display:none; }
+    body.guide-collapsed .storyPanel { max-height:none; }
+    body.guide-collapsed .storyPanel .story-shell-header { border-radius:18px; }
+    #map { height:100%; width:100%; background:#fff; }
+    .tvbanner { position:absolute; top:0; left:0; right:0; z-index:99999; background:rgba(11,28,45,.94); color:#fff; border-bottom:2px solid rgba(255,255,255,.12); box-shadow:0 10px 28px rgba(0,0,0,.22); min-height:126px; }
+    .tvbanner::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:#2f4e94; }
+    .banner-topline { display:flex; align-items:flex-start; justify-content:center; position:relative; padding:10px 16px 40px; min-height:108px; }
+    .banner-center { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:min(980px, calc(100% - 700px)); text-align:center; pointer-events:none; }
+    .brand-line { font:900 28px/1 "Lato", Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; text-shadow:0 2px 8px rgba(0,0,0,.28); }
+    .case-line { margin-top:2px; font:800 16px/1.08 "Lato", Arial, sans-serif; letter-spacing:.45px; text-transform:uppercase; }
+    .region-line { margin-top:3px; font:700 12px/1.15 "Lato", Arial, sans-serif; letter-spacing:.25px; opacity:.95; }
+    .open-lesson-btn { display:none !important; }
+    .clock-stack { position:absolute; right:18px; top:12px; display:flex; align-items:flex-start; gap:12px; }
+    .sim-controls-wrap { display:flex; align-items:flex-start; gap:12px; }
+    .sim-clock { min-width:276px; border-radius:18px; background:linear-gradient(180deg,#020202,#101010 70%,#050505); border:2px solid rgba(255,64,64,.88); box-shadow:0 0 0 1px rgba(255,64,64,.35), 0 0 14px rgba(255,45,45,.45), 0 0 34px rgba(180,0,0,.28), inset 0 0 18px rgba(255,255,255,.03); padding:10px 16px 12px; position:relative; overflow:hidden; }
+    .sim-clock::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)); pointer-events:none; }
+    .sim-clock-label { color:#ffb8b8; font:800 10px/1 Arial, sans-serif; letter-spacing:1.35px; text-transform:uppercase; margin-bottom:6px; text-align:center; opacity:.95; }
+    .sim-clock .time { color:#ff4d4d; font:900 34px/1 "Lato", Arial, sans-serif; text-align:center; letter-spacing:1.1px; text-shadow:0 0 10px rgba(255,70,70,.48), 0 0 22px rgba(255,50,50,.28); font-variant-numeric:tabular-nums; }
+    #playPauseWrap { display:flex; gap:0; justify-content:center; margin-top:0; }
+    #simSlowerBtn, #simFasterBtn { display:none !important; }
+    #simPlayPauseBtn, .story-action, .story-nav .btn { border:1px solid rgba(255,255,255,.16); border-radius:12px; cursor:pointer; font:900 13px/1 Arial, sans-serif; padding:10px 13px; background:#11243a; color:#fff; box-shadow:0 6px 16px rgba(0,0,0,.18); }
+    #simPlayPauseBtn { min-width:132px; min-height:74px; border-radius:18px; background:linear-gradient(180deg,#0da7ff,#046fe6 58%,#0449a8); border:1px solid rgba(160,235,255,.98); color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.40); box-shadow:0 0 14px rgba(0,170,255,.52), 0 0 30px rgba(0,120,255,.26), inset 0 0 10px rgba(255,255,255,.10); text-transform:uppercase; letter-spacing:.9px; }
+    #simPlayPauseBtn:hover, .story-action:hover, .story-nav .btn:hover { filter:brightness(1.08); }
+    #simPlayPauseBtn.is-ready { animation:simPulse 1.45s infinite; }
+    #simPlayPauseBtn.is-running { background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18); animation:none; }
+    @keyframes simPulse { 0%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} 50%{ box-shadow:0 0 24px rgba(0,200,255,.92), 0 0 42px rgba(0,120,255,.42), inset 0 0 12px rgba(255,255,255,.14);} 100%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} }
+    .scrub-wrap { position:absolute; left:170px; right:410px; top:78px; height:26px; display:flex; align-items:center; z-index:100004; padding:0 56px; border-radius:999px; background:rgba(7,19,31,.78); border:1px solid rgba(255,255,255,.12); box-shadow:inset 0 0 0 1px rgba(255,255,255,.02), 0 6px 14px rgba(0,0,0,.18); }
+    .scrub-mini { display:none; }
+    .scrub-wrap input { width:100%; margin:0; background:transparent; }
+    .scrub-wrap::before { content:"SIM TIMELINE"; position:absolute; left:14px; top:-16px; font:800 10px/1 Arial, sans-serif; letter-spacing:1.1px; text-transform:uppercase; color:rgba(255,255,255,.78); }
+    #cbScrubber { -webkit-appearance:none; appearance:none; height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(70,110,160,.62), rgba(120,160,220,.9)); outline:none; }
+    #cbScrubber::-webkit-slider-runnable-track { height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; margin-top:-4px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
+    #cbScrubber::-moz-range-track { height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
+    .product-slot { position:absolute; left:50%; transform:translateX(-50%); bottom:-58px; z-index:100002; pointer-events:none; }
+    .product-pill { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:210px; padding:11px 20px 13px; border-radius:20px; background:rgba(11,28,45,.94); color:#9fe6ff; border:2px solid rgba(255,255,255,.18); box-shadow:0 8px 22px rgba(0,0,0,.30); text-transform:uppercase; white-space:nowrap; font-weight:900; font-size:18px; line-height:1.02; letter-spacing:.2px; }
+    .product-pill::before { content:"MAP LAYER"; display:block; font:700 10px/1 "Lato", Arial, sans-serif; letter-spacing:.9px; color:#ffffff; opacity:.82; margin-bottom:6px; }
+    .sim-alert { position:absolute; top:112px; right:18px; width:340px; max-width:36vw; z-index:100003; border-radius:18px; padding:14px 16px; box-shadow:0 14px 30px rgba(0,0,0,.28); background:rgba(10,20,32,.92); color:#fff; border:1px solid rgba(255,255,255,.12); display:none; }
+    .sim-alert.visible { display:block; animation:alertSlide .22s ease; }
+    .sim-alert-kicker { font:800 11px/1 Arial, sans-serif; text-transform:uppercase; letter-spacing:1px; opacity:.82; }
+    .sim-alert-headline { margin-top:6px; font:900 24px/1.04 "Lato", Arial, sans-serif; text-transform:uppercase; }
+    .sim-alert-body { margin-top:8px; font:700 14px/1.35 Arial, sans-serif; opacity:.96; }
+    .sim-alert.theme-tornado { background:linear-gradient(180deg, rgba(110,0,10,.96), rgba(175,8,25,.96)); }
+    .sim-alert.theme-severe { background:linear-gradient(180deg, rgba(101,73,0,.96), rgba(164,118,0,.96)); }
+    .sim-alert.theme-reports { background:linear-gradient(180deg, rgba(119,61,0,.96), rgba(182,95,0,.96)); }
+    .sim-alert.theme-info { background:linear-gradient(180deg, rgba(8,42,88,.96), rgba(10,86,166,.96)); }
+    @keyframes alertSlide { from { transform:translateY(-8px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+    .scrub-edge-label { position:absolute; top:50%; transform:translateY(-50%); font:900 12px/1 Arial,sans-serif; color:#d9ebff; text-transform:uppercase; letter-spacing:.7px; opacity:.96; pointer-events:none; }
+    .scrub-edge-label.start { left:14px; }
+    .scrub-edge-label.end { right:14px; }
+    #brandLogo { position:absolute; left:14px; top:12px; width:140px; max-width:140px; height:auto; z-index:100006; filter:drop-shadow(0 3px 8px rgba(0,0,0,.35)); }
+    .tool-box { position:absolute; right:14px; top:154px; z-index:100003; width:92px; padding:10px 8px 12px; border-radius:24px; background:rgba(10,28,48,.92); border:1px solid rgba(255,255,255,.12); box-shadow:0 12px 26px rgba(0,0,0,.22); display:flex; flex-direction:column; gap:10px; }
+    .tool-toggle { border:none; background:rgba(255,255,255,.06); color:#fff; border-radius:18px; padding:10px 8px; font:900 12px/1 Arial,sans-serif; letter-spacing:.8px; text-transform:uppercase; }
+    .tool-list { display:flex; flex-direction:column; gap:10px; }
+    .tool-btn { border:1px solid rgba(255,255,255,.16); background:#102744; color:#fff; border-radius:16px; min-height:42px; font:900 12px/1 Arial,sans-serif; cursor:pointer; box-shadow:0 6px 14px rgba(0,0,0,.18); }
+    .tool-btn:hover { filter:brightness(1.08); }
+    .tool-btn.active { background:#f6d73c; color:#111; border-color:rgba(0,0,0,.18); }
+    .event-rail { position:absolute; right:118px; top:172px; z-index:100002; display:flex; flex-direction:column; gap:10px; }
+    .event-flag { min-width:92px; padding:9px 10px 9px 14px; border-radius:14px 0 0 14px; color:#fff; font:900 11px/1 Arial,sans-serif; letter-spacing:.9px; text-transform:uppercase; box-shadow:0 8px 16px rgba(0,0,0,.18); position:relative; }
+    .event-flag::after { content:""; position:absolute; top:0; right:-16px; width:0; height:0; border-top:18px solid transparent; border-bottom:18px solid transparent; border-left:16px solid currentColor; filter:brightness(.95); }
+    .event-flag span { position:relative; z-index:1; }
+    .event-flag.blue { background:#1e64ff; color:#1e64ff; }
+    .event-flag.orange { background:#ff9f1c; color:#ff9f1c; }
+    .event-flag.red { background:#ff4d5e; color:#ff4d5e; }
+    .event-flag.purple { background:#9b6bff; color:#9b6bff; }
+    .event-flag.green { background:#16b26d; color:#16b26d; }
+    .event-flag span { color:#fff; }
+
+    .storyPanel { --story-accent:#2f67e9; --story-accent-2:#123d9d; --story-shell-bg:rgba(255,255,255,.98); position:absolute; top:118px; left:12px; width:410px; max-width:84vw; max-height:calc(100vh - 148px); overflow:auto; z-index:100001; background:var(--story-shell-bg); border:1px solid rgba(0,0,0,.18); border-radius:18px; box-shadow:0 12px 32px rgba(0,0,0,.20); padding:0; transform:translateX(0); transition:transform 180ms ease; }
+    .storyPanel.story-theme-blue { --story-accent:#2f67e9; --story-accent-2:#123d9d; }
+    .storyPanel.story-theme-cyan { --story-accent:#12c9ff; --story-accent-2:#0562b8; }
+    .storyPanel.story-theme-orange { --story-accent:#ff9f1c; --story-accent-2:#cc5a00; }
+    .storyPanel.story-theme-red { --story-accent:#ff5c77; --story-accent-2:#9b1732; }
+    .storyPanel.story-theme-purple { --story-accent:#b781ff; --story-accent-2:#5a2aa8; }
+    .story-shell-header { position:sticky; top:0; z-index:3; display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:12px 12px 10px 12px; background:linear-gradient(135deg,var(--story-accent),var(--story-accent-2)); color:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 18px rgba(0,0,0,.18); }
+    .story-station-chip { width:84px; height:84px; border-radius:999px; display:flex; align-items:center; justify-content:center; text-align:center; background:rgba(255,255,255,.18); border:2px solid rgba(255,255,255,.45); box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(0,0,0,.18); font:900 42px/1 "Lato", Arial, sans-serif; }
+    .story-shell-kicker { font:700 12px/1 "Lato", Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.88; }
+    .story-title { margin-top:4px; font:900 27px/1.05 "Lato", Arial, sans-serif; }
+    .story-content { padding:14px 14px 10px; }
+    .sim-scene-lead { margin:0 0 12px; padding:12px 14px; border-radius:14px; background:rgba(7,19,31,.06); color:#17324c; font:800 13px/1.35 Arial, sans-serif; text-transform:uppercase; letter-spacing:.5px; }
+    .story-body p { margin:0 0 12px; color:#11243a; font:700 15px/1.52 Arial, sans-serif; }
+    .story-shell-footer { padding:10px 14px 14px; border-top:1px solid rgba(0,0,0,.08); background:rgba(248,250,252,.96); }
+    .story-footer-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    #storyStep { font:900 13px/1 Arial, sans-serif; letter-spacing:.3px; color:#17324c; text-transform:uppercase; }
+    .story-footer-actions { display:flex; gap:8px; }
+    .story-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    #storyTab { display:none; }
+    @media (max-width: 960px) {
+      .banner-center { width: calc(100% - 40px); position:static; transform:none; margin:0 auto; }
+      .clock-stack { top:auto; bottom:8px; right:12px; }
+      .sim-alert { right:12px; width:min(340px, calc(100vw - 24px)); max-width:none; top:132px; }
+      .storyPanel { width:min(410px, calc(100vw - 24px)); }
+    }
+    @media (max-width: 760px) {
+      .tvbanner { min-height:154px; }
+      .banner-topline { display:block; padding-bottom:70px; }
+      .open-lesson-btn { top:14px; left:12px; }
+      .clock-stack { right:12px; left:12px; bottom:10px; top:auto; justify-content:flex-end; }
+      .sim-controls-wrap { width:100%; justify-content:flex-end; }
+      .sim-clock { width:min(100%, 240px); }
+      .product-slot { bottom:-52px; }
+      .storyPanel { top:174px; max-height:calc(100vh - 196px); }
+      .sim-alert { top:184px; }
+    }
+  
+    /* --- Simulator upgrade v2 --- */
+    .town-label {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(0,0,0,0.24);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font: 900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing: 0.2px;
+      color: #111;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+      white-space: nowrap;
+    }
+    .tvbanner{ min-height: 176px; overflow: visible; }
+    .banner-topline{ min-height: 176px; align-items:flex-start; }
+    #brandLogo{
+      position:absolute; left:10px; top:6px; width:160px; z-index:100010;
+      filter: drop-shadow(0 4px 14px rgba(0,0,0,.40));
+      pointer-events:none;
+    }
+    .banner-center{ top:16px; width:min(920px, calc(100% - 640px)); }
+    .clock-stack{ top:14px; right:16px; }
+    .scrub-wrap{ left:182px; right:402px; top:82px; }
+    .product-slot{ bottom:-30px; }
+    .product-row{
+      position:absolute; left:184px; right:220px; top:112px; z-index:100006;
+      display:flex; gap:10px; align-items:center; overflow-x:auto; padding-bottom:4px;
+      scrollbar-width:thin;
+    }
+    .product-row::-webkit-scrollbar{ height:6px; }
+    .product-row::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+    .sim-product-btn{
+      flex:0 0 auto; min-width:124px; border-radius:999px; border:1px solid rgba(255,255,255,.16);
+      background:linear-gradient(180deg, rgba(7,31,58,.96), rgba(10,42,82,.94));
+      color:#fff; font:900 14px/1 "Lato", Arial, sans-serif; letter-spacing:.65px;
+      text-transform:uppercase; padding:11px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20);
+      cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    }
+    .sim-product-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-product-btn{ cursor:pointer; }
+    .sim-product-btn.is-active{
+      background:linear-gradient(180deg, #1fb8ff, #1068d6 65%, #0c3f94);
+      box-shadow:0 0 16px rgba(42,190,255,.62), 0 8px 18px rgba(0,0,0,.24);
+      border-color:rgba(181,237,255,.96);
+    }
+    .story-action.story-doppler-inline{
+      background:linear-gradient(180deg,#0d57d6,#0b7cff 55%,#083f9d);
+      color:#ffffff; border:1px solid rgba(160,235,255,.98);
+      text-shadow:0 1px 4px rgba(0,0,0,.40);
+      box-shadow:0 0 14px rgba(0,170,255,.60), inset 0 0 10px rgba(255,255,255,.10);
+    }
+    .story-action.story-doppler-inline.active{
+      background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3);
+      box-shadow:0 0 22px rgba(0,200,255,.90),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18);
+    }
+    .story-action.story-doppler-inline.pulsing{ animation:dopplerPulse 1.4s infinite; }
+    @keyframes dopplerPulse{
+      0%{box-shadow:0 0 10px rgba(0,170,255,.45);}
+      50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}
+      100%{box-shadow:0 0 10px rgba(0,170,255,.45);}
+    }
+    .sim-alert{
+      top:238px; right:-560px; width:520px; border-radius:26px 0 0 26px;
+      background:linear-gradient(180deg, rgba(129,0,0,.98), rgba(185,0,0,.96));
+      border-left:5px solid rgba(255,255,255,.24); border-top:2px solid rgba(255,255,255,.14); border-bottom:2px solid rgba(255,255,255,.14);
+      box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 26px rgba(255,0,0,.28);
+      transition:right .36s ease, transform .2s ease, opacity .2s ease;
+      opacity:0;
+    }
+    .sim-alert.visible{ right:0; opacity:1; }
+    .sim-alert.theme-severe{ background:linear-gradient(180deg, rgba(177,90,0,.98), rgba(255,132,0,.96)); }
+    .sim-alert.theme-tornado{ background:linear-gradient(180deg, rgba(116,0,0,.98), rgba(220,0,0,.96)); animation:warnFlash 0.8s linear infinite alternate; }
+    .sim-alert.theme-reports{ background:linear-gradient(180deg, rgba(0,98,58,.98), rgba(0,165,96,.96)); }
+    .sim-alert.theme-info{ background:linear-gradient(180deg, rgba(0,63,128,.98), rgba(0,124,227,.96)); }
+    @keyframes warnFlash{
+      0%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 10px rgba(255,0,0,.18); }
+      100%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 34px rgba(255,0,0,.60); }
+    }
+
+    .warning-count-box{
+      position:absolute; right:18px; bottom:14px; z-index:100012;
+      min-width:152px; padding:10px 14px; border-radius:16px;
+      background:linear-gradient(180deg, rgba(10,22,36,.96), rgba(5,14,24,.96));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 10px 22px rgba(0,0,0,.24);
+      color:#fff; text-align:center;
+    }
+    .warning-count-box .label{ font:800 10px/1 Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.8; }
+    .warning-count-box .count{ margin-top:4px; font:900 28px/1 "Lato", Arial, sans-serif; color:#ffcb45; }
+
+    .ticker-wrap{
+      position:absolute; left:0; right:0; bottom:0; height:40px; z-index:100030;
+      background:linear-gradient(180deg, rgba(6,19,32,.97), rgba(4,14,24,.97));
+      border-top:2px solid rgba(255,255,255,.10); display:flex; align-items:center; overflow:hidden;
+      box-shadow:0 -8px 24px rgba(0,0,0,.22);
+    }
+    .ticker-label{
+      flex:0 0 auto; height:100%; display:flex; align-items:center; padding:0 14px;
+      background:linear-gradient(180deg,#9f0000,#dc1111); color:#fff; font:900 14px/1 "Lato", Arial, sans-serif;
+      letter-spacing:.8px; text-transform:uppercase;
+    }
+    .ticker-marquee{
+      position:relative; flex:1; overflow:hidden; white-space:nowrap;
+    }
+    .ticker-marquee-inner{
+      display:inline-block; min-width:100%; padding-left:100%;
+      color:#fff; font:800 15px/1 "Lato", Arial, sans-serif; letter-spacing:.25px;
+      animation:tickerScroll 24s linear infinite;
+    }
+    @keyframes tickerScroll{ from{ transform:translateX(0);} to{ transform:translateX(-100%);} }
+
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="tvbanner">
+    <div class="banner-topline">
+      <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Discovery Lab logo" />
+      <div class="banner-center">
+        <div class="brand-line" id="simBrandLine">Weather Discovery Lab</div>
+        <div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div>
+        <div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div>
+      </div>
+      <div class="scrub-wrap" id="scrubWrap">
+        <span class="scrub-edge-label start" id="scrubStartLabel">3 PM</span>
+        <input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" />
+        <span class="scrub-edge-label end" id="scrubEndLabel">7 PM</span>
+      </div>
+      <div style="position:absolute; left:184px; top:58px; color:rgba(255,255,255,.7); font:800 10px/1 Arial,sans-serif; letter-spacing:1px; text-transform:uppercase; z-index:100006;">SIMULATOR V3</div>
+      <div class="clock-stack">
+        <div class="sim-controls-wrap" id="simControlsWrap">
+          <div class="sim-clock" id="simClockBox">
+            <div class="sim-clock-label" id="simClockLabel">Simulator Clock</div>
+            <div class="time" id="simClockReadout">1:00:00 PM</div>
+          </div>
+          <div id="playPauseWrap">
+            <button id="simSlowerBtn" type="button">Slower</button>
+            <button id="simPlayPauseBtn" class="is-ready" type="button">Play Next Event</button>
+            <button id="simFasterBtn" type="button">Faster</button>
+          </div>
+        </div>
+      </div>
+      <div class="product-slot"><div class="product-pill" id="productLabel">RADAR</div></div>
+    </div>
+  </div>
+  <div class="warning-count-box" id="warningCountBox"><div class="label">Warnings in Effect</div><div class="count" id="warningCountValue">0</div></div>
+  <div class="product-row" id="simProductRow">
+    <button class="sim-product-btn is-active" data-product="radar" id="btnRadar">Radar</button>
+    <button class="sim-product-btn" data-product="warnings" id="btnWarnings">Warnings</button>
+    <button class="sim-product-btn" data-product="reports" id="btnReports">Reports</button>
+    <button class="sim-product-btn" data-product="lightning" id="btnLightning">Lightning</button>
+    <button class="sim-product-btn" data-product="future_radar" id="btnFutureRadar">Future Radar</button>
+    <button class="sim-product-btn" data-product="temps" id="btnTemps">Temps</button>
+    <button class="sim-product-btn" data-product="satellite" id="btnSatellite">Satellite</button>
+    <button class="sim-product-btn" data-product="photos" id="btnPhotos">Photos</button>
+  </div>
+  <div class="sim-alert id="simAlertBox" aria-live="polite">
+    <div class="sim-alert-kicker" id="simAlertKicker">Live Alert</div>
+    <div class="sim-alert-headline" id="simAlertHeadline">Simulation Ready</div>
+    <div class="sim-alert-body" id="simAlertBody">Warnings and special moments will appear here.</div>
+  </div>
+  <div class="storyPanel story-theme-blue story-open" id="storyPanel">
+    <div class="story-shell-header" id="storyShellHeader">
+      <div class="story-station-chip" id="storyStationChip">1</div>
+      <div class="story-shell-banner">
+        <div class="story-shell-kicker" id="storyShellKicker">LIVE SIMULATION</div>
+        <div class="story-title" id="storyTitle">Simulation Begins</div>
+      </div>
+      <div class="story-actions">
+        <button class="story-action" id="storyCollapseBtn" title="Collapse lesson">Hide</button>
+      </div>
+    </div>
+    <div class="story-content">
+      <div class="sim-scene-lead" id="simSceneLead">Late afternoon severe weather phase</div>
+      <div class="story-body" id="storyBody">
+        <p>Loading simulator scene…</p>
+      </div>
+    </div>
+    <div class="story-shell-footer">
+      <div class="story-footer-top">
+        <div id="storyStep">Step 1</div>
+        <div class="story-footer-actions">
+          <button class="story-action" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button>
+          <button class="story-action" id="exploreBtn" type="button">Explore</button>
+        </div>
+      </div>
+      <div class="story-nav">
+        <button class="btn" id="storyPrevBtn" type="button">◀ Back</button>
+        <button class="btn" id="storyNextBtn" type="button">Next ▶</button>
+      </div>
+    </div>
+  </div>
+  <div class="event-rail" id="eventRail" aria-label="Event markers">
+    <div class="event-flag blue"><span>Setup</span></div>
+    <div class="event-flag orange"><span>Watch</span></div>
+    <div class="event-flag red"><span>Warn</span></div>
+    <div class="event-flag purple"><span>Radar</span></div>
+    <div class="event-flag green"><span>Reports</span></div>
+  </div>
+
+  <div class="tool-box" id="toolBox" aria-label="Map tools">
+    <button class="tool-toggle" id="toolToggleBtn" type="button">Tools</button>
+    <div class="tool-list" id="toolList">
+      <button class="tool-btn" id="toolMeasure" type="button">Ruler</button>
+      <button class="tool-btn" id="toolProbe" type="button">Probe</button>
+      <button class="tool-btn" id="toolTrack" type="button">Track</button>
+      <button class="tool-btn teacher-only" id="toolDraw" type="button">Draw</button>
+      <button class="tool-btn teacher-only" id="toolErase" type="button">Erase</button>
+      <button class="tool-btn" id="toolClear" type="button">Clear</button>
+      <button class="tool-btn" id="toolHome" type="button">Home</button>
+    </div>
+  </div>
+
+  <div class="storm-track-speed" id="stormTrackSpeedBox" aria-label="Storm speed"><div class="storm-track-speed-label">Storm Speed</div><div class="storm-track-speed-value" id="stormTrackSpeedValue">—</div></div>
+  <div class="storm-track-arrivals" id="stormTrackArrivalBox" aria-label="Storm arrival times"><div class="storm-track-arrivals-head"><span>Storm Track</span><button type="button" id="stormTrackCloseBtn">Close</button></div><div class="storm-track-arrivals-body" id="stormTrackArrivalBody"></div></div>
+  <button id="exploreDopplerBtn" class="doppler-btn explore-doppler-float" type="button">LIVE Doppler OFF</button>
+  <script>
+    var storyStarted = true;
+    function resolveJetFrameUrl(u){
+      if (!u) return u;
+      const dir = (typeof JET_ANIM_DIR !== "undefined") ? JET_ANIM_DIR : "jet_anim";
+      if (!u.includes("/") && !u.startsWith("http")) return dir + "/" + u;
+      return u;
+    }
+  </script>
+  <script src="./simulatorConfig_v3.js"></script>
+  <script src="./radar.js"></script>
+  <script src="./metars.js"></script>
+  <script src="./map-ui.js"></script>
+  <script src="./engine_simulator_patch.js"></script>
+  
+  <script>
+    (function(){
+      var cfg = window.WDL_SIM_CONFIG || {};
+      var playBtn = document.getElementById('simPlayPauseBtn');
+      var scrubber = document.getElementById('cbScrubber');
+      var alertBox = document.getElementById('simAlertBox');
+      var alertKicker = document.getElementById('simAlertKicker');
+      var alertHeadline = document.getElementById('simAlertHeadline');
+      var alertBody = document.getElementById('simAlertBody');
+      var sceneLead = document.getElementById('simSceneLead');
+      var clockReadout = document.getElementById('simClockReadout');
+      var clockLabel = document.getElementById('simClockLabel');
+      var storyCollapseBtn = document.getElementById('storyCollapseBtn');
+      var storyDopplerBtn = document.getElementById('storyDopplerBtn');
+      var exploreBtn = document.getElementById('exploreBtn');
+      var storyPrevBtn = document.getElementById('storyPrevBtn');
+      var storyNextBtn = document.getElementById('storyNextBtn');
+      var scrubStartLabel = document.getElementById('scrubStartLabel');
+      var scrubEndLabel = document.getElementById('scrubEndLabel');
+
+      var storyboardSteps = [];
+      var currentSceneIndex = 0;
+      var animating = false;
+      var animationFrame = null;
+      var alertTimer = null;
+      var exploreMode = false;
+      var displayPercent = 0;
+
+      function qstring(name){
+        try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; }
+      }
+
+      function setBannerText(){
+        var ui = cfg.ui || {};
+        var brand = document.getElementById('simBrandLine');
+        var title = document.getElementById('simCaseLine');
+        var region = document.getElementById('simRegionLine');
+        if (brand && ui.title) brand.textContent = ui.title;
+        if (title && ui.subtitle) title.textContent = ui.subtitle;
+        if (region && ui.region) region.textContent = ui.region;
+        if (clockLabel && cfg.masterClock && cfg.masterClock.label) clockLabel.textContent = cfg.masterClock.label;
+        try {
+          var mc = cfg.masterClock || {};
+          if (scrubStartLabel && mc.displayStartZ) scrubStartLabel.textContent = new Date(mc.displayStartZ).toLocaleTimeString('en-US',{hour:'numeric', timeZone:'America/Chicago'});
+          if (scrubEndLabel && mc.displayEndZ) scrubEndLabel.textContent = new Date(mc.displayEndZ).toLocaleTimeString('en-US',{hour:'numeric', timeZone:'America/Chicago'});
+        } catch(e){}
+      }
+
+      function parseMs(v){
+        var d = new Date(v);
+        return isNaN(d) ? NaN : d.getTime();
+      }
+
+      function clamp01(v){
+        v = Number(v);
+        if (!isFinite(v)) return 0;
+        if (v < 0) return 0;
+        if (v > 1) return 1;
+        return v;
+      }
+
+      function getActualWindow(){
+        var start = parseMs(cfg.startZ || '2022-05-12T20:00:00Z');
+        var end = parseMs(cfg.endZ || '2022-05-12T23:20:00Z');
+        if (!isFinite(start) || !isFinite(end) || end <= start){
+          start = parseMs('2022-05-12T20:00:00Z');
+          end = parseMs('2022-05-12T23:20:00Z');
+        }
+        return { start:start, end:end };
+      }
+
+      function getDisplayWindow(){
+        var mc = cfg.masterClock || {};
+        var start = parseMs(mc.displayStartZ || cfg.startZ || '2022-05-12T20:00:00Z');
+        var end = parseMs(mc.displayEndZ || cfg.endZ || '2022-05-12T23:20:00Z');
+        if (!isFinite(start) || !isFinite(end) || end <= start){
+          var actual = getActualWindow();
+          start = actual.start;
+          end = actual.end;
+        }
+        return { start:start, end:end };
+      }
+
+      function percentFromActualMs(ms){
+        var actual = getActualWindow();
+        if (!isFinite(ms) || actual.end <= actual.start) return 0;
+        return clamp01((ms - actual.start) / (actual.end - actual.start));
+      }
+
+      function actualMsFromPercent(p){
+        var actual = getActualWindow();
+        p = clamp01(p);
+        return Math.round(actual.start + ((actual.end - actual.start) * p));
+      }
+
+      function displayMsFromPercent(p){
+        var display = getDisplayWindow();
+        p = clamp01(p);
+        return Math.round(display.start + ((display.end - display.start) * p));
+      }
+
+      function formatDisplayClock(ms){
+        try {
+          return new Date(ms).toLocaleTimeString('en-US', {
+            hour:'numeric',
+            minute:'2-digit',
+            second:'2-digit',
+            hour12:true,
+            timeZone:'America/Chicago'
+          });
+        } catch(e){
+          return '--:--';
+        }
+      }
+
+      function readLiveActualMs(){
+        try {
+          if (window.curZ) {
+            var d0 = new Date(window.curZ);
+            if (!isNaN(d0)) return d0.getTime();
+          }
+          if (window.__SIM_LAST_CLOCK__) {
+            var d1 = new Date(window.__SIM_LAST_CLOCK__);
+            if (!isNaN(d1)) return d1.getTime();
+          }
+          if (window.__SIM_LAST_SCENE__ && window.__SIM_LAST_SCENE__.utc) {
+            var d2 = new Date(window.__SIM_LAST_SCENE__.utc);
+            if (!isNaN(d2)) return d2.getTime();
+          }
+        } catch(e){}
+        return NaN;
+      }
+
+      function updateClockAndScrubber(forcePercent){
+        try {
+          var pct = (typeof forcePercent === 'number' && isFinite(forcePercent))
+            ? clamp01(forcePercent)
+            : percentFromActualMs(readLiveActualMs());
+
+          if (!isFinite(pct)) pct = displayPercent;
+          displayPercent = clamp01(pct);
+
+          if (clockReadout) clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
+          if (scrubber) scrubber.value = String(Math.round(displayPercent * 1000) / 10);
+        } catch(e){}
+      }
+
+      function syncEngineToPercent(pct){
+        pct = clamp01(pct);
+        try {
+          if (typeof window.setActiveScrubberPercent === 'function'){
+            window.setActiveScrubberPercent(pct * 100);
+            return true;
+          }
+          if (typeof window.setMasterTime === 'function'){
+            window.setMasterTime(new Date(actualMsFromPercent(pct)));
+            return true;
+          }
+        } catch(e){}
+        return false;
+      }
+
+      function jumpToActualMs(ms){
+        if (!isFinite(ms)) return;
+        var pct = percentFromActualMs(ms);
+        try {
+          if (typeof window.setMasterTime === 'function') {
+            window.setMasterTime(new Date(ms));
+          } else {
+            syncEngineToPercent(pct);
+          }
+        } catch(e){}
+        updateClockAndScrubber(pct);
+      }
+
+      async function loadStoryboardSteps(){
+        try {
+          var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/');
+          if (!base.endsWith('/')) base += '/';
+          var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim();
+          var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard.json').replace(/^\.\//,'');
+          var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel);
+          var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+          if (!res.ok) throw new Error('Storyboard HTTP ' + res.status);
+          var data = await res.json();
+          storyboardSteps = Array.isArray(data.steps) ? data.steps : [];
+        } catch(e){
+          console.warn('Simulator storyboard load failed', e);
+          storyboardSteps = [];
+        }
+      }
+
+      function updatePlayButton(running){
+        if (!playBtn) return;
+        playBtn.classList.toggle('is-running', !!running);
+        playBtn.classList.toggle('is-ready', !running);
+        playBtn.textContent = running ? 'Pause Travel' : 'Play Next Event';
+      }
+
+      function stopAnimation(){
+        animating = false;
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        updatePlayButton(false);
+      }
+
+      function animateToStep(targetIndex){
+        if (!storyboardSteps.length) return;
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= storyboardSteps.length) targetIndex = storyboardSteps.length - 1;
+        var targetStep = storyboardSteps[targetIndex] || null;
+        var targetMs = targetStep && targetStep.utc ? parseMs(targetStep.utc) : NaN;
+        if (!isFinite(targetMs)) return;
+
+        stopAnimation();
+
+        var startPct = displayPercent;
+        var endPct = percentFromActualMs(targetMs);
+        var duration = Math.max(800, Number(cfg.nextEventDurationMs || 2200));
+        var t0 = performance.now();
+        animating = true;
+        updatePlayButton(true);
+
+        function frame(now){
+          if (!animating) return;
+          var t = Math.min(1, (now - t0) / duration);
+          var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2);
+          var pct = startPct + ((endPct - startPct) * eased);
+          syncEngineToPercent(pct);
+          updateClockAndScrubber(pct);
+
+          if (t < 1){
+            animationFrame = requestAnimationFrame(frame);
+          } else {
+            stopAnimation();
+            jumpToActualMs(targetMs);
+          }
+        }
+
+        animationFrame = requestAnimationFrame(frame);
+      }
+
+      function playNextEvent(){
+        if (animating){
+          stopAnimation();
+          return;
+        }
+        var nextIndex = Math.min((currentSceneIndex || 0) + 1, Math.max(0, storyboardSteps.length - 1));
+        if (!storyboardSteps.length || nextIndex === currentSceneIndex){
+          updateClockAndScrubber();
+          return;
+        }
+        animateToStep(nextIndex);
+      }
+
+      function showAlert(eventData){
+        if (!alertBox || !eventData) return;
+        var theme = eventData.theme || ((cfg.eventThemes || {})[eventData.type]) || 'info';
+        alertBox.className = 'sim-alert visible theme-' + theme;
+        if (alertKicker) alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase();
+        if (alertHeadline) alertHeadline.textContent = eventData.headline || 'Live Alert';
+        if (alertBody) alertBody.textContent = eventData.message || '';
+        if (alertTimer) clearTimeout(alertTimer);
+        alertTimer = setTimeout(function(){ alertBox.className = 'sim-alert theme-' + theme; }, 5200);
+      }
+
+      function nearestSceneIndexForActualMs(ms){
+        if (!storyboardSteps.length || !isFinite(ms)) return 0;
+        var best = 0;
+        var bestDelta = Infinity;
+        for (var i = 0; i < storyboardSteps.length; i++){
+          var sMs = parseMs(storyboardSteps[i] && storyboardSteps[i].utc);
+          if (!isFinite(sMs)) continue;
+          var d = Math.abs(ms - sMs);
+          if (d < bestDelta){ best = i; bestDelta = d; }
+        }
+        return best;
+      }
+
+
+      function openGuide(){
+        document.body.classList.remove('guide-collapsed');
+        if (storyCollapseBtn) storyCollapseBtn.textContent = 'Hide';
+      }
+
+      function collapseGuide(){
+        document.body.classList.add('guide-collapsed');
+        if (storyCollapseBtn) storyCollapseBtn.textContent = 'Resume';
+      }
+
+      window.openGuide = openGuide;
+      window.collapseGuide = collapseGuide;
+
+      function renderScene(detail){
+        var item = detail.item || {};
+        var lines = Array.isArray(item.narrative) ? item.narrative : (typeof item.narrative === 'string' && item.narrative.trim() ? [item.narrative] : []);
+        if (!lines.length && typeof item.text === 'string' && item.text.trim()) {
+          lines = item.text.split(/\n+/).filter(Boolean);
+        }
+        var body = document.getElementById('storyBody');
+        var title = document.getElementById('storyTitle');
+        var chip = document.getElementById('storyStationChip');
+        var kicker = document.getElementById('storyShellKicker');
+        var step = document.getElementById('storyStep');
+        var product = document.getElementById('productLabel');
+        var panel = document.getElementById('storyPanel');
+        var detailIndex = (typeof detail.index === 'number') ? detail.index : nearestSceneIndexForActualMs(readLiveActualMs());
+        currentSceneIndex = detailIndex;
+
+        if (title) title.textContent = item.title || 'Storm Story';
+        if (chip) chip.textContent = String(detail.stepLabel || (detailIndex + 1 || 1));
+        if (kicker) kicker.textContent = detail.stepKicker || ((cfg.ui || {}).stepKickerFallback || 'LIVE SIMULATION');
+        if (step) step.textContent = 'Step ' + ((detailIndex || 0) + 1) + ' of ' + (detail.count || storyboardSteps.length || 0);
+        if (product) product.textContent = detail.highlightProduct || item.product || ((cfg.ui || {}).productFallback || 'RADAR');
+        if (sceneLead) {
+          var leadMs = displayMsFromPercent(percentFromActualMs(parseMs(detail.utc || item.utc || readLiveActualMs())));
+          sceneLead.textContent = detail.simulatorEvent && detail.simulatorEvent.headline
+            ? detail.simulatorEvent.headline
+            : ((detail.stepKicker || 'Current Scene') + ' • ' + formatDisplayClock(leadMs));
+        }
+        if (panel) {
+          panel.classList.remove('story-theme-blue','story-theme-cyan','story-theme-orange','story-theme-red','story-theme-purple');
+          panel.classList.add('story-theme-' + (detail.stepTheme || 'blue'));
+        }
+        if (body) {
+          body.innerHTML = lines.map(function(line){
+            return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
+          }).join('') || '<p>No scene text yet.</p>';
+        }
+        if (storyDopplerBtn) storyDopplerBtn.textContent = detail.showDoppler ? 'LIVE Doppler READY' : 'LIVE Doppler OFF';
+        if (storyCollapseBtn) storyCollapseBtn.textContent = document.body.classList.contains('guide-collapsed') ? 'Resume' : 'Hide';
+        if (detail.simulatorEvent) showAlert(detail.simulatorEvent);
+        if (detail.pause || (detail.simulatorEvent && detail.simulatorEvent.pauseOnEnter)) stopAnimation();
+        updateClockAndScrubber(percentFromActualMs(parseMs(detail.utc || item.utc || readLiveActualMs())));
+      }
+
+      if (playBtn) playBtn.addEventListener('click', playNextEvent);
+      if (scrubber) scrubber.addEventListener('input', function(){
+        stopAnimation();
+        var pct = clamp01(Number(scrubber.value) / 100);
+        syncEngineToPercent(pct);
+        updateClockAndScrubber(pct);
+      });
+
+      function setToolActiveState(id, on){
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('active', !!on);
+      }
+
+      function refreshToolStates(){
+        try {
+          setToolActiveState('toolMeasure', document.body.classList.contains('measure-active'));
+          setToolActiveState('toolProbe', document.body.classList.contains('probe-active'));
+          setToolActiveState('toolTrack', document.body.classList.contains('track-active'));
+          setToolActiveState('toolDraw', document.body.classList.contains('draw-active'));
+        } catch(e){}
+      }
+
+      [['toolMeasure','setMeasureMode'],['toolProbe','setProbeMode'],['toolTrack','setTrackMode'],['toolDraw','setDrawMode']].forEach(function(pair){
+        var btn = document.getElementById(pair[0]);
+        if (btn) btn.addEventListener('click', function(){ setTimeout(refreshToolStates, 40); });
+      });
+      var eraseBtn = document.getElementById('toolErase');
+      if (eraseBtn) eraseBtn.addEventListener('click', function(){ try{ if (typeof window.clearDrawings === 'function') window.clearDrawings(); }catch(e){} refreshToolStates(); });
+      var clearBtn = document.getElementById('toolClear');
+      if (clearBtn) clearBtn.addEventListener('click', function(){ try{ if (typeof window.clearStormTrackGraphics === 'function') window.clearStormTrackGraphics(); }catch(e){} try{ if (typeof window.clearMeasureGraphics === 'function') window.clearMeasureGraphics(); }catch(e){} try{ if (typeof window.clearDrawings === 'function') window.clearDrawings(); }catch(e){} refreshToolStates(); });
+      var homeBtn = document.getElementById('toolHome');
+      if (homeBtn) homeBtn.addEventListener('click', function(){ setTimeout(refreshToolStates, 40); });
+
+      if (storyCollapseBtn) storyCollapseBtn.addEventListener('click', function(){ if (document.body.classList.contains('guide-collapsed')) window.openGuide && window.openGuide(); else window.collapseGuide && window.collapseGuide(); });
+      if (storyDopplerBtn) storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} });
+      if (exploreBtn) exploreBtn.addEventListener('click', function(){ exploreMode = !exploreMode; document.body.classList.toggle('explore-mode', exploreMode); exploreBtn.textContent = exploreMode ? 'Guided' : 'Explore'; if (!exploreMode && window.openGuide) window.openGuide(); });
+      if (storyPrevBtn) storyPrevBtn.addEventListener('click', function(){
+        stopAnimation();
+        var prev = Math.max(0, (currentSceneIndex || 0) - 1);
+        if (storyboardSteps[prev] && storyboardSteps[prev].utc) jumpToActualMs(parseMs(storyboardSteps[prev].utc));
+      });
+      if (storyNextBtn) storyNextBtn.addEventListener('click', function(){
+        stopAnimation();
+        var next = Math.min(Math.max(0, storyboardSteps.length - 1), (currentSceneIndex || 0) + 1);
+        if (storyboardSteps[next] && storyboardSteps[next].utc) jumpToActualMs(parseMs(storyboardSteps[next].utc));
+      });
+
+      window.addEventListener('wdl:storychange', function(ev){ renderScene((ev && ev.detail) || {}); });
+
+
+      if (alertBox) alertBox.addEventListener('click', function(){
+        try {
+          var body = document.getElementById('storyBody');
+          var title = document.getElementById('storyTitle');
+          if (title && alertHeadline) title.textContent = alertHeadline.textContent;
+          if (body && alertBody) body.innerHTML = '<p>' + alertBody.textContent + '</p>';
+        } catch(e){}
+      });
+
+      window.addEventListener('load', async function(){
+        setBannerText();
+        await loadStoryboardSteps();
+        if (cfg.defaultPanelOpen === false && window.collapseGuide) window.collapseGuide();
+        if (storyCollapseBtn) storyCollapseBtn.textContent = 'Hide';
+        refreshToolStates();
+        updateClockAndScrubber(0);
+      });
+
+      setInterval(function(){
+        if (!animating) updateClockAndScrubber();
+      }, 250);
+    })();
+  </script>
+
+
+  <div class="ticker-wrap" id="simTickerWrap">
+    <div class="ticker-label">Weather Alert</div>
+    <div class="ticker-marquee"><div class="ticker-marquee-inner" id="simTickerText">Simulator ready • Scrub the timeline or use Play Next Event • Radar, warnings, reports, and live event tabs will appear here • Tornado warning and severe weather messages can be attached to timed event markers •</div></div>
+  </div>
+</body>
+</html>
+      function computeWarningCount(pct){
+        var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
+        var count = 0;
+        events.forEach(function(ev){
+          if (!ev || !ev.displayTime) return;
+          var startPct = displayPercentFromDisplayTime(ev.displayTime);
+          if (!isFinite(startPct)) return;
+          var durMin = Number(ev.activeMinutes || 30);
+          var disp = getDisplayWindow();
+          var durationPct = ((durMin * 60 * 1000) / Math.max(1, (disp.end - disp.start)));
+          var endPct = startPct + durationPct;
+          if (pct >= startPct && pct <= endPct) count += 1;
+        });
+        return count;
+      }
+
+      function updateWarningCount(pct){
+        var el = document.getElementById('warningCountValue');
+        if (!el) return;
+        el.textContent = String(computeWarningCount(pct));
+      }
+
+      function wireTopRowAction(mode){
+        applyProductMode(mode);
+        if (mode === 'warnings') {
+          setTicker(['Warnings view selected', 'Showing warning-focused phase at current simulator time']);
+        } else if (mode === 'reports') {
+          setTicker(['Storm reports view selected', 'Reports tied to current simulator time']);
+        } else if (mode === 'radar') {
+          setTicker(['Radar view selected', 'Use Live Doppler and storm tracker to discuss the line evolution']);
+        } else if (mode === 'satellite') {
+          setTicker(['Satellite view selected', 'Current-time satellite perspective for storm environment']);
+        } else if (mode === 'temps') {
+          setTicker(['Surface observations view selected', 'Temperature and moisture remain tied to simulator time']);
+        } else if (mode === 'future_radar') {
+          setTicker(['Forecast product selected', 'This is a forecast view and may extend ahead of the master clock']);
+        } else if (mode === 'photos') {
+          setTicker(['Storm pictures panel placeholder', 'Future upgrade: timeline-linked damage and storm photos']);
+        } else if (mode === 'lightning') {
+          setTicker(['Lightning view selected', 'Future upgrade: timed lightning bursts and density windows']);
+        }
+      }
+
+
