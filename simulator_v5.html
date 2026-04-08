@@ -51,7 +51,8 @@
     .product-pill::before{ content:"Map Layer"; display:block; font:700 10px/1 "Lato", Arial, sans-serif; letter-spacing:.9px; color:#ffffff; opacity:.82; margin-bottom:6px; text-transform:uppercase; }
     .storyPanel{ position:absolute; left:12px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); }
     .story-shell-header{ display:flex; align-items:center; gap:14px; padding:12px 12px 14px; color:#fff; background:linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300); }
-    .story-station-chip{ width:72px; height:72px; border-radius:50%; background:rgba(255,255,255,.22); border:3px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font:900 42px/1 "Lato", Arial, sans-serif; flex:0 0 auto; }
+    .story-station-chip{ width:78px; height:78px; border-radius:50%; background:rgba(255,255,255,.22); border:3px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font:900 32px/1 "Lato", Arial, sans-serif; flex:0 0 auto; }
+    .story-station-chip.compact{ font-size:26px; letter-spacing:-0.5px; }
     .story-head-copy{ min-width:0; flex:1; }
     .story-shell-kicker{ font:800 12px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; opacity:.96; }
     .story-title{ margin-top:6px; font:900 34px/0.96 "Lato", Arial, sans-serif; letter-spacing:-0.7px; }
@@ -199,9 +200,35 @@
       function applyProductMode(mode){ productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); }); productLabel.textContent = normalizeProductLabel(mode); try { if (mode === 'radar' && window.setRadarEnabled) window.setRadarEnabled(true); if (mode === 'warnings' && window.setRadarEnabled) window.setRadarEnabled(true); if (mode === 'reports' && window.setReportsEnabled) window.setReportsEnabled(true); if (mode === 'lightning' && window.setLightningEnabled) window.setLightningEnabled(true); if (mode === 'future_radar' && window.setHrrrRadarEnabled) window.setHrrrRadarEnabled(true); if (mode === 'temps' && window.setHrrrTempEnabled) window.setHrrrTempEnabled(true); if (mode === 'satellite' && window.setSatelliteEnabled) window.setSatelliteEnabled(true); } catch(e){ console.warn('Product toggle issue', e); } }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
       function renderCardChips(){ var g = currentGroup(); storyCardRow.innerHTML = ''; g.cards.forEach(function(card, idx){ var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'story-topic-chip' + (idx === currentCardIndex ? ' active' : ''); btn.textContent = card.topicLabel || card.title; btn.addEventListener('click', function(){ currentCardIndex = idx; renderCurrentCard(); }); storyCardRow.appendChild(btn); }); }
-      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } storyStationChip.textContent = g.label.replace(/\s/g,''); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar'); updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar'); updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
+      function setLocalTrackMode(on){
+        try{
+          document.body.classList.toggle('track-active', !!on);
+          document.body.classList.remove('measure-active');
+          document.body.classList.remove('probe-active');
+          document.body.classList.remove('draw-active');
+          if (window.map && window.map.dragging) {
+            if (on) window.map.dragging.disable(); else window.map.dragging.enable();
+          }
+          if (window.map && window.map.boxZoom) {
+            if (on) window.map.boxZoom.disable(); else window.map.boxZoom.enable();
+          }
+          if (window.map && window.map.doubleClickZoom) {
+            if (on) window.map.doubleClickZoom.disable(); else window.map.doubleClickZoom.enable();
+          }
+        }catch(e){}
+      }
+
+      function clearTrackLocal(){
+        try{
+          if (typeof window.clearStormTrack === 'function') window.clearStormTrack();
+          else if (typeof window.clearStormTrackGraphics === 'function') window.clearStormTrackGraphics();
+        }catch(e){}
+        setLocalTrackMode(false);
+      }
+
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product')); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
       playBtn.addEventListener('click', advanceTimeline);
       scrubber.addEventListener('input', function(){ stopAnimation(); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
@@ -210,13 +237,30 @@
       storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
       storyNextBtn.addEventListener('click', function(){ cycleTopic(1); });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
-      if (toolMeasure) toolMeasure.addEventListener('click', function(){ try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
-      if (toolProbe) toolProbe.addEventListener('click', function(){ try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} refreshToolStates(); toolProbe.classList.add('active'); });
-      if (toolStormTrack) toolStormTrack.addEventListener('click', function(){ try{ if (window.toggleStormTrackMode) window.toggleStormTrackMode(); }catch(e){} refreshToolStates(); toolStormTrack.classList.add('active'); });
-      if (toolDraw) toolDraw.addEventListener('click', function(){ try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} refreshToolStates(); toolDraw.classList.add('active'); });
-      if (toolErase) toolErase.addEventListener('click', function(){ try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
-      if (toolClear) toolClear.addEventListener('click', function(){ try{ if (window.clearStormTrackGraphics) window.clearStormTrackGraphics(); }catch(e){} try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
-      if (toolHome) toolHome.addEventListener('click', function(){ try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
+      if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
+      if (toolProbe) toolProbe.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} refreshToolStates(); toolProbe.classList.add('active'); });
+      if (toolStormTrack) toolStormTrack.addEventListener('click', function(){
+        var turningOn = !document.body.classList.contains('track-active');
+        try{
+          if (typeof window.toggleStormTrackMode === 'function') {
+            window.toggleStormTrackMode();
+          } else if (typeof window.setTrackMode === 'function') {
+            window.setTrackMode(turningOn);
+          } else {
+            setLocalTrackMode(turningOn);
+          }
+        }catch(e){
+          setLocalTrackMode(turningOn);
+        }
+        if (!document.body.classList.contains('track-active') && turningOn) setLocalTrackMode(true);
+        if (!turningOn) clearTrackLocal();
+        refreshToolStates();
+        if (document.body.classList.contains('track-active')) toolStormTrack.classList.add('active');
+      });
+      if (toolDraw) toolDraw.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} refreshToolStates(); toolDraw.classList.add('active'); });
+      if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
+      if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
+      if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
       window.addEventListener('wdl:storychange', function(ev){ var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
       window.addEventListener('load', async function(){ setBannerText(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!(currentCard() && currentCard().showDoppler)); } }, 300);
