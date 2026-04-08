@@ -1485,7 +1485,7 @@ window.setReportsFilter = setReportsFilter;
         css.textContent =
           '#stormTrackSpeedBox{position:absolute;z-index:100070;pointer-events:none;display:none;}' +
           '#stormTrackSpeedBox.open{display:block;}' +
-          '#stormTrackSpeedValue{display:inline-block;padding:10px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(8,22,40,.98),rgba(5,14,24,.98));border:2px solid rgba(255,255,255,.18);color:#ffffff;font:900 18px/1.05 "Lato",Arial,sans-serif;letter-spacing:.4px;box-shadow:0 12px 24px rgba(0,0,0,.30);text-shadow:0 1px 2px rgba(0,0,0,.38);white-space:nowrap;text-transform:uppercase;}' +
+          '#stormTrackSpeedValue{display:inline-block;padding:10px 16px;border-radius:14px;background:linear-gradient(180deg,#08182c,#040d18);border:2px solid rgba(255,255,255,.16);color:#ffffff;font:900 18px/1.05 "Lato",Arial,sans-serif;letter-spacing:.4px;box-shadow:0 12px 24px rgba(0,0,0,.34);text-shadow:0 1px 2px rgba(0,0,0,.38);white-space:nowrap;text-transform:uppercase;min-width:110px;text-align:center;}' +
           '#stormTrackArrivalBox{position:absolute;left:18px;bottom:58px;z-index:100071;width:290px;max-height:360px;display:none;border-radius:20px;background:linear-gradient(180deg,rgba(11,28,45,.97),rgba(6,18,30,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 34px rgba(0,0,0,.34);overflow:hidden;}' +
           '#stormTrackArrivalBox.open{display:block;}' +
           '#stormTrackArrivalHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);cursor:move;user-select:none;}' +
@@ -1560,6 +1560,7 @@ window.setReportsFilter = setReportsFilter;
     stormTrackArrivalBox.style.left = Math.max(8, stormTrackArrivalDrag.left + dx) + "px";
     stormTrackArrivalBox.style.top = Math.max(90, stormTrackArrivalDrag.top + dy) + "px";
     stormTrackArrivalBox.style.bottom = "auto";
+    stormTrackArrivalBox.dataset.moved = "1";
     try{ if (ev.preventDefault) ev.preventDefault(); }catch(_){}
   }
 
@@ -1841,7 +1842,11 @@ window.setReportsFilter = setReportsFilter;
     if (!stats || !isFinite(stats.stormMph) || stats.stormMph <= 0){
       stormTrackArrivalBody.innerHTML = '<div class="sta-row"><div class="sta-city">Draw a longer storm track</div><div class="sta-time">—</div></div>';
       if (stormTrackArrivalBox) {
-      if (!stormTrackArrivalBox.style.left) stormTrackArrivalBox.style.left = "18px";
+      if (!stormTrackArrivalBox.dataset.moved) {
+        stormTrackArrivalBox.style.left = "1120px";
+        stormTrackArrivalBox.style.top = "300px";
+        stormTrackArrivalBox.style.bottom = "auto";
+      }
       stormTrackArrivalBox.classList.add("open");
     }
       return;
@@ -1863,7 +1868,11 @@ window.setReportsFilter = setReportsFilter;
       }).join('');
     }
     if (stormTrackArrivalBox) {
-      if (!stormTrackArrivalBox.style.left) stormTrackArrivalBox.style.left = "18px";
+      if (!stormTrackArrivalBox.dataset.moved) {
+        stormTrackArrivalBox.style.left = "1120px";
+        stormTrackArrivalBox.style.top = "300px";
+        stormTrackArrivalBox.style.bottom = "auto";
+      }
       stormTrackArrivalBox.classList.add("open");
     }
   }
@@ -1896,6 +1905,8 @@ window.setReportsFilter = setReportsFilter;
     if (!trackStartLatLng || !trackCurrentLatLng) return;
     drawTrackPreview(trackStartLatLng, trackCurrentLatLng);
     buildStormArrivalTable(trackStartLatLng, trackCurrentLatLng);
+    document.body.classList.remove("track-active");
+    if (toolTrackBtn) setToolActive(toolTrackBtn, false);
   }
 
   if (stormTrackCloseBtn) stormTrackCloseBtn.onclick = function(){
@@ -1922,8 +1933,6 @@ window.setReportsFilter = setReportsFilter;
         document.body.classList.remove("measure-active");
         document.body.classList.remove("probe-active");
         document.body.classList.remove("draw-active");
-      } else {
-        clearStormTrackGraphics();
       }
       if (toolTrackBtn) setToolActive(toolTrackBtn, !!on);
     }catch(e){}
