@@ -138,7 +138,7 @@
     .tvbanner{ min-height: 176px; overflow: visible; }
     .banner-topline{ min-height: 176px; align-items:flex-start; }
     #brandLogo{
-      position:absolute; left:10px; top:16px; width:108px; z-index:100010;
+      position:absolute; left:10px; top:8px; width:150px; z-index:100010;
       filter: drop-shadow(0 4px 14px rgba(0,0,0,.40));
       pointer-events:none;
     }
@@ -199,6 +199,22 @@
       0%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 10px rgba(255,0,0,.18); }
       100%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 34px rgba(255,0,0,.60); }
     }
+
+    .warning-count-box{
+      position:absolute; right:18px; bottom:12px; z-index:100012;
+      min-width:150px; padding:10px 14px; border-radius:16px;
+      background:linear-gradient(180deg, rgba(10,22,36,.96), rgba(5,14,24,.96));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 10px 22px rgba(0,0,0,.24);
+      color:#fff; text-align:center;
+    }
+    .warning-count-box .label{
+      font:800 10px/1 Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.8;
+    }
+    .warning-count-box .count{
+      margin-top:4px; font:900 28px/1 "Lato", Arial, sans-serif; color:#ffcb45;
+    }
+
     .ticker-wrap{
       position:absolute; left:0; right:0; bottom:0; height:40px; z-index:100030;
       background:linear-gradient(180deg, rgba(6,19,32,.97), rgba(4,14,24,.97));
@@ -253,6 +269,7 @@
       <div class="product-slot"><div class="product-pill" id="productLabel">RADAR</div></div>
     </div>
   </div>
+  <div class="warning-count-box" id="warningCountBox"><div class="label">Warnings in Effect</div><div class="count" id="warningCountValue">0</div></div>
   <div class="product-row" id="simProductRow">
     <button class="sim-product-btn is-active" data-product="radar" id="btnRadar">Radar</button>
     <button class="sim-product-btn" data-product="warnings" id="btnWarnings">Warnings</button>
@@ -599,7 +616,7 @@
         alertBox.className = 'sim-alert visible theme-' + theme;
         if (alertKicker) alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase();
         if (alertHeadline) alertHeadline.textContent = eventData.headline || 'Live Alert';
-        if (alertBody) alertBody.textContent = eventData.message || '';
+        if (alertBody) alertBody.innerHTML = ((eventData.message || '') + (eventData.detailsHint ? ' <strong>' + eventData.detailsHint + '</strong>' : '')).trim();
         if (alertTimer) clearTimeout(alertTimer);
         alertTimer = setTimeout(function(){ alertBox.className = 'sim-alert theme-' + theme; }, 5200);
       }
@@ -723,6 +740,16 @@
 
       window.addEventListener('wdl:storychange', function(ev){ renderScene((ev && ev.detail) || {}); });
 
+
+      if (alertBox) alertBox.addEventListener('click', function(){
+        try {
+          var body = document.getElementById('storyBody');
+          var title = document.getElementById('storyTitle');
+          if (title && alertHeadline) title.textContent = alertHeadline.textContent;
+          if (body && alertBody) body.innerHTML = '<p>' + alertBody.textContent + '</p>';
+        } catch(e){}
+      });
+
       window.addEventListener('load', async function(){
         setBannerText();
         await loadStoryboardSteps();
@@ -745,3 +772,47 @@
   </div>
 </body>
 </html>
+      function computeWarningCount(pct){
+        var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
+        var count = 0;
+        events.forEach(function(ev){
+          if (!ev || !ev.displayTime) return;
+          var startPct = displayPercentFromDisplayTime(ev.displayTime);
+          if (!isFinite(startPct)) return;
+          var durMin = Number(ev.activeMinutes || 30);
+          var disp = getDisplayWindow();
+          var durationPct = ((durMin * 60 * 1000) / Math.max(1, (disp.end - disp.start)));
+          var endPct = startPct + durationPct;
+          if (pct >= startPct && pct <= endPct) count += 1;
+        });
+        return count;
+      }
+
+      function updateWarningCount(pct){
+        var el = document.getElementById('warningCountValue');
+        if (!el) return;
+        el.textContent = String(computeWarningCount(pct));
+      }
+
+      function wireTopRowAction(mode){
+        applyProductMode(mode);
+        if (mode === 'warnings') {
+          setTicker(['Warnings view selected', 'Showing warning-focused phase at current simulator time']);
+        } else if (mode === 'reports') {
+          setTicker(['Storm reports view selected', 'Reports tied to current simulator time']);
+        } else if (mode === 'radar') {
+          setTicker(['Radar view selected', 'Use Live Doppler and storm tracker to discuss the line evolution']);
+        } else if (mode === 'satellite') {
+          setTicker(['Satellite view selected', 'Current-time satellite perspective for storm environment']);
+        } else if (mode === 'temps') {
+          setTicker(['Surface observations view selected', 'Temperature and moisture remain tied to simulator time']);
+        } else if (mode === 'future_radar') {
+          setTicker(['Forecast product selected', 'This is a forecast view and may extend ahead of the master clock']);
+        } else if (mode === 'photos') {
+          setTicker(['Storm pictures panel placeholder', 'Future upgrade: timeline-linked damage and storm photos']);
+        } else if (mode === 'lightning') {
+          setTicker(['Lightning view selected', 'Future upgrade: timed lightning bursts and density windows']);
+        }
+      }
+
+
