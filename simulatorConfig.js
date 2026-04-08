@@ -40,6 +40,8 @@ window.WDL_SIM_CONFIG = {
       kicker: "New warning",
       headline: "TORNADO WARNING JUST ISSUED",
       message: "Kingsbury, Brookings, and nearby counties should move to shelter now.",
+      detailsHint: "Click for details.",
+      activeMinutes: 35,
       ticker: [
         "Tornado warning just issued near Brookings and Kingsbury Counties",
         "Move to shelter now",
@@ -55,10 +57,29 @@ window.WDL_SIM_CONFIG = {
       kicker: "Storm reports",
       headline: "DAMAGE REPORTS START COMING IN",
       message: "Wind damage reports are increasing as the line accelerates east.",
+      detailsHint: "Click for details.",
+      activeMinutes: 40,
       ticker: [
         "Damage reports increasing across eastern South Dakota",
         "Trees and power lines reported down",
         "Continue tracking the bowing line on radar"
+      ],
+      rearmOnBacktrack: true
+    },
+    {
+      id: "svr-600",
+      displayTime: "6:00 PM",
+      type: "severeWarning",
+      theme: "severe",
+      kicker: "New warning",
+      headline: "SEVERE T-STORM WARNING IN EFFECT",
+      message: "Damaging wind threat continues as the line pushes east across southeastern South Dakota.",
+      detailsHint: "Click for details.",
+      activeMinutes: 30,
+      ticker: [
+        "Severe thunderstorm warning in effect until 6:30 PM",
+        "Damaging wind remains the main threat",
+        "Monitor the bowing segment closely on radar"
       ],
       rearmOnBacktrack: true
     }
