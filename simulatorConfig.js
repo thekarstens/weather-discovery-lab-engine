@@ -20,9 +20,9 @@ window.WDL_SIM_CONFIG = {
     stepKickerFallback: "LIVE SIMULATION"
   },
   defaultTicker: [
-    "Sim timeline active",
-    "Radar, warnings, reports, and lightning can be called from the banner row",
-    "Right-side slide alerts are ready for timed tornado warning moments"
+    "Simulator v3 loaded",
+    "Top buttons are current-time product shortcuts",
+    "Timed alerts are tied to the simulator clock"
   ],
   eventThemes: {
     severeWarning: "severe",
