@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Weather Discovery Lab — Live Severe Weather Simulator</title>
+  <title>Weather Discovery Lab — Live Severe Weather Simulator v3</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="./leaflet.css" />
   <link rel="stylesheet" href="./leaflet-velocity.min.css" />
@@ -138,7 +138,7 @@
     .tvbanner{ min-height: 176px; overflow: visible; }
     .banner-topline{ min-height: 176px; align-items:flex-start; }
     #brandLogo{
-      position:absolute; left:10px; top:8px; width:150px; z-index:100010;
+      position:absolute; left:10px; top:6px; width:160px; z-index:100010;
       filter: drop-shadow(0 4px 14px rgba(0,0,0,.40));
       pointer-events:none;
     }
@@ -161,6 +161,7 @@
       cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
     }
     .sim-product-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-product-btn{ cursor:pointer; }
     .sim-product-btn.is-active{
       background:linear-gradient(180deg, #1fb8ff, #1068d6 65%, #0c3f94);
       box-shadow:0 0 16px rgba(42,190,255,.62), 0 8px 18px rgba(0,0,0,.24);
@@ -201,19 +202,15 @@
     }
 
     .warning-count-box{
-      position:absolute; right:18px; bottom:12px; z-index:100012;
-      min-width:150px; padding:10px 14px; border-radius:16px;
+      position:absolute; right:18px; bottom:14px; z-index:100012;
+      min-width:152px; padding:10px 14px; border-radius:16px;
       background:linear-gradient(180deg, rgba(10,22,36,.96), rgba(5,14,24,.96));
       border:1px solid rgba(255,255,255,.12);
       box-shadow:0 10px 22px rgba(0,0,0,.24);
       color:#fff; text-align:center;
     }
-    .warning-count-box .label{
-      font:800 10px/1 Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.8;
-    }
-    .warning-count-box .count{
-      margin-top:4px; font:900 28px/1 "Lato", Arial, sans-serif; color:#ffcb45;
-    }
+    .warning-count-box .label{ font:800 10px/1 Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.8; }
+    .warning-count-box .count{ margin-top:4px; font:900 28px/1 "Lato", Arial, sans-serif; color:#ffcb45; }
 
     .ticker-wrap{
       position:absolute; left:0; right:0; bottom:0; height:40px; z-index:100030;
@@ -253,6 +250,7 @@
         <input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" />
         <span class="scrub-edge-label end" id="scrubEndLabel">7 PM</span>
       </div>
+      <div style="position:absolute; left:184px; top:58px; color:rgba(255,255,255,.7); font:800 10px/1 Arial,sans-serif; letter-spacing:1px; text-transform:uppercase; z-index:100006;">SIMULATOR V3</div>
       <div class="clock-stack">
         <div class="sim-controls-wrap" id="simControlsWrap">
           <div class="sim-clock" id="simClockBox">
@@ -278,7 +276,7 @@
     <button class="sim-product-btn" data-product="future_radar" id="btnFutureRadar">Future Radar</button>
     <button class="sim-product-btn" data-product="temps" id="btnTemps">Temps</button>
     <button class="sim-product-btn" data-product="satellite" id="btnSatellite">Satellite</button>
-    <button class="sim-product-btn" data-product="photos" id="btnPhotos">Storm Pics</button>
+    <button class="sim-product-btn" data-product="photos" id="btnPhotos">Photos</button>
   </div>
   <div class="sim-alert id="simAlertBox" aria-live="polite">
     <div class="sim-alert-kicker" id="simAlertKicker">Live Alert</div>
@@ -349,7 +347,7 @@
       return u;
     }
   </script>
-  <script src="./simulatorConfig.js"></script>
+  <script src="./simulatorConfig_v3.js"></script>
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
   <script src="./map-ui.js"></script>
@@ -466,7 +464,7 @@
             timeZone:'America/Chicago'
           });
         } catch(e){
-          return '--:--:--';
+          return '--:--';
         }
       }
 
@@ -616,7 +614,7 @@
         alertBox.className = 'sim-alert visible theme-' + theme;
         if (alertKicker) alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase();
         if (alertHeadline) alertHeadline.textContent = eventData.headline || 'Live Alert';
-        if (alertBody) alertBody.innerHTML = ((eventData.message || '') + (eventData.detailsHint ? ' <strong>' + eventData.detailsHint + '</strong>' : '')).trim();
+        if (alertBody) alertBody.textContent = eventData.message || '';
         if (alertTimer) clearTimeout(alertTimer);
         alertTimer = setTimeout(function(){ alertBox.className = 'sim-alert theme-' + theme; }, 5200);
       }
