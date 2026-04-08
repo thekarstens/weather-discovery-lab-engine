@@ -46,9 +46,18 @@
     .sim-product-btn{ flex:0 0 auto; min-width:136px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96)); color:#fff; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:.65px; text-transform:uppercase; padding:12px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; pointer-events:auto; }
     .sim-product-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
     .sim-product-btn.is-active{ background:linear-gradient(180deg, #1fb8ff, #1068d6 65%, #0c3f94); box-shadow:0 0 16px rgba(42,190,255,.62), 0 8px 18px rgba(0,0,0,.24); border-color:rgba(181,237,255,.96); }
-    .product-slot{ position:absolute; left:50%; transform:translateX(-50%); bottom:-30px; z-index:100005; pointer-events:none; }
-    .product-pill{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:194px; padding:11px 22px 13px; border-radius:22px; background:rgba(11,28,45,.94); color:#9fe6ff; border:2px solid rgba(255,255,255,.18); box-shadow:0 8px 22px rgba(0,0,0,.30); font-family:"Lato", Arial, sans-serif; text-transform:uppercase; white-space:nowrap; font-weight:900; font-size:17px; line-height:1.02; }
-    .product-pill::before{ content:"Map Layer"; display:block; font:700 10px/1 "Lato", Arial, sans-serif; letter-spacing:.9px; color:#ffffff; opacity:.82; margin-bottom:6px; text-transform:uppercase; }
+    .product-slot{
+      position:absolute; right:18px; top:146px; z-index:100021; pointer-events:none;
+      width:460px; max-width:calc(100% - 520px);
+    }
+    .product-pill{
+      display:flex; align-items:center; justify-content:flex-start;
+      min-height:56px; padding:0 18px; border-radius:0;
+      background:#ffffff; color:#111111; border:4px solid #f1a400;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+      font-family:"Lato", Arial, sans-serif; text-transform:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-weight:900; font-size:28px; line-height:1;
+    }
     .storyPanel{ position:absolute; left:12px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); }
     .story-shell-header{ display:flex; align-items:center; gap:14px; padding:12px 12px 14px; color:#fff; background:linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300); }
     .story-station-chip{ width:78px; height:78px; border-radius:50%; background:rgba(255,255,255,.22); border:3px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font:900 32px/1 "Lato", Arial, sans-serif; flex:0 0 auto; }
@@ -78,9 +87,6 @@
     .story-nav{ margin-top:10px; display:flex; gap:10px; }
     .story-nav .story-nav-btn{ flex:1; }
     body.story-collapsed .story-content, body.story-collapsed .story-shell-footer, body.story-collapsed .story-card-row { display:none; }
-    .event-rail{ position:absolute; right:168px; top:234px; z-index:100018; display:flex; flex-direction:column; gap:9px; }
-    .event-pill{ min-width:146px; border-radius:999px; padding:10px 14px; color:#fff; font:900 12px/1 "Lato", Arial, sans-serif; text-transform:uppercase; box-shadow:0 8px 18px rgba(0,0,0,.18); }
-    .event-pill.setup{ background:#296bff; } .event-pill.watch{ background:#ffa11a; } .event-pill.warn{ background:#ff4b5c; } .event-pill.radar{ background:#8b5cf6; } .event-pill.reports{ background:#12b76a; }
     .toolBox{ position:absolute; right:10px; top:208px; z-index:100019; width:130px; background:rgba(8,25,44,.86); border:1px solid rgba(255,255,255,.08); border-radius:24px; padding:10px 8px 12px; box-shadow:0 14px 26px rgba(0,0,0,.22); backdrop-filter:blur(3px); }
     .tool-head{ display:flex; justify-content:center; align-items:center; margin-bottom:8px; }
     .tool-head-pill{ min-width:96px; text-align:center; padding:10px 12px; border-radius:999px; background:rgba(255,255,255,.06); color:#fff; font:900 14px/1 "Lato", Arial, sans-serif; text-transform:uppercase; }
@@ -125,7 +131,7 @@
         <button class="sim-product-btn" data-product="spc">SPC</button>
         <button class="sim-product-btn" data-product="watch">PDS Watch</button>
       </div>
-      <div class="product-slot"><div class="product-pill" id="productLabel">Radar</div></div>
+      <div class="product-slot"><div class="product-pill" id="productLabel">Map</div></div>
   </div></div>
 
   <div class="storyPanel" id="storyPanel">
@@ -134,8 +140,6 @@
     <div class="story-content"><div class="sim-scene-lead" id="simSceneLead">Current Topic • 3:00 PM</div><div class="story-body" id="storyBody"><p>Topic cards change with time. Pick one card to guide the discussion at the current clock time.</p></div></div>
     <div class="story-shell-footer"><div class="story-footer-row"><div class="story-step" id="storyStep">3 PM topics</div><div class="story-actions-right"><button class="story-action story-doppler-inline pulsing" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button></div></div><div class="story-nav"><button class="story-nav-btn" id="storyPrevBtn" type="button">◀ Topic</button><button class="story-nav-btn" id="storyNextBtn" type="button">Topic ▶</button></div></div>
   </div>
-
-  <div class="event-rail"><div class="event-pill setup">Setup</div><div class="event-pill watch">Watch</div><div class="event-pill warn">Warn</div><div class="event-pill radar">Radar</div><div class="event-pill reports">Reports</div></div>
 
   <div class="toolBox" id="toolBox"><div class="tool-head"><div class="tool-head-pill">Tools</div></div>
     <button class="tool-btn" id="toolMeasure" type="button">Ruler</button>
@@ -188,7 +192,23 @@
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); syncGroupToTime(ms); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
-      function normalizeProductLabel(product){ var map = { future_radar:'Future Radar', live_doppler:'Live Doppler', temps:'METARs', spc:'SPC Outlook', watch:'PDS Watch' }; return map[product] || String(product || 'Topic').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+      function normalizeProductLabel(product){
+        var map = {
+          future_radar:'Future Radar',
+          live_doppler:'Live Doppler',
+          temps:'METARs',
+          spc:'SPC Outlook',
+          watch:'PDS Watch',
+          warnings:'Warnings',
+          reports:'Storm Reports',
+          lightning:'Lightning',
+          satellite:'Satellite',
+          radar:'Radar',
+          photos:'Photos',
+          future_winds:'Future Winds'
+        };
+        return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+      }
       function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); }
       function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
@@ -197,10 +217,27 @@
       function syncGroupToTime(ms){ if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
-      function applyProductMode(mode){ productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); }); productLabel.textContent = normalizeProductLabel(mode); try { if (mode === 'radar' && window.setRadarEnabled) window.setRadarEnabled(true); if (mode === 'warnings' && window.setRadarEnabled) window.setRadarEnabled(true); if (mode === 'reports' && window.setReportsEnabled) window.setReportsEnabled(true); if (mode === 'lightning' && window.setLightningEnabled) window.setLightningEnabled(true); if (mode === 'future_radar' && window.setHrrrRadarEnabled) window.setHrrrRadarEnabled(true); if (mode === 'temps' && window.setHrrrTempEnabled) window.setHrrrTempEnabled(true); if (mode === 'satellite' && window.setSatelliteEnabled) window.setSatelliteEnabled(true); } catch(e){ console.warn('Product toggle issue', e); } }
+      function applyProductMode(mode, layers){
+        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
+        var displayLabel = normalizeProductLabel(mode);
+        if (Array.isArray(layers) && layers.length) {
+          if (layers.length === 1) displayLabel = normalizeProductLabel(layers[0]);
+          else displayLabel = layers.map(normalizeProductLabel).join(' + ');
+        }
+        productLabel.textContent = displayLabel;
+        try {
+          if (mode === 'radar' && window.setRadarEnabled) window.setRadarEnabled(true);
+          if (mode === 'warnings' && window.setRadarEnabled) window.setRadarEnabled(true);
+          if (mode === 'reports' && window.setReportsEnabled) window.setReportsEnabled(true);
+          if (mode === 'lightning' && window.setLightningEnabled) window.setLightningEnabled(true);
+          if (mode === 'future_radar' && window.setHrrrRadarEnabled) window.setHrrrRadarEnabled(true);
+          if (mode === 'temps' && window.setHrrrTempEnabled) window.setHrrrTempEnabled(true);
+          if (mode === 'satellite' && window.setSatelliteEnabled) window.setSatelliteEnabled(true);
+        } catch(e){ console.warn('Product toggle issue', e); }
+      }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
       function renderCardChips(){ var g = currentGroup(); storyCardRow.innerHTML = ''; g.cards.forEach(function(card, idx){ var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'story-topic-chip' + (idx === currentCardIndex ? ' active' : ''); btn.textContent = card.topicLabel || card.title; btn.addEventListener('click', function(){ currentCardIndex = idx; renderCurrentCard(); }); storyCardRow.appendChild(btn); }); }
-      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar'); updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar', card.layers || [card.product || 'radar']); updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
@@ -229,7 +266,7 @@
         setLocalTrackMode(false);
       }
 
-      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product')); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
+      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')]); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
       playBtn.addEventListener('click', advanceTimeline);
       scrubber.addEventListener('input', function(){ stopAnimation(); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
