@@ -948,10 +948,16 @@ window.setReportsFilter = setReportsFilter;
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
-    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/bolt_gold.png') + "')";
+    var boltAsset = '';
+    try{
+      var styleCfg = (lightningManifest && lightningManifest.style) ? lightningManifest.style : {};
+      boltAsset = styleCfg.boltUrl || styleCfg.boltImage || '';
+      if (boltAsset && !_isAbsUrl(boltAsset)) boltAsset = _joinUrl(DATA_BASE, boltAsset);
+    }catch(e){ boltAsset = ''; }
+    var boltVar = boltAsset ? ('--bolt-url:url('' + boltAsset + '');') : '';
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      html: '<div class="wdl-lightning-bolt" style="' + boltVar + '--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
       iconSize: [30,30],
       iconAnchor: [15,15],
       popupAnchor: [0,-12]
@@ -4517,7 +4523,7 @@ if (window.createMetarsModule) {
         radarVelocityFrames = [];
         currentRadarVelocityFrame = null;
         radarVelocityBounds = null;
-        setStatus('Velocity failed');
+        setStatus('Velocity test failed');
         throw err;
       });
     return radarVelocityLoadPromise;
@@ -4568,14 +4574,14 @@ if (window.createMetarsModule) {
     if (currentRadarVelocityFrame.points) {
       try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
     }
-    setStatus('Velocity on');
+    setStatus('Velocity test on');
   }
   async function setRadarVelocityEnabled(on){
     radarVelocityEnabled = !!on;
     window.radarVelocityEnabled = radarVelocityEnabled;
     if (!radarVelocityEnabled){
       clearRadarVelocityLayer();
-      setStatus('Velocity off');
+      setStatus('Velocity test off');
       try{ updateProductLabel(); }catch(e){}
       try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
       return;
@@ -4590,7 +4596,7 @@ if (window.createMetarsModule) {
       radarVelocityEnabled = false;
       window.radarVelocityEnabled = false;
       clearRadarVelocityLayer();
-      setStatus('Velocity failed');
+      setStatus('Velocity test failed');
     }
     try{ updateProductLabel(); }catch(e){}
     try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
@@ -5954,7 +5960,7 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="hrrr-radar"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar'); });
     dock.querySelectorAll('[data-action="hrrr-winds"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'winds'); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
-    dock.querySelectorAll('[data-action="velocity"], [data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
+    dock.querySelectorAll('[data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
     dock.querySelectorAll('[data-action="lightning"]').forEach(function(el){ el.classList.toggle('active', !!window.lightningEnabled); });
@@ -5993,7 +5999,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       return;
     }
-    if (action === 'velocity' || action === 'radar-velocity-test'){
+    if (action === 'radar-velocity-test'){
       if (typeof window.setRadarVelocityEnabled === 'function') {
         var nextVelOn = !window.radarVelocityEnabled;
         await window.setRadarVelocityEnabled(nextVelOn);
