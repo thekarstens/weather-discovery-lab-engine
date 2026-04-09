@@ -828,22 +828,20 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:20px; height:20px; pointer-events:none;
-        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
-        filter: drop-shadow(0 0 2px rgba(255,245,120,.85));
+        position:relative; width:30px; height:30px; pointer-events:none;
+        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
+        background-image: var(--bolt-url);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        filter: drop-shadow(0 0 1px rgba(255,240,120,.55));
         animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
       }
-      .wdl-lightning-icon .wdl-lightning-bolt:before{
-        content:'⚡';
-        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-        font: 900 20px/1 Arial,sans-serif; color: var(--bolt-color,#fff8c6);
-        text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,240,120,.95), 0 0 20px rgba(119,230,255,.85);
-      }
       .wdl-lightning-recent{
-        box-shadow: 0 0 10px rgba(255,235,120,.65);
+        box-shadow: none;
       }
       .lightning-counter{
-        position:absolute !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100072;
+        position:absolute !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100072; display:block;
         background: linear-gradient(180deg, rgba(3,13,32,.96), rgba(10,22,48,.92));
         color:#f7fbff; padding:14px 16px; border-radius:16px; min-width:248px;
         border:1px solid rgba(118,224,255,.35);
@@ -950,12 +948,13 @@ window.setReportsFilter = setReportsFilter;
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
+    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/bolt_gold.png') + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--glow:' + strength.toFixed(2) + ';--bolt-scale:' + (0.92 + strength * 0.22).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [22,22],
-      iconAnchor: [11,11],
-      popupAnchor: [0,-10]
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [30,30],
+      iconAnchor: [15,15],
+      popupAnchor: [0,-12]
     });
   }
 
@@ -963,12 +962,12 @@ window.setReportsFilter = setReportsFilter;
     var strength = lightningStrengthFor(d);
     var op = Math.max(0.14, Math.min(0.78, (productOpacity.lightning || 0.9) * (0.28 + strength * 0.22)));
     return {
-      radius: Math.max(2, Math.min(6, 2.2 + strength * 2.2)),
-      color: '#fff3a3',
-      fillColor: '#fff06a',
-      weight: 1,
-      opacity: Math.max(0.25, op),
-      fillOpacity: op,
+      radius: Math.max(1, Math.min(4, 1.6 + strength * 1.5)),
+      color: '#ffe87a',
+      fillColor: '#ffd83a',
+      weight: 0.6,
+      opacity: Math.max(0.16, op * 0.72),
+      fillOpacity: Math.max(0.10, op * 0.55),
       className: 'wdl-lightning-recent'
     };
   }
@@ -4518,7 +4517,7 @@ if (window.createMetarsModule) {
         radarVelocityFrames = [];
         currentRadarVelocityFrame = null;
         radarVelocityBounds = null;
-        setStatus('Velocity test failed');
+        setStatus('Velocity failed');
         throw err;
       });
     return radarVelocityLoadPromise;
@@ -4569,14 +4568,14 @@ if (window.createMetarsModule) {
     if (currentRadarVelocityFrame.points) {
       try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
     }
-    setStatus('Velocity test on');
+    setStatus('Velocity on');
   }
   async function setRadarVelocityEnabled(on){
     radarVelocityEnabled = !!on;
     window.radarVelocityEnabled = radarVelocityEnabled;
     if (!radarVelocityEnabled){
       clearRadarVelocityLayer();
-      setStatus('Velocity test off');
+      setStatus('Velocity off');
       try{ updateProductLabel(); }catch(e){}
       try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
       return;
@@ -4591,7 +4590,7 @@ if (window.createMetarsModule) {
       radarVelocityEnabled = false;
       window.radarVelocityEnabled = false;
       clearRadarVelocityLayer();
-      setStatus('Velocity test failed');
+      setStatus('Velocity failed');
     }
     try{ updateProductLabel(); }catch(e){}
     try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
@@ -5955,7 +5954,7 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="hrrr-radar"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar'); });
     dock.querySelectorAll('[data-action="hrrr-winds"]').forEach(function(el){ el.classList.toggle('active', !!window.hrrrTempEnabled && window.hrrrProductMode === 'winds'); });
     dock.querySelectorAll('[data-action="radar"]').forEach(function(el){ el.classList.toggle('active', !!window.obsRadarEnabled); });
-    dock.querySelectorAll('[data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
+    dock.querySelectorAll('[data-action="velocity"], [data-action="radar-velocity-test"]').forEach(function(el){ el.classList.toggle('active', !!window.radarVelocityEnabled); });
     dock.querySelectorAll('[data-action="satellite"]').forEach(function(el){ el.classList.toggle('active', !!window.goesEnabled); });
     dock.querySelectorAll('[data-action="jet-500"]').forEach(function(el){ el.classList.toggle('active', !!window.jet500Enabled); });
     dock.querySelectorAll('[data-action="lightning"]').forEach(function(el){ el.classList.toggle('active', !!window.lightningEnabled); });
@@ -5994,7 +5993,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       return;
     }
-    if (action === 'radar-velocity-test'){
+    if (action === 'velocity' || action === 'radar-velocity-test'){
       if (typeof window.setRadarVelocityEnabled === 'function') {
         var nextVelOn = !window.radarVelocityEnabled;
         await window.setRadarVelocityEnabled(nextVelOn);
