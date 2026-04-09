@@ -948,16 +948,10 @@ window.setReportsFilter = setReportsFilter;
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
-    var boltAsset = '';
-    try{
-      var styleCfg = (lightningManifest && lightningManifest.style) ? lightningManifest.style : {};
-      boltAsset = styleCfg.boltUrl || styleCfg.boltImage || '';
-      if (boltAsset && !_isAbsUrl(boltAsset)) boltAsset = _joinUrl(DATA_BASE, boltAsset);
-    }catch(e){ boltAsset = ''; }
-    var boltVar = boltAsset ? ("--bolt-url:url('" + boltAsset + "');") : '';
+    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/bolt_gold.png') + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="' + boltVar + '--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
       iconSize: [30,30],
       iconAnchor: [15,15],
       popupAnchor: [0,-12]
@@ -3811,6 +3805,7 @@ function nearestHrrrFrameIndexForTime(d){
   }
 
   function getActiveScrubberMode(){
+    if (window.__WDL_FREE_SCRUB__ === true) return 'lesson';
     var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
     if ((hrrrTempEnabled || window.hrrrTempEnabled === true) && liveHrrrFrames.length) return 'hrrr';
     if (typeof metarVisible !== 'undefined' &&
@@ -5360,6 +5355,11 @@ window.setWarningsEnabled = setWarningsEnabled;
   }
 
   window.updateAll = updateAll;
+  window.setFreeScrubMode = function(on){
+    window.__WDL_FREE_SCRUB__ = !!on;
+    try{ syncScrubberToActiveProduct(); }catch(e){}
+    return true;
+  };
   window.setMasterTime = function(value){
     var d = (value instanceof Date) ? new Date(value.getTime()) : new Date(value);
     if (isNaN(d)) return false;
@@ -5424,6 +5424,15 @@ window.setWarningsEnabled = setWarningsEnabled;
     _scrub.oninput = function(){
       var v = parseInt(_scrub.value, 10);
       if (!isFinite(v)) return;
+
+      if (window.__WDL_FREE_SCRUB__ === true){
+        var rawPct = Number(_scrub.max) > 0 ? (v / Number(_scrub.max)) : 0;
+        curZ = new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * rawPct));
+        clampTime();
+        updateAll();
+        return;
+      }
+
       var mode = getActiveScrubberMode();
       if (mode === 'radar'){
         setCurrentRadarFrameIndex(v);
