@@ -24,6 +24,21 @@
     .case-line{ margin-top:6px; font:900 17px/1 "Lato", Arial, sans-serif; text-transform:uppercase; }
     .region-line{ margin-top:4px; font:800 12px/1 "Lato", Arial, sans-serif; opacity:.95; }
     .sim-version{ position:absolute; left:250px; top:62px; z-index:100006; color:rgba(255,255,255,.74); font:800 10px/1 Arial,sans-serif; letter-spacing:1px; text-transform:uppercase; }
+
+    .mode-toggle{
+      position:absolute; left:250px; top:38px; z-index:100009;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:999px; padding:8px 14px;
+      background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96));
+      color:#fff; font:900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing:.6px; text-transform:uppercase; cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+    .mode-toggle.test-mode{
+      background:linear-gradient(180deg,#f5b52c,#d88400 65%,#b66600);
+      color:#111;
+    }
+
     .scrub-wrap{ position:absolute; left:250px; right:408px; top:84px; height:26px; z-index:100006; display:flex; align-items:center; gap:10px; }
     .scrub-mini{ color:rgba(255,255,255,.95); font:900 12px/1 "Lato", Arial, sans-serif; min-width:48px; text-align:center; }
     .scrub-shell{ flex:1; height:16px; padding:0 12px; display:flex; align-items:center; border-radius:999px; background:rgba(7,19,31,.72); border:1px solid rgba(255,255,255,.10); box-shadow:0 6px 14px rgba(0,0,0,.18); }
@@ -117,6 +132,7 @@
   <div class="tvbanner"><div class="banner-topline">
       <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops logo" />
       <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
+      <button id="modeToggleBtn" class="mode-toggle" type="button">Simulator Mode</button>
       <div class="sim-version">Simulator v5 • Topic Cards</div>
       <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
       <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
@@ -164,16 +180,31 @@
   <script>
     (function(){
       var cfg = window.WDL_SIM_CONFIG || {};
-      var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
+      var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
-      var storyboardSteps = [], timeGroups = [], currentGroupIndex = 0, currentCardIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null);
-      var SIM_TEST_MODE = !(cfg && cfg.presentationLock === true);
+      var storyboardSteps = [], timeGroups = [], currentGroupIndex = 0, currentCardIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false;
 
-      window.WDL_SIM_TEST_MODE = SIM_TEST_MODE;
       function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
       function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
       function clamp01(v){ v = Number(v); if (!isFinite(v)) return 0; if (v < 0) return 0; if (v > 1) return 1; return v; }
       function setBannerText(){ var ui = cfg.ui || {}; document.getElementById('simBrandLine').textContent = ui.title || 'Weather Discovery Lab'; document.getElementById('simCaseLine').textContent = ui.subtitle || 'Live Severe Weather Simulator'; document.getElementById('simRegionLine').textContent = ui.region || ''; clockLabel.textContent = (cfg.masterClock && cfg.masterClock.label) || 'Master Simulator Clock'; }
+      function updateModeToggleUi(){
+        if (!modeToggleBtn) return;
+        modeToggleBtn.classList.toggle('test-mode', manualClockMode);
+        modeToggleBtn.textContent = manualClockMode ? 'Test Mode' : 'Simulator Mode';
+      }
+      function setManualClockMode(on){
+        manualClockMode = !!on;
+        updateModeToggleUi();
+        if (!manualClockMode) {
+          var live = readLiveActualMs();
+          if (isFinite(live)) {
+            updateClockAndScrubber(percentFromActualMs(live));
+            syncGroupToTime(live);
+            renderCurrentCard();
+          }
+        }
+      }
       function getActualWindow(){ var start = parseMs(cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ start = parseMs('2022-05-12T20:00:00Z'); end = parseMs('2022-05-13T00:00:00Z'); } return { start:start, end:end }; }
       function getDisplayWindow(){ var mc = cfg.masterClock || {}, start = parseMs(mc.displayStartZ || cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(mc.displayEndZ || cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ var a=getActualWindow(); start=a.start; end=a.end; } return { start:start, end:end }; }
       function percentFromActualMs(ms){ var a=getActualWindow(); if (!isFinite(ms) || a.end <= a.start) return 0; return clamp01((ms-a.start)/(a.end-a.start)); }
@@ -189,8 +220,8 @@
       function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
       function maybeFireTimedEvents(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; events.forEach(function(ev, idx){ var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(threshold)) return; var key = String(ev.id || idx); if (pct >= threshold && !triggeredEvents[key]) { triggeredEvents[key] = true; showAlert(ev); if (Array.isArray(ev.ticker) && ev.ticker.length) setTicker(ev.ticker); } if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key]; }); }
-      function updateClockAndScrubber(forcePercent){ var pct = (typeof forcePercent === 'number' && isFinite(forcePercent)) ? clamp01(forcePercent) : percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); scrubber.value = String(Math.round(displayPercent * 1000) / 10); sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
-      function syncEngineToPercent(pct){ pct = clamp01(pct); try { if (SIM_TEST_MODE && typeof window.setMasterTime === 'function') { window.setMasterTime(new Date(actualMsFromPercent(pct))); return true; } if (typeof window.setActiveScrubberPercent === 'function') { window.setActiveScrubberPercent(pct * 100); return true; } if (typeof window.setMasterTime === 'function') { window.setMasterTime(new Date(actualMsFromPercent(pct))); return true; } } catch(e){} return false; }
+      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); scrubber.value = String(Math.round(displayPercent * 1000) / 10); sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
+      function syncEngineToPercent(pct){ pct = clamp01(pct); try { if (typeof window.setActiveScrubberPercent === 'function') { window.setActiveScrubberPercent(pct * 100); return true; } if (typeof window.setMasterTime === 'function') { window.setMasterTime(new Date(actualMsFromPercent(pct))); return true; } } catch(e){} return false; }
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); syncGroupToTime(ms); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
@@ -326,7 +357,8 @@
 
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product'))); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
       playBtn.addEventListener('click', advanceTimeline);
-      scrubber.addEventListener('input', function(){ stopAnimation(); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
+      if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
+      scrubber.addEventListener('input', function(){ stopAnimation(); setManualClockMode(true); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
       storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
       storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
@@ -356,9 +388,9 @@
       if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
-      window.addEventListener('wdl:storychange', function(ev){ var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); var tick = (cfg.defaultTicker || []).slice(); if (SIM_TEST_MODE) tick.unshift('TEST MODE: scrubber is unlocked for free time navigation'); setTicker(tick); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg, 'SIM_TEST_MODE=', SIM_TEST_MODE); });
-      setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!(currentCard() && currentCard().showDoppler)); } }, 300);
+      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
+      window.addEventListener('load', async function(){ setBannerText(); updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      setInterval(function(){ if (!animating) { if (!manualClockMode) updateClockAndScrubber(); updateDopplerButton(!!(currentCard() && currentCard().showDoppler)); } }, 300);
     })();
   </script>
 </body>
