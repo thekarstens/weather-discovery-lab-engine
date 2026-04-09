@@ -954,7 +954,7 @@ window.setReportsFilter = setReportsFilter;
       boltAsset = styleCfg.boltUrl || styleCfg.boltImage || '';
       if (boltAsset && !_isAbsUrl(boltAsset)) boltAsset = _joinUrl(DATA_BASE, boltAsset);
     }catch(e){ boltAsset = ''; }
-    var boltVar = boltAsset ? ('--bolt-url:url('' + boltAsset + '');') : '';
+    var boltVar = boltAsset ? ("--bolt-url:url('" + boltAsset + "');") : '';
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt" style="' + boltVar + '--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
