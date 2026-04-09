@@ -195,6 +195,10 @@
       }
       function setManualClockMode(on){
         manualClockMode = !!on;
+        try{
+          if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(manualClockMode);
+          else window.__WDL_FREE_SCRUB__ = manualClockMode;
+        }catch(e){}
         updateModeToggleUi();
         if (!manualClockMode) {
           var live = readLiveActualMs();
