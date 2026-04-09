@@ -122,6 +122,7 @@
       <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
       <div class="product-row" id="simProductRow">
         <button class="sim-product-btn is-active" data-product="radar">Radar</button>
+        <button class="sim-product-btn" data-product="velocity">Velocity</button>
         <button class="sim-product-btn" data-product="warnings">Warnings</button>
         <button class="sim-product-btn" data-product="reports">Reports</button>
         <button class="sim-product-btn" data-product="lightning">Lightning</button>
@@ -205,6 +206,9 @@
           lightning:'Lightning',
           satellite:'Satellite',
           radar:'Radar',
+          velocity:'Velocity',
+          radar_velocity:'Velocity',
+          radar_velocity_test:'Velocity',
           photos:'Photos',
           future_winds:'Future Winds',
           future_temp:'Future Temperatures',
@@ -239,6 +243,7 @@
           if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
           if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
           if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+          if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
           if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
           if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
           if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
@@ -257,6 +262,9 @@
           if (has('radar') || has('obs_radar') || has('radar_reflectivity') || has('reflectivity') || has('live_doppler') || has('doppler')) {
             if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
             if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+          }
+          if (has('velocity') || has('radar_velocity') || has('radar_velocity_test')) {
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(true);
           }
           if (has('warnings') || has('alerts')) {
             if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(true);
