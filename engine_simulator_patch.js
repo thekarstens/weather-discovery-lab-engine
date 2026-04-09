@@ -830,9 +830,8 @@ window.setReportsFilter = setReportsFilter;
       .wdl-lightning-icon .wdl-lightning-bolt{
         position:relative; width:20px; height:20px; pointer-events:none;
         transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
-        filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.95))
-                drop-shadow(0 0 calc(8px + 10px * var(--glow,1)) rgba(130,230,255,.75));
-        animation: wdlLightningBlink var(--flash-ms,1100ms) linear infinite;
+        filter: drop-shadow(0 0 2px rgba(255,245,120,.85));
+        animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt:before{
         content:'⚡';
@@ -844,21 +843,21 @@ window.setReportsFilter = setReportsFilter;
         box-shadow: 0 0 10px rgba(255,235,120,.65);
       }
       .lightning-counter{
-        position:absolute !important; top:172px; right:18px; left:auto !important; bottom:auto !important; z-index:100072;
+        position:absolute !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100072;
         background: linear-gradient(180deg, rgba(3,13,32,.96), rgba(10,22,48,.92));
-        color:#f7fbff; padding:12px 14px; border-radius:16px; min-width:220px;
+        color:#f7fbff; padding:14px 16px; border-radius:16px; min-width:248px;
         border:1px solid rgba(118,224,255,.35);
         box-shadow: 0 0 12px rgba(90,209,255,.20), inset 0 0 18px rgba(255,255,255,.05);
-        font: 800 14px/1.25 Lato, Arial, sans-serif;
+        font: 800 15px/1.25 Lato, Arial, sans-serif;
         letter-spacing:.02em; cursor:move; user-select:none;
       }
-      .lightning-counter .lc-title{font:900 18px/1 Lato, Arial, sans-serif; margin-bottom:8px; color:#fff68d; text-transform:uppercase;}
-      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:12px; margin-top:5px; font-size:15px;}
+      .lightning-counter .lc-title{font:900 20px/1 Lato, Arial, sans-serif; margin-bottom:8px; color:#fff68d; text-transform:uppercase;}
+      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:12px; margin-top:5px; font-size:16px;}
       .lightning-counter .lc-row strong{color:#8cf7ff;}
       .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
       @keyframes wdlLightningBlink{
-        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 0.96));}
-        45%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.08));}
+        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.0));}
+        42%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.03));}
         50%{opacity:0;}
         100%{opacity:0;}
       }
@@ -1053,17 +1052,17 @@ window.setReportsFilter = setReportsFilter;
     if (!div) return;
     div.style.display = '';
     if (!div.dataset.moved){
-      div.style.top = '172px';
+      div.style.top = '236px';
       div.style.right = '18px';
       div.style.left = 'auto';
       div.style.bottom = 'auto';
     }
     div.innerHTML =
-      '<div class="lc-title">⚡ Lightning</div>' +
+      '<div class="lc-title">⚡ Lightning Tracker</div>' +
       '<div class="lc-row"><span>Flashing 10 min</span><strong>' + nowCount + '</strong></div>' +
-      '<div class="lc-row"><span>Recent</span><strong>' + recentCount + '</strong></div>' +
-      '<div class="lc-row"><span>Last 10 min</span><strong>' + last5Count + '</strong></div>' +
-      '<div class="lc-row"><span>Total</span><strong>' + totalCount + '</strong></div>' +
+      '<div class="lc-row"><span>Recent 15 min</span><strong>' + recentCount + '</strong></div>' +
+      '<div class="lc-row"><span>Total 10 min</span><strong>' + last5Count + '</strong></div>' +
+      '<div class="lc-row"><span>Storm total</span><strong>' + totalCount + '</strong></div>' +
       (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs prev 10 min</div>' : '');
   }
 
@@ -1540,7 +1539,7 @@ window.setReportsFilter = setReportsFilter;
           '#stormTrackSpeedValue{display:inline-block;padding:10px 16px;border-radius:14px;background:linear-gradient(180deg,#08182c,#040d18);border:2px solid rgba(255,255,255,.16);color:#ffffff;font:900 18px/1.05 "Lato",Arial,sans-serif;letter-spacing:.4px;box-shadow:0 12px 24px rgba(0,0,0,.34);text-shadow:0 1px 2px rgba(0,0,0,.38);white-space:nowrap;text-transform:uppercase;min-width:110px;text-align:center;}' +
           '#stormTrackArrivalBox{position:absolute;left:18px;bottom:58px;z-index:100071;width:290px;max-height:360px;display:none;border-radius:20px;background:linear-gradient(180deg,rgba(11,28,45,.97),rgba(6,18,30,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 34px rgba(0,0,0,.34);overflow:hidden;}' +
           '#stormTrackArrivalBox.open{display:block;}' +
-          '#stormTrackArrivalHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);cursor:move;user-select:none;}' +
+          '#stormTrackArrivalHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);cursor:move;user-select:none;}' +
           '#stormTrackArrivalTitle{color:#fff;font:900 16px/1 "Lato",Arial,sans-serif;text-transform:uppercase;letter-spacing:.7px;}' +
           '#stormTrackCloseBtn{border:none;background:#133357;color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;font:900 14px/1 "Lato",Arial,sans-serif;}' +
           '#stormTrackArrivalBody{padding:10px 12px 12px;overflow:auto;max-height:290px;}' +' .storm-speed-marker{background:transparent;border:none;}' +' .storm-speed-box{transform:translate(-50%,-50%);padding:8px 12px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(6,18,32,.96),rgba(3,10,20,.98));border:2px solid rgba(255,255,255,.18);box-shadow:0 10px 22px rgba(0,0,0,.34);color:#fff;min-width:108px;text-align:center;pointer-events:none;}' +' .storm-speed-label{font:800 10px/1 \\"Lato\\",Arial,sans-serif;letter-spacing:1px;opacity:.82;margin-bottom:4px;text-transform:uppercase;}' +' .storm-speed-value{font:900 26px/1 \\"Lato\\",Arial,sans-serif;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.38);}' +' .storm-speed-value small{font:900 15px/1 \\"Lato\\",Arial,sans-serif;opacity:.96;}' +
