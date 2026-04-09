@@ -191,7 +191,7 @@
       function updateModeToggleUi(){
         if (!modeToggleBtn) return;
         modeToggleBtn.classList.toggle('test-mode', manualClockMode);
-        modeToggleBtn.textContent = manualClockMode ? 'Test Mode' : 'Simulator Mode';
+        modeToggleBtn.textContent = manualClockMode ? 'Test Mode (Free Scrub)' : 'Simulator Mode';
       }
       function setManualClockMode(on){
         manualClockMode = !!on;
@@ -221,7 +221,24 @@
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
       function maybeFireTimedEvents(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; events.forEach(function(ev, idx){ var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(threshold)) return; var key = String(ev.id || idx); if (pct >= threshold && !triggeredEvents[key]) { triggeredEvents[key] = true; showAlert(ev); if (Array.isArray(ev.ticker) && ev.ticker.length) setTicker(ev.ticker); } if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key]; }); }
       function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); scrubber.value = String(Math.round(displayPercent * 1000) / 10); sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
-      function syncEngineToPercent(pct){ pct = clamp01(pct); try { if (typeof window.setActiveScrubberPercent === 'function') { window.setActiveScrubberPercent(pct * 100); return true; } if (typeof window.setMasterTime === 'function') { window.setMasterTime(new Date(actualMsFromPercent(pct))); return true; } } catch(e){} return false; }
+      function syncEngineToPercent(pct){
+        pct = clamp01(pct);
+        try {
+          if (manualClockMode && typeof window.setMasterTime === 'function') {
+            window.setMasterTime(new Date(actualMsFromPercent(pct)));
+            return true;
+          }
+          if (typeof window.setActiveScrubberPercent === 'function') {
+            window.setActiveScrubberPercent(pct * 100);
+            return true;
+          }
+          if (typeof window.setMasterTime === 'function') {
+            window.setMasterTime(new Date(actualMsFromPercent(pct)));
+            return true;
+          }
+        } catch(e){}
+        return false;
+      }
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); syncGroupToTime(ms); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
@@ -355,9 +372,15 @@
         setLocalTrackMode(false);
       }
 
-      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product'))); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
+      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        if (manualClockMode) setManualClockMode(true);
+        applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product')));
+        setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', manualClockMode ? 'Test Mode keeps the timeline unsnapped' : 'This shortcut keeps the current simulator time']);
+      }); });
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
+      window.WDL_TEST_MODE = function(on){ setManualClockMode(on); };
       scrubber.addEventListener('input', function(){ stopAnimation(); setManualClockMode(true); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
       storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
