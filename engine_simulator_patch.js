@@ -798,10 +798,10 @@ window.setReportsFilter = setReportsFilter;
   var lightningLoadPromise = null;
   var lightningCounterControl = null;
   var lightningStylesInjected = false;
-  var lightningFreshWindowMs = 30 * 1000;
-  var lightningRecentWindowMs = 2 * 60 * 1000;
-  var lightningCounterWindowMs = 5 * 60 * 1000;
-  var lightningJumpWindowMs = 5 * 60 * 1000;
+  var lightningFreshWindowMs = 10 * 60 * 1000;
+  var lightningRecentWindowMs = 15 * 60 * 1000;
+  var lightningCounterWindowMs = 10 * 60 * 1000;
+  var lightningJumpWindowMs = 10 * 60 * 1000;
   var lightningSoundEnabled = false;
   var lightningLastSoundAt = 0;
   var lightningAudioContext = null;
@@ -832,7 +832,7 @@ window.setReportsFilter = setReportsFilter;
         transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
         filter: drop-shadow(0 0 calc(4px + 6px * var(--glow,1)) rgba(255,240,120,.95))
                 drop-shadow(0 0 calc(8px + 10px * var(--glow,1)) rgba(130,230,255,.75));
-        animation: wdlLightningPulse var(--flash-ms,650ms) ease-out forwards;
+        animation: wdlLightningBlink var(--flash-ms,1100ms) linear infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt:before{
         content:'⚡';
@@ -844,21 +844,23 @@ window.setReportsFilter = setReportsFilter;
         box-shadow: 0 0 10px rgba(255,235,120,.65);
       }
       .lightning-counter{
-        background: linear-gradient(180deg, rgba(3,13,32,.90), rgba(10,22,48,.82));
-        color:#f7fbff; padding:8px 10px; border-radius:12px; min-width:140px;
+        position:absolute !important; top:172px; right:18px; left:auto !important; bottom:auto !important; z-index:100072;
+        background: linear-gradient(180deg, rgba(3,13,32,.96), rgba(10,22,48,.92));
+        color:#f7fbff; padding:12px 14px; border-radius:16px; min-width:220px;
         border:1px solid rgba(118,224,255,.35);
         box-shadow: 0 0 12px rgba(90,209,255,.20), inset 0 0 18px rgba(255,255,255,.05);
-        font: 800 12px/1.25 Lato, Arial, sans-serif;
-        letter-spacing:.02em;
+        font: 800 14px/1.25 Lato, Arial, sans-serif;
+        letter-spacing:.02em; cursor:move; user-select:none;
       }
-      .lightning-counter .lc-title{font:900 13px/1 Lato, Arial, sans-serif; margin-bottom:5px; color:#fff68d; text-transform:uppercase;}
-      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:10px; margin-top:2px;}
-      .lightning-counter .lc-jump{margin-top:6px; font:900 11px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
-      @keyframes wdlLightningPulse{
-        0%{opacity:0; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 0.65));}
-        10%{opacity:1;}
-        45%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.12));}
-        100%{opacity:.18; transform:translate(-2px,-2px) scale(var(--bolt-scale,1));}
+      .lightning-counter .lc-title{font:900 18px/1 Lato, Arial, sans-serif; margin-bottom:8px; color:#fff68d; text-transform:uppercase;}
+      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:12px; margin-top:5px; font-size:15px;}
+      .lightning-counter .lc-row strong{color:#8cf7ff;}
+      .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
+      @keyframes wdlLightningBlink{
+        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 0.96));}
+        45%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.08));}
+        50%{opacity:0;}
+        100%{opacity:0;}
       }
     `;
     document.head.appendChild(style);
@@ -981,15 +983,59 @@ window.setReportsFilter = setReportsFilter;
     lightningRecentMarkerIndex = Object.create(null);
   }
 
+  var lightningCounterDrag = { active:false, startX:0, startY:0, left:0, top:0 };
+
   function ensureLightningCounter(){
     if (lightningCounterControl) return;
     lightningCounterControl = L.control({ position:'bottomleft' });
     lightningCounterControl.onAdd = function(){
       var div = L.DomUtil.create('div', 'lightning-counter');
       div.innerHTML = '';
+      div.dataset.moved = '';
+      div.addEventListener('mousedown', beginLightningCounterDrag);
+      div.addEventListener('touchstart', beginLightningCounterDrag, {passive:false});
       return div;
     };
     lightningCounterControl.addTo(map);
+    document.addEventListener('mousemove', moveLightningCounterDrag);
+    document.addEventListener('touchmove', moveLightningCounterDrag, {passive:false});
+    document.addEventListener('mouseup', endLightningCounterDrag);
+    document.addEventListener('touchend', endLightningCounterDrag);
+  }
+
+  function beginLightningCounterDrag(ev){
+    if (!lightningCounterControl || !lightningCounterControl.getContainer) return;
+    var div = lightningCounterControl.getContainer();
+    if (!div) return;
+    var e = ev && (ev.touches ? ev.touches[0] : ev);
+    if (!e) return;
+    var rect = div.getBoundingClientRect();
+    lightningCounterDrag.active = true;
+    lightningCounterDrag.startX = e.clientX;
+    lightningCounterDrag.startY = e.clientY;
+    lightningCounterDrag.left = rect.left;
+    lightningCounterDrag.top = rect.top;
+    try{ if (ev.preventDefault) ev.preventDefault(); }catch(_){}
+  }
+
+  function moveLightningCounterDrag(ev){
+    if (!lightningCounterDrag.active || !lightningCounterControl || !lightningCounterControl.getContainer) return;
+    var div = lightningCounterControl.getContainer();
+    if (!div) return;
+    var e = ev && (ev.touches ? ev.touches[0] : ev);
+    if (!e) return;
+    var dx = e.clientX - lightningCounterDrag.startX;
+    var dy = e.clientY - lightningCounterDrag.startY;
+    div.style.left = Math.max(8, lightningCounterDrag.left + dx) + 'px';
+    div.style.top = Math.max(90, lightningCounterDrag.top + dy) + 'px';
+    div.style.right = 'auto';
+    div.style.bottom = 'auto';
+    div.dataset.moved = '1';
+    try{ if (ev.preventDefault) ev.preventDefault(); }catch(_){}
+  }
+
+  function endLightningCounterDrag(){
+    lightningCounterDrag.active = false;
   }
 
   function hideLightningCounter(){
@@ -1006,13 +1052,19 @@ window.setReportsFilter = setReportsFilter;
     var div = lightningCounterControl.getContainer();
     if (!div) return;
     div.style.display = '';
+    if (!div.dataset.moved){
+      div.style.top = '172px';
+      div.style.right = '18px';
+      div.style.left = 'auto';
+      div.style.bottom = 'auto';
+    }
     div.innerHTML =
       '<div class="lc-title">⚡ Lightning</div>' +
-      '<div class="lc-row"><span>Now</span><span>' + nowCount + '</span></div>' +
-      '<div class="lc-row"><span>Recent</span><span>' + recentCount + '</span></div>' +
-      '<div class="lc-row"><span>Last 5 min</span><span>' + last5Count + '</span></div>' +
-      '<div class="lc-row"><span>Total</span><span>' + totalCount + '</span></div>' +
-      (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs prev 5 min</div>' : '');
+      '<div class="lc-row"><span>Flashing 10 min</span><strong>' + nowCount + '</strong></div>' +
+      '<div class="lc-row"><span>Recent</span><strong>' + recentCount + '</strong></div>' +
+      '<div class="lc-row"><span>Last 10 min</span><strong>' + last5Count + '</strong></div>' +
+      '<div class="lc-row"><span>Total</span><strong>' + totalCount + '</strong></div>' +
+      (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs prev 10 min</div>' : '');
   }
 
   function evaluateLightningJump(nowMs){
@@ -1133,9 +1185,9 @@ window.setReportsFilter = setReportsFilter;
       .then(async function(manifest){
         lightningManifest = manifest || {};
         var style = lightningManifest.style || {};
-        lightningFreshWindowMs = Math.max(10 * 1000, Math.min(60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 30 * 1000)));
-        lightningRecentWindowMs = Math.max(30 * 1000, Math.min(10 * 60 * 1000, Number(style.recentMinutes || 2) * 60 * 1000));
-        lightningCounterWindowMs = Math.max(60 * 1000, Math.min(15 * 60 * 1000, Number(style.counterWindowMinutes || 5) * 60 * 1000));
+        lightningFreshWindowMs = Math.max(60 * 1000, Math.min(15 * 60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 10 * 60 * 1000)));
+        lightningRecentWindowMs = Math.max(2 * 60 * 1000, Math.min(20 * 60 * 1000, Number(style.recentMinutes || 15) * 60 * 1000));
+        lightningCounterWindowMs = Math.max(5 * 60 * 1000, Math.min(20 * 60 * 1000, Number(style.counterWindowMinutes || 10) * 60 * 1000));
         var files = Array.isArray(lightningManifest.files) ? lightningManifest.files : [];
         if (!files.length || !files[0].file) throw new Error('Lightning manifest missing files[0].file');
         var folder = url.split('/').slice(0,-1).join('/') + '/';
