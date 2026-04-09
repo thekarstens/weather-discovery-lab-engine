@@ -198,6 +198,7 @@
           live_doppler:'Live Doppler',
           temps:'METARs',
           spc:'SPC Outlook',
+          spc_day1:'SPC Outlook',
           watch:'PDS Watch',
           warnings:'Warnings',
           reports:'Storm Reports',
@@ -205,7 +206,12 @@
           satellite:'Satellite',
           radar:'Radar',
           photos:'Photos',
-          future_winds:'Future Winds'
+          future_winds:'Future Winds',
+          future_temp:'Future Temperatures',
+          metar_temp:'METAR Temperature',
+          metar_dewpoint:'METAR Dew Point',
+          metar_wind:'METAR Wind Gusts',
+          metar_pressure:'METAR Pressure'
         };
         return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
       }
@@ -217,27 +223,77 @@
       function syncGroupToTime(ms){ if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
-      function applyProductMode(mode, layers){
+      async function applyProductMode(mode, layers, displayOverride){
         productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
-        var displayLabel = normalizeProductLabel(mode);
-        if (Array.isArray(layers) && layers.length) {
-          if (layers.length === 1) displayLabel = normalizeProductLabel(layers[0]);
-          else displayLabel = layers.map(normalizeProductLabel).join(' + ');
+        var displayLabel = displayOverride || normalizeProductLabel(mode);
+        if (!displayOverride && Array.isArray(layers) && layers.length) {
+          displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
         }
         productLabel.textContent = displayLabel;
+
+        var activeLayers = Array.isArray(layers) ? layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+        if (!activeLayers.length && mode) activeLayers = [String(mode).toLowerCase()];
+        function has(name){ return activeLayers.indexOf(String(name).toLowerCase()) !== -1; }
+
         try {
-          if (mode === 'radar' && window.setRadarEnabled) window.setRadarEnabled(true);
-          if (mode === 'warnings' && window.setRadarEnabled) window.setRadarEnabled(true);
-          if (mode === 'reports' && window.setReportsEnabled) window.setReportsEnabled(true);
-          if (mode === 'lightning' && window.setLightningEnabled) window.setLightningEnabled(true);
-          if (mode === 'future_radar' && window.setHrrrRadarEnabled) window.setHrrrRadarEnabled(true);
-          if (mode === 'temps' && window.setHrrrTempEnabled) window.setHrrrTempEnabled(true);
-          if (mode === 'satellite' && window.setSatelliteEnabled) window.setSatelliteEnabled(true);
+          if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+          if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
+          if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+          if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+          if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+          if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
+          if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(false);
+          if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+          if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(false);
+          if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(false);
+          if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(false);
+          if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+        } catch(e){ console.warn('Product reset issue', e); }
+
+        try {
+          if (has('spc') || has('spc_day1') || has('spc_outlook') || has('day1_outlook')) {
+            if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+          }
+          if (has('radar') || has('obs_radar') || has('radar_reflectivity') || has('reflectivity') || has('live_doppler') || has('doppler')) {
+            if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+            if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+          }
+          if (has('warnings') || has('alerts')) {
+            if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(true);
+          }
+          if (has('reports') || has('storm_reports') || has('lsr')) {
+            if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+          }
+          if (has('lightning')) {
+            if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+          }
+          if (has('satellite') || has('goes') || has('truecolor')) {
+            if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(true);
+          }
+          if (has('metars') || has('metar_temp') || has('metar_dewpoint') || has('metar_wind') || has('metar_pressure')) {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') {
+              if (has('metar_dewpoint')) window.setMetarDisplayMode('dewpoint');
+              else if (has('metar_wind')) window.setMetarDisplayMode('wind');
+              else if (has('metar_pressure')) window.setMetarDisplayMode('pressure');
+              else window.setMetarDisplayMode('temp');
+            }
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
+          }
+          if (has('future_radar') || has('hrrr_radar')) {
+            if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(true);
+          } else if (has('future_winds') || has('hrrr_winds') || has('windgust') || has('future_wind_gusts')) {
+            if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(true);
+          } else if (has('future_temp') || has('hrrr_temp') || has('model_temp')) {
+            if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
+          } else if (has('cape') || has('hrrr_cape')) {
+            if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(true);
+          }
         } catch(e){ console.warn('Product toggle issue', e); }
       }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
       function renderCardChips(){ var g = currentGroup(); storyCardRow.innerHTML = ''; g.cards.forEach(function(card, idx){ var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'story-topic-chip' + (idx === currentCardIndex ? ' active' : ''); btn.textContent = card.topicLabel || card.title; btn.addEventListener('click', function(){ currentCardIndex = idx; renderCurrentCard(); }); storyCardRow.appendChild(btn); }); }
-      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar', card.layers || [card.product || 'radar']); updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar', card.layers || [card.product || 'radar'], card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar')); updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
@@ -266,7 +322,7 @@
         setLocalTrackMode(false);
       }
 
-      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')]); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
+      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product'))); setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', 'This shortcut keeps the current simulator time']); }); });
       playBtn.addEventListener('click', advanceTimeline);
       scrubber.addEventListener('input', function(){ stopAnimation(); var pct = clamp01(Number(scrubber.value) / 100); syncEngineToPercent(pct); updateClockAndScrubber(pct); syncGroupToTime(actualMsFromPercent(pct)); renderCurrentCard(); });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
