@@ -3800,6 +3800,10 @@ function nearestHrrrFrameIndexForTime(d){
     currentHrrrFrameIndex = Math.max(0, Math.min(hrrrFrames.length - 1, idx|0));
   }
 
+  var scrubberIsDragging = false;
+  var scrubberRafPending = false;
+  var scrubberPendingPct = null;
+
   function getActiveScrubberMode(){
     if (window.__WDL_SINGLE_CLOCK__ === true) return 'lesson';
     if (window.__WDL_FREE_SCRUB__ === true) return 'lesson';
@@ -3821,15 +3825,17 @@ function nearestHrrrFrameIndexForTime(d){
     try{
       var scrub = document.getElementById("cbScrubber");
       if (!scrub) return;
+      if (scrubberIsDragging) return;
       scrub.min = "0";
-      scrub.step = (window.__WDL_FREE_SCRUB__ === true) ? "0.1" : "1";
       if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true){
-        scrub.max = "100";
-        var lessonPct = ((curZ.getTime() - startZ.getTime()) / Math.max(1, (endZ.getTime() - startZ.getTime()))) * 100;
-        scrub.value = String(Math.max(0, Math.min(100, lessonPct)));
+        scrub.max = "1000";
+        scrub.step = "1";
+        var lessonPct = ((curZ.getTime() - startZ.getTime()) / Math.max(1, (endZ.getTime() - startZ.getTime()))) * 1000;
+        scrub.value = String(Math.max(0, Math.min(1000, lessonPct)));
         return;
       }
 
+      scrub.step = "1";
       var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
       if (idx < 0) idx = 0;
       var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
@@ -5311,12 +5317,12 @@ window.setWarningsEnabled = setWarningsEnabled;
   window.setFreeScrubMode = function(on){
     window.__WDL_FREE_SCRUB__ = !!on;
     try{
-      if (window.__WDL_FREE_SCRUB__ === true){
+      if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true){
         var scrub = document.getElementById("cbScrubber");
         if (scrub){
           scrub.min = "0";
-          scrub.max = "100";
-          scrub.step = "0.1";
+          scrub.max = "1000";
+          scrub.step = "1";
         }
       }
       syncScrubberToActiveProduct();
@@ -5377,13 +5383,30 @@ window.setWarningsEnabled = setWarningsEnabled;
   // Time scrubber (drag to jump through time)
   var _scrub = document.getElementById("cbScrubber");
   if (_scrub){
+    var _releaseScrubber = function(){
+      scrubberIsDragging = false;
+      syncScrubberToActiveProduct();
+    };
+    _scrub.addEventListener('pointerdown', function(){ scrubberIsDragging = true; });
+    _scrub.addEventListener('pointerup', _releaseScrubber);
+    _scrub.addEventListener('change', _releaseScrubber);
+    _scrub.addEventListener('blur', _releaseScrubber);
     _scrub.oninput = function(){
       var v = parseFloat(_scrub.value);
       if (!isFinite(v)) return;
       var max = Number(_scrub.max);
       var pct = (max > 0) ? (v / max) : 0;
       pct = Math.max(0, Math.min(1, pct));
-      window.setMasterTime(new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * pct)));
+      scrubberPendingPct = pct;
+      if (scrubberRafPending) return;
+      scrubberRafPending = true;
+      requestAnimationFrame(function(){
+        scrubberRafPending = false;
+        var usePct = scrubberPendingPct;
+        scrubberPendingPct = null;
+        if (!isFinite(usePct)) return;
+        window.setMasterTime(new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * usePct)));
+      });
     };
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
