@@ -2670,6 +2670,7 @@ function updateCityLabels(){
   var storyMarkers = [];
   var storyIndex = 0;
   var focusRing = null;
+  window.__WDL_STORY_TIME_SYNC_ENABLED__ = (window.__WDL_STORY_TIME_SYNC_ENABLED__ === true);
   window.__WDL_STORYBOARD_JSON__ = STORYBOARD_JSON;
   window.__WDL_STORYBOARD_CSV__ = STORYBOARD_CSV;
 
@@ -2892,6 +2893,7 @@ function safeLink(url){
 
   function renderStory(i, panTo){
     if (!storyItems.length) return;
+    if (window.__WDL_FREE_SCRUB__ === true) window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
     if (i < 0) i = 0;
     if (i >= storyItems.length) i = storyItems.length - 1;
     storyIndex = i;
@@ -5343,7 +5345,8 @@ window.setWarningsEnabled = setWarningsEnabled;
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
     try{
-      if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onUpdateAll === 'function'){
+      var allowExternalStoryTimeSync = (window.__WDL_STORY_TIME_SYNC_ENABLED__ === true) && (window.__WDL_FREE_SCRUB__ !== true);
+      if (allowExternalStoryTimeSync && window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onUpdateAll === 'function'){
         window.WDL_SIM_CONFIG.onUpdateAll({ curZ: new Date(curZ.getTime()) });
       }
     }catch(simUpdateErr){}
@@ -5352,6 +5355,7 @@ window.setWarningsEnabled = setWarningsEnabled;
   window.updateAll = updateAll;
   window.setFreeScrubMode = function(on){
     window.__WDL_FREE_SCRUB__ = !!on;
+    window.__WDL_STORY_TIME_SYNC_ENABLED__ = !window.__WDL_FREE_SCRUB__;
     try{
       if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true){
         var scrub = document.getElementById("cbScrubber");
@@ -5372,6 +5376,10 @@ window.setWarningsEnabled = setWarningsEnabled;
     clampTime();
     updateAll();
     return true;
+  };
+  window.setStoryTimeSyncEnabled = function(on){
+    window.__WDL_STORY_TIME_SYNC_ENABLED__ = !!on;
+    return window.__WDL_STORY_TIME_SYNC_ENABLED__;
   };
 
   // ---------- Time controls ----------
