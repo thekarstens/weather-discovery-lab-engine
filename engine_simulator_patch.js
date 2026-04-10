@@ -837,6 +837,9 @@ window.setReportsFilter = setReportsFilter;
   var lightningLastRenderedStamp = '';
   var lightningFreshMarkerIndex = Object.create(null);
   var lightningRecentMarkerIndex = Object.create(null);
+  var lightningTickerDefaultText = null;
+  var lightningResolvedIconUrl = null;
+  var lightningIconProbeStarted = false;
   window.lightningEnabled = lightningEnabled;
   window.lightningSoundEnabled = lightningSoundEnabled;
 
@@ -974,10 +977,100 @@ window.setReportsFilter = setReportsFilter;
     return lines.join('');
   }
 
+  function getDefaultLightningSvgUrl(){
+    var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+      + "<defs><filter id='g' x='-50%' y='-50%' width='200%' height='200%'>"
+      + "<feDropShadow dx='0' dy='0' stdDeviation='2.6' flood-color='#fff27a' flood-opacity='0.98'/>"
+      + "<feDropShadow dx='0' dy='0' stdDeviation='5.4' flood-color='#ffd400' flood-opacity='0.72'/>"
+      + "</filter></defs>"
+      + "<path filter='url(#g)' d='M37 3 15 34h14l-5 27 25-34H35z' fill='#ffd400' stroke='#fff6b0' stroke-width='2.2' stroke-linejoin='round'/></svg>";
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  function lightningIconCandidates(){
+    var out = [];
+    function add(v){ if (v && out.indexOf(v) === -1) out.push(v); }
+    try{
+      var cfgLayer = (CFG && CFG.layers && CFG.layers.lightning) ? CFG.layers.lightning : ((CFG && CFG.lightning) ? CFG.lightning : {});
+      var style = (lightningManifest && lightningManifest.style) || {};
+      [
+        style.iconUrl,
+        style.iconFile,
+        style.boltUrl,
+        style.boltFile,
+        cfgLayer.iconUrl,
+        cfgLayer.iconFile,
+        cfgLayer.boltUrl,
+        cfgLayer.boltFile,
+        (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.lightningIconUrl),
+        (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.lightningIconFile),
+        'lightning/bolt_gold.png',
+        'lightning/bolt.png',
+        'lightning/bolt_yellow.png',
+        'lightning/bolt_sharp.png',
+        'lightning/lightning_bolt.png'
+      ].forEach(function(v){ add(v); });
+    }catch(e){}
+    return out.map(function(v){ return _isAbsUrl(v) || String(v).startsWith('data:') ? String(v) : _joinUrl(DATA_BASE, String(v)); });
+  }
+
+  function ensureLightningIconUrl(){
+    if (lightningResolvedIconUrl) return lightningResolvedIconUrl;
+    if (!lightningIconProbeStarted){
+      lightningIconProbeStarted = true;
+      var candidates = lightningIconCandidates();
+      (function tryNext(i){
+        if (i >= candidates.length){
+          lightningResolvedIconUrl = getDefaultLightningSvgUrl();
+          try{ if (lightningEnabled) updateLightning(); }catch(e){}
+          return;
+        }
+        var url = candidates[i];
+        if (String(url).startsWith('data:')){
+          lightningResolvedIconUrl = url;
+          try{ if (lightningEnabled) updateLightning(); }catch(e){}
+          return;
+        }
+        var img = new Image();
+        img.onload = function(){ lightningResolvedIconUrl = url; try{ if (lightningEnabled) updateLightning(); }catch(e){} };
+        img.onerror = function(){ tryNext(i + 1); };
+        img.src = url;
+      })(0);
+    }
+    return getDefaultLightningSvgUrl();
+  }
+
+  function setLightningTickerText(textValue){
+    var el = document.getElementById('simTickerText');
+    if (!el) return;
+    if (lightningTickerDefaultText == null) lightningTickerDefaultText = el.textContent || '';
+    el.textContent = textValue || lightningTickerDefaultText || '';
+  }
+
+  function restoreLightningTicker(){
+    var el = document.getElementById('simTickerText');
+    if (!el) return;
+    if (lightningTickerDefaultText == null) lightningTickerDefaultText = el.textContent || '';
+    el.textContent = lightningTickerDefaultText || '';
+  }
+
+  function updateLightningTicker(nowMs, freshCount, recentCount, totalWindowCount, totalCount, jumpInfo){
+    var activeCount = freshCount + recentCount;
+    if (!lightningEnabled){ restoreLightningTicker(); return; }
+    if (!activeCount && !totalWindowCount){
+      setLightningTickerText('Lightning layer on • No strikes yet at ' + formatClockLocal(nowMs) + ' •');
+      return;
+    }
+    var msg = '⚡ Lightning ' + formatClockLocal(nowMs) + ' • Flashing 10 min: ' + freshCount + ' • Recent 15 min: ' + recentCount + ' • Total 10 min: ' + totalWindowCount + ' • Storm total: ' + totalCount;
+    if (jumpInfo && jumpInfo.active) msg += ' • Jump +' + jumpInfo.delta;
+    msg += ' •';
+    setLightningTickerText(msg);
+  }
+
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
-    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/bolt_gold.png') + "')";
+    var boltUrl = "url('" + ensureLightningIconUrl() + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
@@ -1231,7 +1324,10 @@ window.setReportsFilter = setReportsFilter;
           return p;
         }) : []);
         lightningEvents = arr.map(normalizeLightningRecord).filter(Boolean).sort(function(a,b){ return a.timeMs - b.timeMs; });
+        lightningResolvedIconUrl = null;
+        lightningIconProbeStarted = false;
         window.__lightningEnergyRange__ = lightningEnergyRange();
+        ensureLightningIconUrl();
         setStatus('Lightning loaded');
         return lightningManifest;
       })
@@ -1276,6 +1372,7 @@ window.setReportsFilter = setReportsFilter;
     setLightningOpacity(productOpacity.lightning || 0.9);
     var jumpInfo = evaluateLightningJump(nowMs);
     renderLightningCounter(fresh.length, recent.length, last5, total, jumpInfo);
+    updateLightningTicker(nowMs, fresh.length, recent.length, last5, total, jumpInfo);
     if (isNewFrame && fresh.length) playLightningSound(fresh.length);
   }
 
@@ -1284,12 +1381,14 @@ window.setReportsFilter = setReportsFilter;
     window.lightningEnabled = lightningEnabled;
     if (lightningEnabled){
       injectLightningStyles();
+      ensureLightningIconUrl();
       await loadLightningManifest();
       updateLightning();
       setStatus('Lightning on');
     } else {
       clearLightningLayers();
       hideLightningCounter();
+      restoreLightningTicker();
       setStatus('Lightning off');
     }
     try{ updateProductLabel(); }catch(e){}
