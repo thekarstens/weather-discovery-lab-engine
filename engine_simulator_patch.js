@@ -2680,6 +2680,12 @@ function updateCityLabels(){
   var storyStationChipEl = document.getElementById("storyStationChip");
   var storyShellKickerEl = document.getElementById("storyShellKicker");
 
+  function getStoryNumericLabel(item, idx){
+    var n = idx + 1;
+    if (item && item.order != null && isFinite(Number(item.order))) n = Math.max(1, Math.round(Number(item.order)));
+    return String(n);
+  }
+
   function storyOpen(){
     if (!storyPanel) return; storyPanel.classList.add("story-open");
     var legendPop = document.getElementById("legendPop");
@@ -2862,8 +2868,8 @@ function safeLink(url){
           showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
           showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
           stepTheme: item.stepTheme || "blue",
-          stepLabel: item.stepLabel || String(storyIndex + 1),
-          stepKicker: item.stepKicker || item.label || "",
+          stepLabel: getStoryNumericLabel(item, storyIndex),
+          stepKicker: item.stepKicker || item.label || item.title || "Simulator Flow",
           simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
         }
       }));
@@ -2892,8 +2898,8 @@ function safeLink(url){
 
     var item = storyItems[storyIndex];
     storyTitleEl.textContent = item.title || "Storm Story";
-    if (storyStationChipEl) storyStationChipEl.textContent = String(item.stepLabel || (storyIndex + 1)).replace(/^\D+/g, "").trim() || String(storyIndex + 1);
-    if (storyShellKickerEl) storyShellKickerEl.textContent = item.stepKicker || item.label || "Lesson Flow";
+    if (storyStationChipEl) storyStationChipEl.textContent = getStoryNumericLabel(item, storyIndex);
+    if (storyShellKickerEl) storyShellKickerEl.textContent = item.stepKicker || item.label || item.title || "Simulator Flow";
     if (storyPanel) {
       storyPanel.classList.remove("story-theme-blue","story-theme-cyan","story-theme-orange","story-theme-red","story-theme-purple");
       storyPanel.classList.add("story-theme-" + (item.stepTheme || "blue"));
@@ -3062,7 +3068,7 @@ function safeLink(url){
       ui: (r && r.ui && typeof r.ui === "object") ? r.ui : {},
       interaction: interaction,
       stepTheme: (r.ui && r.ui.stepTheme) || ((scene.product || "").toLowerCase().indexOf("doppler") !== -1 ? "cyan" : ((scene.product || "").toLowerCase().indexOf("spc") !== -1 ? "blue" : (Array.isArray(scene.layers) && scene.layers.indexOf("radar") !== -1 ? "cyan" : "orange"))),
-      stepLabel: (r.ui && r.ui.stepLabel) || "",
+      stepLabel: "",
       stepKicker: (r.ui && r.ui.stepKicker) || "",
       utc: r.utc || scene.utc || ""
     };
