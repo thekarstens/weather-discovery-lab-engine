@@ -131,6 +131,18 @@ var storyStarted = false; // do not auto-open storyboard
     ? (STEP_MINUTES + " min")
     : (STEP_HOURS + " hours");
 
+  // Master simulator clock window. For this simulator build, free scrub should span the
+  // core event window rather than the entire manifest length unless lesson time bounds
+  // were explicitly configured.
+  var MASTER_WINDOW_HOURS = Number(
+    (CFG && CFG.simulator && CFG.simulator.masterWindowHours) ||
+    (CFG && CFG.time && CFG.time.masterWindowHours) ||
+    (CFG && CFG.time && CFG.time.windowHours) ||
+    4
+  );
+  if (!isFinite(MASTER_WINDOW_HOURS) || MASTER_WINDOW_HOURS <= 0) MASTER_WINDOW_HOURS = 4;
+  var MASTER_WINDOW_MS = MASTER_WINDOW_HOURS * 60 * 60 * 1000;
+
   var startZ = TIME_CFG.startZ ? new Date(TIME_CFG.startZ) : new Date(Date.UTC(2018, 3, 10, 0, 0, 0));
   var endZ   = TIME_CFG.endZ   ? new Date(TIME_CFG.endZ)   : new Date(Date.UTC(2018, 3, 15, 12, 0, 0, 0));
   if (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.startZ) startZ = new Date(window.WDL_SIM_CONFIG.startZ);
@@ -208,16 +220,33 @@ var storyStarted = false; // do not auto-open storyboard
         RADAR_BOUNDS = L.latLngBounds(RADAR_MANIFEST.leaflet_bounds);
       }
 
-      if (RADAR_MANIFEST && RADAR_MANIFEST.start_utc && RADAR_MANIFEST.end_utc){
-        if (!(TIME_CFG && TIME_CFG.startZ)) startZ = new Date(RADAR_MANIFEST.start_utc);
-        if (!(TIME_CFG && TIME_CFG.endZ)) endZ = new Date(RADAR_MANIFEST.end_utc);
-      }
-
       if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
         useManifestFrameScrubber = true;
         currentRadarFrameIndex = 0;
         var firstUtc = RADAR_MANIFEST.frames[0].utc || RADAR_MANIFEST.frames[0].t || RADAR_MANIFEST.frames[0].time || null;
+        var lastFrame = RADAR_MANIFEST.frames[RADAR_MANIFEST.frames.length - 1] || null;
+        var lastUtc = lastFrame ? (lastFrame.utc || lastFrame.t || lastFrame.time || null) : null;
+
+        if (!(TIME_CFG && TIME_CFG.startZ) && firstUtc) {
+          startZ = new Date(firstUtc);
+        } else if (!(TIME_CFG && TIME_CFG.startZ) && RADAR_MANIFEST.start_utc) {
+          startZ = new Date(RADAR_MANIFEST.start_utc);
+        }
+
+        if (!(TIME_CFG && TIME_CFG.endZ)) {
+          var manifestEnd = lastUtc ? new Date(lastUtc) : (RADAR_MANIFEST.end_utc ? new Date(RADAR_MANIFEST.end_utc) : null);
+          var defaultEnd = new Date(startZ.getTime() + MASTER_WINDOW_MS);
+          endZ = (manifestEnd && manifestEnd.getTime() < defaultEnd.getTime()) ? manifestEnd : defaultEnd;
+        }
+
         if (firstUtc) curZ = new Date(firstUtc);
+      } else if (RADAR_MANIFEST && RADAR_MANIFEST.start_utc && RADAR_MANIFEST.end_utc){
+        if (!(TIME_CFG && TIME_CFG.startZ)) startZ = new Date(RADAR_MANIFEST.start_utc);
+        if (!(TIME_CFG && TIME_CFG.endZ)) {
+          var bareDefaultEnd = new Date(startZ.getTime() + MASTER_WINDOW_MS);
+          var bareManifestEnd = new Date(RADAR_MANIFEST.end_utc);
+          endZ = bareManifestEnd.getTime() < bareDefaultEnd.getTime() ? bareManifestEnd : bareDefaultEnd;
+        }
       }
     }catch(e){
       console.warn('⚠️ Radar manifest load failed:', e);
@@ -326,6 +355,7 @@ var storyStarted = false; // do not auto-open storyboard
   window.map = map;
 window.CFG = CFG;
 window.DATA_BASE = DATA_BASE;
+window.MASTER_WINDOW_HOURS = MASTER_WINDOW_HOURS;
 window._isAbsUrl = _isAbsUrl;
 window._joinUrl = _joinUrl;
 window.setStatus = setStatus;
