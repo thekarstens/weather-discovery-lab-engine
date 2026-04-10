@@ -136,6 +136,7 @@ var storyStarted = false; // do not auto-open storyboard
   if (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.startZ) startZ = new Date(window.WDL_SIM_CONFIG.startZ);
   if (window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.endZ) endZ = new Date(window.WDL_SIM_CONFIG.endZ);
   var curZ   = new Date(startZ.getTime());
+  window.__WDL_SINGLE_CLOCK__ = true;
 
   // Radar bounds (optional per lesson)
   var SHIFT_LAT = (typeof CFG.shiftLat === "number") ? CFG.shiftLat : -1.09;
@@ -259,9 +260,6 @@ var storyStarted = false; // do not auto-open storyboard
     var pool = getRadarFramePool();
     if (!pool.length) return;
     currentRadarFrameIndex = Math.max(0, Math.min(pool.length - 1, idx|0));
-    var f = getManifestFrameAtIndex(currentRadarFrameIndex);
-    var rawUtc = getManifestFrameUtc(f);
-    if (rawUtc) curZ = new Date(rawUtc);
   }
 
   function stepRadarFrame(delta){
@@ -275,12 +273,13 @@ var storyStarted = false; // do not auto-open storyboard
   }
 
   function radarUrlFor(d){
-    var mf = null;
-    if (useManifestFrameScrubber && RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.frames) && RADAR_MANIFEST.frames.length){
-      mf = getManifestFrameAtIndex(currentRadarFrameIndex);
-    }
-    if (!mf) mf = findNearestRadarFrame(d);
+    var mf = findNearestRadarFrame(d);
     if (mf){
+      var pool = getRadarFramePool();
+      if (pool && pool.length){
+        var idx = pool.indexOf(mf);
+        if (idx >= 0) currentRadarFrameIndex = idx;
+      }
       var png = mf.png || mf.file || mf.filename || mf.name || null;
       if (png){
         return _isAbsUrl(png) ? png : _joinUrl(RADAR_MANIFEST_FOLDER || DATA_BASE, png);
@@ -3799,12 +3798,10 @@ function nearestHrrrFrameIndexForTime(d){
   function setCurrentHrrrFrameIndex(idx){
     if (!hrrrFrames || !hrrrFrames.length) return;
     currentHrrrFrameIndex = Math.max(0, Math.min(hrrrFrames.length - 1, idx|0));
-    var f = hrrrFrames[currentHrrrFrameIndex];
-    var rawUtc = f ? (f.time || f.utc || f.valid || null) : null;
-    if (rawUtc) curZ = new Date(rawUtc);
   }
 
   function getActiveScrubberMode(){
+    if (window.__WDL_SINGLE_CLOCK__ === true) return 'lesson';
     if (window.__WDL_FREE_SCRUB__ === true) return 'lesson';
     var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
     if ((hrrrTempEnabled || window.hrrrTempEnabled === true) && liveHrrrFrames.length) return 'hrrr';
@@ -3824,39 +3821,20 @@ function nearestHrrrFrameIndexForTime(d){
     try{
       var scrub = document.getElementById("cbScrubber");
       if (!scrub) return;
-
-      if (window.__WDL_FREE_SCRUB__ === true){
-        scrub.min = "0";
+      scrub.min = "0";
+      scrub.step = (window.__WDL_FREE_SCRUB__ === true) ? "0.1" : "1";
+      if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true){
         scrub.max = "100";
-        scrub.step = "0.1";
         var lessonPct = ((curZ.getTime() - startZ.getTime()) / Math.max(1, (endZ.getTime() - startZ.getTime()))) * 100;
         scrub.value = String(Math.max(0, Math.min(100, lessonPct)));
         return;
       }
 
-      var mode = getActiveScrubberMode();
-      scrub.min = "0";
-      scrub.step = "1";
-      if (mode === 'hrrr'){
-        var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
-        scrub.max = String(Math.max(0, liveHrrrFrames.length - 1));
-        scrub.value = String(Math.max(0, Math.min(Math.max(0, liveHrrrFrames.length - 1), currentHrrrFrameIndex|0)));
-      } else if (mode === 'metars'){
-        var mt = (window.metarsModule && typeof window.metarsModule.getTimeline === 'function') ? (window.metarsModule.getTimeline() || []) : [];
-        var mi = (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function') ? (window.metarsModule.getCurrentMetarIndex()|0) : 0;
-        scrub.max = String(Math.max(0, mt.length - 1));
-        scrub.value = String(Math.max(0, Math.min(Math.max(0, mt.length - 1), mi)));
-      } else if (mode === 'radar'){
-        var radarPool = getRadarFramePool();
-        scrub.max = String(Math.max(0, radarPool.length - 1));
-        scrub.value = String(Math.max(0, Math.min(Number(scrub.max||0), currentRadarFrameIndex)));
-      } else {
-        var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
-        if (idx < 0) idx = 0;
-        var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
-        scrub.max = String(max);
-        scrub.value = String(idx);
-      }
+      var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS));
+      if (idx < 0) idx = 0;
+      var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS));
+      scrub.max = String(max);
+      scrub.value = String(idx);
     }catch(e){}
   }
 
@@ -3868,20 +3846,6 @@ function nearestHrrrFrameIndexForTime(d){
   window.setRadarStepLimit = setRadarStepLimit;
 
   function getActiveScrubberState(){
-    var mode = getActiveScrubberMode();
-    if (mode === 'hrrr'){
-      var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
-      return { mode: mode, min: 0, max: Math.max(0, liveHrrrFrames.length - 1), value: Math.max(0, Math.min(Math.max(0, liveHrrrFrames.length - 1), currentHrrrFrameIndex|0)) };
-    }
-    if (mode === 'metars'){
-      var mt = (window.metarsModule && typeof window.metarsModule.getTimeline === 'function') ? (window.metarsModule.getTimeline() || []) : [];
-      var mi = (window.metarsModule && typeof window.metarsModule.getCurrentMetarIndex === 'function') ? (window.metarsModule.getCurrentMetarIndex()|0) : 0;
-      return { mode: mode, min: 0, max: Math.max(0, mt.length - 1), value: Math.max(0, Math.min(Math.max(0, mt.length - 1), mi)) };
-    }
-    if (mode === 'radar'){
-      var radarPool = getRadarFramePool();
-      return { mode: mode, min: 0, max: Math.max(0, radarPool.length - 1), value: Math.max(0, Math.min(Math.max(0, radarPool.length - 1), currentRadarFrameIndex|0)) };
-    }
     var max = Math.round((endZ.getTime() - startZ.getTime()) / (STEP_MS || 1));
     var idx = Math.round((curZ.getTime() - startZ.getTime()) / (STEP_MS || 1));
     if (idx < 0) idx = 0;
@@ -3893,28 +3857,7 @@ function nearestHrrrFrameIndexForTime(d){
     var pct = Number(percent);
     if (!isFinite(pct)) return false;
     pct = Math.max(0, Math.min(100, pct));
-    var state = getActiveScrubberState();
-    var target = state.min + ((state.max - state.min) * (pct / 100));
-    if (state.mode === 'hrrr'){
-      setCurrentHrrrFrameIndex(Math.round(target));
-      updateAll();
-      return true;
-    }
-    if (state.mode === 'metars'){
-      try{
-        if (window.metarsModule && typeof window.metarsModule.loadMetarsAtIndex === 'function'){
-          window.metarsModule.loadMetarsAtIndex(Math.round(target));
-          return true;
-        }
-      }catch(e){}
-      return false;
-    }
-    if (state.mode === 'radar'){
-      setCurrentRadarFrameIndex(Math.round(target));
-      updateAll();
-      return true;
-    }
-    curZ = new Date(startZ.getTime() + (Math.round(target) * STEP_MS));
+    curZ = new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * (pct / 100)));
     clampTime();
     updateAll();
     return true;
@@ -5396,7 +5339,7 @@ window.setWarningsEnabled = setWarningsEnabled;
   }
 
   function stepActiveScrubber(delta){
-    if (window.__WDL_FREE_SCRUB__ === true) return false;
+    if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true) return false;
     var mode = getActiveScrubberMode();
     if (mode === 'radar'){
       if (stepRadarFrame(delta)) return true;
@@ -5422,66 +5365,25 @@ window.setWarningsEnabled = setWarningsEnabled;
   if (_back) _back.title = "Back " + STEP_LABEL;
   if (_back) _back.onclick = function(){
     if (stepActiveScrubber(-1)) return;
-    if (typeof metarVisible !== 'undefined' && metarVisible){
-      if (stepMetarPreset(-1)) return;
-    }
-    curZ = new Date(curZ.getTime() - STEP_MS);
-    clampTime(); updateAll();
+    window.setMasterTime(new Date(curZ.getTime() - STEP_MS));
   };
   var _fwd = document.getElementById('cbFwdBtn') || document.getElementById('bFwdBtn');
   if (_fwd) _fwd.title = "Forward " + STEP_LABEL;
   if (_fwd) _fwd.onclick = function(){
     if (stepActiveScrubber(1)) return;
-    if (typeof metarVisible !== 'undefined' && metarVisible){
-      if (stepMetarPreset(1)) return;
-    }
-    curZ = new Date(curZ.getTime() + STEP_MS);
-    clampTime(); updateAll();
+    window.setMasterTime(new Date(curZ.getTime() + STEP_MS));
   };
 
   // Time scrubber (drag to jump through time)
   var _scrub = document.getElementById("cbScrubber");
   if (_scrub){
     _scrub.oninput = function(){
-      var v = parseInt(_scrub.value, 10);
+      var v = parseFloat(_scrub.value);
       if (!isFinite(v)) return;
-
-      if (window.__WDL_FREE_SCRUB__ === true){
-        var rawPct = Number(_scrub.max) > 0 ? (v / Number(_scrub.max)) : 0;
-        curZ = new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * rawPct));
-        clampTime();
-        updateAll();
-        return;
-      }
-
-      var mode = getActiveScrubberMode();
-      if (mode === 'radar'){
-        setCurrentRadarFrameIndex(v);
-        ensureAlertsLoaded();
-        updateAll();
-        return;
-      }
-      if (mode === 'hrrr'){
-        setCurrentHrrrFrameIndex(v);
-        try{ window.curZ = new Date(curZ.getTime()); }catch(e){}
-        setTimeLabel();
-        updateHrrrOverlay();
-        if (typeof syncMetarsToMasterScrubber === "function") {
-          try{ syncMetarsToMasterScrubber(); }catch(e){}
-        }
-        updateProductLabel();
-        return;
-      }
-      if (mode === 'metars'){
-        try{
-          if (window.metarsModule && typeof window.metarsModule.loadMetarsAtIndex === 'function'){
-            window.metarsModule.loadMetarsAtIndex(v);
-            return;
-          }
-        }catch(e){}
-      }
-      curZ = new Date(startZ.getTime() + v*STEP_MS);
-      clampTime(); updateAll();
+      var max = Number(_scrub.max);
+      var pct = (max > 0) ? (v / max) : 0;
+      pct = Math.max(0, Math.min(1, pct));
+      window.setMasterTime(new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * pct)));
     };
   }
   var _sweepBtn = document.getElementById("sweepToggleBtn");
