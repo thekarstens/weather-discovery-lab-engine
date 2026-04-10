@@ -3824,6 +3824,16 @@ function nearestHrrrFrameIndexForTime(d){
     try{
       var scrub = document.getElementById("cbScrubber");
       if (!scrub) return;
+
+      if (window.__WDL_FREE_SCRUB__ === true){
+        scrub.min = "0";
+        scrub.max = "100";
+        scrub.step = "0.1";
+        var lessonPct = ((curZ.getTime() - startZ.getTime()) / Math.max(1, (endZ.getTime() - startZ.getTime()))) * 100;
+        scrub.value = String(Math.max(0, Math.min(100, lessonPct)));
+        return;
+      }
+
       var mode = getActiveScrubberMode();
       scrub.min = "0";
       scrub.step = "1";
@@ -5357,7 +5367,17 @@ window.setWarningsEnabled = setWarningsEnabled;
   window.updateAll = updateAll;
   window.setFreeScrubMode = function(on){
     window.__WDL_FREE_SCRUB__ = !!on;
-    try{ syncScrubberToActiveProduct(); }catch(e){}
+    try{
+      if (window.__WDL_FREE_SCRUB__ === true){
+        var scrub = document.getElementById("cbScrubber");
+        if (scrub){
+          scrub.min = "0";
+          scrub.max = "100";
+          scrub.step = "0.1";
+        }
+      }
+      syncScrubberToActiveProduct();
+    }catch(e){}
     return true;
   };
   window.setMasterTime = function(value){
@@ -5376,6 +5396,7 @@ window.setWarningsEnabled = setWarningsEnabled;
   }
 
   function stepActiveScrubber(delta){
+    if (window.__WDL_FREE_SCRUB__ === true) return false;
     var mode = getActiveScrubberMode();
     if (mode === 'radar'){
       if (stepRadarFrame(delta)) return true;
