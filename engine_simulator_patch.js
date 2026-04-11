@@ -837,6 +837,7 @@ window.setReportsFilter = setReportsFilter;
   var lightningLastRenderedStamp = '';
   var lightningFreshMarkerIndex = Object.create(null);
   var lightningRecentMarkerIndex = Object.create(null);
+  var lightningNowMs = 0;
   window.lightningEnabled = lightningEnabled;
   window.lightningSoundEnabled = lightningSoundEnabled;
 
@@ -857,35 +858,35 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:30px; height:30px; pointer-events:none;
-        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
+        position:relative; width:22px; height:22px; pointer-events:none;
+        transform: translate(0,0) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        filter: drop-shadow(0 0 1px rgba(255,240,120,.55));
-        animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
+        filter: drop-shadow(0 0 2px rgba(255,240,120,.65));
+        animation: wdlLightningBlink var(--flash-ms,1500ms) steps(1,end) infinite;
       }
       .wdl-lightning-recent{
         box-shadow: none;
       }
       .lightning-counter{
-        position:absolute !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100072; display:block;
-        background: linear-gradient(180deg, rgba(3,13,32,.96), rgba(10,22,48,.92));
-        color:#f7fbff; padding:14px 16px; border-radius:16px; min-width:248px;
+        position:absolute !important; top:228px; right:18px; left:auto !important; bottom:auto !important; z-index:100072; display:block;
+        background: linear-gradient(180deg, rgba(3,13,32,.97), rgba(10,22,48,.94));
+        color:#f7fbff; padding:16px 18px; border-radius:18px; min-width:320px;
         border:1px solid rgba(118,224,255,.35);
-        box-shadow: 0 0 12px rgba(90,209,255,.20), inset 0 0 18px rgba(255,255,255,.05);
-        font: 800 15px/1.25 Lato, Arial, sans-serif;
+        box-shadow: 0 0 14px rgba(90,209,255,.22), inset 0 0 18px rgba(255,255,255,.05);
+        font: 800 16px/1.3 Lato, Arial, sans-serif;
         letter-spacing:.02em; cursor:move; user-select:none;
       }
-      .lightning-counter .lc-title{font:900 20px/1 Lato, Arial, sans-serif; margin-bottom:8px; color:#fff68d; text-transform:uppercase;}
-      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:12px; margin-top:5px; font-size:16px;}
+      .lightning-counter .lc-title{font:900 24px/1 Lato, Arial, sans-serif; margin-bottom:10px; color:#fff68d; text-transform:uppercase;}
+      .lightning-counter .lc-row{display:flex; justify-content:space-between; gap:14px; margin-top:6px; font-size:18px;}
       .lightning-counter .lc-row strong{color:#8cf7ff;}
-      .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
+      .lightning-counter .lc-jump{margin-top:10px; font:900 13px/1.15 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
       @keyframes wdlLightningBlink{
-        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.0));}
-        42%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.03));}
-        50%{opacity:0;}
+        0%{opacity:1; transform:scale(calc(var(--bolt-scale,1) * 1.0));}
+        58%{opacity:1; transform:scale(calc(var(--bolt-scale,1) * 1.02));}
+        72%{opacity:0;}
         100%{opacity:0;}
       }
     `;
@@ -975,26 +976,26 @@ window.setReportsFilter = setReportsFilter;
   }
 
   function getLightningIconUrl(){
-    try {
+    try{
       if (CFG && CFG.layers && CFG.layers.lightning && CFG.layers.lightning.iconFile){
-        return _joinUrl(DATA_BASE, CFG.layers.lightning.iconFile);
+        return _isAbsUrl(CFG.layers.lightning.iconFile) ? CFG.layers.lightning.iconFile : _joinUrl(DATA_BASE, CFG.layers.lightning.iconFile);
       }
       if (CFG && CFG.lightning && CFG.lightning.iconFile){
-        return _joinUrl(DATA_BASE, CFG.lightning.iconFile);
+        return _isAbsUrl(CFG.lightning.iconFile) ? CFG.lightning.iconFile : _joinUrl(DATA_BASE, CFG.lightning.iconFile);
       }
-    } catch(e){}
+    }catch(e){}
     return _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg');
   }
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
+    var flashMs = Math.max(1100, Math.min(2400, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 1500)));
     var boltUrl = "url('" + getLightningIconUrl() + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.90 + strength * 0.14).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [24,24],
-      iconAnchor: [12,12],
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.88 + strength * 0.12).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [22,22],
+      iconAnchor: [11,11],
       popupAnchor: [0,-10]
     });
   }
@@ -1002,10 +1003,24 @@ window.setReportsFilter = setReportsFilter;
   function getLightningRecentStyle(d){
     var strength = lightningStrengthFor(d);
     var op = Math.max(0.14, Math.min(0.78, (productOpacity.lightning || 0.9) * (0.28 + strength * 0.22)));
+    var ageFrac = 1;
+    if (lightningNowMs && d && Number.isFinite(d.timeMs) && lightningRecentWindowMs > lightningFreshWindowMs){
+      ageFrac = (lightningNowMs - d.timeMs - lightningFreshWindowMs) / Math.max(1, (lightningRecentWindowMs - lightningFreshWindowMs));
+      ageFrac = Math.max(0, Math.min(1, ageFrac));
+    }
+    var color = '#ffd83a';
+    var fill = '#fff06a';
+    if (ageFrac > 0.33 && ageFrac <= 0.66){
+      color = '#ff9f43';
+      fill = '#ffbf6a';
+    } else if (ageFrac > 0.66){
+      color = '#8a7ea8';
+      fill = '#b0a8c7';
+    }
     return {
-      radius: Math.max(1, Math.min(4, 1.6 + strength * 1.5)),
-      color: '#ffe87a',
-      fillColor: '#ffd83a',
+      radius: Math.max(1, Math.min(4, 1.4 + strength * 1.35)),
+      color: color,
+      fillColor: fill,
       weight: 0.6,
       opacity: Math.max(0.16, op * 0.72),
       fillOpacity: Math.max(0.10, op * 0.55),
@@ -1086,24 +1101,32 @@ window.setReportsFilter = setReportsFilter;
     }catch(e){}
   }
 
+  function setLightningTickerMessage(msg){
+    try{
+      var el = document.getElementById('simTickerText');
+      if (el) el.textContent = String(msg || '');
+    }catch(e){}
+  }
+
+
   function renderLightningCounter(nowCount, recentCount, last5Count, totalCount, jumpInfo){
     ensureLightningCounter();
     var div = lightningCounterControl.getContainer();
     if (!div) return;
     div.style.display = '';
     if (!div.dataset.moved){
-      div.style.top = '236px';
+      div.style.top = '228px';
       div.style.right = '18px';
       div.style.left = 'auto';
       div.style.bottom = 'auto';
     }
     div.innerHTML =
       '<div class="lc-title">⚡ Lightning Tracker</div>' +
-      '<div class="lc-row"><span>Flashing 10 min</span><strong>' + nowCount + '</strong></div>' +
-      '<div class="lc-row"><span>Recent 15 min</span><strong>' + recentCount + '</strong></div>' +
-      '<div class="lc-row"><span>Total 10 min</span><strong>' + last5Count + '</strong></div>' +
+      '<div class="lc-row"><span>Blinking now (10 min)</span><strong>' + nowCount + '</strong></div>' +
+      '<div class="lc-row"><span>Older recent (10–15 min)</span><strong>' + recentCount + '</strong></div>' +
+      '<div class="lc-row"><span>Recent total (10 min)</span><strong>' + last5Count + '</strong></div>' +
       '<div class="lc-row"><span>Storm total</span><strong>' + totalCount + '</strong></div>' +
-      (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs prev 10 min</div>' : '');
+      (jumpInfo && jumpInfo.active ? '<div class="lc-jump">JUMP +' + jumpInfo.delta + ' vs previous 10 min</div>' : '');
   }
 
   function evaluateLightningJump(nowMs){
@@ -1264,9 +1287,13 @@ window.setReportsFilter = setReportsFilter;
       hideLightningCounter();
       return;
     }
-    if (!lightningEvents.length) return;
+    if (!lightningEvents.length){
+      setLightningTickerMessage('Lightning selected • No lightning data loaded yet');
+      return;
+    }
     injectLightningStyles();
     var nowMs = curZ.getTime();
+    lightningNowMs = nowMs;
     var fresh = [];
     var recent = [];
     var last5 = 0;
@@ -1288,6 +1315,7 @@ window.setReportsFilter = setReportsFilter;
     setLightningOpacity(productOpacity.lightning || 0.9);
     var jumpInfo = evaluateLightningJump(nowMs);
     renderLightningCounter(fresh.length, recent.length, last5, total, jumpInfo);
+    setLightningTickerMessage('Lightning Tracker • ' + fresh.length + ' blinking in last 10 min • ' + recent.length + ' older recent strikes • ' + total + ' total so far');
     if (isNewFrame && fresh.length) playLightningSound(fresh.length);
   }
 
@@ -1302,6 +1330,7 @@ window.setReportsFilter = setReportsFilter;
     } else {
       clearLightningLayers();
       hideLightningCounter();
+      setLightningTickerMessage('Weather Discovery Lab simulator ready');
       setStatus('Lightning off');
     }
     try{ updateProductLabel(); }catch(e){}
