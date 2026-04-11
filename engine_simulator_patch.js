@@ -5447,7 +5447,7 @@ window.setWarningsEnabled = setWarningsEnabled;
     if (typeof metarVisible !== "undefined" && metarVisible && metarLayer && !map.hasLayer(metarLayer)) metarLayer.addTo(map);
     updateProductLabel();
     try{
-      var allowExternalStoryTimeSync = (window.__WDL_STORY_TIME_SYNC_ENABLED__ === true) && (window.__WDL_FREE_SCRUB__ !== true) && (window.__WDL_HTML_SCRUBBING__ !== true);
+      var allowExternalStoryTimeSync = (window.__WDL_SIMPLE_MODE__ !== true) && (window.__WDL_STORY_TIME_SYNC_ENABLED__ === true) && (window.__WDL_FREE_SCRUB__ !== true) && (window.__WDL_HTML_SCRUBBING__ !== true);
       if (allowExternalStoryTimeSync && window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onUpdateAll === 'function'){
         window.WDL_SIM_CONFIG.onUpdateAll({ curZ: new Date(curZ.getTime()) });
       }
@@ -5466,6 +5466,7 @@ window.setWarningsEnabled = setWarningsEnabled;
           scrub.max = "1000";
           scrub.step = "1";
         }
+        if (window.__WDL_SIMPLE_MODE__ === true) return true;
       }
       syncScrubberToActiveProduct();
     }catch(e){}
