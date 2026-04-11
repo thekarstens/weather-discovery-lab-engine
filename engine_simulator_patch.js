@@ -974,19 +974,27 @@ window.setReportsFilter = setReportsFilter;
     return lines.join('');
   }
 
+  function getLightningIconUrl(){
+    try {
+      if (CFG && CFG.layers && CFG.layers.lightning && CFG.layers.lightning.iconFile){
+        return _joinUrl(DATA_BASE, CFG.layers.lightning.iconFile);
+      }
+      if (CFG && CFG.lightning && CFG.lightning.iconFile){
+        return _joinUrl(DATA_BASE, CFG.lightning.iconFile);
+      }
+    } catch(e){}
+    return _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg');
+  }
+
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
-    var boltPath = (CFG && CFG.lightning && CFG.lightning.iconFile) ||
-                   (CFG && CFG.layers && CFG.layers.lightning && CFG.layers.lightning.iconFile) ||
-                   'lightning_final_flipped.svg';
-    var boltUrl = "url('" + (_isAbsUrl(boltPath) ? boltPath : _joinUrl(DATA_BASE, boltPath)) + "')";
-    var size = Math.round(Math.max(18, Math.min(24, 18 + strength * 4)));
+    var boltUrl = "url('" + getLightningIconUrl() + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.88 + strength * 0.10).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [size,size],
-      iconAnchor: [Math.round(size/2),Math.round(size/2)],
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.90 + strength * 0.14).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [24,24],
+      iconAnchor: [12,12],
       popupAnchor: [0,-10]
     });
   }
