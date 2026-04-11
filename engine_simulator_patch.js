@@ -3956,6 +3956,7 @@ function nearestHrrrFrameIndexForTime(d){
       var scrub = document.getElementById("cbScrubber");
       if (!scrub) return;
       if (scrubberIsDragging) return;
+      if (window.__WDL_HTML_SCRUBBING__ === true) return;
       scrub.min = "0";
       if (window.__WDL_FREE_SCRUB__ === true || window.__WDL_SINGLE_CLOCK__ === true){
         scrub.max = "1000";
@@ -5537,6 +5538,7 @@ window.setWarningsEnabled = setWarningsEnabled;
     _scrub.addEventListener('change', _releaseScrubber);
     _scrub.addEventListener('blur', _releaseScrubber);
     _scrub.oninput = function(){
+      if (window.__WDL_HTML_SCRUBBING__ !== true) window.__WDL_HTML_SCRUBBING__ = false;
       var v = parseFloat(_scrub.value);
       if (!isFinite(v)) return;
       var max = Number(_scrub.max);
