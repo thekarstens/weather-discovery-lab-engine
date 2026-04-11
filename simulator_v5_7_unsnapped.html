@@ -182,10 +182,11 @@
         <div class="product-group">
           <button class="sim-group-toggle" type="button">Current Conditions ▾</button>
           <div class="product-menu">
-            <button class="sim-product-btn" data-product="temps">Temperature</button>
+            <button class="sim-product-btn" data-product="temps">Temperatures</button>
             <button class="sim-product-btn" data-product="metar_dewpoint">Dew Points</button>
             <button class="sim-product-btn" data-product="metar_wind">Wind Gusts</button>
-            <button class="sim-product-btn" data-product="metar_pressure">Pressure</button>
+            <button class="sim-product-btn" data-product="metar_pressure">Barometer</button>
+            <button class="sim-product-btn is-disabled" type="button">Sky Conditions (next)</button>
           </div>
         </div>
         <div class="product-group">
@@ -193,16 +194,16 @@
           <div class="product-menu">
             <button class="sim-product-btn" data-product="spc">Day 1 Outlook</button>
             <button class="sim-product-btn" data-product="watch">Watch</button>
-            <button class="sim-product-btn is-disabled" type="button">Meso (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Mesoscale Discussion (next)</button>
           </div>
         </div>
         <div class="product-group">
           <button class="sim-group-toggle" type="button">Reports ▾</button>
           <div class="product-menu">
             <button class="sim-product-btn" data-product="reports">All Reports</button>
-            <button class="sim-product-btn is-disabled" type="button">Wind (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Hail (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Tornado (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Wind Reports (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Hail Reports (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Tornado Reports (next)</button>
           </div>
         </div>
         <button class="sim-product-btn" data-product="lightning">Lightning</button>
@@ -318,10 +319,11 @@
           photos:'Photos',
           future_winds:'Future Winds',
           future_temp:'Future Temperatures',
-          metar_temp:'METAR Temperature',
-          metar_dewpoint:'METAR Dew Point',
-          metar_wind:'METAR Wind Gusts',
-          metar_pressure:'METAR Pressure'
+          metar_temp:'Temperatures',
+          temps:'Temperatures',
+          metar_dewpoint:'Dew Points',
+          metar_wind:'Wind Gusts',
+          metar_pressure:'Barometer'
         };
         return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
       }
@@ -347,7 +349,13 @@
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
       async function applyProductMode(mode, layers, displayOverride){
-        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
+        productButtons.forEach(function(btn){
+          var p = String(btn.getAttribute('data-product') || '').toLowerCase();
+          var m = String(mode || '').toLowerCase();
+          var active = (p === m);
+          if (m === 'temps' && (p === 'temps' || p === 'metar_temp')) active = true;
+          btn.classList.toggle('is-active', !!active);
+        });
         var displayLabel = displayOverride || normalizeProductLabel(mode);
         if (!displayOverride && Array.isArray(layers) && layers.length) {
           displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
@@ -505,23 +513,18 @@
       }
 
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
+        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
         ev.preventDefault(); ev.stopPropagation();
-        var clicked = btn.getAttribute('data-product');
+        var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
         if (manualClockMode) {
-          if (manualProductMode === clicked) {
-            manualProductMode = 'radar';
-            manualProductLayers = ['radar'];
-            manualProductLabel = normalizeProductLabel('radar');
-          } else {
-            manualProductMode = clicked;
-            manualProductLayers = [clicked];
-            manualProductLabel = normalizeProductLabel(clicked);
-          }
+          manualProductMode = clicked;
+          manualProductLayers = [clicked];
+          manualProductLabel = normalizeProductLabel(clicked);
           renderCurrentCard();
         } else {
           applyProductMode(clicked, [clicked], normalizeProductLabel(clicked));
         }
-        setTicker([normalizeProductLabel(manualClockMode ? manualProductMode : clicked) + ' view selected', manualClockMode ? 'Test Mode keeps the topic card while changing the map layer' : 'This shortcut keeps the current simulator time']);
+        setTicker([normalizeProductLabel(clicked) + ' view selected', manualClockMode ? 'Topic card stays in place while changing the visible layer' : 'This shortcut keeps the current simulator time']);
         document.querySelectorAll('.product-group').forEach(function(g){ g.classList.remove('is-open'); var t = g.querySelector('.sim-group-toggle'); if (t) t.classList.remove('is-open'); });
       }); });
       playBtn.addEventListener('click', advanceTimeline);
