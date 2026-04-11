@@ -265,7 +265,7 @@
           window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
         }catch(e){}
         updateModeToggleUi();
-        // Do not force radar here. Let the current topic card be the initial base
+        // Do not force radar here. Let the topic card provide the initial base
         // until the user explicitly picks a top-bar product.
         if (typeof manualProductMode === 'undefined') manualProductMode = null;
         if (typeof manualProductLayers === 'undefined') manualProductLayers = null;
@@ -318,10 +318,11 @@
           photos:'Photos',
           future_winds:'Future Winds',
           future_temp:'Future Temperatures',
-          metar_temp:'METAR Temperature',
-          metar_dewpoint:'METAR Dew Point',
-          metar_wind:'METAR Wind Gusts',
-          metar_pressure:'METAR Pressure'
+          metar_temp:'Temperatures',
+          temps:'Temperatures',
+          metar_dewpoint:'Dew Points',
+          metar_wind:'Wind Gusts',
+          metar_pressure:'Barometer'
         };
         return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
       }
@@ -483,17 +484,12 @@
           return;
         }
 
-        var chipText = manualClockMode
-          ? String((currentTopicIndex || 0) + 1)
-          : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
-
+        var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
         storyStationChip.textContent = chipText;
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
-        storyStep.textContent = manualClockMode
-          ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length)
-          : ((((currentGroup() && currentGroup().label) || 'Time')) + ' topics');
+        storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : ((((currentGroup() && currentGroup().label) || 'Time')) + ' topics');
         sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
@@ -501,26 +497,19 @@
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
-        if (manualClockMode) {
-          if (manualProductMode && manualProductLayers && manualProductLayers.length) {
-            applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
-          } else {
-            var baseMode = card.product || 'radar';
-            var baseLayers = card.layers || [card.product || 'radar'];
-            var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
-            applyProductMode(baseMode, baseLayers, baseLabel);
-          }
+        if (manualClockMode && manualProductMode && manualProductLayers && manualProductLayers.length) {
+          applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
         } else {
-          var activeMode = card.product || 'radar';
-          var activeLayers = card.layers || [card.product || 'radar'];
-          var activeLabel = card.title || card.topicLabel || normalizeProductLabel(activeMode);
-          applyProductMode(activeMode, activeLayers, activeLabel);
+          var baseMode = card.product || 'radar';
+          var baseLayers = card.layers || [card.product || 'radar'];
+          var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
+          applyProductMode(baseMode, baseLayers, baseLabel);
         }
 
         updateDopplerButton(!!card.showDoppler);
       }
 
-      function cycleTopic(      function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
+      function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
         try{
@@ -553,23 +542,20 @@
         ev.preventDefault(); ev.stopPropagation();
         var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
 
-        if (manualClockMode) {
-          manualProductMode = clicked;
-          manualProductLayers = [clicked];
-          manualProductLabel = normalizeProductLabel(clicked);
-          applyProductMode(clicked, [clicked], manualProductLabel);
-        } else {
-          applyProductMode(clicked, [clicked], normalizeProductLabel(clicked));
-        }
+        manualProductMode = clicked;
+        manualProductLayers = [clicked];
+        manualProductLabel = normalizeProductLabel(clicked);
 
-        setTicker([normalizeProductLabel(clicked) + ' view selected', 'Topic card stays in place while changing the visible layer']);
+        applyProductMode(clicked, [clicked], manualProductLabel);
+        setTicker([manualProductLabel + ' view selected', 'Topic card stays in place while changing the visible layer']);
+
         document.querySelectorAll('.product-group').forEach(function(g){
           g.classList.remove('is-open');
           var t = g.querySelector('.sim-group-toggle');
           if (t) t.classList.remove('is-open');
         });
       }); });
-      playBtn.addEventListener('click', advanceTimeline);
+
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) window.WDL_TEST_MODE = function(on){ setManualClockMode(true); };
       function beginScrub(){
@@ -611,6 +597,7 @@
 
         displayPercent = pct;
         clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         renderCurrentCard();
       });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
@@ -643,7 +630,7 @@
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
       window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
