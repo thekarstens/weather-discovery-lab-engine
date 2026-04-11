@@ -194,11 +194,17 @@
         try{
           if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(manualClockMode);
           else window.__WDL_FREE_SCRUB__ = manualClockMode;
+          window.__WDL_STORY_TIME_SYNC_ENABLED__ = !manualClockMode;
         }catch(e){}
         updateModeToggleUi();
         if (manualClockMode) {
           if (!wasManual) {
             currentTopicIndex = 0;
+          }
+          if (!manualProductMode) {
+            manualProductMode = 'radar';
+            manualProductLayers = ['radar'];
+            manualProductLabel = normalizeProductLabel('radar');
           }
           window.__WDL_HTML_SCRUBBING__ = false;
           renderCurrentCard();
@@ -358,7 +364,7 @@
       }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
       function renderCardChips(){}
-      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); var activeMode = (manualClockMode && manualProductMode) ? manualProductMode : (card.product || 'radar'); var activeLayers = (manualClockMode && manualProductLayers && manualProductLayers.length) ? manualProductLayers : (card.layers || [card.product || 'radar']); var activeLabel = (manualClockMode && manualProductLabel) ? manualProductLabel : (card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar')); applyProductMode(activeMode, activeLayers, activeLabel); updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); if (manualClockMode) { var activeMode = manualProductMode || 'radar'; var activeLayers = (manualProductLayers && manualProductLayers.length) ? manualProductLayers : [activeMode]; var activeLabel = manualProductLabel || normalizeProductLabel(activeMode); applyProductMode(activeMode, activeLayers, activeLabel); } else { var activeMode = card.product || 'radar'; var activeLayers = card.layers || [card.product || 'radar']; var activeLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar'); applyProductMode(activeMode, activeLayers, activeLabel); } updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
@@ -389,13 +395,22 @@
 
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
         ev.preventDefault(); ev.stopPropagation();
+        var clicked = btn.getAttribute('data-product');
         if (manualClockMode) {
-          manualProductMode = btn.getAttribute('data-product');
-          manualProductLayers = [manualProductMode];
-          manualProductLabel = normalizeProductLabel(manualProductMode);
+          if (manualProductMode === clicked) {
+            manualProductMode = 'radar';
+            manualProductLayers = ['radar'];
+            manualProductLabel = normalizeProductLabel('radar');
+          } else {
+            manualProductMode = clicked;
+            manualProductLayers = [clicked];
+            manualProductLabel = normalizeProductLabel(clicked);
+          }
+          renderCurrentCard();
+        } else {
+          applyProductMode(clicked, [clicked], normalizeProductLabel(clicked));
         }
-        applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product')));
-        setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', manualClockMode ? 'Test Mode keeps the topic card while changing the map layer' : 'This shortcut keeps the current simulator time']);
+        setTicker([normalizeProductLabel(manualClockMode ? manualProductMode : clicked) + ' view selected', manualClockMode ? 'Test Mode keeps the topic card while changing the map layer' : 'This shortcut keeps the current simulator time']);
       }); });
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
