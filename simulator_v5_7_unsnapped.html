@@ -263,10 +263,9 @@
           if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(true);
           else window.__WDL_FREE_SCRUB__ = true;
           window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
+          window.__WDL_SIMPLE_MODE__ = true;
         }catch(e){}
         updateModeToggleUi();
-        // Do not force radar here. Let the topic card provide the initial base
-        // until the user explicitly picks a top-bar product.
         if (typeof manualProductMode === 'undefined') manualProductMode = null;
         if (typeof manualProductLayers === 'undefined') manualProductLayers = null;
         if (typeof manualProductLabel === 'undefined') manualProductLabel = '';
@@ -630,7 +629,7 @@
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
       window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
