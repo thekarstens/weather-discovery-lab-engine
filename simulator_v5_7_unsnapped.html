@@ -25,7 +25,7 @@
     .region-line{ margin-top:4px; font:800 12px/1 "Lato", Arial, sans-serif; opacity:.95; }
     .sim-version{ position:absolute; left:250px; top:62px; z-index:100006; color:rgba(255,255,255,.74); font:800 10px/1 Arial,sans-serif; letter-spacing:1px; text-transform:uppercase; }
 
-    .mode-toggle{
+    .mode-toggle{ display:none;
       position:absolute; left:250px; top:38px; z-index:100009;
       border:1px solid rgba(255,255,255,.16);
       border-radius:999px; padding:8px 14px;
@@ -65,7 +65,23 @@
     .product-group.is-open .product-menu{ display:flex; }
     .product-menu .sim-product-btn{ min-width:0; width:100%; text-align:left; padding:10px 14px; border-radius:14px; font-size:12px; }
     .product-menu .sim-product-btn.is-disabled{ opacity:.45; cursor:default; }
-    .storyPanel{ position:absolute; left:12px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); display:flex; flex-direction:column; }
+    
+    .topic-rail{
+      position:absolute; left:8px; top:182px; bottom:56px; width:74px; z-index:100021;
+      display:flex; flex-direction:column; gap:8px; overflow:auto; padding-right:4px;
+    }
+    .topic-rail::-webkit-scrollbar{ width:8px; }
+    .topic-rail::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+    .topic-tab{
+      border:none; cursor:pointer; border-radius:18px; min-height:62px; padding:8px 6px;
+      color:#fff; font:900 12px/1.05 "Lato", Arial, sans-serif; text-transform:uppercase;
+      box-shadow:0 8px 16px rgba(0,0,0,.22); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    }
+    .topic-tab .num{ width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.24); display:flex; align-items:center; justify-content:center; font:900 16px/1 "Lato", Arial, sans-serif; }
+    .topic-tab .label{ font:900 10px/1.05 "Lato", Arial, sans-serif; text-align:center; opacity:.98; }
+    .topic-tab.is-active{ outline:3px solid rgba(255,255,255,.82); transform:translateX(2px); }
+
+    .storyPanel{ position:absolute; left:92px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); display:flex; flex-direction:column; }
     .story-stack{ display:flex; flex-direction:column; gap:8px; padding:12px 12px 10px; max-height:220px; overflow:auto; background:rgba(241,243,246,.95); border-bottom:1px solid rgba(16,36,58,.10); }
     .story-stack::-webkit-scrollbar{ width:8px; }
     .story-stack::-webkit-scrollbar-thumb{ background:rgba(13,44,87,.25); border-radius:999px; }
@@ -158,8 +174,8 @@
           <button class="sim-group-toggle" type="button">Radar ▾</button>
           <div class="product-menu">
             <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
-            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
             <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
+            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
             <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
           </div>
         </div>
@@ -177,39 +193,26 @@
           <div class="product-menu">
             <button class="sim-product-btn" data-product="spc">Day 1 Outlook</button>
             <button class="sim-product-btn" data-product="watch">Watch</button>
-            <button class="sim-product-btn is-disabled" type="button">Mesoscale Discussion (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Meso (next)</button>
           </div>
         </div>
         <div class="product-group">
           <button class="sim-group-toggle" type="button">Reports ▾</button>
           <div class="product-menu">
             <button class="sim-product-btn" data-product="reports">All Reports</button>
-            <button class="sim-product-btn is-disabled" type="button">Wind Reports (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Hail Reports (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Tornado Reports (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Wind (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Hail (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Tornado (next)</button>
           </div>
         </div>
-        <div class="product-group">
-          <button class="sim-group-toggle" type="button">Lightning ▾</button>
-          <div class="product-menu">
-            <button class="sim-product-btn" data-product="lightning">Current Strikes</button>
-          </div>
-        </div>
-        <div class="product-group">
-          <button class="sim-group-toggle" type="button">Satellite ▾</button>
-          <div class="product-menu">
-            <button class="sim-product-btn" data-product="satellite">Satellite</button>
-          </div>
-        </div>
-        <div class="product-group">
-          <button class="sim-group-toggle" type="button">Warnings ▾</button>
-          <div class="product-menu">
-            <button class="sim-product-btn" data-product="warnings">Warnings</button>
-          </div>
-        </div>
+        <button class="sim-product-btn" data-product="lightning">Lightning</button>
+        <button class="sim-product-btn" data-product="satellite">Satellite</button>
+        <button class="sim-product-btn" data-product="warnings">Warnings</button>
       </div>
       <div class="product-slot"><div class="product-pill" id="productLabel">Map</div></div>
   </div></div>
+
+  <div class="topic-rail" id="topicRail"></div>
 
   <div class="storyPanel" id="storyPanel">
     <div class="story-shell-header"><div class="story-station-chip" id="storyStationChip">3PM</div><div class="story-head-copy"><div class="story-shell-kicker" id="storyShellKicker">Setup</div><div class="story-title" id="storyTitle">SPC Outlook</div></div><button id="storyCollapseBtn" type="button">Hide</button></div>
@@ -241,7 +244,7 @@
   <script>
     (function(){
       var cfg = window.WDL_SIM_CONFIG || {};
-      var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
+      var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
       var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
 
@@ -251,41 +254,24 @@
       function setBannerText(){ var ui = cfg.ui || {}; document.getElementById('simBrandLine').textContent = ui.title || 'Weather Discovery Lab'; document.getElementById('simCaseLine').textContent = ui.subtitle || 'Live Severe Weather Simulator'; document.getElementById('simRegionLine').textContent = ui.region || ''; clockLabel.textContent = (cfg.masterClock && cfg.masterClock.label) || 'Master Simulator Clock'; }
       function updateModeToggleUi(){
         if (!modeToggleBtn) return;
-        modeToggleBtn.classList.toggle('test-mode', manualClockMode);
-        modeToggleBtn.textContent = manualClockMode ? 'Test Mode (Free Scrub)' : 'Simulator Mode';
+        modeToggleBtn.style.display = 'none';
+        manualClockMode = true;
       }
       function setManualClockMode(on){
-        var wasManual = manualClockMode;
-        manualClockMode = !!on;
+        manualClockMode = true;
         try{
-          if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(manualClockMode);
-          else window.__WDL_FREE_SCRUB__ = manualClockMode;
-          window.__WDL_STORY_TIME_SYNC_ENABLED__ = !manualClockMode;
+          if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(true);
+          else window.__WDL_FREE_SCRUB__ = true;
+          window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
         }catch(e){}
         updateModeToggleUi();
-        if (manualClockMode) {
-          if (!wasManual) {
-            currentTopicIndex = 0;
-          }
-          if (!manualProductMode) {
-            manualProductMode = 'radar';
-            manualProductLayers = ['radar'];
-            manualProductLabel = normalizeProductLabel('radar');
-          }
-          window.__WDL_HTML_SCRUBBING__ = false;
-          renderCurrentCard();
-          return;
+        if (!manualProductMode) {
+          manualProductMode = 'radar';
+          manualProductLayers = ['radar'];
+          manualProductLabel = normalizeProductLabel('radar');
         }
-        manualProductMode = null;
-        manualProductLayers = null;
-        manualProductLabel = '';
         window.__WDL_HTML_SCRUBBING__ = false;
-        var live = readLiveActualMs();
-        if (isFinite(live)) {
-          updateClockAndScrubber(percentFromActualMs(live));
-          syncGroupToTime(live);
-          renderCurrentCard();
-        }
+        return;
       }
       function getActualWindow(){ var start = parseMs(cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ start = parseMs('2022-05-12T20:00:00Z'); end = parseMs('2022-05-13T00:00:00Z'); } return { start:start, end:end }; }
       function getDisplayWindow(){ var mc = cfg.masterClock || {}, start = parseMs(mc.displayStartZ || cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(mc.displayEndZ || cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ var a=getActualWindow(); start=a.start; end=a.end; } return { start:start, end:end }; }
@@ -439,6 +425,25 @@
         if (p === 'satellite') return '#6d59c9';
         return '#1f6ad1';
       }
+      function renderTopicRail(){
+        if (!topicRail) return;
+        topicRail.innerHTML = '';
+        var cards = topicCards || [];
+        if (!cards.length) { renderTopicRail(); return; }
+        cards.forEach(function(card, idx){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'topic-tab' + (idx === currentTopicIndex ? ' is-active' : '');
+          var accent = storyAccentFor(card.product);
+          btn.style.background = 'linear-gradient(180deg,' + accent + ', rgba(8,25,44,.96))';
+          btn.innerHTML = '<div class="num">' + String(idx + 1) + '</div><div class="label">' + String((card.kicker || 'Topic')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+          btn.addEventListener('click', function(){
+            currentTopicIndex = idx;
+            renderCurrentCard();
+          });
+          topicRail.appendChild(btn);
+        });
+      }
       function renderCardChips(){
         if (!storyCardRow) return;
         var cards = manualClockMode ? topicCards : ((currentGroup() && currentGroup().cards) || []);
@@ -468,8 +473,9 @@
           });
           storyCardRow.appendChild(btn);
         });
+        renderTopicRail();
       }
-      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); if (manualClockMode) { var activeMode = manualProductMode || 'radar'; var activeLayers = (manualProductLayers && manualProductLayers.length) ? manualProductLayers : [activeMode]; var activeLabel = manualProductLabel || normalizeProductLabel(activeMode); applyProductMode(activeMode, activeLayers, activeLabel); } else { var activeMode = card.product || 'radar'; var activeLayers = card.layers || [card.product || 'radar']; var activeLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar'); applyProductMode(activeMode, activeLayers, activeLabel); } updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); if (manualClockMode) { var activeMode = manualProductMode || 'radar'; var activeLayers = (manualProductLayers && manualProductLayers.length) ? manualProductLayers : [activeMode]; var activeLabel = manualProductLabel || normalizeProductLabel(activeMode); applyProductMode(activeMode, activeLayers, activeLabel); } else { var activeMode = card.product || 'radar'; var activeLayers = card.layers || [card.product || 'radar']; var activeLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar'); applyProductMode(activeMode, activeLayers, activeLabel); } updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
@@ -519,8 +525,7 @@
         document.querySelectorAll('.product-group').forEach(function(g){ g.classList.remove('is-open'); var t = g.querySelector('.sim-group-toggle'); if (t) t.classList.remove('is-open'); });
       }); });
       playBtn.addEventListener('click', advanceTimeline);
-      if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
-      window.WDL_TEST_MODE = function(on){ setManualClockMode(on); };
+      if (modeToggleBtn) window.WDL_TEST_MODE = function(on){ setManualClockMode(true); };
       function beginScrub(){
         isScrubbing = true;
         window.__WDL_HTML_SCRUBBING__ = true;
@@ -593,8 +598,8 @@
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
       window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
-      setInterval(function(){ if (!animating) { if (!manualClockMode) updateClockAndScrubber(); updateDopplerButton(!!(currentCard() && currentCard().showDoppler)); } }, 300);
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); syncGroupToTime(getActualWindow().start); renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
 </body>
