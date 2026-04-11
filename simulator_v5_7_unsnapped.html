@@ -177,7 +177,7 @@
       var cfg = window.WDL_SIM_CONFIG || {};
       var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
-      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false;
+      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
 
       function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
       function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
@@ -200,9 +200,14 @@
           if (!wasManual) {
             currentTopicIndex = 0;
           }
+          window.__WDL_HTML_SCRUBBING__ = false;
           renderCurrentCard();
           return;
         }
+        manualProductMode = null;
+        manualProductLayers = null;
+        manualProductLabel = '';
+        window.__WDL_HTML_SCRUBBING__ = false;
         var live = readLiveActualMs();
         if (isFinite(live)) {
           updateClockAndScrubber(percentFromActualMs(live));
@@ -225,7 +230,7 @@
       function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
       function maybeFireTimedEvents(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; events.forEach(function(ev, idx){ var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(threshold)) return; var key = String(ev.id || idx); if (pct >= threshold && !triggeredEvents[key]) { triggeredEvents[key] = true; showAlert(ev); if (Array.isArray(ev.ticker) && ev.ticker.length) setTicker(ev.ticker); } if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key]; }); }
-      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); scrubber.value = String(Math.round(displayPercent * 1000) / 10); sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
+      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); if (scrubber && !isScrubbing && !window.__WDL_HTML_SCRUBBING__) { var min = Number(scrubber.min || 0), max = Number(scrubber.max || 100), span = Math.max(1, max - min); scrubber.value = String(min + (displayPercent * span)); } sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
       function syncEngineToPercent(pct){
         pct = clamp01(pct);
         try {
@@ -353,7 +358,7 @@
       }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
       function renderCardChips(){}
-      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); applyProductMode(card.product || 'radar', card.layers || [card.product || 'radar'], card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar')); updateDopplerButton(!!card.showDoppler); }
+      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); var activeMode = (manualClockMode && manualProductMode) ? manualProductMode : (card.product || 'radar'); var activeLayers = (manualClockMode && manualProductLayers && manualProductLayers.length) ? manualProductLayers : (card.layers || [card.product || 'radar']); var activeLabel = (manualClockMode && manualProductLabel) ? manualProductLabel : (card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar')); applyProductMode(activeMode, activeLayers, activeLabel); updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
@@ -384,13 +389,41 @@
 
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
         ev.preventDefault(); ev.stopPropagation();
-        if (manualClockMode) setManualClockMode(true);
+        if (manualClockMode) {
+          manualProductMode = btn.getAttribute('data-product');
+          manualProductLayers = [manualProductMode];
+          manualProductLabel = normalizeProductLabel(manualProductMode);
+        }
         applyProductMode(btn.getAttribute('data-product'), [btn.getAttribute('data-product')], normalizeProductLabel(btn.getAttribute('data-product')));
-        setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', manualClockMode ? 'Test Mode keeps the timeline unsnapped' : 'This shortcut keeps the current simulator time']);
+        setTicker([normalizeProductLabel(btn.getAttribute('data-product')) + ' view selected', manualClockMode ? 'Test Mode keeps the topic card while changing the map layer' : 'This shortcut keeps the current simulator time']);
       }); });
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
       window.WDL_TEST_MODE = function(on){ setManualClockMode(on); };
+      function beginScrub(){
+        isScrubbing = true;
+        window.__WDL_HTML_SCRUBBING__ = true;
+      }
+
+      function endScrub(){
+        isScrubbing = false;
+        window.__WDL_HTML_SCRUBBING__ = false;
+        var min = Number(scrubber.min || 0);
+        var max = Number(scrubber.max || 100);
+        var val = Number(scrubber.value);
+        if (!isFinite(val)) return;
+        var span = Math.max(1, max - min);
+        var pct = clamp01((val - min) / span);
+        updateClockAndScrubber(pct);
+        renderCurrentCard();
+      }
+
+      scrubber.addEventListener('mousedown', beginScrub);
+      scrubber.addEventListener('touchstart', beginScrub, { passive:true });
+      window.addEventListener('mouseup', endScrub);
+      window.addEventListener('touchend', endScrub, { passive:true });
+      scrubber.addEventListener('change', endScrub);
+
       scrubber.addEventListener('input', function(){
         stopAnimation();
         setManualClockMode(true);
@@ -404,28 +437,11 @@
         var span = Math.max(1, max - min);
         var pct = clamp01((val - min) / span);
 
-        syncEngineToPercent(pct);
-        updateClockAndScrubber(pct);
+        displayPercent = pct;
+        clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         renderCurrentCard();
       });
-
-      function beginScrub(){ isScrubbing = true; }
-      function endScrub(){
-        isScrubbing = false;
-        var min = Number(scrubber.min || 0);
-        var max = Number(scrubber.max || 100);
-        var val = Number(scrubber.value);
-        if (!isFinite(val)) return;
-        var span = Math.max(1, max - min);
-        var pct = clamp01((val - min) / span);
-        updateClockAndScrubber(pct);
-      }
-
-      scrubber.addEventListener('mousedown', beginScrub);
-      scrubber.addEventListener('touchstart', beginScrub, { passive:true });
-      window.addEventListener('mouseup', endScrub);
-      window.addEventListener('touchend', endScrub, { passive:true });
-      scrubber.addEventListener('change', endScrub);
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
       storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
       storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
