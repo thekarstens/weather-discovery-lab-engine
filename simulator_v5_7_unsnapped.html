@@ -129,7 +129,7 @@
       <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
       <button id="modeToggleBtn" class="mode-toggle" type="button">Simulator Mode</button>
       <div class="sim-version">Simulator v5 • Topic Cards</div>
-      <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="1000" step="1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
+      <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
       <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
       <div class="product-row" id="simProductRow">
         <button class="sim-product-btn is-active" data-product="radar">Radar</button>
@@ -391,10 +391,23 @@
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
       window.WDL_TEST_MODE = function(on){ setManualClockMode(on); };
-      var scrubRaf = 0;
-      var scrubPendingPct = 0;
-      function commitScrubPct(){ scrubRaf = 0; var pct = scrubPendingPct; syncEngineToPercent(pct); updateClockAndScrubber(pct); renderCurrentCard(); }
-      scrubber.addEventListener('input', function(){ stopAnimation(); setManualClockMode(true); var max = Number(scrubber.max || 1000) || 1000; scrubPendingPct = clamp01(Number(scrubber.value) / max); if (scrubRaf) return; scrubRaf = requestAnimationFrame(commitScrubPct); });
+      scrubber.addEventListener('input', function(){
+        stopAnimation();
+        setManualClockMode(true);
+
+        var min = Number(scrubber.min || 0);
+        var max = Number(scrubber.max || 100);
+        var val = Number(scrubber.value);
+
+        if (!isFinite(val)) return;
+
+        var span = Math.max(1, max - min);
+        var pct = clamp01((val - min) / span);
+
+        syncEngineToPercent(pct);
+        updateClockAndScrubber(pct);
+        renderCurrentCard();
+      });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
       storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
       storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
