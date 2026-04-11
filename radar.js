@@ -27,9 +27,8 @@ window.createRadarModule = function(opts){
   var radarSweepSwept = 0;
   var radarSweepCompleted = false;
   var radarLoadToken = 0;
-  var radarDisplayedUrl = '';
-  var radarPendingUrl = '';
-  var radarImageCache = Object.create(null);
+  var radarLastRequestedUrl = "";
+  var radarLastGoodUrl = "";
 
   var radarSweepRPM = 2;
   var radarSweepBeamPx = 1;
@@ -291,25 +290,6 @@ function updateSweepUi(){
     radarSweepAnim = requestAnimationFrame(frame);
   }
 
-
-  function primeRadarImage(url, onload, onerror){
-    if (!url) { if (onerror) onerror(); return; }
-    if (radarImageCache[url] && radarImageCache[url].complete && radarImageCache[url].naturalWidth){
-      if (onload) onload(radarImageCache[url]);
-      return;
-    }
-    var img = radarImageCache[url] || new Image();
-    radarImageCache[url] = img;
-    img.crossOrigin = "anonymous";
-    if (img.complete && img.naturalWidth){
-      if (onload) onload(img);
-      return;
-    }
-    img.onload = function(){ radarImageCache[url] = img; if (onload) onload(img); };
-    img.onerror = function(){ if (onerror) onerror(); };
-    img.src = url;
-  }
-
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
     syncWindowState();
@@ -329,66 +309,78 @@ function updateSweepUi(){
   function updateRadar(){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
-      radarPendingUrl = '';
       if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+      radarLastRequestedUrl = "";
       return;
     }
+
     var url = getRadarUrl(getCurrentTime());
     if (!url) return;
 
-    // If the nearest-frame lookup resolves to the same image while scrubbing,
-    // do nothing so the current frame stays visible and we avoid flicker/blanking.
-    if (url === radarDisplayedUrl || url === radarPendingUrl){
-      if (radarSweepEnabled && radarSweepImage && radarDisplayedUrl === url){
-        ensureRadarSweepCanvas();
-        radarSweepCanvas.style.opacity = String((getProductOpacity() && getProductOpacity().radar) || 0.7);
-        startRadarSweep();
-      }
+    if (url === radarLastGoodUrl && obsRadarOverlay && !radarSweepEnabled){
       return;
     }
 
-    radarPendingUrl = url;
-    var myToken = ++radarLoadToken;
+    if (url === radarLastRequestedUrl){
+      return;
+    }
 
-    primeRadarImage(url, function(img){
+    radarLastRequestedUrl = url;
+    var myToken = ++radarLoadToken;
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = function(){
       if (myToken !== radarLoadToken) return;
-      radarPendingUrl = '';
-      radarDisplayedUrl = url;
+
       radarSweepImage = img;
       radarSweepImageUrl = url;
+      radarLastGoodUrl = url;
+      radarLastRequestedUrl = "";
+
       var op = 0.70;
       var rs = document.getElementById("radarOpacity");
-      if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
+      if (rs){
+        op = Math.max(0.2, Math.min(1, parseInt(rs.value || "70", 10) / 100));
+      }
 
       if (radarSweepEnabled){
-        if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+        if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){
+          try{ map.removeLayer(obsRadarOverlay); }catch(e){}
+        }
+        obsRadarOverlay = null;
         ensureRadarSweepCanvas();
         radarSweepCanvas.style.opacity = String(op);
         startRadarSweep();
         updateSweepUi();
         setStatus("Radar sweep: " + url);
-      } else {
-        hideRadarSweepCanvas();
-        updateSweepUi();
-        if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
+        return;
+      }
+
+      hideRadarSweepCanvas();
+      updateSweepUi();
+
+      if (!obsRadarOverlay){
         obsRadarOverlay = L.imageOverlay(url, getRadarBounds(), { opacity: op, interactive:false });
         obsRadarOverlay.addTo(map);
-        applyActiveOpacity();
-        setStatus("Radar: " + url);
-      }
-    }, function(){
-      if (myToken !== radarLoadToken) return;
-      radarPendingUrl = '';
-      // Keep the last good radar frame on screen instead of blanking the map.
-      if (radarDisplayedUrl){
-        setStatus("Radar holding last frame");
       } else {
-        hideRadarSweepCanvas();
-        setStatus("Radar missing: " + url + " (check manifest/frames path)");
+        obsRadarOverlay.setUrl(url);
+        obsRadarOverlay.setBounds(getRadarBounds());
+        obsRadarOverlay.setOpacity(op);
       }
-    });
-  }
 
+      applyActiveOpacity();
+      setStatus("Radar: " + url);
+    };
+
+    img.onerror = function(){
+      if (myToken !== radarLoadToken) return;
+      radarLastRequestedUrl = "";
+      setStatus("Radar missing: " + url + " (holding last good frame)");
+    };
+
+    img.src = url;
+  }
 
   function toggleSweep(){
     radarSweepEnabled = !radarSweepEnabled;
