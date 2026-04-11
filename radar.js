@@ -27,6 +27,9 @@ window.createRadarModule = function(opts){
   var radarSweepSwept = 0;
   var radarSweepCompleted = false;
   var radarLoadToken = 0;
+  var radarDisplayedUrl = '';
+  var radarPendingUrl = '';
+  var radarImageCache = Object.create(null);
 
   var radarSweepRPM = 2;
   var radarSweepBeamPx = 1;
@@ -288,6 +291,25 @@ function updateSweepUi(){
     radarSweepAnim = requestAnimationFrame(frame);
   }
 
+
+  function primeRadarImage(url, onload, onerror){
+    if (!url) { if (onerror) onerror(); return; }
+    if (radarImageCache[url] && radarImageCache[url].complete && radarImageCache[url].naturalWidth){
+      if (onload) onload(radarImageCache[url]);
+      return;
+    }
+    var img = radarImageCache[url] || new Image();
+    radarImageCache[url] = img;
+    img.crossOrigin = "anonymous";
+    if (img.complete && img.naturalWidth){
+      if (onload) onload(img);
+      return;
+    }
+    img.onload = function(){ radarImageCache[url] = img; if (onload) onload(img); };
+    img.onerror = function(){ if (onerror) onerror(); };
+    img.src = url;
+  }
+
   async function setRadarEnabled(on){
     obsRadarEnabled = !!on;
     syncWindowState();
@@ -307,15 +329,31 @@ function updateSweepUi(){
   function updateRadar(){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
+      radarPendingUrl = '';
       if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
       return;
     }
     var url = getRadarUrl(getCurrentTime());
+    if (!url) return;
+
+    // If the nearest-frame lookup resolves to the same image while scrubbing,
+    // do nothing so the current frame stays visible and we avoid flicker/blanking.
+    if (url === radarDisplayedUrl || url === radarPendingUrl){
+      if (radarSweepEnabled && radarSweepImage && radarDisplayedUrl === url){
+        ensureRadarSweepCanvas();
+        radarSweepCanvas.style.opacity = String((getProductOpacity() && getProductOpacity().radar) || 0.7);
+        startRadarSweep();
+      }
+      return;
+    }
+
+    radarPendingUrl = url;
     var myToken = ++radarLoadToken;
-    var img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = function(){
+
+    primeRadarImage(url, function(img){
       if (myToken !== radarLoadToken) return;
+      radarPendingUrl = '';
+      radarDisplayedUrl = url;
       radarSweepImage = img;
       radarSweepImageUrl = url;
       var op = 0.70;
@@ -323,7 +361,7 @@ function updateSweepUi(){
       if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
 
       if (radarSweepEnabled){
-        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+        if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
         ensureRadarSweepCanvas();
         radarSweepCanvas.style.opacity = String(op);
         startRadarSweep();
@@ -332,20 +370,25 @@ function updateSweepUi(){
       } else {
         hideRadarSweepCanvas();
         updateSweepUi();
-        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
+        if (obsRadarOverlay && map.hasLayer(obsRadarOverlay)){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
         obsRadarOverlay = L.imageOverlay(url, getRadarBounds(), { opacity: op, interactive:false });
         obsRadarOverlay.addTo(map);
         applyActiveOpacity();
         setStatus("Radar: " + url);
       }
-    };
-    img.onerror = function(){
+    }, function(){
       if (myToken !== radarLoadToken) return;
-      hideRadarSweepCanvas();
-      setStatus("Radar missing: " + url + " (check manifest/frames path)");
-    };
-    img.src = url;
+      radarPendingUrl = '';
+      // Keep the last good radar frame on screen instead of blanking the map.
+      if (radarDisplayedUrl){
+        setStatus("Radar holding last frame");
+      } else {
+        hideRadarSweepCanvas();
+        setStatus("Radar missing: " + url + " (check manifest/frames path)");
+      }
+    });
   }
+
 
   function toggleSweep(){
     radarSweepEnabled = !radarSweepEnabled;
