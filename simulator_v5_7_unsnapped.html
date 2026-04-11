@@ -265,7 +265,8 @@
           window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
         }catch(e){}
         updateModeToggleUi();
-        // Keep story-card product as the initial base until the user picks a top-bar product.
+        // Do not force radar here. Let the current topic card be the initial base
+        // until the user explicitly picks a top-bar product.
         if (typeof manualProductMode === 'undefined') manualProductMode = null;
         if (typeof manualProductLayers === 'undefined') manualProductLayers = null;
         if (typeof manualProductLabel === 'undefined') manualProductLabel = '';
@@ -287,7 +288,7 @@
       function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
       function maybeFireTimedEvents(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; events.forEach(function(ev, idx){ var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(threshold)) return; var key = String(ev.id || idx); if (pct >= threshold && !triggeredEvents[key]) { triggeredEvents[key] = true; showAlert(ev); if (Array.isArray(ev.ticker) && ev.ticker.length) setTicker(ev.ticker); } if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key]; }); }
-      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); if (scrubber && !isScrubbing && !window.__WDL_HTML_SCRUBBING__) { var min = Number(scrubber.min || 0), max = Number(scrubber.max || 100), span = Math.max(1, max - min); scrubber.value = String(min + (displayPercent * span)); } sceneLead.textContent = 'Current Topic • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
+      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); if (scrubber && !isScrubbing && !window.__WDL_HTML_SCRUBBING__) { var min = Number(scrubber.min || 0), max = Number(scrubber.max || 100), span = Math.max(1, max - min); scrubber.value = String(min + (displayPercent * span)); } updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); }
       function syncEngineToPercent(pct){
         pct = clamp01(pct);
         try {
@@ -298,7 +299,7 @@
         } catch(e){}
         return false;
       }
-      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); syncGroupToTime(ms); renderCurrentCard(); }
+      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); if (!manualClockMode) syncGroupToTime(ms); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
       function normalizeProductLabel(product){
@@ -346,12 +347,7 @@
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
       async function applyProductMode(mode, layers, displayOverride){
-        productButtons.forEach(function(btn){
-          var p = String(btn.getAttribute('data-product') || '').toLowerCase();
-          var m = String(mode || '').toLowerCase();
-          var active = (p === m);
-          btn.classList.toggle('is-active', !!active);
-        });
+        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
         var displayLabel = displayOverride || normalizeProductLabel(mode);
         if (!displayOverride && Array.isArray(layers) && layers.length) {
           displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
@@ -479,22 +475,52 @@
         });
         renderTopicRail();
       }
-      function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length; sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); if (manualClockMode) {
+      function renderCurrentCard(){
+        var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
+        if (!card) {
+          storyTitle.textContent = 'No Topics';
+          storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
+          return;
+        }
+
+        var chipText = manualClockMode
+          ? String((currentTopicIndex || 0) + 1)
+          : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
+
+        storyStationChip.textContent = chipText;
+        storyStationChip.classList.toggle('compact', chipText.length >= 3);
+        storyShellKicker.textContent = card.kicker || 'Topic';
+        storyTitle.textContent = card.title || card.topicLabel || 'Topic';
+        storyStep.textContent = manualClockMode
+          ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length)
+          : ((((currentGroup() && currentGroup().label) || 'Time')) + ' topics');
+        sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+        storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
+          return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
+        }).join('');
+
+        if (typeof renderCardChips === 'function') renderCardChips();
+
+        if (manualClockMode) {
           if (manualProductMode && manualProductLayers && manualProductLayers.length) {
             applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
           } else {
             var baseMode = card.product || 'radar';
             var baseLayers = card.layers || [card.product || 'radar'];
-            var baseLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar');
+            var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
             applyProductMode(baseMode, baseLayers, baseLabel);
           }
         } else {
           var activeMode = card.product || 'radar';
           var activeLayers = card.layers || [card.product || 'radar'];
-          var activeLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar');
+          var activeLabel = card.title || card.topicLabel || normalizeProductLabel(activeMode);
           applyProductMode(activeMode, activeLayers, activeLabel);
-        } updateDopplerButton(!!card.showDoppler); }
-      function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
+        }
+
+        updateDopplerButton(!!card.showDoppler);
+      }
+
+      function cycleTopic(      function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
         try{
@@ -537,8 +563,13 @@
         }
 
         setTicker([normalizeProductLabel(clicked) + ' view selected', 'Topic card stays in place while changing the visible layer']);
-        document.querySelectorAll('.product-group').forEach(function(g){ g.classList.remove('is-open'); var t = g.querySelector('.sim-group-toggle'); if (t) t.classList.remove('is-open'); });
+        document.querySelectorAll('.product-group').forEach(function(g){
+          g.classList.remove('is-open');
+          var t = g.querySelector('.sim-group-toggle');
+          if (t) t.classList.remove('is-open');
+        });
       }); });
+      playBtn.addEventListener('click', advanceTimeline);
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) window.WDL_TEST_MODE = function(on){ setManualClockMode(true); };
       function beginScrub(){
@@ -580,7 +611,6 @@
 
         displayPercent = pct;
         clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
-        sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         renderCurrentCard();
       });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
