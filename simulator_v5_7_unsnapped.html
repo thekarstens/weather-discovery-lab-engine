@@ -55,7 +55,29 @@
     #simPlayPauseBtn.is-ready{ animation:simPulse 1.45s infinite; }
     #simPlayPauseBtn.is-running{ background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18); animation:none; }
     @keyframes simPulse{ 0%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} 50%{ box-shadow:0 0 24px rgba(0,200,255,.92), 0 0 42px rgba(0,120,255,.42), inset 0 0 12px rgba(255,255,255,.14);} 100%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} }
+    
     .product-row{ position:absolute; left:250px; right:240px; top:114px; z-index:100007; display:flex; gap:9px; overflow-x:auto; padding-bottom:6px; }
+    .product-group{ position:relative; flex:0 0 auto; }
+    .sim-group-toggle{ min-width:136px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96)); color:#fff; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:.65px; text-transform:uppercase; padding:12px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; pointer-events:auto; }
+    .sim-group-toggle:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-group-toggle.is-open{ background:linear-gradient(180deg, #1b4b7e, #12345a 65%, #0d233d); }
+    .product-menu{ position:absolute; left:0; top:calc(100% + 8px); min-width:220px; display:none; flex-direction:column; gap:6px; padding:10px; border-radius:18px; background:rgba(9,22,38,.97); border:1px solid rgba(255,255,255,.10); box-shadow:0 16px 30px rgba(0,0,0,.28); }
+    .product-group.is-open .product-menu{ display:flex; }
+    .product-menu .sim-product-btn{ min-width:0; width:100%; text-align:left; padding:10px 14px; border-radius:14px; font-size:12px; }
+    .product-menu .sim-product-btn.is-disabled{ opacity:.45; cursor:default; }
+    .storyPanel{ position:absolute; left:12px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); display:flex; flex-direction:column; }
+    .story-stack{ display:flex; flex-direction:column; gap:8px; padding:12px 12px 10px; max-height:220px; overflow:auto; background:rgba(241,243,246,.95); border-bottom:1px solid rgba(16,36,58,.10); }
+    .story-stack::-webkit-scrollbar{ width:8px; }
+    .story-stack::-webkit-scrollbar-thumb{ background:rgba(13,44,87,.25); border-radius:999px; }
+    .story-card-chip{ display:grid; grid-template-columns:54px 1fr; gap:12px; align-items:center; border:none; width:100%; text-align:left; border-radius:18px; padding:10px 12px; cursor:pointer; background:#ffffff; color:#10253d; box-shadow:0 6px 14px rgba(0,0,0,.10); border-left:10px solid #1f6ad1; }
+    .story-card-chip:hover{ transform:translateY(-1px); filter:brightness(1.01); }
+    .story-card-chip.is-active{ box-shadow:0 0 0 3px rgba(17,96,215,.20), 0 10px 18px rgba(0,0,0,.14); }
+    .story-chip-num{ width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:900 20px/1 "Lato", Arial, sans-serif; color:#fff; background:rgba(12,45,88,.90); }
+    .story-chip-copy{ min-width:0; }
+    .story-chip-kicker{ font:800 10px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; opacity:.75; }
+    .story-chip-title{ margin-top:4px; font:900 15px/1.05 "Lato", Arial, sans-serif; }
+    .story-chip-meta{ margin-top:6px; font:800 11px/1 "Lato", Arial, sans-serif; opacity:.72; text-transform:uppercase; letter-spacing:.4px; }
+
     .product-row::-webkit-scrollbar{ height:8px; }
     .product-row::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
     .sim-product-btn{ flex:0 0 auto; min-width:136px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96)); color:#fff; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:.65px; text-transform:uppercase; padding:12px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; pointer-events:auto; }
@@ -132,15 +154,59 @@
       <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
       <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
       <div class="product-row" id="simProductRow">
-        <button class="sim-product-btn is-active" data-product="radar">Radar</button>
-        <button class="sim-product-btn" data-product="warnings">Warnings</button>
-        <button class="sim-product-btn" data-product="reports">Reports</button>
-        <button class="sim-product-btn" data-product="lightning">Lightning</button>
-        <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
-        <button class="sim-product-btn" data-product="temps">METARs</button>
-        <button class="sim-product-btn" data-product="satellite">Satellite</button>
-        <button class="sim-product-btn" data-product="spc">SPC</button>
-        <button class="sim-product-btn" data-product="watch">PDS Watch</button>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Radar ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
+            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
+            <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
+            <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Current Conditions ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="temps">Temperature</button>
+            <button class="sim-product-btn" data-product="metar_dewpoint">Dew Points</button>
+            <button class="sim-product-btn" data-product="metar_wind">Wind Gusts</button>
+            <button class="sim-product-btn" data-product="metar_pressure">Pressure</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">SPC ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="spc">Day 1 Outlook</button>
+            <button class="sim-product-btn" data-product="watch">Watch</button>
+            <button class="sim-product-btn is-disabled" type="button">Mesoscale Discussion (next)</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Reports ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="reports">All Reports</button>
+            <button class="sim-product-btn is-disabled" type="button">Wind Reports (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Hail Reports (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Tornado Reports (next)</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Lightning ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="lightning">Current Strikes</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Satellite ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="satellite">Satellite</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Warnings ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="warnings">Warnings</button>
+          </div>
+        </div>
       </div>
       <div class="product-slot"><div class="product-pill" id="productLabel">Map</div></div>
   </div></div>
@@ -363,7 +429,46 @@
         } catch(e){ console.warn('Product toggle issue', e); }
       }
       function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
-      function renderCardChips(){}
+      function storyAccentFor(product){
+        var p = String(product || '').toLowerCase();
+        if (p === 'spc' || p === 'spc_day1' || p === 'watch') return '#f09a00';
+        if (p === 'radar' || p === 'live_doppler' || p === 'future_radar') return '#1f6ad1';
+        if (p === 'temps' || p === 'metar_dewpoint' || p === 'metar_wind' || p === 'metar_pressure') return '#009a6b';
+        if (p === 'lightning') return '#d4b000';
+        if (p === 'reports' || p === 'warnings') return '#c73737';
+        if (p === 'satellite') return '#6d59c9';
+        return '#1f6ad1';
+      }
+      function renderCardChips(){
+        if (!storyCardRow) return;
+        var cards = manualClockMode ? topicCards : ((currentGroup() && currentGroup().cards) || []);
+        storyCardRow.innerHTML = '';
+        if (!cards.length) return;
+        cards.forEach(function(card, idx){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'story-card-chip';
+          var isActive = manualClockMode ? (idx === currentTopicIndex) : (idx === currentCardIndex);
+          if (isActive) btn.classList.add('is-active');
+          var accent = storyAccentFor(card.product);
+          btn.style.borderLeftColor = accent;
+          btn.innerHTML = '<div class="story-chip-num" style="background:' + accent + '">' + String((manualClockMode ? idx : idx) + 1) + '</div>'
+            + '<div class="story-chip-copy">'
+            + '<div class="story-chip-kicker">' + String(card.kicker || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
+            + '<div class="story-chip-title">' + String(card.title || card.topicLabel || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
+            + '<div class="story-chip-meta">' + normalizeProductLabel(card.product || 'radar') + '</div>'
+            + '</div>';
+          btn.addEventListener('click', function(){
+            if (manualClockMode){
+              currentTopicIndex = idx;
+            } else {
+              currentCardIndex = idx;
+            }
+            renderCurrentCard();
+          });
+          storyCardRow.appendChild(btn);
+        });
+      }
       function renderCurrentCard(){ var g = currentGroup(); var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard(); if (!card) { storyTitle.textContent = 'No Topics'; storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>'; return; } var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : g.label.replace(/\s/g,''); storyStationChip.textContent = chipText; storyStationChip.classList.toggle('compact', chipText.length >= 3); storyShellKicker.textContent = card.kicker || 'Topic'; storyTitle.textContent = card.title || card.topicLabel || 'Topic'; storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : (g.label + ' topics • ' + (currentCardIndex + 1) + ' of ' + g.cards.length); sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent)); storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){ return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>'; }).join(''); renderCardChips(); if (manualClockMode) { var activeMode = manualProductMode || 'radar'; var activeLayers = (manualProductLayers && manualProductLayers.length) ? manualProductLayers : [activeMode]; var activeLabel = manualProductLabel || normalizeProductLabel(activeMode); applyProductMode(activeMode, activeLayers, activeLabel); } else { var activeMode = card.product || 'radar'; var activeLayers = card.layers || [card.product || 'radar']; var activeLabel = card.title || card.topicLabel || normalizeProductLabel(card.product || 'radar'); applyProductMode(activeMode, activeLayers, activeLabel); } updateDopplerButton(!!card.showDoppler); }
       function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
       function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
@@ -411,6 +516,7 @@
           applyProductMode(clicked, [clicked], normalizeProductLabel(clicked));
         }
         setTicker([normalizeProductLabel(manualClockMode ? manualProductMode : clicked) + ' view selected', manualClockMode ? 'Test Mode keeps the topic card while changing the map layer' : 'This shortcut keeps the current simulator time']);
+        document.querySelectorAll('.product-group').forEach(function(g){ g.classList.remove('is-open'); var t = g.querySelector('.sim-group-toggle'); if (t) t.classList.remove('is-open'); });
       }); });
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) modeToggleBtn.addEventListener('click', function(){ setManualClockMode(!manualClockMode); });
