@@ -1554,7 +1554,6 @@ window.setReportsFilter = setReportsFilter;
       img.src = url;
     }).catch(function(err){ console.error(err); setStatus('Satellite failed'); });
   }
-  }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
     try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
