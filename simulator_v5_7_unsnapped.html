@@ -563,6 +563,7 @@
         var span = Math.max(1, max - min);
         var pct = clamp01((val - min) / span);
         updateClockAndScrubber(pct);
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
       }
 
       scrubber.addEventListener('mousedown', beginScrub);
@@ -586,8 +587,7 @@
 
         displayPercent = pct;
         clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
-        sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
-        renderCurrentCard();
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
       });
       storyCollapseBtn.addEventListener('click', function(ev){
         ev.preventDefault();
