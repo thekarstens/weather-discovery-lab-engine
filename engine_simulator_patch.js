@@ -2349,6 +2349,9 @@ window.setReportsFilter = setReportsFilter;
   var currentLine = null;
   var currentDrawColor = '#fdd835';
   window.setDrawColor = function(color){ currentDrawColor = String(color || '#fdd835'); return currentDrawColor; };
+  window.setDrawMode = setDrawMode;
+  window.clearMeasureGraphics = clearMeasureGraphics;
+  window.clearDrawings = clearDrawings;
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
