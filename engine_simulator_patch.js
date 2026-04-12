@@ -2945,6 +2945,7 @@ function safeLink(url){
     } catch(e) {}
 
     try {
+      if (window.__WDL_SIMPLE_MODE__ === true || window.__WDL_SIMULATOR_LOCAL_STORY__ === true) return;
       window.dispatchEvent(new CustomEvent('wdl:storychange', {
         detail: {
           index: storyIndex,
@@ -6303,4 +6304,3 @@ window.clearStormTrack = function(){ try{ clearStormTrackGraphics(); }catch(e){}
 window.clearMeasure = function(){ try{ clearMeasureGraphics(); }catch(e){} };
 window.clearDrawings = function(){ try{ clearDrawings(); }catch(e){} };
 try{ window.toggleSweep = toggleSweep; }catch(e){}
-
