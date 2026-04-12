@@ -227,33 +227,14 @@
       try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
     });
   }
-  function forceGuideToggle(ev){
-    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
-    if (document.body.classList.contains("guide-collapsed")) openGuide(); else closeGuide();
-    updateLessonButton();
-    updateCollapsedState();
-    return false;
+  if (storyDopplerBtn){
+    storyDopplerBtn.addEventListener("click", function(ev){
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      return false;
+    });
   }
-
-  async function forceDopplerToggle(ev){
-    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
-    try{
-      if (typeof window.setRadarVelocityEnabled === "function") await window.setRadarVelocityEnabled(false);
-    }catch(e){}
-    try{
-      if (typeof window.setRadarEnabled === "function" && !window.obsRadarEnabled) await window.setRadarEnabled(true);
-    }catch(e){}
-    try{
-      if (typeof window.toggleSweep === "function") window.toggleSweep();
-    }catch(e){}
-    syncDopplerButtons(true);
-    return false;
-  }
-
-  if (storyDopplerBtn) storyDopplerBtn.onclick = forceDopplerToggle;
-  if (floatingSweepBtn) floatingSweepBtn.onclick = forceDopplerToggle;
-  if (openLessonBtn) openLessonBtn.onclick = forceGuideToggle;
-  if (storyCollapseBtn) storyCollapseBtn.onclick = forceGuideToggle;
+  if (openLessonBtn) openLessonBtn.addEventListener("click", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} return false; });
+  if (storyCollapseBtn) storyCollapseBtn.addEventListener("click", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} return false; });
   if (exploreBtn) exploreBtn.addEventListener("click", function(){ applyMode(!currentExploreMode); });
   if (scrubber){
     scrubber.addEventListener("input", function(){
@@ -363,7 +344,7 @@
   });
 
 
-  window.addEventListener("wdl:storychange", function (ev) {
+  window.addEventListener("wdl:storychange", function (ev) { return;
     if (window.__WDL_SIMPLE_MODE__ || window.__WDL_SIMULATOR_LOCAL_STORY__) return;
     var detail = (ev && ev.detail) || {};
     latestStoryItem = detail.item || latestStoryItem;
