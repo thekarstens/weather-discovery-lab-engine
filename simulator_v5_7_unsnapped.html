@@ -294,6 +294,8 @@
       function readLiveActualMs(){ try { if (window.curZ) { var d0 = new Date(window.curZ); if (!isNaN(d0)) return d0.getTime(); } if (window.__SIM_LAST_CLOCK__) { var d1 = new Date(window.__SIM_LAST_CLOCK__); if (!isNaN(d1)) return d1.getTime(); } } catch(e){} return NaN; }
       var tickerRotationIndex = 0;
       var tickerRotationLines = [];
+      var pendingAlertQueue = [];
+      var alertShowing = false;
       function setTicker(lines){
         tickerRotationLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
         tickerRotationIndex = 0;
@@ -322,10 +324,53 @@
         tickerText.textContent = tickerRotationLines.length ? ('⚠ ' + tickerRotationLines[tickerRotationIndex % tickerRotationLines.length] + ' •') : 'Simulator v5 ready •';
       }
       function playEventSound(eventData){ try { if (!eventData || !eventData.sound) return; var a = new Audio(eventData.sound); a.volume = Number(eventData.volume || 0.8); a.play().catch(function(){}); } catch(e){} }
-      function showAlert(eventData){ if (!eventData) return; var theme = eventData.theme || ((cfg.eventThemes || {})[eventData.type]) || 'info'; alertBox.className = 'sim-alert visible theme-' + theme; alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase(); alertHeadline.textContent = eventData.headline || 'Live Alert'; alertBody.innerHTML = ((eventData.message || '') + (eventData.detailsHint ? ' <strong>' + eventData.detailsHint + '</strong>' : '')).trim(); if (alertTimer) clearTimeout(alertTimer); alertTimer = setTimeout(function(){ alertBox.className = 'sim-alert theme-' + theme; }, Number(eventData.durationMs || 5000)); playEventSound(eventData); }
+      function dequeueAndShowAlert(){
+        if (alertShowing || !pendingAlertQueue.length) return;
+        var eventData = pendingAlertQueue.shift();
+        if (!eventData) return;
+        alertShowing = true;
+        var theme = eventData.theme || ((cfg.eventThemes || {})[eventData.type]) || 'info';
+        alertBox.className = 'sim-alert visible theme-' + theme;
+        alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase();
+        alertHeadline.textContent = eventData.headline || 'Live Alert';
+        alertBody.innerHTML = ((eventData.message || '') + (eventData.detailsHint ? ' <strong>' + eventData.detailsHint + '</strong>' : '')).trim();
+        if (alertTimer) clearTimeout(alertTimer);
+        alertTimer = setTimeout(function(){
+          alertBox.className = 'sim-alert theme-' + theme;
+          alertShowing = false;
+          dequeueAndShowAlert();
+        }, Number(eventData.durationMs || 5000));
+        playEventSound(eventData);
+      }
+      function showAlert(eventData){
+        if (!eventData) return;
+        pendingAlertQueue.push(eventData);
+        dequeueAndShowAlert();
+      }
       function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || ev.kind !== 'warning' || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
-      function maybeFireTimedEvents(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; events.forEach(function(ev, idx){ var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(threshold)) return; var key = String(ev.id || idx); if (pct >= threshold && !triggeredEvents[key]) { triggeredEvents[key] = true; showAlert(ev); } if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key]; }); }
+      function maybeFireTimedEvents(pct){
+        var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
+        var due = [];
+        events.forEach(function(ev, idx){
+          var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime);
+          if (!isFinite(threshold)) return;
+          var key = String(ev.id || idx);
+          if (pct >= threshold && !triggeredEvents[key]) {
+            triggeredEvents[key] = true;
+            due.push(ev);
+          }
+          if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key];
+        });
+        if (!due.length) return;
+        due.sort(function(a,b){
+          var pa = (a.kind === 'warning') ? 0 : 1;
+          var pb = (b.kind === 'warning') ? 0 : 1;
+          if (pa !== pb) return pa - pb;
+          return Number(b.durationMs || 0) - Number(a.durationMs || 0);
+        });
+        due.forEach(showAlert);
+      }
       function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); if (scrubber && !isScrubbing && !window.__WDL_HTML_SCRUBBING__) { var min = Number(scrubber.min || 0), max = Number(scrubber.max || 100), span = Math.max(1, max - min); scrubber.value = String(min + (displayPercent * span)); } updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); updateTickerForPercent(displayPercent); }
       function syncEngineToPercent(pct){
         pct = clamp01(pct);
