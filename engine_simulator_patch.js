@@ -858,14 +858,17 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:30px; height:30px; pointer-events:none;
-        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
+        position:relative; width:24px; height:24px; pointer-events:none;
+        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        filter: drop-shadow(0 0 1px rgba(255,240,120,.55));
-        animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
+        filter:
+          drop-shadow(0 0 .45px rgba(18,18,18,.30))
+          drop-shadow(0 1px .8px rgba(0,0,0,.18))
+          drop-shadow(0 0 1.8px rgba(255,236,120,.24));
+        animation: wdlLightningBlink var(--flash-ms,1250ms) ease-out infinite;
       }
       .wdl-lightning-recent{
         box-shadow: none;
@@ -884,9 +887,10 @@ window.setReportsFilter = setReportsFilter;
       .lightning-counter .lc-row strong{color:#8cf7ff;}
       .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
       @keyframes wdlLightningBlink{
-        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.0));}
-        42%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.03));}
-        50%{opacity:0;}
+        0%{opacity:.12; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * .98));}
+        7%{opacity:1; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.01));}
+        16%{opacity:.74; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.00));}
+        24%{opacity:0;}
         100%{opacity:0;}
       }
     `;
@@ -977,14 +981,14 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(350, Math.min(950, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 650)));
+    var flashMs = Math.max(900, Math.min(1600, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 1250)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.96 + strength * 0.18).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [30,30],
-      iconAnchor: [15,15],
-      popupAnchor: [0,-12]
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.82 + strength * 0.12).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [24,24],
+      iconAnchor: [12,12],
+      popupAnchor: [0,-10]
     });
   }
 
@@ -2945,7 +2949,6 @@ function safeLink(url){
     } catch(e) {}
 
     try {
-      if (window.__WDL_SIMPLE_MODE__ === true || window.__WDL_SIMULATOR_LOCAL_STORY__ === true) return;
       window.dispatchEvent(new CustomEvent('wdl:storychange', {
         detail: {
           index: storyIndex,
@@ -2985,7 +2988,6 @@ function safeLink(url){
 
 
   function renderStory(i, panTo){
-    if (isSimpleSimulatorStoryMode()) return;
     if (!storyItems.length) return;
     if (window.__WDL_FREE_SCRUB__ === true) window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
     if (i < 0) i = 0;
@@ -3084,7 +3086,6 @@ function safeLink(url){
   }
 
   function buildStoryMarkers(){
-    if (isSimpleSimulatorStoryMode()) return;
     // Remove existing
     storyMarkers.forEach(function(m){ try{ map.removeLayer(m); }catch(e){} });
     storyMarkers = [];
@@ -3284,18 +3285,7 @@ function safeLink(url){
     });
   }
 
-  function isSimpleSimulatorStoryMode(){
-    try{
-      return !!(window.__WDL_SIMPLE_MODE__ || window.__WDL_SIMULATOR_LOCAL_STORY__);
-    }catch(e){}
-    return false;
-  }
-
   function loadStory(){
-    if (isSimpleSimulatorStoryMode()) {
-      console.log("🧭 Simple simulator mode: engine storyboard disabled.");
-      return Promise.resolve();
-    }
     if (STORYBOARD_JSON) {
       console.log("📖 Loading JSON storyboard:", STORYBOARD_JSON);
       return loadJSONStoryboard();
@@ -3473,13 +3463,11 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 
   var prevBtn = document.getElementById("storyPrevBtn");
   var nextBtn = document.getElementById("storyNextBtn");
-  if (!isSimpleSimulatorStoryMode()) {
-    if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
-    if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
-  }
+  if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
+  if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
   bindSweepControls();
 // Load story now
-  if (!isSimpleSimulatorStoryMode()) loadStory();
+  loadStory();
 
 
   map.on("zoomend", function(){
