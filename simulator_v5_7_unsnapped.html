@@ -66,7 +66,7 @@
     .product-menu .sim-product-btn{ min-width:0; width:100%; text-align:left; padding:10px 14px; border-radius:14px; font-size:12px; }
     .product-menu .sim-product-btn.is-disabled{ opacity:.45; cursor:default; }
     
-    .topic-rail{
+    .topic-rail{ display:none !important; pointer-events:none !important; visibility:hidden !important;
       position:absolute; left:8px; top:182px; bottom:56px; width:74px; z-index:100021;
       display:flex; flex-direction:column; gap:8px; overflow:auto; padding-right:4px;
     }
@@ -445,19 +445,9 @@
       function renderTopicRail(){
         if (!topicRail) return;
         topicRail.innerHTML = '';
-        var cards = topicCards || [];
-        if (!cards.length) { renderTopicRail(); return; }
-        cards.forEach(function(card, idx){
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'topic-tab' + (idx === currentTopicIndex ? ' is-active' : '');
-          var accent = storyAccentFor(card.product);
-          btn.style.background = 'linear-gradient(180deg,' + accent + ', rgba(8,25,44,.96))';
-          btn.innerHTML = '<div class="num">' + String(idx + 1) + '</div><div class="label">' + String((card.kicker || 'Topic')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
-          btn.addEventListener('click', function(){
-            currentTopicIndex = idx;
-            renderCurrentCard();
-          });
+        topicRail.style.display = 'none';
+        topicRail.setAttribute('aria-hidden', 'true');
+      });
           topicRail.appendChild(btn);
         });
       }
@@ -467,6 +457,18 @@
           storyCardRow.style.display = 'none';
           storyCardRow.setAttribute('aria-hidden', 'true');
         }
+        if (topicRail){
+          topicRail.innerHTML = '';
+          topicRail.style.display = 'none';
+          topicRail.setAttribute('aria-hidden', 'true');
+        }
+      } else {
+              currentCardIndex = idx;
+            }
+            renderCurrentCard();
+          });
+          storyCardRow.appendChild(btn);
+        });
         renderTopicRail();
       }
       function renderCurrentCard(){
@@ -602,8 +604,8 @@
       });
       storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
       storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
-      storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
-      storyNextBtn.addEventListener('click', function(){ cycleTopic(1); });
+      storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
+      storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
       if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
       if (toolProbe) toolProbe.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} refreshToolStates(); toolProbe.classList.add('active'); });
@@ -630,7 +632,7 @@
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
       window.addEventListener('wdl:storychange', function(ev){ return; });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow) { storyCardRow.style.display = 'none'; storyCardRow.setAttribute('aria-hidden', 'true'); } renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
