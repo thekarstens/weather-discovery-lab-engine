@@ -157,13 +157,9 @@
     .ticker-label{ flex:0 0 auto; height:100%; display:flex; align-items:center; padding:0 20px; background:linear-gradient(180deg,#bb0808,#ff2a2a 60%, #9b0000); color:#fff; font:900 19px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; text-shadow:0 0 8px rgba(255,255,255,.22), 0 0 14px rgba(255,80,80,.28); box-shadow:inset 0 0 10px rgba(255,255,255,.08); }
     .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
-    #hrrrQuickPad{ position:absolute; right:170px; bottom:76px; z-index:100031; display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:18px; background:rgba(8,25,44,.92); border:1px solid rgba(255,255,255,.12); box-shadow:0 12px 24px rgba(0,0,0,.26); }
-    .hrrr-pad-label{ color:#d8e8ff; font:900 11px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; }
-    .hrrr-pad-row{ display:flex; gap:8px; flex-wrap:wrap; }
+    .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
     .hrrr-pad-btn{ border:none; border-radius:999px; padding:10px 14px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10); }
     .hrrr-pad-btn.active{ background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16); }
-
-    .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
   </style>
 </head>
 <body>
@@ -398,7 +394,6 @@
         var base = 'Future Temp';
         if (mode === 'cape') base = 'Future CAPE';
         else if (mode === 'winds') base = 'Future Winds';
-        else if (mode === 'radar') base = 'Future Radar';
         var times = ['4PM','5PM','6PM','7PM'];
         productLabel.textContent = base + ' ' + times[Math.max(0, Math.min(3, Number(frameIndex)||0))];
       }
@@ -862,25 +857,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
         });
       });
 
-            hrrrModeBtns.forEach(function(btn){
-        btn.addEventListener('click', function(ev){
-          ev.preventDefault();
-          ev.stopPropagation();
-          hrrrQuickMode = btn.getAttribute('data-hrrr-mode') || 'temp';
-          updateHrrrQuickUi();
-          setBannerQuickLabel(hrrrQuickMode, 0);
-        });
-      });
-      hrrrFrameBtns.forEach(function(btn){
-        btn.addEventListener('click', function(ev){
-          ev.preventDefault();
-          ev.stopPropagation();
-          runHrrrQuickControl(Number(btn.getAttribute('data-hrrr-frame')) || 0);
-        });
-      });
-      updateHrrrQuickUi();
-
-      window.addEventListener('wdl:storychange', function(ev){ return; });
+            window.addEventListener('wdl:storychange', function(ev){ return; });
       window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); syncSimpleToolStates(); } }, 300);
 
