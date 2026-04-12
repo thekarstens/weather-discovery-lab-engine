@@ -2347,6 +2347,8 @@ window.setReportsFilter = setReportsFilter;
   var drawGroup = L.layerGroup().addTo(map);
   var drawing = false;
   var currentLine = null;
+  var currentDrawColor = '#fdd835';
+  window.setDrawColor = function(color){ currentDrawColor = String(color || '#fdd835'); return currentDrawColor; };
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
@@ -2410,7 +2412,7 @@ function setDrawMode(on){
   drawing = true;
 
   currentLine = L.polyline([e.latlng], {
-    color: "#fdd835",
+    color: currentDrawColor || "#fdd835",
     weight: 5,
     opacity: 0.95,
     lineCap: "round",
