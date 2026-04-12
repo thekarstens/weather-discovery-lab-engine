@@ -447,9 +447,6 @@
         topicRail.innerHTML = '';
         topicRail.style.display = 'none';
         topicRail.setAttribute('aria-hidden', 'true');
-      });
-          topicRail.appendChild(btn);
-        });
       }
       function renderCardChips(){
         if (storyCardRow){
@@ -457,18 +454,6 @@
           storyCardRow.style.display = 'none';
           storyCardRow.setAttribute('aria-hidden', 'true');
         }
-        if (topicRail){
-          topicRail.innerHTML = '';
-          topicRail.style.display = 'none';
-          topicRail.setAttribute('aria-hidden', 'true');
-        }
-      } else {
-              currentCardIndex = idx;
-            }
-            renderCurrentCard();
-          });
-          storyCardRow.appendChild(btn);
-        });
         renderTopicRail();
       }
       function renderCurrentCard(){
@@ -602,8 +587,20 @@
         sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         renderCurrentCard();
       });
-      storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
-      storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
+      storyCollapseBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        document.body.classList.toggle('story-collapsed');
+        storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide';
+      });
+      storyDopplerBtn.addEventListener('click', async function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false); } catch(e){}
+        try { if (typeof window.setRadarEnabled === 'function' && !window.obsRadarEnabled) await window.setRadarEnabled(true); } catch(e){}
+        try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){}
+        updateDopplerButton(true);
+      });
       storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
       storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
