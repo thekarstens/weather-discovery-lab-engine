@@ -173,10 +173,10 @@
         <div class="product-group">
           <button class="sim-group-toggle" type="button">Radar ▾</button>
           <div class="product-menu">
-            <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
-            <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
-            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
-            <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
+            <button class="sim-product-btn" data-product="radar">Reflectivity</button>
+            <button class="sim-product-btn" data-product="radar_velocity">Velocity</button>
+            <button class="sim-product-btn is-disabled" type="button">Future Radar (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Live Doppler (topic control)</button>
           </div>
         </div>
         <div class="product-group">
@@ -253,9 +253,6 @@
       var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
       var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
-      var lastRenderedCardKey = '';
-      var lastAppliedProductSignature = '';
-      var applyProductRequestId = 0;
 
       function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
       function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
@@ -358,9 +355,58 @@
       function syncGroupToTime(ms){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__) return; if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
+      function uniqueLayers(list){
+        var out = [];
+        (Array.isArray(list) ? list : []).forEach(function(v){
+          v = String(v || '').toLowerCase();
+          if (!v) return;
+          if (out.indexOf(v) === -1) out.push(v);
+        });
+        return out;
+      }
+      function getCardBaseProductState(card){
+        var baseMode = (card && card.product) ? String(card.product).toLowerCase() : 'radar';
+        var baseLayers = uniqueLayers((card && card.layers && card.layers.length) ? card.layers : [baseMode]);
+        var baseLabel = (card && (card.title || card.topicLabel)) ? (card.title || card.topicLabel) : normalizeProductLabel(baseMode);
+        return { mode: baseMode, layers: baseLayers, label: baseLabel };
+      }
+      function buildActiveProductState(card){
+        var base = getCardBaseProductState(card);
+        var layers = base.layers.slice();
+        var labels = [base.label];
+        if (manualOverlayMode && manualOverlayLayers && manualOverlayLayers.length){
+          manualOverlayLayers.forEach(function(layer){
+            layer = String(layer || '').toLowerCase();
+            if (layer && layers.indexOf(layer) === -1) layers.push(layer);
+          });
+          if (manualOverlayLabel) labels.push(manualOverlayLabel);
+        }
+        return {
+          mode: manualOverlayMode || base.mode,
+          layers: uniqueLayers(layers),
+          label: labels.filter(Boolean).join(' + '),
+          base: base
+        };
+      }
+      function syncTopButtonUi(){
+        productButtons.forEach(function(btn){
+          var key = String(btn.getAttribute('data-product') || '').toLowerCase();
+          btn.classList.toggle('is-active', !!key && key === manualOverlayMode);
+        });
+      }
+      function clearManualOverlay(){
+        manualOverlayMode = '';
+        manualOverlayLayers = [];
+        manualOverlayLabel = '';
+        syncTopButtonUi();
+      }
+      async function applyActiveProductState(card){
+        var active = buildActiveProductState(card);
+        await applyProductMode(active.mode, active.layers, active.label);
+      }
+
       async function applyProductMode(mode, layers, displayOverride){
-        var requestId = ++applyProductRequestId;
-        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
+        syncTopButtonUi();
         var displayLabel = displayOverride || normalizeProductLabel(mode);
         if (!displayOverride && Array.isArray(layers) && layers.length) {
           displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
@@ -369,16 +415,13 @@
 
         var activeLayers = Array.isArray(layers) ? layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
         if (!activeLayers.length && mode) activeLayers = [String(mode).toLowerCase()];
-        var signature = JSON.stringify({ mode: String(mode || ''), layers: activeLayers.slice(), label: String(displayLabel || '') });
-        if (signature === lastAppliedProductSignature) {
-          return false;
-        }
         function has(name){ return activeLayers.indexOf(String(name).toLowerCase()) !== -1; }
 
         try {
           if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
           if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
           if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+          if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
           if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
           if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
           if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
@@ -397,6 +440,9 @@
           if (has('radar') || has('obs_radar') || has('radar_reflectivity') || has('reflectivity') || has('live_doppler') || has('doppler')) {
             if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
             if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+          }
+          if (has('radar_velocity') || has('velocity')) {
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(true);
           }
           if (has('warnings') || has('alerts')) {
             if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(true);
@@ -495,15 +541,10 @@
       function renderCurrentCard(){
         var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
         if (!card) {
-          lastRenderedCardKey = '';
           storyTitle.textContent = 'No Topics';
           storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
           return;
         }
-
-        var cardKey = manualClockMode ? ('topic:' + currentTopicIndex + ':' + (card.id || card.title || '')) : ('group:' + currentGroupIndex + ':card:' + currentCardIndex + ':' + (card.id || card.title || ''));
-        var cardChanged = cardKey !== lastRenderedCardKey;
-        lastRenderedCardKey = cardKey;
 
         var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
         storyStationChip.textContent = chipText;
@@ -518,16 +559,7 @@
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
-        if (cardChanged) {
-          if (manualClockMode && manualProductMode && manualProductLayers && manualProductLayers.length) {
-            applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
-          } else {
-            var baseMode = card.product || 'radar';
-            var baseLayers = card.layers || [card.product || 'radar'];
-            var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
-            applyProductMode(baseMode, baseLayers, baseLabel);
-          }
-        }
+        applyActiveProductState(card);
 
         updateDopplerButton(!!card.showDoppler);
       }
@@ -564,13 +596,21 @@
         if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
         ev.preventDefault(); ev.stopPropagation();
         var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
+        var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
+        var base = getCardBaseProductState(card);
 
-        manualProductMode = clicked;
-        manualProductLayers = [clicked];
-        manualProductLabel = normalizeProductLabel(clicked);
-
-        applyProductMode(clicked, [clicked], manualProductLabel);
-        setTicker([manualProductLabel + ' view selected', 'Topic card stays in place while changing the visible layer']);
+        if (clicked === manualOverlayMode) {
+          clearManualOverlay();
+          applyActiveProductState(card);
+          setTicker([base.label + ' view restored', 'Top banner overlay cleared']);
+        } else {
+          manualOverlayMode = clicked;
+          manualOverlayLayers = [clicked];
+          manualOverlayLabel = normalizeProductLabel(clicked);
+          syncTopButtonUi();
+          applyActiveProductState(card);
+          setTicker([manualOverlayLabel + ' added on top', 'Topic card base product stays in place']);
+        }
 
         document.querySelectorAll('.product-group').forEach(function(g){
           g.classList.remove('is-open');
@@ -652,8 +692,8 @@
       if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
-      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__ || window.__WDL_SIMPLE_MODE__) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); syncTopButtonUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
