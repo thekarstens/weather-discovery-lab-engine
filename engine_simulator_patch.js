@@ -2586,16 +2586,63 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
 
 
-  // --- Legacy state boundary fallback disabled ---
-// Keep only the newer boundariesPane system to avoid duplicate state-line redraws and flashing.
-var usStatesLayer = null;
-var usStatesLoaded = true;
-var stateLinesTile = null;
-function loadUsStatesGeoJSONOnce(){ return; }
-function addStateLines(){ return; }
-function removeStateLines(){ return; }
+  // --- State boundaries / outlines (GeoJSON first; tile fallback) ---
+  map.createPane("lines");
+  map.getPane("lines").style.zIndex = 450;         // above dots, below popups         // above dots
+  map.getPane("lines").style.pointerEvents = "none"; // keep clicks working
 
-// Clean base map (no labels) — CARTO Light (white/gray land)
+  var usStatesLayer = null;
+  var usStatesLoaded = false;
+
+  // Fallback: reliable reference tiles (works even if GeoJSON isn't present)
+  var stateLinesTile = L.tileLayer(
+    "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}",
+    { pane: "lines", opacity: 0.95 }
+  );
+
+  function loadUsStatesGeoJSONOnce(){
+    if (usStatesLoaded) return;
+    usStatesLoaded = true;
+
+    var statesPath = (CFG && CFG.boundaries && CFG.boundaries.states) ? _joinUrl(DATA_BASE, CFG.boundaries.states) : "gz_2010_us_040_00_5m.json";
+    fetch(statesPath + (statesPath.indexOf('?') >= 0 ? '&' : '?') + "v=" + Date.now())
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function(geojson){
+        usStatesLayer = L.geoJSON(geojson, {
+          pane: "lines",
+          style: function(){
+            return { color:"#000000", weight: 1.2, opacity: 1.0, fillOpacity: 0 };
+          }
+        });
+// If user already has HRRR temp on, add immediately
+        if (typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer)) addStateLines();
+      })
+      .catch(function(err){
+        // If GeoJSON missing, we just rely on tile fallback
+        console.log("State GeoJSON not loaded (using tile fallback):", err);
+      });
+  }
+
+  function addStateLines(){
+    // Prefer GeoJSON outlines if available; otherwise tile fallback
+    if (usStatesLayer) {
+      if (!map.hasLayer(usStatesLayer)) usStatesLayer.addTo(map);
+      if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+    } else {
+      if (!map.hasLayer(stateLinesTile)) stateLinesTile.addTo(map);
+    }
+  }
+  function removeStateLines(){
+    if (usStatesLayer && map.hasLayer(usStatesLayer)) map.removeLayer(usStatesLayer);
+    if (map.hasLayer(stateLinesTile)) map.removeLayer(stateLinesTile);
+  }
+
+  // Kick off loading in the background (won't break anything if missing)
+  loadUsStatesGeoJSONOnce();
+  // Clean base map (no labels) — CARTO Light (white/gray land)
   var base = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
     { attribution: "© OpenStreetMap © CARTO", subdomains:"abcd", maxZoom: 19, className: "basemap-tiles" }
@@ -3040,37 +3087,33 @@ function safeLink(url){
     } catch(e) {}
 
     try {
-      if (!(window.__WDL_SIMPLE_MODE__ || window.__WDL_STORY_TIME_SYNC_ENABLED__ === false)) {
-        window.dispatchEvent(new CustomEvent('wdl:storychange', {
-          detail: {
-            index: storyIndex,
-            count: storyItems.length,
-            item: item,
-            utc: item.utc || null,
-            allowPlay: (interactionCfg.allowPlay != null) ? !!interactionCfg.allowPlay : !!item.allowPlay,
-            pause: (interactionCfg.pause != null) ? !!interactionCfg.pause : !!item.pause,
-            highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
-            showLegend: !!(item.ui && item.ui.showLegend),
-            showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
-            showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
-            startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
-            showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
-            showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
-            stepTheme: item.stepTheme || "blue",
-            stepLabel: getStoryNumericLabel(item, storyIndex),
-            stepKicker: item.stepKicker || item.label || item.title || "Simulator Flow",
-            simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
-          }
-        }));
-        try {
-          if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onStorySceneApplied === 'function') {
-            window.WDL_SIM_CONFIG.onStorySceneApplied({ item: item, index: storyIndex, count: storyItems.length, utc: item.utc || null });
-          }
-        } catch (simEventErr) {
-          console.warn('Simulator story hook failed', simEventErr);
+      window.dispatchEvent(new CustomEvent('wdl:storychange', {
+        detail: {
+          index: storyIndex,
+          count: storyItems.length,
+          item: item,
+          utc: item.utc || null,
+          allowPlay: (interactionCfg.allowPlay != null) ? !!interactionCfg.allowPlay : !!item.allowPlay,
+          pause: (interactionCfg.pause != null) ? !!interactionCfg.pause : !!item.pause,
+          highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
+          showLegend: !!(item.ui && item.ui.showLegend),
+          showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
+          showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
+          startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
+          showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
+          showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
+          stepTheme: item.stepTheme || "blue",
+          stepLabel: getStoryNumericLabel(item, storyIndex),
+          stepKicker: item.stepKicker || item.label || item.title || "Simulator Flow",
+          simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
         }
-      }
-    } catch (e) {}
+      }));
+      try{
+        if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onStorySceneApplied === 'function'){
+          window.WDL_SIM_CONFIG.onStorySceneApplied({ item: item, index: storyIndex, count: storyItems.length, utc: item.utc || null });
+        }
+      }catch(simEventErr){ console.warn('Simulator story hook failed', simEventErr); }
+    } catch(e) {}
 
     try {
       if (typeof updateProductLabel === 'function') updateProductLabel();
