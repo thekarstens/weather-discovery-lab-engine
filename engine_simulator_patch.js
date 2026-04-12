@@ -829,9 +829,9 @@ window.setReportsFilter = setReportsFilter;
   var lightningMarqueeControl = null;
   var lightningMarqueeDom = null;
   var lightningStylesInjected = false;
-  var lightningFreshWindowMs = 10 * 60 * 1000;
-  var lightningRecentWindowMs = 15 * 60 * 1000;
-  var lightningCounterWindowMs = 10 * 60 * 1000;
+  var lightningFreshWindowMs = 12 * 60 * 1000;
+  var lightningRecentWindowMs = 18 * 60 * 1000;
+  var lightningCounterWindowMs = 12 * 60 * 1000;
   var lightningJumpWindowMs = 10 * 60 * 1000;
   var lightningSoundEnabled = false;
   var lightningLastSoundAt = 0;
@@ -865,8 +865,8 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:20px; height:20px; pointer-events:none;
-        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
+        position:relative; width:24px; height:24px; pointer-events:none;
+        transform: translate(-3px,-3px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
         background-size: contain;
         background-repeat: no-repeat;
@@ -878,8 +878,8 @@ window.setReportsFilter = setReportsFilter;
         animation: wdlLightningBlink var(--flash-ms,4800ms) steps(1,end) infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
-        width:28px; height:28px;
-        transform: translate(-6px,-6px) scale(calc(var(--bolt-scale,1) * 1.18));
+        width:34px; height:34px;
+        transform: translate(-7px,-7px) scale(calc(var(--bolt-scale,1) * 1.18));
         filter:
           drop-shadow(0 0 0.6px rgba(18,18,18,.82))
           drop-shadow(0 0 1.3px rgba(24,24,24,.60))
@@ -1041,12 +1041,12 @@ window.setReportsFilter = setReportsFilter;
     var flashMs = Math.max(5200, Math.min(9000, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 6200)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     var newest = (d && d.__isNewest) ? ' is-newest' : '';
-    var scale = d && d.__isNewest ? (0.84 + strength * 0.08) : (0.60 + strength * 0.05);
+    var scale = d && d.__isNewest ? (0.96 + strength * 0.10) : (0.72 + strength * 0.07);
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt' + newest + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: d && d.__isNewest ? [22,22] : [14,14],
-      iconAnchor: d && d.__isNewest ? [11,11] : [7,7],
+      iconSize: d && d.__isNewest ? [28,28] : [18,18],
+      iconAnchor: d && d.__isNewest ? [14,14] : [9,9],
       popupAnchor: [0,-10]
     });
   }
@@ -1055,7 +1055,7 @@ window.setReportsFilter = setReportsFilter;
     var strength = lightningStrengthFor(d);
     var op = Math.max(0.14, Math.min(0.78, (productOpacity.lightning || 0.9) * (0.28 + strength * 0.22)));
     return {
-      radius: Math.max(1, Math.min(4, 1.6 + strength * 1.5)),
+      radius: Math.max(1.4, Math.min(5.2, 2.1 + strength * 1.8)),
       color: '#ffe87a',
       fillColor: '#ffd83a',
       weight: 0.6,
@@ -1295,7 +1295,7 @@ window.setReportsFilter = setReportsFilter;
   function upsertLightningFresh(fresh){
     var seen = Object.create(null);
     if (!lightningFreshLayer){ lightningFreshLayer = L.layerGroup().addTo(map); }
-    var maxAnimated = 34;
+    var maxAnimated = 64;
     fresh.forEach(function(d, idx){
       if (idx >= maxAnimated) return;
       seen[d.id] = true;
@@ -1359,7 +1359,7 @@ window.setReportsFilter = setReportsFilter;
     }
     if (!lightningHistoryLayer){ lightningHistoryLayer = L.layerGroup().addTo(map); }
     var seen = Object.create(null);
-    var maxHistory = 450;
+    var maxHistory = 650;
     var start = Math.max(0, total - maxHistory);
     for (var i = start; i < total; i++){
       var d = lightningEvents[i];
