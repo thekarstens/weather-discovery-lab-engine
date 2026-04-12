@@ -246,7 +246,7 @@
       var cfg = window.WDL_SIM_CONFIG || {};
       var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
-      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
+      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, storyLockTimer = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
 
       function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
       function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
@@ -342,7 +342,7 @@
       function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
-      function advanceTimeline(){ if (animating) { stopAnimation(); return; } var next = Math.min(currentGroupIndex + 1, Math.max(0, timeGroups.length - 1)); if (next === currentGroupIndex) return; animateToGroup(next); }
+      function advanceTimeline(){ if (!topicCards.length) return; currentTopicIndex = Math.min(currentTopicIndex + 1, Math.max(0, topicCards.length - 1)); renderCurrentCard(); }
       function syncGroupToTime(ms){ if (manualClockMode || window.__WDL_SIMPLE_MODE__ || window.__WDL_STORY_TIME_SYNC_ENABLED__ === false) return; if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
@@ -445,34 +445,10 @@
         });
       }
       function renderCardChips(){
-        if (!storyCardRow) return;
-        var cards = manualClockMode ? topicCards : ((currentGroup() && currentGroup().cards) || []);
-        storyCardRow.innerHTML = '';
-        if (!cards.length) return;
-        cards.forEach(function(card, idx){
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'story-card-chip';
-          var isActive = manualClockMode ? (idx === currentTopicIndex) : (idx === currentCardIndex);
-          if (isActive) btn.classList.add('is-active');
-          var accent = storyAccentFor(card.product);
-          btn.style.borderLeftColor = accent;
-          btn.innerHTML = '<div class="story-chip-num" style="background:' + accent + '">' + String((manualClockMode ? idx : idx) + 1) + '</div>'
-            + '<div class="story-chip-copy">'
-            + '<div class="story-chip-kicker">' + String(card.kicker || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
-            + '<div class="story-chip-title">' + String(card.title || card.topicLabel || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
-            + '<div class="story-chip-meta">' + normalizeProductLabel(card.product || 'radar') + '</div>'
-            + '</div>';
-          btn.addEventListener('click', function(){
-            if (manualClockMode){
-              currentTopicIndex = idx;
-            } else {
-              currentCardIndex = idx;
-            }
-            renderCurrentCard();
-          });
-          storyCardRow.appendChild(btn);
-        });
+        if (storyCardRow) {
+          storyCardRow.innerHTML = '';
+          storyCardRow.style.display = 'none';
+        }
         renderTopicRail();
       }
       function renderCurrentCard(){
@@ -496,7 +472,7 @@
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
-        storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : ((((currentGroup() && currentGroup().label) || 'Time')) + ' topics');
+        storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
         sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
@@ -636,6 +612,19 @@
         await triggerTopProduct(btn.getAttribute('data-product'));
         closeProductMenus();
       }); });
+
+      
+      // Simulator-only story mode: one topic set, no second-row grouped cards
+      manualClockMode = true;
+      window.__WDL_SIMPLE_MODE__ = true;
+      window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
+      if (storyCardRow) storyCardRow.style.display = 'none';
+      try {
+        if (storyLockTimer) clearInterval(storyLockTimer);
+        storyLockTimer = setInterval(function(){
+          if (storyCardRow && storyCardRow.style.display !== 'none') storyCardRow.style.display = 'none';
+        }, 1000);
+      } catch(e) {}
 
       playBtn.addEventListener('click', advanceTimeline);
       if (modeToggleBtn) window.WDL_TEST_MODE = function(on){ setManualClockMode(true); };
