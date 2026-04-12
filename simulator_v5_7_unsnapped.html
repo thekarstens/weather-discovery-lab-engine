@@ -457,24 +457,32 @@
         renderTopicRail();
       }
       function renderCurrentCard(){
-        var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
-        if (!card) {
+        if (!topicCards.length) {
           lastRenderedCardKey = '';
           storyTitle.textContent = 'No Topics';
-          storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
+          storyBody.innerHTML = '<p>No topic cards loaded for this simulator.</p>';
           return;
         }
 
-        var cardKey = manualClockMode ? ('topic:' + currentTopicIndex + ':' + (card.id || card.title || '')) : ('group:' + currentGroupIndex + ':card:' + currentCardIndex + ':' + (card.id || card.title || ''));
+        currentTopicIndex = Math.max(0, Math.min(topicCards.length - 1, Number(currentTopicIndex) || 0));
+        var card = topicCards[currentTopicIndex] || null;
+        if (!card) {
+          lastRenderedCardKey = '';
+          storyTitle.textContent = 'No Topics';
+          storyBody.innerHTML = '<p>No topic cards loaded for this simulator.</p>';
+          return;
+        }
+
+        var cardKey = 'topic:' + currentTopicIndex + ':' + (card.id || card.title || '');
         var cardChanged = cardKey !== lastRenderedCardKey;
         lastRenderedCardKey = cardKey;
 
-        var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
+        var chipText = String((currentTopicIndex || 0) + 1);
         storyStationChip.textContent = chipText;
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
-        storyStep.textContent = manualClockMode ? ('Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length) : ((((currentGroup() && currentGroup().label) || 'Time')) + ' topics');
+        storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
         sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
@@ -488,16 +496,11 @@
           } else {
             var baseMode = card.product || 'radar';
             var baseLayers = card.layers || [card.product || 'radar'];
-            var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
-            applyProductMode(baseMode, baseLayers, baseLabel);
+            applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
           }
         }
-
-        updateDopplerButton(!!card.showDoppler);
       }
 
-      function cycleTopic(delta){ if (manualClockMode){ if (!topicCards.length) return; currentTopicIndex = (currentTopicIndex + delta + topicCards.length) % topicCards.length; renderCurrentCard(); return; } var g = currentGroup(); if (!g.cards.length) return; currentCardIndex = (currentCardIndex + delta + g.cards.length) % g.cards.length; renderCurrentCard(); }
-      function refreshToolStates(){ [toolMeasure, toolProbe, toolStormTrack, toolDraw, toolErase].forEach(function(btn){ if (btn) btn.classList.remove('active'); }); }
       function setLocalTrackMode(on){
         try{
           document.body.classList.toggle('track-active', !!on);
@@ -560,7 +563,6 @@
         var span = Math.max(1, max - min);
         var pct = clamp01((val - min) / span);
         updateClockAndScrubber(pct);
-        renderCurrentCard();
       }
 
       scrubber.addEventListener('mousedown', beginScrub);
