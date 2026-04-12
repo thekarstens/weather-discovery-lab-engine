@@ -176,7 +176,7 @@
             <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
             <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
             <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
-            <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
+            <button class="sim-product-btn" data-product="radar_velocity">Velocity</button>
           </div>
         </div>
         <div class="product-group">
@@ -539,23 +539,82 @@
         setLocalTrackMode(false);
       }
 
-      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
-        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
-        ev.preventDefault(); ev.stopPropagation();
-        var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
-
-        manualProductMode = clicked;
-        manualProductLayers = [clicked];
-        manualProductLabel = normalizeProductLabel(clicked);
-
-        applyProductMode(clicked, [clicked], manualProductLabel);
-        setTicker([manualProductLabel + ' view selected', 'Topic card stays in place while changing the visible layer']);
-
+      function closeProductMenus(){
         document.querySelectorAll('.product-group').forEach(function(g){
           g.classList.remove('is-open');
           var t = g.querySelector('.sim-group-toggle');
           if (t) t.classList.remove('is-open');
         });
+      }
+      async function triggerTopProduct(clicked){
+        clicked = String(clicked || '').toLowerCase();
+        try {
+          if (clicked === 'radar' || clicked === 'reflectivity') {
+            manualProductMode = 'radar';
+            manualProductLayers = ['radar'];
+            manualProductLabel = normalizeProductLabel('radar');
+            await applyProductMode('radar', ['radar'], manualProductLabel);
+          } else if (clicked === 'radar_velocity' || clicked === 'velocity') {
+            manualProductMode = 'radar_velocity';
+            manualProductLayers = ['radar_velocity'];
+            manualProductLabel = 'Radar Velocity';
+            if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
+            if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(true);
+            productLabel.textContent = manualProductLabel;
+          } else if (clicked === 'future_radar') {
+            manualProductMode = 'future_radar';
+            manualProductLayers = ['future_radar'];
+            manualProductLabel = normalizeProductLabel(clicked);
+            await applyProductMode(clicked, ['future_radar'], manualProductLabel);
+          } else if (clicked === 'live_doppler') {
+            manualProductMode = 'radar';
+            manualProductLayers = ['radar'];
+            manualProductLabel = 'Live Doppler';
+            await applyProductMode('radar', ['radar'], manualProductLabel);
+            try { if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep(); } catch(e){}
+            productLabel.textContent = manualProductLabel;
+          } else if (clicked === 'temps' || clicked === 'metar_temp' || clicked === 'metar_dewpoint' || clicked === 'metar_wind' || clicked === 'metar_pressure') {
+            manualProductMode = clicked;
+            manualProductLayers = [clicked];
+            manualProductLabel = normalizeProductLabel(clicked);
+            await applyProductMode(clicked, [clicked], manualProductLabel);
+          } else if (clicked === 'spc' || clicked === 'watch') {
+            manualProductMode = clicked;
+            manualProductLayers = [clicked];
+            manualProductLabel = normalizeProductLabel(clicked);
+            await applyProductMode(clicked, [clicked], manualProductLabel);
+          } else if (clicked === 'reports' || clicked === 'lightning' || clicked === 'satellite' || clicked === 'warnings') {
+            manualProductMode = clicked;
+            manualProductLayers = [clicked];
+            manualProductLabel = normalizeProductLabel(clicked);
+            await applyProductMode(clicked, [clicked], manualProductLabel);
+          }
+        } catch(e){ console.warn('Top product toggle failed', clicked, e); }
+        updateDopplerButton(!!window.radarSweepEnabled);
+        setTicker([manualProductLabel + ' selected', 'Story header remains locked']);
+      }
+      document.querySelectorAll('.product-group .sim-group-toggle').forEach(function(toggle){
+        toggle.addEventListener('click', function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          var group = toggle.closest('.product-group');
+          var willOpen = !group.classList.contains('is-open');
+          closeProductMenus();
+          if (willOpen) {
+            group.classList.add('is-open');
+            toggle.classList.add('is-open');
+          }
+        });
+      });
+      document.addEventListener('click', function(ev){
+        if (!ev.target.closest('.product-group')) closeProductMenus();
+      });
+
+      productButtons.forEach(function(btn){ btn.addEventListener('click', async function(ev){
+        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
+        ev.preventDefault(); ev.stopPropagation();
+        await triggerTopProduct(btn.getAttribute('data-product'));
+        closeProductMenus();
       }); });
 
       playBtn.addEventListener('click', advanceTimeline);
@@ -602,8 +661,8 @@
         sceneLead.textContent = (manualClockMode && topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
         renderCurrentCard();
       });
-      storyCollapseBtn.addEventListener('click', function(){ document.body.classList.toggle('story-collapsed'); storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide'; });
-      storyDopplerBtn.addEventListener('click', function(){ try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){} updateDopplerButton(true); });
+      storyCollapseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); return; });
+      storyDopplerBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); return; });
       storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
       storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
