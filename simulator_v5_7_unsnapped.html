@@ -385,6 +385,76 @@
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
+
+      function formatSimpleHourLabel(value){
+        try{
+          var d = (value instanceof Date) ? value : new Date(value);
+          if (isNaN(d)) return '';
+          return d.toLocaleTimeString('en-US', {hour:'numeric', hour12:true, timeZone:'America/Chicago'}).toUpperCase();
+        }catch(e){ return ''; }
+      }
+      function setProductBannerLabel(label){
+        if (!productLabel) return;
+        productLabel.textContent = label || '';
+      }
+      function setHrrrFrameAndLabel(index, btn, baseLabel){
+        try{
+          if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(index);
+          var labels = ['4PM','5PM','6PM','7PM'];
+          setProductBannerLabel((baseLabel || 'Future Product') + ' ' + labels[Math.max(0, Math.min(3, index|0))]);
+          if (btn && btn.parentNode){
+            Array.prototype.forEach.call(btn.parentNode.querySelectorAll('.model-time-chip'), function(b){
+              b.classList.remove('active');
+            });
+            btn.classList.add('active');
+          }
+        }catch(e){
+          console.warn('setHrrrFrameAndLabel failed', e);
+        }
+      }
+      function injectFixedButtonsForCard(topicNumber, card){
+        if (!storyBody) return;
+        var old = document.getElementById('fixedModelButtons');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        topicNumber = Number(topicNumber);
+        if ([4,5,6].indexOf(topicNumber) === -1) return;
+
+        var baseLabel = 'Future Product';
+        var p = String((card && (card.product || card.topicLabel || card.title)) || '').toLowerCase();
+        if (p.indexOf('wind') >= 0) baseLabel = 'Future Winds';
+        else if (p.indexOf('radar') >= 0) baseLabel = 'Future Radar';
+        else if (p.indexOf('temp') >= 0) baseLabel = 'Future Temp';
+        else if (p.indexOf('cape') >= 0) baseLabel = 'Future CAPE';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'model-time-wrap';
+        wrap.id = 'fixedModelButtons';
+
+        var lab = document.createElement('div');
+        lab.className = 'model-time-label';
+        lab.textContent = 'Futurecast Times';
+        wrap.appendChild(lab);
+
+        var row = document.createElement('div');
+        row.className = 'model-time-row';
+
+        [['4pm',0],['5pm',1],['6pm',2],['7pm',3]].forEach(function(item){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'model-time-chip';
+          btn.textContent = item[0];
+          btn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            ev.stopPropagation();
+            setHrrrFrameAndLabel(item[1], btn, baseLabel);
+          });
+          row.appendChild(btn);
+        });
+
+        wrap.appendChild(row);
+        storyBody.appendChild(wrap);
+      }
+
       function normalizeProductLabel(product){
         var map = {
           future_radar:'Future Radar',
@@ -605,68 +675,6 @@
         }
         renderTopicRail();
       }
-
-      function setModelTime(utc, btn){
-        try{
-          var d = (utc instanceof Date) ? new Date(utc.getTime()) : new Date(utc);
-          if (isNaN(d)) return;
-          if (typeof window.setMasterTime === 'function') window.setMasterTime(d);
-          else {
-            window.curZ = d;
-            if (typeof window.updateAll === 'function') window.updateAll();
-          }
-          try{ updateClockAndScrubber(percentFromActualMs(d.getTime())); }catch(e){}
-          if (btn && btn.parentNode){
-            Array.prototype.forEach.call(btn.parentNode.querySelectorAll('.model-time-chip'), function(b){
-              b.classList.remove('active');
-            });
-            btn.classList.add('active');
-          }
-        }catch(e){}
-      }
-
-      function injectFixedButtonsForCard(topicNumber){
-        if (!storyBody) return;
-        var old = document.getElementById('fixedModelButtons');
-        if (old && old.parentNode) old.parentNode.removeChild(old);
-
-        if ([4,5,6].indexOf(Number(topicNumber)) === -1) return;
-
-        var wrap = document.createElement('div');
-        wrap.className = 'model-time-wrap';
-        wrap.id = 'fixedModelButtons';
-
-        var lab = document.createElement('div');
-        lab.className = 'model-time-label';
-        lab.textContent = 'Futurecast Times';
-        wrap.appendChild(lab);
-
-        var row = document.createElement('div');
-        row.className = 'model-time-row';
-
-        [
-          ['4pm','2022-05-12T21:00:00Z'],
-          ['5pm','2022-05-12T22:00:00Z'],
-          ['6pm','2022-05-12T23:00:00Z'],
-          ['7pm','2022-05-13T00:00:00Z']
-        ].forEach(function(item){
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'model-time-chip';
-          btn.textContent = item[0];
-          btn.addEventListener('click', function(ev){
-            ev.preventDefault();
-            ev.stopPropagation();
-            setModelTime(item[1], btn);
-          });
-          row.appendChild(btn);
-        });
-
-        wrap.appendChild(row);
-        storyBody.appendChild(wrap);
-      }
-
-
       function renderCurrentCard(){
         if (!topicCards.length) {
           lastRenderedCardKey = '';
@@ -699,7 +707,7 @@
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
         
-        injectFixedButtonsForCard((currentTopicIndex || 0) + 1);
+        injectFixedButtonsForCard((currentTopicIndex || 0) + 1, card);
 renderModelTimeControls(card);
 
         if (typeof renderCardChips === 'function') renderCardChips();
