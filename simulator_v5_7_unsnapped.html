@@ -211,6 +211,9 @@
       <button type="button" data-mode="winds">Winds</button>
     </div>
     <div class="row">
+      <button type="button" id="hrrrUnlockBtn">Resume Scrubber</button>
+    </div>
+    <div class="row">
       <button type="button" data-frame="0">4pm</button>
       <button type="button" data-frame="1">5pm</button>
       <button type="button" data-frame="2">6pm</button>
@@ -896,7 +899,11 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 <script>
 (function(){
   window.__wdlHrrrPadMode = 'temp';
+  window.__WDL_HRRR_LOCK__ = false;
+  window.__WDL_HRRR_LOCK_MODE__ = 'temp';
+  window.__WDL_HRRR_LOCK_FRAME__ = 0;
   var pad = document.getElementById('wdlHrrrTestPad');
+  var unlockBtn = document.getElementById('hrrrUnlockBtn');
   if (!pad) return;
   var modeBtns = Array.prototype.slice.call(pad.querySelectorAll('[data-mode]'));
   var frameBtns = Array.prototype.slice.call(pad.querySelectorAll('[data-frame]'));
@@ -913,30 +920,55 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   }
 
   function runFrame(frameIndex){
+    window.__WDL_HRRR_LOCK__ = true;
+    window.__WDL_HRRR_LOCK_MODE__ = window.__wdlHrrrPadMode || 'temp';
+    window.__WDL_HRRR_LOCK_FRAME__ = Number(frameIndex) || 0;
+
     try{
-      if (window.__wdlHrrrPadMode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
-      if (window.__wdlHrrrPadMode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
-      if (window.__wdlHrrrPadMode === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
+      if (window.__WDL_HRRR_LOCK_MODE__ === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
+      if (window.__WDL_HRRR_LOCK_MODE__ === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
+      if (window.__WDL_HRRR_LOCK_MODE__ === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
     }catch(e){}
     try{
-      if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(Number(frameIndex)||0);
+      if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(window.__WDL_HRRR_LOCK_FRAME__);
     }catch(e){}
-    frameBtns.forEach(function(btn){
-      btn.classList.toggle('time-active', Number(btn.getAttribute('data-frame')) === Number(frameIndex));
+    if (unlockBtn){
+    unlockBtn.addEventListener('click', function(){
+      window.__WDL_HRRR_LOCK__ = false;
+      frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
+      setBanner('Model Follow Scrubber');
+    });
+  }
+
+  frameBtns.forEach(function(btn){
+      btn.classList.toggle('time-active', Number(btn.getAttribute('data-frame')) === window.__WDL_HRRR_LOCK_FRAME__);
     });
     var base = 'Future Temp';
-    if (window.__wdlHrrrPadMode === 'cape') base = 'Future CAPE';
-    if (window.__wdlHrrrPadMode === 'winds') base = 'Future Winds';
+    if (window.__WDL_HRRR_LOCK_MODE__ === 'cape') base = 'Future CAPE';
+    if (window.__WDL_HRRR_LOCK_MODE__ === 'winds') base = 'Future Winds';
     var times = ['4PM','5PM','6PM','7PM'];
-    setBanner(base + ' ' + times[Math.max(0, Math.min(3, Number(frameIndex)||0))]);
+    setBanner(base + ' ' + times[Math.max(0, Math.min(3, window.__WDL_HRRR_LOCK_FRAME__))]);
   }
 
   modeBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
       window.__wdlHrrrPadMode = btn.getAttribute('data-mode') || 'temp';
-      syncModeUi();
+      if (window.__WDL_HRRR_LOCK__) {
+        window.__WDL_HRRR_LOCK_MODE__ = window.__wdlHrrrPadMode;
+        runFrame(window.__WDL_HRRR_LOCK_FRAME__ || 0);
+      } else {
+        syncModeUi();
+      }
     });
   });
+
+  if (unlockBtn){
+    unlockBtn.addEventListener('click', function(){
+      window.__WDL_HRRR_LOCK__ = false;
+      frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
+      setBanner('Model Follow Scrubber');
+    });
+  }
 
   frameBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
