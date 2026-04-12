@@ -173,10 +173,10 @@
         <div class="product-group">
           <button class="sim-group-toggle" type="button">Radar ▾</button>
           <div class="product-menu">
-            <button class="sim-product-btn" data-product="radar">Reflectivity</button>
+            <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
+            <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
+            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
             <button class="sim-product-btn" data-product="radar_velocity">Velocity</button>
-            <button class="sim-product-btn is-disabled" type="button">Future Radar (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Live Doppler (topic control)</button>
           </div>
         </div>
         <div class="product-group">
@@ -240,19 +240,13 @@
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
   <script src="./map-ui.js"></script>
-  <script>
-    window.__WDL_SIMPLE_MODE__ = true;
-    window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
-    window.__WDL_SIMULATOR_LOCAL_STORY__ = true;
-    window.__WDL_FREE_SCRUB__ = true;
-  </script>
   <script src="./engine_simulator_patch.js"></script>
   <script>
     (function(){
       var cfg = window.WDL_SIM_CONFIG || {};
       var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome');
-      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '', manualOverlayMode = '', manualOverlayLayers = [], manualOverlayLabel = '';
+      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
 
       function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
       function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
@@ -304,7 +298,7 @@
         } catch(e){}
         return false;
       }
-      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); if (!manualClockMode && !window.__WDL_SIMULATOR_LOCAL_STORY__) syncGroupToTime(ms); renderCurrentCard(); }
+      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
       function normalizeProductLabel(product){
@@ -320,7 +314,6 @@
           lightning:'Lightning',
           satellite:'Satellite',
           radar:'Radar',
-          radar_velocity:'Velocity',
           photos:'Photos',
           future_winds:'Future Winds',
           future_temp:'Future Temperatures',
@@ -333,19 +326,16 @@
         return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
       }
       function rebuildTopicCards(){
-        var nextCards = [];
+        topicCards = [];
         timeGroups.forEach(function(g){
           (g.cards || []).forEach(function(card){
             var clone = Object.assign({}, card);
             clone.__groupLabel = g.label || 'Topic';
             clone.__groupUtc = g.utc || null;
             clone.__groupMs = g.ms;
-            nextCards.push(clone);
+            clone.__topicNumber = topicCards.length + 1;
+            topicCards.push(clone);
           });
-        });
-        topicCards = nextCards.map(function(card, idx){
-          card.__topicNumber = idx + 1;
-          return card;
         });
       }
       function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
@@ -353,61 +343,11 @@
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
       function advanceTimeline(){ if (animating) { stopAnimation(); return; } var next = Math.min(currentGroupIndex + 1, Math.max(0, timeGroups.length - 1)); if (next === currentGroupIndex) return; animateToGroup(next); }
-      function syncGroupToTime(ms){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__) return; if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
+      function syncGroupToTime(ms){ if (manualClockMode) return; if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
-      function uniqueLayers(list){
-        var out = [];
-        (Array.isArray(list) ? list : []).forEach(function(v){
-          v = String(v || '').toLowerCase();
-          if (!v) return;
-          if (out.indexOf(v) === -1) out.push(v);
-        });
-        return out;
-      }
-      function getCardBaseProductState(card){
-        var baseMode = (card && card.product) ? String(card.product).toLowerCase() : 'radar';
-        var baseLayers = uniqueLayers((card && card.layers && card.layers.length) ? card.layers : [baseMode]);
-        var baseLabel = (card && (card.title || card.topicLabel)) ? (card.title || card.topicLabel) : normalizeProductLabel(baseMode);
-        return { mode: baseMode, layers: baseLayers, label: baseLabel };
-      }
-      function buildActiveProductState(card){
-        var base = getCardBaseProductState(card);
-        var layers = base.layers.slice();
-        var labels = [base.label];
-        if (manualOverlayMode && manualOverlayLayers && manualOverlayLayers.length){
-          manualOverlayLayers.forEach(function(layer){
-            layer = String(layer || '').toLowerCase();
-            if (layer && layers.indexOf(layer) === -1) layers.push(layer);
-          });
-          if (manualOverlayLabel) labels.push(manualOverlayLabel);
-        }
-        return {
-          mode: manualOverlayMode || base.mode,
-          layers: uniqueLayers(layers),
-          label: labels.filter(Boolean).join(' + '),
-          base: base
-        };
-      }
-      function syncTopButtonUi(){
-        productButtons.forEach(function(btn){
-          var key = String(btn.getAttribute('data-product') || '').toLowerCase();
-          btn.classList.toggle('is-active', !!key && key === manualOverlayMode);
-        });
-      }
-      function clearManualOverlay(){
-        manualOverlayMode = '';
-        manualOverlayLayers = [];
-        manualOverlayLabel = '';
-        syncTopButtonUi();
-      }
-      async function applyActiveProductState(card){
-        var active = buildActiveProductState(card);
-        await applyProductMode(active.mode, active.layers, active.label);
-      }
-
       async function applyProductMode(mode, layers, displayOverride){
-        syncTopButtonUi();
+        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
         var displayLabel = displayOverride || normalizeProductLabel(mode);
         if (!displayOverride && Array.isArray(layers) && layers.length) {
           displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
@@ -422,7 +362,6 @@
           if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
           if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
           if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-          if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
           if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
           if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
           if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
@@ -441,9 +380,6 @@
           if (has('radar') || has('obs_radar') || has('radar_reflectivity') || has('reflectivity') || has('live_doppler') || has('doppler')) {
             if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
             if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-          }
-          if (has('radar_velocity') || has('velocity')) {
-            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(true);
           }
           if (has('warnings') || has('alerts')) {
             if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(true);
@@ -493,7 +429,7 @@
         if (!topicRail) return;
         topicRail.innerHTML = '';
         var cards = topicCards || [];
-        if (!cards.length) { return; }
+        if (!cards.length) { renderTopicRail(); return; }
         cards.forEach(function(card, idx){
           var btn = document.createElement('button');
           btn.type = 'button';
@@ -541,7 +477,7 @@
       }
       function renderCurrentCard(){
         if (manualClockMode) {
-          if (!Array.isArray(topicCards) || !topicCards.length) {
+          if (!topicCards.length) {
             storyTitle.textContent = 'No Topics';
             storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
             return;
@@ -550,15 +486,9 @@
         }
         var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
         if (!card) {
-          if (manualClockMode && Array.isArray(topicCards) && topicCards.length) {
-            currentTopicIndex = 0;
-            card = topicCards[0] || null;
-          }
-          if (!card) {
-            storyTitle.textContent = 'No Topics';
-            storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
-            return;
-          }
+          storyTitle.textContent = 'No Topics';
+          storyBody.innerHTML = '<p>No topic cards loaded for this time.</p>';
+          return;
         }
 
         var chipText = manualClockMode ? String((currentTopicIndex || 0) + 1) : (((currentGroup() && currentGroup().label) || '1').replace(/\s/g,''));
@@ -574,7 +504,10 @@
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
-        Promise.resolve(applyActiveProductState(card)).catch(function(e){ console.warn('Active product apply failed', e); });
+        var baseMode = card.product || 'radar';
+        var baseLayers = card.layers || [card.product || 'radar'];
+        var baseLabel = card.title || card.topicLabel || normalizeProductLabel(baseMode);
+        applyProductMode(baseMode, baseLayers, baseLabel);
 
         updateDopplerButton(!!card.showDoppler);
       }
@@ -607,58 +540,101 @@
         setLocalTrackMode(false);
       }
 
+      function closeProductMenus(){
+        document.querySelectorAll('.product-group').forEach(function(g){
+          g.classList.remove('is-open');
+          var t = g.querySelector('.sim-group-toggle');
+          if (t) t.classList.remove('is-open');
+        });
+      }
+      async function triggerTopProduct(clicked){
+        clicked = String(clicked || '').toLowerCase();
+        try {
+          if (clicked === 'radar' || clicked === 'reflectivity') {
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
+            if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(!window.obsRadarEnabled || !!window.radarVelocityEnabled);
+          } else if (clicked === 'radar_velocity' || clicked === 'velocity') {
+            if (typeof window.setRadarEnabled === 'function' && window.obsRadarEnabled) await window.setRadarEnabled(false);
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(!window.radarVelocityEnabled);
+          } else if (clicked === 'live_doppler') {
+            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false);
+            if (typeof window.setRadarEnabled === 'function' && !window.obsRadarEnabled) await window.setRadarEnabled(true);
+            if (typeof window.toggleSweep === 'function') window.toggleSweep();
+          } else if (clicked === 'future_radar') {
+            if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(!(window.hrrrTempEnabled && window.hrrrProductMode === 'radar'));
+          } else if (clicked === 'temps' || clicked === 'metar_temp') {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('temp');
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible || window.metarDisplayMode !== 'temp');
+          } else if (clicked === 'metar_dewpoint') {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint');
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible || window.metarDisplayMode !== 'dewpoint');
+          } else if (clicked === 'metar_wind') {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('wind');
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible || window.metarDisplayMode !== 'wind');
+          } else if (clicked === 'metar_pressure') {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('pressure');
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(!window.metarVisible || window.metarDisplayMode !== 'pressure');
+          } else if (clicked === 'spc') {
+            if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(!window.spcDay1Enabled);
+          } else if (clicked === 'watch') {
+            if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+          } else if (clicked === 'reports') {
+            if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(!window.reportsEnabled);
+            else if (typeof window.toggleReports === 'function') await window.toggleReports();
+          } else if (clicked === 'lightning') {
+            if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(!window.lightningEnabled);
+          } else if (clicked === 'satellite') {
+            if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(!window.goesEnabled);
+          } else if (clicked === 'warnings') {
+            if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(!window.warningsEnabled);
+          }
+        } catch(e){ console.warn('Top product toggle failed', clicked, e); }
+        setTicker([normalizeProductLabel(clicked) + ' toggled', 'Topic card remains locked while using top buttons']);
+        updateTopButtonStates();
+      }
+      function updateTopButtonStates(){
+        productButtons.forEach(function(btn){
+          var key = String(btn.getAttribute('data-product') || '').toLowerCase();
+          var active = false;
+          if (key === 'radar' || key === 'reflectivity' || key === 'live_doppler') active = !!window.obsRadarEnabled;
+          else if (key === 'radar_velocity' || key === 'velocity') active = !!window.radarVelocityEnabled;
+          else if (key === 'future_radar') active = !!window.hrrrTempEnabled && window.hrrrProductMode === 'radar';
+          else if (key === 'temps' || key === 'metar_temp') active = !!window.metarVisible && window.metarDisplayMode === 'temp';
+          else if (key === 'metar_dewpoint') active = !!window.metarVisible && window.metarDisplayMode === 'dewpoint';
+          else if (key === 'metar_wind') active = !!window.metarVisible && window.metarDisplayMode === 'wind';
+          else if (key === 'metar_pressure') active = !!window.metarVisible && window.metarDisplayMode === 'pressure';
+          else if (key === 'spc' || key === 'watch') active = !!window.spcDay1Enabled;
+          else if (key === 'reports') active = !!window.reportsEnabled;
+          else if (key === 'lightning') active = !!window.lightningEnabled;
+          else if (key === 'satellite') active = !!window.goesEnabled;
+          else if (key === 'warnings') active = !!window.warningsEnabled;
+          btn.classList.toggle('is-active', !!active);
+        });
+      }
       document.querySelectorAll('.product-group .sim-group-toggle').forEach(function(toggle){
         toggle.addEventListener('click', function(ev){
-          ev.preventDefault();
-          ev.stopPropagation();
+          ev.preventDefault(); ev.stopPropagation();
           var group = toggle.closest('.product-group');
-          var willOpen = !(group && group.classList.contains('is-open'));
-          document.querySelectorAll('.product-group').forEach(function(g){
-            g.classList.remove('is-open');
-            var t = g.querySelector('.sim-group-toggle');
-            if (t) t.classList.remove('is-open');
-          });
-          if (group && willOpen){
+          var willOpen = !group.classList.contains('is-open');
+          closeProductMenus();
+          if (willOpen) {
             group.classList.add('is-open');
             toggle.classList.add('is-open');
           }
         });
       });
       document.addEventListener('click', function(ev){
-        if (ev.target && ev.target.closest && ev.target.closest('.product-group')) return;
-        document.querySelectorAll('.product-group').forEach(function(g){
-          g.classList.remove('is-open');
-          var t = g.querySelector('.sim-group-toggle');
-          if (t) t.classList.remove('is-open');
-        });
+        if (!ev.target.closest('.product-group')) closeProductMenus();
       });
-
-      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
+      productButtons.forEach(function(btn){ btn.addEventListener('click', async function(ev){
         if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
         ev.preventDefault(); ev.stopPropagation();
-        var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
-        var card = manualClockMode ? (topicCards[currentTopicIndex] || null) : currentCard();
-        var base = getCardBaseProductState(card);
-
-        if (clicked === manualOverlayMode) {
-          clearManualOverlay();
-          Promise.resolve(applyActiveProductState(card)).catch(function(e){ console.warn('Active product apply failed', e); });
-          setTicker([base.label + ' view restored', 'Top banner overlay cleared']);
-        } else {
-          manualOverlayMode = clicked;
-          manualOverlayLayers = [clicked];
-          manualOverlayLabel = normalizeProductLabel(clicked);
-          if (clicked === 'radar_velocity') manualOverlayLayers = ['radar_velocity'];
-          syncTopButtonUi();
-          Promise.resolve(applyActiveProductState(card)).catch(function(e){ console.warn('Active product apply failed', e); });
-          setTicker([manualOverlayLabel + ' added on top', 'Topic card base product stays in place']);
-        }
-
-        document.querySelectorAll('.product-group').forEach(function(g){
-          g.classList.remove('is-open');
-          var t = g.querySelector('.sim-group-toggle');
-          if (t) t.classList.remove('is-open');
-        });
+        await triggerTopProduct(btn.getAttribute('data-product'));
+        closeProductMenus();
       }); });
 
       playBtn.addEventListener('click', advanceTimeline);
@@ -734,9 +710,9 @@
       if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
-      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); syncTopButtonUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
-      setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
+      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode || window.__WDL_SIMPLE_MODE__) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); renderCurrentCard(); } } });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentTopicIndex = 0; renderCurrentCard(); updateTopButtonStates(); console.log('Simulator v5 active config:', cfg); });
+      setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); updateTopButtonStates(); } }, 400);
     })();
   </script>
 </body>
