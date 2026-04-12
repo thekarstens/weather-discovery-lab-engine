@@ -158,6 +158,12 @@
     .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
+  
+    .forced-model-time-wrap{margin-top:14px; padding-top:10px; border-top:1px solid rgba(16,36,58,.12);}
+    .forced-model-time-label{margin-top:2px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.8px; text-transform:uppercase; color:#45698f;}
+    .forced-model-time-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+    .forced-model-time-chip{border:none; border-radius:999px; padding:10px 14px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10);}
+    .forced-model-time-chip.active{background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16);}
   </style>
 </head>
 <body>
@@ -385,76 +391,6 @@
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
-
-      function formatSimpleHourLabel(value){
-        try{
-          var d = (value instanceof Date) ? value : new Date(value);
-          if (isNaN(d)) return '';
-          return d.toLocaleTimeString('en-US', {hour:'numeric', hour12:true, timeZone:'America/Chicago'}).toUpperCase();
-        }catch(e){ return ''; }
-      }
-      function setProductBannerLabel(label){
-        if (!productLabel) return;
-        productLabel.textContent = label || '';
-      }
-      function setHrrrFrameAndLabel(index, btn, baseLabel){
-        try{
-          if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(index);
-          var labels = ['4PM','5PM','6PM','7PM'];
-          setProductBannerLabel((baseLabel || 'Future Product') + ' ' + labels[Math.max(0, Math.min(3, index|0))]);
-          if (btn && btn.parentNode){
-            Array.prototype.forEach.call(btn.parentNode.querySelectorAll('.model-time-chip'), function(b){
-              b.classList.remove('active');
-            });
-            btn.classList.add('active');
-          }
-        }catch(e){
-          console.warn('setHrrrFrameAndLabel failed', e);
-        }
-      }
-      function injectFixedButtonsForCard(topicNumber, card){
-        if (!storyBody) return;
-        var old = document.getElementById('fixedModelButtons');
-        if (old && old.parentNode) old.parentNode.removeChild(old);
-        topicNumber = Number(topicNumber);
-        if ([4,5,6].indexOf(topicNumber) === -1) return;
-
-        var baseLabel = 'Future Product';
-        var p = String((card && (card.product || card.topicLabel || card.title)) || '').toLowerCase();
-        if (p.indexOf('wind') >= 0) baseLabel = 'Future Winds';
-        else if (p.indexOf('radar') >= 0) baseLabel = 'Future Radar';
-        else if (p.indexOf('temp') >= 0) baseLabel = 'Future Temp';
-        else if (p.indexOf('cape') >= 0) baseLabel = 'Future CAPE';
-
-        var wrap = document.createElement('div');
-        wrap.className = 'model-time-wrap';
-        wrap.id = 'fixedModelButtons';
-
-        var lab = document.createElement('div');
-        lab.className = 'model-time-label';
-        lab.textContent = 'Futurecast Times';
-        wrap.appendChild(lab);
-
-        var row = document.createElement('div');
-        row.className = 'model-time-row';
-
-        [['4pm',0],['5pm',1],['6pm',2],['7pm',3]].forEach(function(item){
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'model-time-chip';
-          btn.textContent = item[0];
-          btn.addEventListener('click', function(ev){
-            ev.preventDefault();
-            ev.stopPropagation();
-            setHrrrFrameAndLabel(item[1], btn, baseLabel);
-          });
-          row.appendChild(btn);
-        });
-
-        wrap.appendChild(row);
-        storyBody.appendChild(wrap);
-      }
-
       function normalizeProductLabel(product){
         var map = {
           future_radar:'Future Radar',
@@ -675,6 +611,76 @@
         }
         renderTopicRail();
       }
+
+      function forceCardProductBaseLabel(topicNumber, card){
+        topicNumber = Number(topicNumber);
+        if (topicNumber === 4) return 'Future Temp';
+        if (topicNumber === 5) return 'Future CAPE';
+        if (topicNumber === 6) return 'Future Winds';
+        var p = String((card && (card.product || card.topicLabel || card.title)) || '').toLowerCase();
+        if (p.indexOf('wind') >= 0) return 'Future Winds';
+        if (p.indexOf('cape') >= 0) return 'Future CAPE';
+        if (p.indexOf('radar') >= 0) return 'Future Radar';
+        return 'Future Temp';
+      }
+      function forceSetProductBanner(label){
+        try{ if (productLabel) productLabel.textContent = label; }catch(e){}
+      }
+      function forceSetHrrrFrame(index, btn, topicNumber, card){
+        try{
+          if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(index);
+          var hourLabels = ['4PM','5PM','6PM','7PM'];
+          window.__WDL_HRRR_BUTTONS_TOUCHED__ = true;
+          forceSetProductBanner(forceCardProductBaseLabel(topicNumber, card) + ' ' + hourLabels[Math.max(0, Math.min(3, index|0))]);
+          if (btn && btn.parentNode){
+            Array.prototype.forEach.call(btn.parentNode.querySelectorAll('.forced-model-time-chip'), function(b){ b.classList.remove('active'); });
+            btn.classList.add('active');
+          }
+        }catch(e){ console.warn('forceSetHrrrFrame failed', e); }
+      }
+      function forceInjectModelButtons(topicNumber, card){
+        try{
+          var old = document.getElementById('forcedModelTimeWrap');
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+          topicNumber = Number(topicNumber);
+          if ([4,5,6].indexOf(topicNumber) === -1 || !storyBody) return;
+
+          var wrap = document.createElement('div');
+          wrap.className = 'forced-model-time-wrap';
+          wrap.id = 'forcedModelTimeWrap';
+
+          var lab = document.createElement('div');
+          lab.className = 'forced-model-time-label';
+          lab.textContent = 'Futurecast Times';
+          wrap.appendChild(lab);
+
+          var row = document.createElement('div');
+          row.className = 'forced-model-time-row';
+
+          [['4pm',0],['5pm',1],['6pm',2],['7pm',3]].forEach(function(item, idx){
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'forced-model-time-chip';
+            btn.textContent = item[0];
+            if (idx === 0) btn.classList.add('active');
+            btn.addEventListener('click', function(ev){
+              ev.preventDefault();
+              ev.stopPropagation();
+              forceSetHrrrFrame(item[1], btn, topicNumber, card);
+            });
+            row.appendChild(btn);
+          });
+
+          wrap.appendChild(row);
+          storyBody.appendChild(wrap);
+
+          // default banner text when entering these cards
+          if (!window.__WDL_HRRR_BUTTONS_TOUCHED__) {
+            forceSetProductBanner(forceCardProductBaseLabel(topicNumber, card) + ' 4PM');
+          }
+        }catch(e){ console.warn('forceInjectModelButtons failed', e); }
+      }
+
       function renderCurrentCard(){
         if (!topicCards.length) {
           lastRenderedCardKey = '';
@@ -706,9 +712,8 @@
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
-        
-        injectFixedButtonsForCard((currentTopicIndex || 0) + 1, card);
-renderModelTimeControls(card);
+        forceInjectModelButtons((currentTopicIndex || 0) + 1, card);
+        renderModelTimeControls(card);
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
