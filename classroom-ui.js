@@ -97,6 +97,22 @@
     });
   }
 
+
+  async function forceRadarAndToggleDoppler() {
+    try {
+      if (typeof window.setRadarVelocityEnabled === "function") {
+        try { await window.setRadarVelocityEnabled(false); } catch (e) {}
+      }
+      if (typeof window.setObsRadarEnabled === "function" && !window.obsRadarEnabled) {
+        try { await window.setObsRadarEnabled(true); } catch (e) {}
+      } else if (typeof window.setRadarEnabled === "function" && !window.obsRadarEnabled) {
+        try { await window.setRadarEnabled(true); } catch (e) {}
+      }
+      if (typeof window.toggleSweep === "function") window.toggleSweep();
+    } catch (e) {}
+    syncDopplerButtons(true);
+  }
+
   function updateCollapsedState(){
     var collapsed = document.body.classList.contains("guide-collapsed");
     if (storyPanel) {
@@ -228,13 +244,23 @@
     });
   }
   if (storyDopplerBtn){
-    storyDopplerBtn.addEventListener("click", function(){
-      try{ if (typeof window.toggleSweep === "function") window.toggleSweep(); }catch(e){}
-      syncDopplerButtons(true);
+    storyDopplerBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      forceRadarAndToggleDoppler();
+    });
+  }
+  if (floatingSweepBtn){
+    floatingSweepBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      forceRadarAndToggleDoppler();
     });
   }
   if (openLessonBtn) openLessonBtn.addEventListener("click", function(){ document.body.classList.contains("guide-collapsed") ? openGuide() : closeGuide(); });
-  if (storyCollapseBtn) storyCollapseBtn.addEventListener("click", function(){ document.body.classList.contains("guide-collapsed") ? openGuide() : closeGuide(); });
+  if (storyCollapseBtn) storyCollapseBtn.addEventListener("click", function(e){
+    e.preventDefault();
+    document.body.classList.contains("guide-collapsed") ? openGuide() : closeGuide();
+    updateCollapsedState();
+  });
   if (exploreBtn) exploreBtn.addEventListener("click", function(){ applyMode(!currentExploreMode); });
   if (scrubber){
     scrubber.addEventListener("input", function(){
@@ -369,6 +395,9 @@
   });
 
   makeStormTrackWindowDraggable();
+  updateCollapsedState();
+  updateLessonButton();
+  syncDopplerButtons(true);
   toggleToolBox(false);
   setClockVisibility(false);
   applyMode(false);
