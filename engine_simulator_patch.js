@@ -2984,6 +2984,7 @@ function safeLink(url){
 
 
   function renderStory(i, panTo){
+    if (isSimpleSimulatorStoryMode()) return;
     if (!storyItems.length) return;
     if (window.__WDL_FREE_SCRUB__ === true) window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
     if (i < 0) i = 0;
@@ -3082,6 +3083,7 @@ function safeLink(url){
   }
 
   function buildStoryMarkers(){
+    if (isSimpleSimulatorStoryMode()) return;
     // Remove existing
     storyMarkers.forEach(function(m){ try{ map.removeLayer(m); }catch(e){} });
     storyMarkers = [];
@@ -3281,7 +3283,18 @@ function safeLink(url){
     });
   }
 
+  function isSimpleSimulatorStoryMode(){
+    try{
+      return !!(window.__WDL_SIMPLE_MODE__ || window.__WDL_SIMULATOR_LOCAL_STORY__);
+    }catch(e){}
+    return false;
+  }
+
   function loadStory(){
+    if (isSimpleSimulatorStoryMode()) {
+      console.log("🧭 Simple simulator mode: engine storyboard disabled.");
+      return Promise.resolve();
+    }
     if (STORYBOARD_JSON) {
       console.log("📖 Loading JSON storyboard:", STORYBOARD_JSON);
       return loadJSONStoryboard();
@@ -3459,11 +3472,13 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 
   var prevBtn = document.getElementById("storyPrevBtn");
   var nextBtn = document.getElementById("storyNextBtn");
-  if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
-  if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
+  if (!isSimpleSimulatorStoryMode()) {
+    if (prevBtn) prevBtn.onclick = function(){ renderStory(storyIndex - 1, true); };
+    if (nextBtn) nextBtn.onclick = function(){ renderStory(storyIndex + 1, true); };
+  }
   bindSweepControls();
 // Load story now
-  loadStory();
+  if (!isSimpleSimulatorStoryMode()) loadStory();
 
 
   map.on("zoomend", function(){
@@ -6288,3 +6303,4 @@ window.clearStormTrack = function(){ try{ clearStormTrackGraphics(); }catch(e){}
 window.clearMeasure = function(){ try{ clearMeasureGraphics(); }catch(e){} };
 window.clearDrawings = function(){ try{ clearDrawings(); }catch(e){} };
 try{ window.toggleSweep = toggleSweep; }catch(e){}
+
