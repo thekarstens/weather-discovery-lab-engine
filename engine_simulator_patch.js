@@ -875,7 +875,7 @@ window.setReportsFilter = setReportsFilter;
           drop-shadow(0 0 0.45px rgba(20,20,20,.78))
           drop-shadow(0 0 1.0px rgba(24,24,24,.52))
           drop-shadow(0 0 4px rgba(255,232,122,.28));
-        animation: wdlLightningBlink var(--flash-ms,3600ms) steps(1,end) infinite;
+        animation: wdlLightningBlink var(--flash-ms,2800ms) steps(1,end) infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
         width:34px; height:34px;
@@ -1038,15 +1038,15 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(3000, Math.min(5200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3800)));
+    var flashMs = Math.max(2200, Math.min(4200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3000)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     var newest = (d && d.__isNewest) ? ' is-newest' : '';
-    var scale = d && d.__isNewest ? (1.04 + strength * 0.12) : (0.82 + strength * 0.08);
+    var scale = d && d.__isNewest ? (1.10 + strength * 0.13) : (0.90 + strength * 0.09);
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt' + newest + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: d && d.__isNewest ? [32,32] : [20,20],
-      iconAnchor: d && d.__isNewest ? [16,16] : [10,10],
+      iconSize: d && d.__isNewest ? [34,34] : [22,22],
+      iconAnchor: d && d.__isNewest ? [17,17] : [11,11],
       popupAnchor: [0,-10]
     });
   }
@@ -1295,7 +1295,7 @@ window.setReportsFilter = setReportsFilter;
   function upsertLightningFresh(fresh){
     var seen = Object.create(null);
     if (!lightningFreshLayer){ lightningFreshLayer = L.layerGroup().addTo(map); }
-    var maxAnimated = 90;
+    var maxAnimated = 130;
     fresh.forEach(function(d, idx){
       if (idx >= maxAnimated) return;
       seen[d.id] = true;
@@ -1359,7 +1359,7 @@ window.setReportsFilter = setReportsFilter;
     }
     if (!lightningHistoryLayer){ lightningHistoryLayer = L.layerGroup().addTo(map); }
     var seen = Object.create(null);
-    var maxHistory = 800;
+    var maxHistory = 1000;
     var start = Math.max(0, total - maxHistory);
     for (var i = start; i < total; i++){
       var d = lightningEvents[i];
@@ -3774,7 +3774,7 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
         if (!isNaN(ud)) untilText = ud.toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago'});
       }
     }catch(e){}
-    var summaryHeadline = evtName + (firstArea ? ' — ' + firstArea : '');
+    var summaryHeadline = firstArea || evtName;
     var summaryBody = '<div class="wdl-warning-summary">'
       + '<div class="ww-kicker">' + (String(evtName).toUpperCase()) + '</div>'
       + '<div class="ww-title">' + summaryHeadline + '</div>'
@@ -3850,10 +3850,22 @@ function ensureWarningDetailModal(){
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click', function(ev){
-    var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
-    if (ev.target === wrap || act === 'close') wrap.classList.remove('visible');
-    else if (act === 'full') wrap.classList.toggle('fullscreen');
-  });
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
+    var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
+    if (ev.target === wrap || act === 'close') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.remove('visible');
+      wrap.classList.remove('fullscreen');
+      return;
+    }
+    if (act === 'full') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.toggle('fullscreen');
+      return;
+    }
+  }, true);
   warningDetailModal = wrap;
   return wrap;
 }
@@ -5707,10 +5719,22 @@ function ensureWarningDetailModal(){
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click', function(ev){
-    var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
-    if (ev.target === wrap || act === 'close') wrap.classList.remove('visible');
-    else if (act === 'full') wrap.classList.toggle('fullscreen');
-  });
+    var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
+    var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
+    if (ev.target === wrap || act === 'close') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.remove('visible');
+      wrap.classList.remove('fullscreen');
+      return;
+    }
+    if (act === 'full') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      wrap.classList.toggle('fullscreen');
+      return;
+    }
+  }, true);
   warningDetailModal = wrap;
   return wrap;
 }
