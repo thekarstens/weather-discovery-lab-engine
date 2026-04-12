@@ -227,14 +227,9 @@
       try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
     });
   }
-  if (storyDopplerBtn){
-    storyDopplerBtn.addEventListener("click", function(ev){
-      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-      return false;
-    });
-  }
-  if (openLessonBtn) openLessonBtn.addEventListener("click", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} return false; });
-  if (storyCollapseBtn) storyCollapseBtn.addEventListener("click", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} return false; });
+  // storyDopplerBtn is handled by simulator HTML in this build.
+  if (openLessonBtn) openLessonBtn.onclick = null;
+  if (storyCollapseBtn) storyCollapseBtn.onclick = null;
   if (exploreBtn) exploreBtn.addEventListener("click", function(){ applyMode(!currentExploreMode); });
   if (scrubber){
     scrubber.addEventListener("input", function(){
