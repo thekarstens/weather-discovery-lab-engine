@@ -344,7 +344,7 @@
   });
 
 
-  window.addEventListener("wdl:storychange", function (ev) {
+  window.addEventListener("wdl:storychange", function (ev) { return;
     if (window.__WDL_SIMPLE_MODE__ || window.__WDL_SIMULATOR_LOCAL_STORY__) return;
     var detail = (ev && ev.detail) || {};
     latestStoryItem = detail.item || latestStoryItem;
