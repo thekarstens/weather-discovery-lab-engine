@@ -875,7 +875,7 @@ window.setReportsFilter = setReportsFilter;
           drop-shadow(0 0 0.45px rgba(20,20,20,.78))
           drop-shadow(0 0 1.0px rgba(24,24,24,.52))
           drop-shadow(0 0 4px rgba(255,232,122,.28));
-        animation: wdlLightningBlink var(--flash-ms,4800ms) steps(1,end) infinite;
+        animation: wdlLightningBlink var(--flash-ms,3600ms) steps(1,end) infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
         width:34px; height:34px;
@@ -1038,15 +1038,15 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(5200, Math.min(9000, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 6200)));
+    var flashMs = Math.max(3000, Math.min(5200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3800)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     var newest = (d && d.__isNewest) ? ' is-newest' : '';
-    var scale = d && d.__isNewest ? (0.96 + strength * 0.10) : (0.72 + strength * 0.07);
+    var scale = d && d.__isNewest ? (1.04 + strength * 0.12) : (0.82 + strength * 0.08);
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt' + newest + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: d && d.__isNewest ? [28,28] : [18,18],
-      iconAnchor: d && d.__isNewest ? [14,14] : [9,9],
+      iconSize: d && d.__isNewest ? [32,32] : [20,20],
+      iconAnchor: d && d.__isNewest ? [16,16] : [10,10],
       popupAnchor: [0,-10]
     });
   }
@@ -1295,7 +1295,7 @@ window.setReportsFilter = setReportsFilter;
   function upsertLightningFresh(fresh){
     var seen = Object.create(null);
     if (!lightningFreshLayer){ lightningFreshLayer = L.layerGroup().addTo(map); }
-    var maxAnimated = 64;
+    var maxAnimated = 90;
     fresh.forEach(function(d, idx){
       if (idx >= maxAnimated) return;
       seen[d.id] = true;
@@ -1359,7 +1359,7 @@ window.setReportsFilter = setReportsFilter;
     }
     if (!lightningHistoryLayer){ lightningHistoryLayer = L.layerGroup().addTo(map); }
     var seen = Object.create(null);
-    var maxHistory = 650;
+    var maxHistory = 800;
     var start = Math.max(0, total - maxHistory);
     for (var i = start; i < total; i++){
       var d = lightningEvents[i];
@@ -3763,15 +3763,33 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
   },
   onEachFeature: function(feature, layer){
     var p = feature.properties || {};
-    var popup = p.popupHtml || p.bulletinText || p.text || "<b>Warning</b>";
-    var wrapped = '<div style="width:520px; max-width:520px; max-height:260px; overflow-y:auto; overflow-x:hidden; font:800 13px/1.35 Arial,sans-serif; padding-right:6px; box-sizing:border-box;">' + popup + '</div>';
-    layer.bindPopup(wrapped, {
-      maxWidth: 560,
-      minWidth: 560,
+    var evtName = String(p.event || p.type || 'Warning');
+    var area = String(p.areaDesc || p.area || p.counties || '').trim();
+    var firstArea = area ? area.split(';').slice(0,3).join(', ') : '';
+    var untilRaw = p.ends || p.end || p.expire || p.expires || '';
+    var untilText = '';
+    try{
+      if (untilRaw){
+        var ud = new Date(untilRaw);
+        if (!isNaN(ud)) untilText = ud.toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago'});
+      }
+    }catch(e){}
+    var summaryHeadline = evtName + (firstArea ? ' — ' + firstArea : '');
+    var summaryBody = '<div class="wdl-warning-summary">'
+      + '<div class="ww-kicker">' + (String(evtName).toUpperCase()) + '</div>'
+      + '<div class="ww-title">' + summaryHeadline + '</div>'
+      + (untilText ? '<div class="ww-meta">Until ' + untilText + ' CDT</div>' : '')
+      + '<button type="button" class="ww-more-details" data-warning-id="' + String(p.id || p.ETN || p.etn || layer._leaflet_id) + '">Click Here for more details</button>'
+      + '</div>';
+    layer.bindPopup(summaryBody, {
+      maxWidth: 460,
+      minWidth: 380,
       autoPan: true,
       keepInView: true,
       className: "warning-popup-shell"
     });
+    layer.__warningDetailHtml = p.popupHtml || p.bulletinText || p.text || "<b>Warning</b>";
+    layer.__warningSummaryTitle = summaryHeadline;
   }
 });
 
@@ -3801,6 +3819,68 @@ var alertsBlinkOn = true;
 var alertsBlinkTimer = null;
 var warningsEnabled = false;
 window.warningsEnabled = warningsEnabled;
+if (!document.getElementById('wdl-warning-popup-styles')){
+  var wps = document.createElement('style');
+  wps.id = 'wdl-warning-popup-styles';
+  wps.textContent = `
+    .warning-popup-shell .leaflet-popup-content-wrapper{background:linear-gradient(180deg,#0d2038,#0a1829); color:#fff; border:1px solid rgba(255,255,255,.16); border-radius:18px; box-shadow:0 18px 38px rgba(0,0,0,.34);}
+    .warning-popup-shell .leaflet-popup-tip{background:#0a1829;}
+    .wdl-warning-summary{padding:6px 2px 2px; min-width:320px;}
+    .wdl-warning-summary .ww-kicker{font:900 11px/1 Lato,Arial,sans-serif; letter-spacing:1px; color:#ffd66e; text-transform:uppercase;}
+    .wdl-warning-summary .ww-title{margin-top:8px; font:900 22px/1.15 Lato,Arial,sans-serif; text-transform:uppercase;}
+    .wdl-warning-summary .ww-meta{margin-top:10px; font:800 14px/1.2 Lato,Arial,sans-serif; color:#ffe9b0;}
+    .wdl-warning-summary .ww-more-details{margin-top:14px; width:100%; border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:12px 14px; background:linear-gradient(180deg,#1576ff,#0f56b5); color:#fff; font:900 14px/1 Lato,Arial,sans-serif; cursor:pointer; box-shadow:0 10px 18px rgba(0,0,0,.24);}
+    .wdl-warning-modal{position:fixed; inset:0; z-index:100260; display:none; align-items:center; justify-content:center; background:rgba(2,8,16,.72); backdrop-filter:blur(4px);}
+    .wdl-warning-modal.visible{display:flex;}
+    .wdl-warning-modal-card{width:min(960px, calc(100vw - 60px)); max-height:calc(100vh - 70px); background:linear-gradient(180deg,#09192c,#0d2340); border:1px solid rgba(255,255,255,.16); border-radius:22px; color:#fff; box-shadow:0 22px 44px rgba(0,0,0,.4); overflow:hidden;}
+    .wdl-warning-modal.fullscreen .wdl-warning-modal-card{width:calc(100vw - 24px); max-height:calc(100vh - 24px);}
+    .wdl-warning-modal-head{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08);}
+    .wdl-warning-modal-title{font:900 24px/1.1 Lato,Arial,sans-serif; text-transform:uppercase;}
+    .wdl-warning-modal-actions{display:flex; gap:10px;}
+    .wdl-warning-modal-btn{border:1px solid rgba(255,255,255,.16); border-radius:12px; padding:10px 12px; background:#12345e; color:#fff; font:900 13px/1 Lato,Arial,sans-serif; cursor:pointer;}
+    .wdl-warning-modal-body{padding:18px; overflow:auto; max-height:calc(100vh - 170px); font:800 14px/1.35 Arial,sans-serif;}
+  `;
+  document.head.appendChild(wps);
+}
+var warningDetailModal = null;
+function ensureWarningDetailModal(){
+  if (warningDetailModal) return warningDetailModal;
+  var wrap = document.createElement('div');
+  wrap.className = 'wdl-warning-modal';
+  wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', function(ev){
+    var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
+    if (ev.target === wrap || act === 'close') wrap.classList.remove('visible');
+    else if (act === 'full') wrap.classList.toggle('fullscreen');
+  });
+  warningDetailModal = wrap;
+  return wrap;
+}
+function openWarningDetailModal(title, html){
+  var wrap = ensureWarningDetailModal();
+  wrap.querySelector('.wdl-warning-modal-title').textContent = title || 'Warning Details';
+  wrap.querySelector('.wdl-warning-modal-body').innerHTML = html || '<b>Warning</b>';
+  wrap.classList.add('visible');
+}
+document.addEventListener('click', function(ev){
+  var btn = ev.target && ev.target.closest ? ev.target.closest('.ww-more-details') : null;
+  if (!btn) return;
+  var popupEl = btn.closest('.leaflet-popup');
+  if (!popupEl) return;
+  var layerId = btn.getAttribute('data-warning-id');
+  var targetLayer = null;
+  try{
+    alertsLayer.eachLayer(function(lyr){
+      var p = (lyr.feature && lyr.feature.properties) || {};
+      var id = String(p.id || p.ETN || p.etn || lyr._leaflet_id);
+      if (id === String(layerId)) targetLayer = lyr;
+    });
+  }catch(e){}
+  if (targetLayer){
+    openWarningDetailModal(targetLayer.__warningSummaryTitle || 'Warning Details', targetLayer.__warningDetailHtml || '<b>Warning</b>');
+  }
+});
   var metarData = [];
   var metarLoadPromise = null;
 
@@ -5596,6 +5676,68 @@ function ensureBlinking(){
 function setWarningsEnabled(on){
   warningsEnabled = !!on;
   window.warningsEnabled = warningsEnabled;
+if (!document.getElementById('wdl-warning-popup-styles')){
+  var wps = document.createElement('style');
+  wps.id = 'wdl-warning-popup-styles';
+  wps.textContent = `
+    .warning-popup-shell .leaflet-popup-content-wrapper{background:linear-gradient(180deg,#0d2038,#0a1829); color:#fff; border:1px solid rgba(255,255,255,.16); border-radius:18px; box-shadow:0 18px 38px rgba(0,0,0,.34);}
+    .warning-popup-shell .leaflet-popup-tip{background:#0a1829;}
+    .wdl-warning-summary{padding:6px 2px 2px; min-width:320px;}
+    .wdl-warning-summary .ww-kicker{font:900 11px/1 Lato,Arial,sans-serif; letter-spacing:1px; color:#ffd66e; text-transform:uppercase;}
+    .wdl-warning-summary .ww-title{margin-top:8px; font:900 22px/1.15 Lato,Arial,sans-serif; text-transform:uppercase;}
+    .wdl-warning-summary .ww-meta{margin-top:10px; font:800 14px/1.2 Lato,Arial,sans-serif; color:#ffe9b0;}
+    .wdl-warning-summary .ww-more-details{margin-top:14px; width:100%; border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:12px 14px; background:linear-gradient(180deg,#1576ff,#0f56b5); color:#fff; font:900 14px/1 Lato,Arial,sans-serif; cursor:pointer; box-shadow:0 10px 18px rgba(0,0,0,.24);}
+    .wdl-warning-modal{position:fixed; inset:0; z-index:100260; display:none; align-items:center; justify-content:center; background:rgba(2,8,16,.72); backdrop-filter:blur(4px);}
+    .wdl-warning-modal.visible{display:flex;}
+    .wdl-warning-modal-card{width:min(960px, calc(100vw - 60px)); max-height:calc(100vh - 70px); background:linear-gradient(180deg,#09192c,#0d2340); border:1px solid rgba(255,255,255,.16); border-radius:22px; color:#fff; box-shadow:0 22px 44px rgba(0,0,0,.4); overflow:hidden;}
+    .wdl-warning-modal.fullscreen .wdl-warning-modal-card{width:calc(100vw - 24px); max-height:calc(100vh - 24px);}
+    .wdl-warning-modal-head{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08);}
+    .wdl-warning-modal-title{font:900 24px/1.1 Lato,Arial,sans-serif; text-transform:uppercase;}
+    .wdl-warning-modal-actions{display:flex; gap:10px;}
+    .wdl-warning-modal-btn{border:1px solid rgba(255,255,255,.16); border-radius:12px; padding:10px 12px; background:#12345e; color:#fff; font:900 13px/1 Lato,Arial,sans-serif; cursor:pointer;}
+    .wdl-warning-modal-body{padding:18px; overflow:auto; max-height:calc(100vh - 170px); font:800 14px/1.35 Arial,sans-serif;}
+  `;
+  document.head.appendChild(wps);
+}
+var warningDetailModal = null;
+function ensureWarningDetailModal(){
+  if (warningDetailModal) return warningDetailModal;
+  var wrap = document.createElement('div');
+  wrap.className = 'wdl-warning-modal';
+  wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', function(ev){
+    var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
+    if (ev.target === wrap || act === 'close') wrap.classList.remove('visible');
+    else if (act === 'full') wrap.classList.toggle('fullscreen');
+  });
+  warningDetailModal = wrap;
+  return wrap;
+}
+function openWarningDetailModal(title, html){
+  var wrap = ensureWarningDetailModal();
+  wrap.querySelector('.wdl-warning-modal-title').textContent = title || 'Warning Details';
+  wrap.querySelector('.wdl-warning-modal-body').innerHTML = html || '<b>Warning</b>';
+  wrap.classList.add('visible');
+}
+document.addEventListener('click', function(ev){
+  var btn = ev.target && ev.target.closest ? ev.target.closest('.ww-more-details') : null;
+  if (!btn) return;
+  var popupEl = btn.closest('.leaflet-popup');
+  if (!popupEl) return;
+  var layerId = btn.getAttribute('data-warning-id');
+  var targetLayer = null;
+  try{
+    alertsLayer.eachLayer(function(lyr){
+      var p = (lyr.feature && lyr.feature.properties) || {};
+      var id = String(p.id || p.ETN || p.etn || lyr._leaflet_id);
+      if (id === String(layerId)) targetLayer = lyr;
+    });
+  }catch(e){}
+  if (targetLayer){
+    openWarningDetailModal(targetLayer.__warningSummaryTitle || 'Warning Details', targetLayer.__warningDetailHtml || '<b>Warning</b>');
+  }
+});
   updateAlerts();
   try{ updateProductLabel(); }catch(e){}
   try{ setTimeLabel(); }catch(e){}
