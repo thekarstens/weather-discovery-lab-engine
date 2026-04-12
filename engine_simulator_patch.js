@@ -3087,6 +3087,7 @@ function safeLink(url){
     } catch(e) {}
 
     try {
+      if (!(window.__WDL_SIMPLE_MODE__ || window.__WDL_STORY_TIME_SYNC_ENABLED__ === false)) {
       window.dispatchEvent(new CustomEvent('wdl:storychange', {
         detail: {
           index: storyIndex,
