@@ -134,12 +134,6 @@
     @keyframes dopplerPulse{ 0%{box-shadow:0 0 10px rgba(0,170,255,.45);}50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}100%{box-shadow:0 0 10px rgba(0,170,255,.45);} }
     .story-nav{ margin-top:10px; display:flex; gap:10px; }
     .story-nav .story-nav-btn{ flex:1; }
-    #hrrrFooterControls{ display:none; margin-top:10px; }
-    #hrrrFooterControls.show{ display:block; }
-    .hrrr-footer-label{ color:#173a62; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.7px; text-transform:uppercase; margin-bottom:8px; }
-    .hrrr-footer-row{ display:flex; gap:8px; flex-wrap:wrap; }
-    .hrrr-chip{ border:none; border-radius:999px; padding:10px 14px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10); }
-    .hrrr-chip.active{ background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16); }
     body.story-collapsed .story-content, body.story-collapsed .story-shell-footer { display:none; }
     .toolBox{ position:absolute; right:10px; top:208px; z-index:100019; width:130px; background:rgba(8,25,44,.86); border:1px solid rgba(255,255,255,.08); border-radius:24px; padding:10px 8px 12px; box-shadow:0 14px 26px rgba(0,0,0,.22); backdrop-filter:blur(3px); transition:transform .22s ease, opacity .22s ease; transform-origin: top right; } .toolBox.is-collapsed{ width:118px; } .toolBox.is-collapsed .tool-btn{ display:none; }
     .tool-head{ display:flex; justify-content:center; align-items:center; margin-bottom:8px; }
@@ -163,6 +157,12 @@
     .ticker-label{ flex:0 0 auto; height:100%; display:flex; align-items:center; padding:0 20px; background:linear-gradient(180deg,#bb0808,#ff2a2a 60%, #9b0000); color:#fff; font:900 19px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; text-shadow:0 0 8px rgba(255,255,255,.22), 0 0 14px rgba(255,80,80,.28); box-shadow:inset 0 0 10px rgba(255,255,255,.08); }
     .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
+    #hrrrQuickPad{ position:absolute; right:170px; bottom:76px; z-index:100031; display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:18px; background:rgba(8,25,44,.92); border:1px solid rgba(255,255,255,.12); box-shadow:0 12px 24px rgba(0,0,0,.26); }
+    .hrrr-pad-label{ color:#d8e8ff; font:900 11px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; }
+    .hrrr-pad-row{ display:flex; gap:8px; flex-wrap:wrap; }
+    .hrrr-pad-btn{ border:none; border-radius:999px; padding:10px 14px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10); }
+    .hrrr-pad-btn.active{ background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16); }
+
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
   </style>
 </head>
@@ -224,7 +224,7 @@
     <div class="story-shell-header"><div class="story-station-chip" id="storyStationChip">3PM</div><div class="story-head-copy"><div class="story-shell-kicker" id="storyShellKicker">Setup</div><div class="story-title" id="storyTitle">SPC Outlook</div></div><button id="storyCollapseBtn" type="button">Hide</button></div>
     
     <div class="story-content"><div class="sim-scene-lead" id="simSceneLead">Current Topic • 3:00 PM</div><div class="story-body" id="storyBody"><p>Topic cards change with time. Pick one card to guide the discussion at the current clock time.</p></div></div>
-    <div class="story-shell-footer"><div class="story-footer-row"><div class="story-step" id="storyStep">3 PM topics</div><div class="story-actions-right"><button class="story-action story-doppler-inline pulsing" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button></div></div><div class="story-nav"><button class="story-nav-btn" id="storyPrevBtn" type="button">◀ Topic</button><button class="story-nav-btn" id="storyNextBtn" type="button">Topic ▶</button></div><div id="hrrrFooterControls"><div class="hrrr-footer-label">Futurecast Times</div><div class="hrrr-footer-row"><button class="hrrr-chip" data-hrrr-index="0" type="button">4pm</button><button class="hrrr-chip" data-hrrr-index="1" type="button">5pm</button><button class="hrrr-chip" data-hrrr-index="2" type="button">6pm</button><button class="hrrr-chip" data-hrrr-index="3" type="button">7pm</button></div></div></div>
+    <div class="story-shell-footer"><div class="story-footer-row"><div class="story-step" id="storyStep">3 PM topics</div><div class="story-actions-right"><button class="story-action story-doppler-inline pulsing" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button></div></div><div class="story-nav"><button class="story-nav-btn" id="storyPrevBtn" type="button">◀ Topic</button><button class="story-nav-btn" id="storyNextBtn" type="button">Topic ▶</button></div></div>
   </div>
 
   <div class="toolBox" id="toolBox"><div class="tool-head"><button class="tool-head-pill" id="toolToggleBtn" type="button">Tools ▾</button></div>
@@ -391,6 +391,37 @@
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
+
+      var hrrrQuickMode = 'temp';
+      function setBannerQuickLabel(mode, frameIndex){
+        if (!productLabel) return;
+        var base = 'Future Temp';
+        if (mode === 'cape') base = 'Future CAPE';
+        else if (mode === 'winds') base = 'Future Winds';
+        else if (mode === 'radar') base = 'Future Radar';
+        var times = ['4PM','5PM','6PM','7PM'];
+        productLabel.textContent = base + ' ' + times[Math.max(0, Math.min(3, Number(frameIndex)||0))];
+      }
+      function updateHrrrQuickUi(){
+        hrrrModeBtns.forEach(function(btn){
+          btn.classList.toggle('active', btn.getAttribute('data-hrrr-mode') === hrrrQuickMode);
+        });
+      }
+      function runHrrrQuickControl(frameIndex){
+        try{
+          if (hrrrQuickMode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
+          if (hrrrQuickMode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
+          if (hrrrQuickMode === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
+        }catch(e){}
+        try{
+          if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(Number(frameIndex)||0);
+        }catch(e){}
+        hrrrFrameBtns.forEach(function(btn){
+          btn.classList.toggle('active', Number(btn.getAttribute('data-hrrr-frame')) === Number(frameIndex));
+        });
+        setBannerQuickLabel(hrrrQuickMode, frameIndex);
+      }
+
       function normalizeProductLabel(product){
         var map = {
           future_radar:'Future Radar',
@@ -597,49 +628,6 @@
         target.appendChild(wrap);
       }
 
-
-      function getHrrrCardMode(topicNumber){
-        topicNumber = Number(topicNumber);
-        if (topicNumber === 4) return 'temp';
-        if (topicNumber === 5) return 'cape';
-        if (topicNumber === 6) return 'winds';
-        return '';
-      }
-      function getHrrrBannerBase(topicNumber){
-        topicNumber = Number(topicNumber);
-        if (topicNumber === 4) return 'Future Temp';
-        if (topicNumber === 5) return 'Future CAPE';
-        if (topicNumber === 6) return 'Future Winds';
-        return 'Future Product';
-      }
-      function applyHrrrFooterVisibility(topicNumber){
-        if (!hrrrFooterControls) return;
-        var show = [4,5,6].indexOf(Number(topicNumber)) >= 0;
-        hrrrFooterControls.classList.toggle('show', show);
-      }
-      function activateHrrrFooterButton(index){
-        hrrrFooterButtons.forEach(function(btn){
-          btn.classList.toggle('active', Number(btn.getAttribute('data-hrrr-index')) === Number(index));
-        });
-      }
-      function setProductBannerText(text){
-        if (productLabel) productLabel.textContent = text || '';
-      }
-      function runHrrrCardControl(topicNumber, index){
-        var mode = getHrrrCardMode(topicNumber);
-        var base = getHrrrBannerBase(topicNumber);
-        try{
-          if (mode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
-          if (mode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
-          if (mode === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
-        }catch(e){}
-        try{
-          if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(index);
-        }catch(e){}
-        activateHrrrFooterButton(index);
-        setProductBannerText(base + ' ' + ['4PM','5PM','6PM','7PM'][Number(index) || 0]);
-      }
-
       function renderTopicRail(){
         if (!topicRail) return;
         topicRail.innerHTML = '';
@@ -685,11 +673,6 @@
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
-        applyHrrrFooterVisibility((currentTopicIndex || 0) + 1);
-        if ([4,5,6].indexOf((currentTopicIndex || 0) + 1) >= 0) {
-          activateHrrrFooterButton(0);
-          setProductBannerText(getHrrrBannerBase((currentTopicIndex || 0) + 1) + ' 4PM');
-        }
         renderModelTimeControls(card);
 
         if (typeof renderCardChips === 'function') renderCardChips();
@@ -879,7 +862,25 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
         });
       });
 
-            window.addEventListener('wdl:storychange', function(ev){ return; });
+            hrrrModeBtns.forEach(function(btn){
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          hrrrQuickMode = btn.getAttribute('data-hrrr-mode') || 'temp';
+          updateHrrrQuickUi();
+          setBannerQuickLabel(hrrrQuickMode, 0);
+        });
+      });
+      hrrrFrameBtns.forEach(function(btn){
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          runHrrrQuickControl(Number(btn.getAttribute('data-hrrr-frame')) || 0);
+        });
+      });
+      updateHrrrQuickUi();
+
+      window.addEventListener('wdl:storychange', function(ev){ return; });
       window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); syncSimpleToolStates(); } }, 300);
 
