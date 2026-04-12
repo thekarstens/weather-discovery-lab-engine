@@ -858,17 +858,48 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:30px; height:30px; pointer-events:none;
-        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
+        position:relative; width:22px; height:22px; pointer-events:none;
+        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        filter: drop-shadow(0 0 1px rgba(255,240,120,.55));
-        animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
+        filter:
+          drop-shadow(0 0 0.35px rgba(22,22,22,.70))
+          drop-shadow(0 0 0.8px rgba(28,28,28,.45))
+          drop-shadow(0 0 3px rgba(255,232,122,.24));
+        animation: wdlLightningBlink var(--flash-ms,3200ms) steps(1,end) infinite;
       }
       .wdl-lightning-recent{
         box-shadow: none;
+      }
+      .lightning-marquee{
+        position:absolute !important; top:182px; right:18px; left:auto !important; bottom:auto !important; z-index:100073; display:block;
+        min-width:280px; padding:12px 16px 11px;
+        border-radius:16px;
+        background:linear-gradient(180deg, rgba(10,18,38,.96), rgba(16,28,56,.92));
+        border:1px solid rgba(255,236,122,.34);
+        box-shadow:0 0 10px rgba(255,225,100,.14), inset 0 0 14px rgba(255,255,255,.04);
+        color:#f8fbff;
+        font:800 14px/1.2 Lato, Arial, sans-serif;
+        letter-spacing:.02em;
+        cursor:move; user-select:none;
+      }
+      .lightning-marquee .lm-title{
+        font:900 18px/1 Lato, Arial, sans-serif;
+        color:#fff3a6;
+        text-transform:uppercase;
+        margin-bottom:8px;
+      }
+      .lightning-marquee .lm-value{
+        font:900 34px/1 Lato, Arial, sans-serif;
+        color:#fff;
+        text-shadow:0 0 8px rgba(255,240,120,.20);
+        margin-bottom:5px;
+      }
+      .lightning-marquee .lm-sub{
+        font:800 12px/1.2 Lato, Arial, sans-serif;
+        color:#9cefff;
       }
       .lightning-counter{
         position:absolute !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100072; display:block;
@@ -884,9 +915,9 @@ window.setReportsFilter = setReportsFilter;
       .lightning-counter .lc-row strong{color:#8cf7ff;}
       .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
       @keyframes wdlLightningBlink{
-        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.0));}
-        42%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.03));}
-        50%{opacity:0;}
+        0%{opacity:1; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.0));}
+        10%{opacity:1; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.02));}
+        16%{opacity:0;}
         100%{opacity:0;}
       }
     `;
@@ -977,13 +1008,13 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(700, Math.min(1500, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 1100)));
+    var flashMs = Math.max(2200, Math.min(4200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3200)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.84 + strength * 0.13).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: [24,24],
-      iconAnchor: [12,12],
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.72 + strength * 0.08).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: [18,18],
+      iconAnchor: [9,9],
       popupAnchor: [0,-10]
     });
   }
