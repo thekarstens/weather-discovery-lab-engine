@@ -232,11 +232,18 @@
   if (storyCollapseBtn) storyCollapseBtn.onclick = null;
   if (exploreBtn) exploreBtn.addEventListener("click", function(){ applyMode(!currentExploreMode); });
   if (scrubber){
+    var scrubRaf = 0;
+    var pendingScrubValue = null;
     scrubber.addEventListener("input", function(){
-      try{
-        if (typeof window.setActiveScrubberPercent === "function") window.setActiveScrubberPercent(Number(scrubber.value));
-      }catch(e){}
-      updateClock();
+      pendingScrubValue = Number(scrubber.value);
+      if (scrubRaf) return;
+      scrubRaf = requestAnimationFrame(function(){
+        scrubRaf = 0;
+        try{
+          if (typeof window.setActiveScrubberPercent === "function") window.setActiveScrubberPercent(Number(pendingScrubValue));
+        }catch(e){}
+        updateClock();
+      });
     });
   }
 
