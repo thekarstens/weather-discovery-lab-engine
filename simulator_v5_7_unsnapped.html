@@ -518,9 +518,18 @@
         return '#1f6ad1';
       }
 
-      function isModelProduct(product){
-        var p = String(product || '').toLowerCase();
-        return ['future_radar','hrrr_radar','future_winds','hrrr_winds','future_temp','hrrr_temp','model_temp','cape','hrrr_cape'].indexOf(p) >= 0;
+      function isModelProduct(cardOrProduct){
+        var p = '';
+        var layers = [];
+        if (cardOrProduct && typeof cardOrProduct === 'object'){
+          p = String(cardOrProduct.product || '').toLowerCase();
+          layers = Array.isArray(cardOrProduct.layers) ? cardOrProduct.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+        } else {
+          p = String(cardOrProduct || '').toLowerCase();
+        }
+        var modelNames = ['future_radar','hrrr_radar','future_winds','hrrr_winds','future_temp','hrrr_temp','model_temp','cape','hrrr_cape','windgust','future_wind_gusts'];
+        if (modelNames.indexOf(p) >= 0) return true;
+        return layers.some(function(v){ return modelNames.indexOf(v) >= 0; });
       }
       function getModelTimeOptions(card){
         var opts = [];
@@ -536,7 +545,7 @@
         return opts;
       }
       function renderModelTimeControls(card){
-        if (!storyBody || !card || !isModelProduct(card.product)) return;
+        if (!storyBody || !card || !isModelProduct(card)) return;
         var opts = getModelTimeOptions(card);
         if (!opts.length) return;
         var wrap = document.createElement('div');
@@ -551,7 +560,7 @@
           var btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'model-time-chip';
-          var label = d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago'}).replace(':00','');
+          var label = d.toLocaleTimeString('en-US', {hour:'numeric', hour12:true, timeZone:'America/Chicago'}).toLowerCase();
           btn.textContent = label;
           var active = false;
           try{
@@ -771,16 +780,38 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
         syncSimpleToolStates();
       });
       if (toolDraw) toolDraw.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} syncSimpleToolStates(); toolDraw.classList.add('active'); });
-      if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} syncSimpleToolStates(); toolErase.classList.add('active'); });
-      if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} syncSimpleToolStates(); });
+      if (toolErase) toolErase.addEventListener('click', function(){
+        clearTrackLocal();
+        try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
+        try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
+        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(false); }catch(e){}
+        try{ document.body.classList.remove('measure-active','draw-active'); }catch(e){}
+        syncSimpleToolStates();
+        toolErase.classList.add('active');
+      });
+      if (toolClear) toolClear.addEventListener('click', function(){
+        clearTrackLocal();
+        try{ if (typeof window.setMeasureMode === 'function') window.setMeasureMode(false); }catch(e){}
+        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(false); }catch(e){}
+        try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
+        try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
+        try{ document.body.classList.remove('measure-active','draw-active','track-active'); }catch(e){}
+        syncSimpleToolStates();
+      });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} syncSimpleToolStates(); });
 
       drawColorDots.forEach(function(btn){
-        btn.addEventListener('click', function(){
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
           var color = btn.getAttribute('data-draw-color') || '#fdd835';
           try{ if (typeof window.setDrawColor === 'function') window.setDrawColor(color); }catch(e){}
+          try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
+          document.body.classList.add('draw-active');
           drawColorDots.forEach(function(b){ b.classList.remove('is-active'); });
           btn.classList.add('is-active');
+          if (toolDraw) toolDraw.classList.add('active');
+          if (toolStormTrack) toolStormTrack.classList.remove('active');
         });
       });
 
