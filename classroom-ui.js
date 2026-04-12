@@ -171,9 +171,37 @@
 
   function toggleToolBox(forceOpen){
     if (!toolBox) return;
-    var open = (typeof forceOpen === "boolean") ? forceOpen : toolBox.classList.contains("collapsed");
-    toolBox.classList.toggle("collapsed", !open);
+    var open = (typeof forceOpen === "boolean") ? forceOpen : toolBox.classList.contains("is-collapsed");
+    toolBox.classList.toggle("is-collapsed", !open);
     if (toolToggleBtn) toolToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (toolToggleBtn) toolToggleBtn.textContent = "Tools";
+
+  function makeToolBoxDraggable(){
+    if (!toolBox || !toolToggleBtn) return;
+    var dragging = false, startX = 0, startY = 0, origL = 0, origT = 0;
+    toolToggleBtn.onmousedown = function(e){
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      var rect = toolBox.getBoundingClientRect();
+      origL = rect.left; origT = rect.top;
+      toolBox.style.left = origL + "px";
+      toolBox.style.top = origT + "px";
+      toolBox.style.right = "auto";
+      toolBox.style.bottom = "auto";
+      toolBox.classList.add("is-dragging");
+      e.preventDefault();
+    };
+    window.addEventListener("mousemove", function(e){
+      if (!dragging) return;
+      toolBox.style.left = (origL + e.clientX - startX) + "px";
+      toolBox.style.top = (origT + e.clientY - startY) + "px";
+    });
+    window.addEventListener("mouseup", function(){
+      dragging = false;
+      if (toolBox) toolBox.classList.remove("is-dragging");
+    });
+  }
+
   }
 
   function applyMode(isExplore) {
@@ -232,18 +260,11 @@
   if (storyCollapseBtn) storyCollapseBtn.onclick = null;
   if (exploreBtn) exploreBtn.addEventListener("click", function(){ applyMode(!currentExploreMode); });
   if (scrubber){
-    var scrubRaf = 0;
-    var pendingScrubValue = null;
     scrubber.addEventListener("input", function(){
-      pendingScrubValue = Number(scrubber.value);
-      if (scrubRaf) return;
-      scrubRaf = requestAnimationFrame(function(){
-        scrubRaf = 0;
-        try{
-          if (typeof window.setActiveScrubberPercent === "function") window.setActiveScrubberPercent(Number(pendingScrubValue));
-        }catch(e){}
-        updateClock();
-      });
+      try{
+        if (typeof window.setActiveScrubberPercent === "function") window.setActiveScrubberPercent(Number(scrubber.value));
+      }catch(e){}
+      updateClock();
     });
   }
 
@@ -371,6 +392,7 @@
   });
 
   makeStormTrackWindowDraggable();
+  makeToolBoxDraggable();
   toggleToolBox(false);
   setClockVisibility(false);
   applyMode(false);
