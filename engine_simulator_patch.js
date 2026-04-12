@@ -3087,32 +3087,34 @@ function safeLink(url){
     } catch(e) {}
 
     try {
-      window.dispatchEvent(new CustomEvent('wdl:storychange', {
-        detail: {
-          index: storyIndex,
-          count: storyItems.length,
-          item: item,
-          utc: item.utc || null,
-          allowPlay: (interactionCfg.allowPlay != null) ? !!interactionCfg.allowPlay : !!item.allowPlay,
-          pause: (interactionCfg.pause != null) ? !!interactionCfg.pause : !!item.pause,
-          highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
-          showLegend: !!(item.ui && item.ui.showLegend),
-          showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
-          showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
-          startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
-          showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
-          showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
-          stepTheme: item.stepTheme || "blue",
-          stepLabel: getStoryNumericLabel(item, storyIndex),
-          stepKicker: item.stepKicker || item.label || item.title || "Simulator Flow",
-          simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
-        }
-      }));
-      try{
-        if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onStorySceneApplied === 'function'){
-          window.WDL_SIM_CONFIG.onStorySceneApplied({ item: item, index: storyIndex, count: storyItems.length, utc: item.utc || null });
-        }
-      }catch(simEventErr){ console.warn('Simulator story hook failed', simEventErr); }
+      if (!(window.__WDL_SIMPLE_MODE__ || window.__WDL_SIMULATOR_LOCAL_STORY__ || window.__WDL_STORY_TIME_SYNC_ENABLED__ === false)) {
+        window.dispatchEvent(new CustomEvent('wdl:storychange', {
+          detail: {
+            index: storyIndex,
+            count: storyItems.length,
+            item: item,
+            utc: item.utc || null,
+            allowPlay: (interactionCfg.allowPlay != null) ? !!interactionCfg.allowPlay : !!item.allowPlay,
+            pause: (interactionCfg.pause != null) ? !!interactionCfg.pause : !!item.pause,
+            highlightProduct: (item.ui && item.ui.highlightProduct) || item.title || '',
+            showLegend: !!(item.ui && item.ui.showLegend),
+            showClock: (interactionCfg.showClock != null) ? !!interactionCfg.showClock : ((uiCfg.showClock != null) ? !!uiCfg.showClock : false),
+            showTools: (interactionCfg.showTools != null) ? !!interactionCfg.showTools : ((uiCfg.showTools != null) ? !!uiCfg.showTools : null),
+            startInExplore: (interactionCfg.startInExplore != null) ? !!interactionCfg.startInExplore : ((uiCfg.startInExplore != null) ? !!uiCfg.startInExplore : null),
+            showScrubber: (interactionCfg.showScrubber != null) ? !!interactionCfg.showScrubber : ((uiCfg.showScrubber != null) ? !!uiCfg.showScrubber : wantsRadar),
+            showDoppler: (interactionCfg.showDoppler != null) ? !!interactionCfg.showDoppler : ((uiCfg.showDoppler != null) ? !!uiCfg.showDoppler : wantsRadar),
+            stepTheme: item.stepTheme || "blue",
+            stepLabel: getStoryNumericLabel(item, storyIndex),
+            stepKicker: item.stepKicker || item.label || item.title || "Simulator Flow",
+            simulatorEvent: (item.raw && item.raw.event && typeof item.raw.event === 'object') ? item.raw.event : null
+          }
+        }));
+        try{
+          if (window.WDL_SIM_CONFIG && typeof window.WDL_SIM_CONFIG.onStorySceneApplied === 'function'){
+            window.WDL_SIM_CONFIG.onStorySceneApplied({ item: item, index: storyIndex, count: storyItems.length, utc: item.utc || null });
+          }
+        }catch(simEventErr){ console.warn('Simulator story hook failed', simEventErr); }
+      }
     } catch(e) {}
 
     try {
