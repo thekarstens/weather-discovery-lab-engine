@@ -833,7 +833,7 @@ window.setReportsFilter = setReportsFilter;
   var lightningRecentWindowMs = 15 * 60 * 1000;
   var lightningCounterWindowMs = 10 * 60 * 1000;
   var lightningJumpWindowMs = 10 * 60 * 1000;
-  var lightningSoundEnabled = true;
+  var lightningSoundEnabled = false;
   var lightningLastSoundAt = 0;
   var lightningAudioContext = null;
   var lightningLastRenderedStamp = '';
@@ -842,6 +842,9 @@ window.setReportsFilter = setReportsFilter;
   var lightningBeepTimer = null;
   var lightningFreshMarkerIndex = Object.create(null);
   var lightningRecentMarkerIndex = Object.create(null);
+  var lightningHistoryLayer = null;
+  var lightningHistoryVisible = false;
+  var lightningHistoryMarkerIndex = Object.create(null);
   window.lightningEnabled = lightningEnabled;
   window.lightningSoundEnabled = lightningSoundEnabled;
 
@@ -914,6 +917,17 @@ window.setReportsFilter = setReportsFilter;
       .lightning-marquee .lm-sub{
         font:800 12px/1.2 Lato, Arial, sans-serif;
         color:#9cefff;
+      }
+      .lightning-marquee .lm-btnrow{ display:flex; gap:8px; margin-top:10px; }
+      .lightning-marquee .lm-btn{
+        appearance:none; border:1px solid rgba(156,239,255,.28); border-radius:999px;
+        background:linear-gradient(180deg, rgba(10,34,58,.92), rgba(10,24,44,.92)); color:#dff9ff;
+        padding:6px 10px; font:900 11px/1 Lato, Arial, sans-serif; text-transform:uppercase; letter-spacing:.05em;
+        box-shadow:0 0 8px rgba(90,209,255,.10); cursor:pointer;
+      }
+      .lightning-marquee .lm-btn.is-active{
+        border-color: rgba(255,236,122,.50); color:#fff4b0;
+        box-shadow:0 0 10px rgba(255,225,100,.18);
       }
       .lightning-counter{
         position:fixed !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100139; display:block;
@@ -1051,13 +1065,33 @@ window.setReportsFilter = setReportsFilter;
     };
   }
 
+  function getLightningHistoryStyle(d, nowMs){
+    var age = Math.max(0, nowMs - d.timeMs);
+    var t = Math.max(0, Math.min(1, age / Math.max(lightningRecentWindowMs, 1)));
+    var hue = 52 + (1 - t) * 230;
+    var sat = 95 - t * 18;
+    var light = 62 - t * 18;
+    var fill = 'hsl(' + hue.toFixed(0) + ',' + sat.toFixed(0) + '%,' + light.toFixed(0) + '%)';
+    return {
+      radius: 2.1,
+      color: 'rgba(20,20,20,.42)',
+      fillColor: fill,
+      weight: 0.45,
+      opacity: 0.38,
+      fillOpacity: 0.34
+    };
+  }
+
   function clearLightningLayers(){
     try{ if (lightningFreshLayer && map.hasLayer(lightningFreshLayer)) map.removeLayer(lightningFreshLayer); }catch(e){}
     try{ if (lightningRecentLayer && map.hasLayer(lightningRecentLayer)) map.removeLayer(lightningRecentLayer); }catch(e){}
+    try{ if (lightningHistoryLayer && map.hasLayer(lightningHistoryLayer)) map.removeLayer(lightningHistoryLayer); }catch(e){}
     lightningFreshLayer = null;
     lightningRecentLayer = null;
+    lightningHistoryLayer = null;
     lightningFreshMarkerIndex = Object.create(null);
     lightningRecentMarkerIndex = Object.create(null);
+    lightningHistoryMarkerIndex = Object.create(null);
   }
 
   var lightningCounterDrag = { active:false, startX:0, startY:0, left:0, top:0 };
@@ -1178,11 +1212,23 @@ window.setReportsFilter = setReportsFilter;
       div.style.left = 'auto';
       div.style.bottom = 'auto';
     }
+    var btnClass = lightningHistoryVisible ? 'lm-btn is-active' : 'lm-btn';
     var html =
       '<div class="lm-title">Total Lightning Strikes</div>' +
       '<div class="lm-value">' + totalCount + '</div>' +
-      '<div class="lm-sub">At current simulator time • active flashes now: ' + nowCount + '</div>';
-    if (div.innerHTML !== html) div.innerHTML = html;
+      '<div class="lm-sub">At current simulator time • active flashes now: ' + nowCount + '</div>' +
+      '<div class="lm-btnrow"><button type="button" id="lightningHistoryToggleBtn" class="' + btnClass + '">' + (lightningHistoryVisible ? 'Hide Full Strike History' : 'Show Full Strike History') + '</button></div>';
+    if (div.innerHTML !== html) {
+      div.innerHTML = html;
+      var btn = document.getElementById('lightningHistoryToggleBtn');
+      if (btn){
+        btn.addEventListener('mousedown', function(ev){ try{ ev.stopPropagation(); }catch(e){} });
+        btn.addEventListener('click', function(ev){
+          try{ ev.stopPropagation(); ev.preventDefault(); }catch(e){}
+          setLightningHistoryVisible(!lightningHistoryVisible);
+        });
+      }
+    }
   }
 
   function evaluateLightningJump(nowMs){
@@ -1202,22 +1248,11 @@ window.setReportsFilter = setReportsFilter;
 
 
   function queueLightningBeeps(count){
-    count = Math.max(0, Math.min(6, Number(count) || 0));
-    if (!count) return;
-    lightningBeepQueue += count;
-    if (lightningBeepTimer) return;
-    lightningBeepTimer = setInterval(function(){
-      if (lightningBeepQueue <= 0){
-        clearInterval(lightningBeepTimer);
-        lightningBeepTimer = null;
-        return;
-      }
-      lightningBeepQueue--;
-      playLightningSound(1);
-    }, 300);
+    return;
   }
 
   function playLightningSound(count){
+    return;
     if (!lightningSoundEnabled || !count) return;
     var now = Date.now();
     if (now - lightningLastSoundAt < 550) return;
@@ -1260,7 +1295,7 @@ window.setReportsFilter = setReportsFilter;
   function upsertLightningFresh(fresh){
     var seen = Object.create(null);
     if (!lightningFreshLayer){ lightningFreshLayer = L.layerGroup().addTo(map); }
-    var maxAnimated = 18;
+    var maxAnimated = 34;
     fresh.forEach(function(d, idx){
       if (idx >= maxAnimated) return;
       seen[d.id] = true;
@@ -1314,6 +1349,50 @@ window.setReportsFilter = setReportsFilter;
     });
   }
 
+
+  function upsertLightningHistory(nowMs){
+    if (!lightningHistoryVisible){
+      try{ if (lightningHistoryLayer && map.hasLayer(lightningHistoryLayer)) map.removeLayer(lightningHistoryLayer); }catch(e){}
+      lightningHistoryLayer = null;
+      lightningHistoryMarkerIndex = Object.create(null);
+      return;
+    }
+    if (!lightningHistoryLayer){ lightningHistoryLayer = L.layerGroup().addTo(map); }
+    var seen = Object.create(null);
+    var maxHistory = 450;
+    var start = Math.max(0, total - maxHistory);
+    for (var i = start; i < total; i++){
+      var d = lightningEvents[i];
+      if (!d || d.timeMs > nowMs) continue;
+      seen[d.id] = true;
+      var marker = lightningHistoryMarkerIndex[d.id];
+      var style = getLightningHistoryStyle(d, nowMs);
+      if (!marker){
+        marker = L.circleMarker([d.lat, d.lon], style);
+        marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
+        lightningHistoryMarkerIndex[d.id] = marker;
+        lightningHistoryLayer.addLayer(marker);
+      } else {
+        marker.setLatLng([d.lat, d.lon]);
+        marker.setStyle(style);
+      }
+    }
+    Object.keys(lightningHistoryMarkerIndex).forEach(function(id){
+      if (seen[id]) return;
+      var marker = lightningHistoryMarkerIndex[id];
+      try{ if (lightningHistoryLayer && marker) lightningHistoryLayer.removeLayer(marker); }catch(e){}
+      delete lightningHistoryMarkerIndex[id];
+    });
+  }
+
+  function setLightningHistoryVisible(on){
+    lightningHistoryVisible = !!on;
+    window.lightningHistoryVisible = lightningHistoryVisible;
+    lightningLastHudSig = '';
+    try{ updateLightning(); }catch(e){}
+  }
+  window.setLightningHistoryVisible = setLightningHistoryVisible;
+
   async function loadLightningManifest(){
     if (lightningManifest) return lightningManifest;
     if (lightningLoadPromise) return lightningLoadPromise;
@@ -1366,6 +1445,7 @@ window.setReportsFilter = setReportsFilter;
       clearLightningLayers();
       hideLightningCounter();
       lightningLastFreshIds = Object.create(null);
+      lightningHistoryVisible = false;
       lightningLastHudSig = '';
       if (lightningBeepTimer){ clearInterval(lightningBeepTimer); lightningBeepTimer = null; }
       lightningBeepQueue = 0;
@@ -1401,12 +1481,13 @@ window.setReportsFilter = setReportsFilter;
     });
     lightningLastFreshIds = currentIds;
     fresh.forEach(function(d){ d.__isNewest = (d.id === newestId); });
-    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.length;
+    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.length + '|' + (lightningHistoryVisible ? 'history1' : 'history0');
     var isNewFrame = stamp !== lightningLastRenderedStamp;
     if (!isNewFrame) return;
     lightningLastRenderedStamp = stamp;
     upsertLightningFresh(fresh);
     upsertLightningRecent(recent);
+    upsertLightningHistory(nowMs);
     setLightningOpacity(productOpacity.lightning || 0.9);
     showLightningHud();
     var hudSig = total + '|' + fresh.length;
