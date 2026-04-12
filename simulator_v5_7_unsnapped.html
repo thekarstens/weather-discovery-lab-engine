@@ -66,7 +66,7 @@
     .product-menu .sim-product-btn{ min-width:0; width:100%; text-align:left; padding:10px 14px; border-radius:14px; font-size:12px; }
     .product-menu .sim-product-btn.is-disabled{ opacity:.45; cursor:default; }
     
-    .topic-rail{ display:none !important; pointer-events:none !important; visibility:hidden !important;
+    .topic-rail{
       position:absolute; left:8px; top:182px; bottom:56px; width:74px; z-index:100021;
       display:flex; flex-direction:column; gap:8px; overflow:auto; padding-right:4px;
     }
@@ -176,7 +176,7 @@
             <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
             <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
             <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
-            <button class="sim-product-btn" data-product="radar_velocity">Velocity</button>
+            <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
           </div>
         </div>
         <div class="product-group">
@@ -307,7 +307,7 @@
         } catch(e){}
         return false;
       }
-      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
+      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); if (!manualClockMode && !window.__WDL_SIMULATOR_LOCAL_STORY__) syncGroupToTime(ms); renderCurrentCard(); }
       async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
       function normalizeProductLabel(product){
@@ -355,7 +355,7 @@
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
       function advanceTimeline(){ if (animating) { stopAnimation(); return; } var next = Math.min(currentGroupIndex + 1, Math.max(0, timeGroups.length - 1)); if (next === currentGroupIndex) return; animateToGroup(next); }
-      function syncGroupToTime(ms){ return; }
+      function syncGroupToTime(ms){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__) return; if (!timeGroups.length || !isFinite(ms)) return; var best = 0, bestDelta = Infinity; for (var i=0;i<timeGroups.length;i++){ var d = Math.abs(timeGroups[i].ms - ms); if (d < bestDelta) { best = i; bestDelta = d; } } if (best !== currentGroupIndex) { currentGroupIndex = best; currentCardIndex = 0; } renderCardChips(); }
       function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
       function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
       async function applyProductMode(mode, layers, displayOverride){
@@ -445,24 +445,45 @@
       function renderTopicRail(){
         if (!topicRail) return;
         topicRail.innerHTML = '';
-        topicRail.style.display = 'none';
-        topicRail.setAttribute('aria-hidden', 'true');
-      });
+        var cards = topicCards || [];
+        if (!cards.length) { renderTopicRail(); return; }
+        cards.forEach(function(card, idx){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'topic-tab' + (idx === currentTopicIndex ? ' is-active' : '');
+          var accent = storyAccentFor(card.product);
+          btn.style.background = 'linear-gradient(180deg,' + accent + ', rgba(8,25,44,.96))';
+          btn.innerHTML = '<div class="num">' + String(idx + 1) + '</div><div class="label">' + String((card.kicker || 'Topic')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+          btn.addEventListener('click', function(){
+            currentTopicIndex = idx;
+            renderCurrentCard();
+          });
           topicRail.appendChild(btn);
         });
       }
       function renderCardChips(){
-        if (storyCardRow){
-          storyCardRow.innerHTML = '';
-          storyCardRow.style.display = 'none';
-          storyCardRow.setAttribute('aria-hidden', 'true');
-        }
-        if (topicRail){
-          topicRail.innerHTML = '';
-          topicRail.style.display = 'none';
-          topicRail.setAttribute('aria-hidden', 'true');
-        }
-      } else {
+        if (!storyCardRow) return;
+        var cards = manualClockMode ? topicCards : ((currentGroup() && currentGroup().cards) || []);
+        storyCardRow.innerHTML = '';
+        if (!cards.length) return;
+        cards.forEach(function(card, idx){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'story-card-chip';
+          var isActive = manualClockMode ? (idx === currentTopicIndex) : (idx === currentCardIndex);
+          if (isActive) btn.classList.add('is-active');
+          var accent = storyAccentFor(card.product);
+          btn.style.borderLeftColor = accent;
+          btn.innerHTML = '<div class="story-chip-num" style="background:' + accent + '">' + String((manualClockMode ? idx : idx) + 1) + '</div>'
+            + '<div class="story-chip-copy">'
+            + '<div class="story-chip-kicker">' + String(card.kicker || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
+            + '<div class="story-chip-title">' + String(card.title || card.topicLabel || 'Topic').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>'
+            + '<div class="story-chip-meta">' + normalizeProductLabel(card.product || 'radar') + '</div>'
+            + '</div>';
+          btn.addEventListener('click', function(){
+            if (manualClockMode){
+              currentTopicIndex = idx;
+            } else {
               currentCardIndex = idx;
             }
             renderCurrentCard();
@@ -539,82 +560,23 @@
         setLocalTrackMode(false);
       }
 
-      function closeProductMenus(){
+      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
+        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
+        ev.preventDefault(); ev.stopPropagation();
+        var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
+
+        manualProductMode = clicked;
+        manualProductLayers = [clicked];
+        manualProductLabel = normalizeProductLabel(clicked);
+
+        applyProductMode(clicked, [clicked], manualProductLabel);
+        setTicker([manualProductLabel + ' view selected', 'Topic card stays in place while changing the visible layer']);
+
         document.querySelectorAll('.product-group').forEach(function(g){
           g.classList.remove('is-open');
           var t = g.querySelector('.sim-group-toggle');
           if (t) t.classList.remove('is-open');
         });
-      }
-      async function triggerTopProduct(clicked){
-        clicked = String(clicked || '').toLowerCase();
-        try {
-          if (clicked === 'radar' || clicked === 'reflectivity') {
-            manualProductMode = 'radar';
-            manualProductLayers = ['radar'];
-            manualProductLabel = normalizeProductLabel('radar');
-            await applyProductMode('radar', ['radar'], manualProductLabel);
-          } else if (clicked === 'radar_velocity' || clicked === 'velocity') {
-            manualProductMode = 'radar_velocity';
-            manualProductLayers = ['radar_velocity'];
-            manualProductLabel = 'Radar Velocity';
-            if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
-            if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
-            if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(true);
-            productLabel.textContent = manualProductLabel;
-          } else if (clicked === 'future_radar') {
-            manualProductMode = 'future_radar';
-            manualProductLayers = ['future_radar'];
-            manualProductLabel = normalizeProductLabel(clicked);
-            await applyProductMode(clicked, ['future_radar'], manualProductLabel);
-          } else if (clicked === 'live_doppler') {
-            manualProductMode = 'radar';
-            manualProductLayers = ['radar'];
-            manualProductLabel = 'Live Doppler';
-            await applyProductMode('radar', ['radar'], manualProductLabel);
-            try { if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep(); } catch(e){}
-            productLabel.textContent = manualProductLabel;
-          } else if (clicked === 'temps' || clicked === 'metar_temp' || clicked === 'metar_dewpoint' || clicked === 'metar_wind' || clicked === 'metar_pressure') {
-            manualProductMode = clicked;
-            manualProductLayers = [clicked];
-            manualProductLabel = normalizeProductLabel(clicked);
-            await applyProductMode(clicked, [clicked], manualProductLabel);
-          } else if (clicked === 'spc' || clicked === 'watch') {
-            manualProductMode = clicked;
-            manualProductLayers = [clicked];
-            manualProductLabel = normalizeProductLabel(clicked);
-            await applyProductMode(clicked, [clicked], manualProductLabel);
-          } else if (clicked === 'reports' || clicked === 'lightning' || clicked === 'satellite' || clicked === 'warnings') {
-            manualProductMode = clicked;
-            manualProductLayers = [clicked];
-            manualProductLabel = normalizeProductLabel(clicked);
-            await applyProductMode(clicked, [clicked], manualProductLabel);
-          }
-        } catch(e){ console.warn('Top product toggle failed', clicked, e); }
-        updateDopplerButton(!!window.radarSweepEnabled);
-        setTicker([manualProductLabel + ' selected', 'Story header remains locked']);
-      }
-      document.querySelectorAll('.product-group .sim-group-toggle').forEach(function(toggle){
-        toggle.addEventListener('click', function(ev){
-          ev.preventDefault(); ev.stopPropagation();
-          var group = toggle.closest('.product-group');
-          var willOpen = !group.classList.contains('is-open');
-          closeProductMenus();
-          if (willOpen) {
-            group.classList.add('is-open');
-            toggle.classList.add('is-open');
-          }
-        });
-      });
-      document.addEventListener('click', function(ev){
-        if (!ev.target.closest('.product-group')) closeProductMenus();
-      });
-
-      productButtons.forEach(function(btn){ btn.addEventListener('click', async function(ev){
-        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
-        ev.preventDefault(); ev.stopPropagation();
-        await triggerTopProduct(btn.getAttribute('data-product'));
-        closeProductMenus();
       }); });
 
       playBtn.addEventListener('click', advanceTimeline);
@@ -663,8 +625,8 @@
       });
       storyCollapseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); return; });
       storyDopplerBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); return; });
-      storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
-      storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
+      storyPrevBtn.addEventListener('click', function(){ cycleTopic(-1); });
+      storyNextBtn.addEventListener('click', function(){ cycleTopic(1); });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
       if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
       if (toolProbe) toolProbe.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} refreshToolStates(); toolProbe.classList.add('active'); });
@@ -690,8 +652,8 @@
       if (toolErase) toolErase.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.setDrawMode) window.setDrawMode('erase'); }catch(e){} refreshToolStates(); toolErase.classList.add('active'); });
       if (toolClear) toolClear.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){} try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){} refreshToolStates(); });
       if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} refreshToolStates(); });
-      window.addEventListener('wdl:storychange', function(ev){ return; });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('wdl:storychange', function(ev){ if (manualClockMode || window.__WDL_SIMULATOR_LOCAL_STORY__ || window.__WDL_SIMPLE_MODE__) return; var detail = (ev && ev.detail) || {}; if (detail && detail.utc) { var ms = parseMs(detail.utc); if (isFinite(ms)) { updateClockAndScrubber(percentFromActualMs(ms)); syncGroupToTime(ms); renderCurrentCard(); } } });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; renderCurrentCard(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); } }, 300);
     })();
   </script>
