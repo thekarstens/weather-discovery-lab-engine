@@ -902,6 +902,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   window.__WDL_HRRR_LOCK__ = false;
   window.__WDL_HRRR_LOCK_MODE__ = 'temp';
   window.__WDL_HRRR_LOCK_FRAME__ = 0;
+  window.__WDL_HRRR_BANNER_LOCK__ = '';
   var pad = document.getElementById('wdlHrrrTestPad');
   var unlockBtn = document.getElementById('hrrrUnlockBtn');
   if (!pad) return;
@@ -910,7 +911,12 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
   function setBanner(text){
     var el = document.getElementById('productLabel');
-    if (el) el.textContent = text;
+    if (!el) return;
+    if (window.__WDL_HRRR_BANNER_LOCK__) {
+      el.textContent = window.__WDL_HRRR_BANNER_LOCK__;
+      return;
+    }
+    el.textContent = text;
   }
 
   function syncModeUi(){
@@ -935,6 +941,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     if (unlockBtn){
     unlockBtn.addEventListener('click', function(){
       window.__WDL_HRRR_LOCK__ = false;
+      window.__WDL_HRRR_BANNER_LOCK__ = '';
       frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
       setBanner('Model Follow Scrubber');
     });
@@ -947,7 +954,8 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     if (window.__WDL_HRRR_LOCK_MODE__ === 'cape') base = 'Future CAPE';
     if (window.__WDL_HRRR_LOCK_MODE__ === 'winds') base = 'Future Winds';
     var times = ['4PM','5PM','6PM','7PM'];
-    setBanner(base + ' ' + times[Math.max(0, Math.min(3, window.__WDL_HRRR_LOCK_FRAME__))]);
+    window.__WDL_HRRR_BANNER_LOCK__ = base + ' ' + times[Math.max(0, Math.min(3, window.__WDL_HRRR_LOCK_FRAME__))];
+    setBanner(window.__WDL_HRRR_BANNER_LOCK__);
   }
 
   modeBtns.forEach(function(btn){
@@ -965,6 +973,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   if (unlockBtn){
     unlockBtn.addEventListener('click', function(){
       window.__WDL_HRRR_LOCK__ = false;
+      window.__WDL_HRRR_BANNER_LOCK__ = '';
       frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
       setBanner('Model Follow Scrubber');
     });
@@ -977,6 +986,16 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   });
 
   syncModeUi();
+  setInterval(function(){
+    try{
+      if (window.__WDL_HRRR_BANNER_LOCK__){
+        var el = document.getElementById('productLabel');
+        if (el && el.textContent !== window.__WDL_HRRR_BANNER_LOCK__){
+          el.textContent = window.__WDL_HRRR_BANNER_LOCK__;
+        }
+      }
+    }catch(e){}
+  }, 150);
 })();
 </script>
 </body>
