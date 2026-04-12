@@ -2347,11 +2347,6 @@ window.setReportsFilter = setReportsFilter;
   var drawGroup = L.layerGroup().addTo(map);
   var drawing = false;
   var currentLine = null;
-  var currentDrawColor = '#fdd835';
-  window.setDrawColor = function(color){ currentDrawColor = String(color || '#fdd835'); return currentDrawColor; };
-  window.setDrawMode = setDrawMode;
-  window.clearMeasureGraphics = clearMeasureGraphics;
-  window.clearDrawings = clearDrawings;
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
@@ -2415,7 +2410,7 @@ function setDrawMode(on){
   drawing = true;
 
   currentLine = L.polyline([e.latlng], {
-    color: currentDrawColor || "#fdd835",
+    color: "#fdd835",
     weight: 5,
     opacity: 0.95,
     lineCap: "round",
@@ -5817,7 +5812,39 @@ window.setWarningsEnabled = setWarningsEnabled;
     }catch(e){}
     return true;
   };
-  window.setMasterTime = function(value){
+  
+  window.setHrrrFrame = function(index){
+    try{
+      index = Number(index);
+      if (!isFinite(index)) return false;
+      if (typeof setCurrentHrrrFrameIndex === 'function'){
+        setCurrentHrrrFrameIndex(index);
+      } else {
+        currentHrrrFrameIndex = Math.max(0, index|0);
+        window.currentHrrrFrameIndex = currentHrrrFrameIndex;
+        try{ updateAll(); }catch(e){}
+      }
+      try{
+        if (typeof hrrrFrames !== 'undefined' && hrrrFrames && hrrrFrames[index] && hrrrFrames[index].time){
+          window.__WDL_HRRR_LABEL_TIME__ = new Date(hrrrFrames[index].time);
+        } else {
+          var fallback = [
+            '2022-05-12T21:00:00Z',
+            '2022-05-12T22:00:00Z',
+            '2022-05-12T23:00:00Z',
+            '2022-05-13T00:00:00Z'
+          ];
+          window.__WDL_HRRR_LABEL_TIME__ = new Date(fallback[Math.max(0, Math.min(3, index|0))]);
+        }
+      }catch(e){}
+      return true;
+    }catch(e){
+      console.warn('setHrrrFrame failed', e);
+      return false;
+    }
+  };
+
+window.setMasterTime = function(value){
     var d = (value instanceof Date) ? new Date(value.getTime()) : new Date(value);
     if (isNaN(d)) return false;
     curZ = d;
