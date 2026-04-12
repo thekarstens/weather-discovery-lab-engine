@@ -858,17 +858,14 @@ window.setReportsFilter = setReportsFilter;
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:24px; height:24px; pointer-events:none;
-        transform: translate(-2px,-2px) scale(var(--bolt-scale,1));
+        position:relative; width:30px; height:30px; pointer-events:none;
+        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
-        filter:
-          drop-shadow(0 0 .45px rgba(18,18,18,.30))
-          drop-shadow(0 1px .8px rgba(0,0,0,.18))
-          drop-shadow(0 0 1.8px rgba(255,236,120,.24));
-        animation: wdlLightningBlink var(--flash-ms,1250ms) ease-out infinite;
+        filter: drop-shadow(0 0 1px rgba(255,240,120,.55));
+        animation: wdlLightningBlink var(--flash-ms,2200ms) steps(1,end) infinite;
       }
       .wdl-lightning-recent{
         box-shadow: none;
@@ -887,10 +884,9 @@ window.setReportsFilter = setReportsFilter;
       .lightning-counter .lc-row strong{color:#8cf7ff;}
       .lightning-counter .lc-jump{margin-top:8px; font:900 12px/1.1 Lato, Arial, sans-serif; color:#8cf7ff; text-shadow:0 0 8px rgba(140,247,255,.45);}
       @keyframes wdlLightningBlink{
-        0%{opacity:.12; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * .98));}
-        7%{opacity:1; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.01));}
-        16%{opacity:.74; transform:translate(-1px,-1px) scale(calc(var(--bolt-scale,1) * 1.00));}
-        24%{opacity:0;}
+        0%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.0));}
+        42%{opacity:1; transform:translate(-2px,-2px) scale(calc(var(--bolt-scale,1) * 1.03));}
+        50%{opacity:0;}
         100%{opacity:0;}
       }
     `;
@@ -981,11 +977,11 @@ window.setReportsFilter = setReportsFilter;
 
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
-    var flashMs = Math.max(900, Math.min(1600, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 1250)));
+    var flashMs = Math.max(700, Math.min(1500, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 1100)));
     var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.82 + strength * 0.12).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      html: '<div class="wdl-lightning-bolt" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + (0.84 + strength * 0.13).toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
       iconSize: [24,24],
       iconAnchor: [12,12],
       popupAnchor: [0,-10]
@@ -1134,6 +1130,21 @@ window.setReportsFilter = setReportsFilter;
       if (lightningMarqueeControl && lightningMarqueeControl.getContainer){
         var m = lightningMarqueeControl.getContainer();
         if (m) m.style.display = 'none';
+      }
+    }catch(e){}
+  }
+
+  function showLightningHud(){
+    try{
+      ensureLightningCounter();
+      ensureLightningMarquee();
+      if (lightningCounterControl && lightningCounterControl.getContainer){
+        var c = lightningCounterControl.getContainer();
+        if (c) c.style.display = '';
+      }
+      if (lightningMarqueeControl && lightningMarqueeControl.getContainer){
+        var m = lightningMarqueeControl.getContainer();
+        if (m) m.style.display = '';
       }
     }catch(e){}
   }
@@ -1357,6 +1368,7 @@ window.setReportsFilter = setReportsFilter;
     upsertLightningRecent(recent);
     setLightningOpacity(productOpacity.lightning || 0.9);
     var jumpInfo = evaluateLightningJump(nowMs);
+    showLightningHud();
     renderLightningCounter(fresh.length, recent.length, last5, total, jumpInfo);
     renderLightningMarquee(total, fresh.length);
     if (isNewFrame && fresh.length) playLightningSound(fresh.length);
@@ -1368,6 +1380,7 @@ window.setReportsFilter = setReportsFilter;
     if (lightningEnabled){
       injectLightningStyles();
       await loadLightningManifest();
+      showLightningHud();
       updateLightning();
       setStatus('Lightning on');
     } else {
@@ -1390,6 +1403,7 @@ window.setReportsFilter = setReportsFilter;
   window.setLightningEnabled = setLightningEnabled;
   window.setLightningSoundEnabled = setLightningSoundEnabled;
   window.updateLightning = updateLightning;
+  window.showLightningHud = showLightningHud;
 
 
   // ---------- GOES / Satellite ----------
