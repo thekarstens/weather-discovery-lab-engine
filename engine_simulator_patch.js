@@ -355,48 +355,50 @@ var storyStarted = false; // do not auto-open storyboard
   window.map = map;
 
 // ---------- Zoom badge + label transition settings ----------
-var BUBBLE_LABEL_MAX_ZOOM = 9;
-var BASE_LABELS_MIN_ZOOM = 10;
-var zoomBadgeControl = null;
+  var BUBBLE_LABEL_MAX_ZOOM = 9;
+  var BASE_LABELS_MIN_ZOOM = 10;
+  var zoomBadgeControl = null;
 
-function ensureZoomBadge(){
-  if (zoomBadgeControl) return zoomBadgeControl;
+  function ensureZoomBadge(){
+    if (zoomBadgeControl) return zoomBadgeControl;
 
-  zoomBadgeControl = L.control({ position: "bottomleft" });
-  zoomBadgeControl.onAdd = function(){
-    var div = L.DomUtil.create("div", "zoom-badge-control");
-    div.style.background = "rgba(8,16,28,0.88)";
-    div.style.color = "#ffffff";
-    div.style.padding = "6px 10px";
-    div.style.borderRadius = "10px";
-    div.style.border = "1px solid rgba(255,255,255,0.22)";
-    div.style.boxShadow = "0 4px 14px rgba(0,0,0,0.35)";
-    div.style.font = "700 13px/1.2 Lato, Arial, sans-serif";
-    div.style.letterSpacing = ".2px";
-    div.style.pointerEvents = "none";
-    div.innerHTML = "Zoom: --";
-    return div;
-  };
+    zoomBadgeControl = L.control({ position: "topright" });
+    zoomBadgeControl.onAdd = function(){
+      var div = L.DomUtil.create("div", "zoom-badge-control");
+      div.style.background = "rgba(8,16,28,0.92)";
+      div.style.color = "#ffffff";
+      div.style.padding = "8px 12px";
+      div.style.borderRadius = "12px";
+      div.style.border = "1px solid rgba(255,255,255,0.24)";
+      div.style.boxShadow = "0 4px 14px rgba(0,0,0,0.35)";
+      div.style.font = "700 13px/1.2 Lato, Arial, sans-serif";
+      div.style.letterSpacing = ".2px";
+      div.style.pointerEvents = "none";
+      div.style.marginTop = "56px";
+      div.style.marginRight = "8px";
+      div.innerHTML = "Zoom: --";
+      return div;
+    };
 
-  zoomBadgeControl.addTo(map);
-  return zoomBadgeControl;
-}
+    zoomBadgeControl.addTo(map);
+    return zoomBadgeControl;
+  }
 
-function updateZoomBadge(){
-  ensureZoomBadge();
-  if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
-  var el = zoomBadgeControl.getContainer();
-  if (!el) return;
+  function updateZoomBadge(){
+    ensureZoomBadge();
+    if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
+    var el = zoomBadgeControl.getContainer();
+    if (!el) return;
 
-  var z = map.getZoom();
-  var band = (z <= 4) ? "National"
-           : (z <= 5) ? "Regional"
-           : (z <= 7) ? "Regional+"
-           : (z <= 9) ? "Local"
-           : "Basemap";
+    var z = map.getZoom();
+    var band = (z <= 4) ? "National"
+             : (z <= 5) ? "Regional"
+             : (z <= 7) ? "Regional+"
+             : (z <= 9) ? "Local"
+             : "Basemap";
 
-  el.innerHTML = 'Zoom: ' + z + ' <span style="opacity:.72;font-weight:600">(' + band + ')</span>';
-}
+    el.innerHTML = 'Zoom: ' + z + ' <span style="opacity:.72;font-weight:600">(' + band + ')</span>';
+  }
 window.CFG = CFG;
 window.DATA_BASE = DATA_BASE;
 window.MASTER_WINDOW_HOURS = MASTER_WINDOW_HOURS;
@@ -2802,21 +2804,126 @@ var CITIES_TIER3 = [
     ["Luverne", 43.6541, -96.2125],
     ["Pipestone", 43.9970, -96.3175],
     ["Madison", 44.0061, -97.1133],
-    ["Norfolk", 42.0327, -97.4170]
+    ["Norfolk", 42.0327, -97.4170],
+    ["Brookings", 44.3114, -96.7984],
+    ["Huron", 44.3633, -98.2143],
+    ["Aberdeen", 45.4647, -98.4865],
+    ["Watertown", 44.8994, -97.1151],
+    ["Mobridge", 45.5353, -100.4276],
+    ["Pierre", 44.3683, -100.3510],
+    ["Tea", 43.4469, -96.8359],
+    ["Harrisburg", 43.4314, -96.6970],
+    ["Brandon", 43.5947, -96.5717],
+    ["Canton", 43.3008, -96.5923],
+    ["Lennox", 43.3547, -96.8923],
+    ["Parker", 43.3975, -97.1364],
+    ["Beresford", 43.0805, -96.7737],
+    ["Dell Rapids", 43.8261, -96.7128],
+    ["Baltic", 43.7608, -96.7414],
+    ["Garretson", 43.7144, -96.5020],
+    ["Elk Point", 42.6886, -96.6848],
+    ["Alcester", 43.0214, -96.6309],
+    ["Centerville", 43.1142, -96.9598],
+    ["Salem", 43.7247, -97.3881],
+    ["Flandreau", 44.0494, -96.6003],
+    ["De Smet", 44.3850, -97.5506],
+    ["Sioux Center", 43.0797, -96.1753],
+    ["Orange City", 42.9986, -96.0595],
+    ["Rock Valley", 43.2055, -96.2953],
+    ["Rock Rapids", 43.4311, -96.1759],
+    ["Sheldon", 43.1847, -95.8564],
+    ["Le Mars", 42.7942, -96.1656],
+    ["Cherokee", 42.7494, -95.5517],
+    ["Storm Lake", 42.6411, -95.2097],
+    ["Spencer", 43.1414, -95.1444],
+    ["Jackson", 43.6208, -94.9886],
+    ["Slayton", 43.9877, -95.7561],
+    ["Canby", 44.7083, -96.2764],
+    ["Tyler", 44.2783, -96.1348],
+    ["Lake Benton", 44.2602, -96.2875],
+    ["Adrian", 43.6341, -95.9328],
+    ["Windom", 43.8675, -95.1169],
+    ["Fairmont", 43.6522, -94.4611]
   ];
 function updateCityLabels(){
-  var z = map.getZoom();
+    var z = map.getZoom();
 
-  // Once basemap labels take over, remove custom bubble labels completely.
-  if (z >= BASE_LABELS_MIN_ZOOM){
+    if (z >= BASE_LABELS_MIN_ZOOM){
+      cityLabelLayer.clearLayers();
+      nationalCityLayer.clearLayers();
+      return;
+    }
+
     cityLabelLayer.clearLayers();
-    nationalCityLayer.clearLayers();
-    return;
+
+    if (z <= 4){
+      var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
+      addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
+    } else {
+      nationalCityLayer.clearLayers();
+    }
+
+    if (z >= 5){
+      var minPx1 = (z === 5) ? 70 : 55;
+      addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
+    }
+
+    if (z >= 6){
+      var minPx2 = (z === 6) ? 50 : 40;
+      (function(){
+        var b = map.getBounds();
+        var placed = [];
+        cityLabelLayer.eachLayer(function(layer){
+          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        });
+        for (var i=0; i<CITIES_TIER2.length; i++){
+          var c = CITIES_TIER2[i];
+          var ll = L.latLng(c[1], c[2]);
+          if (!b.contains(ll)) continue;
+          var pt = map.latLngToContainerPoint(ll);
+          var ok = true;
+          for (var j=0; j<placed.length; j++){
+            var dx = pt.x - placed[j].x;
+            var dy = pt.y - placed[j].y;
+            if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
+          }
+          if (!ok) continue;
+          placed.push(pt);
+          cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+        }
+      })();
+    }
+
+    if (z >= 8){
+      var minPx3 = (z === 8) ? 32 : 26;
+      (function(){
+        var b = map.getBounds();
+        var placed = [];
+        cityLabelLayer.eachLayer(function(layer){
+          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        });
+        for (var i=0; i<CITIES_TIER3.length; i++){
+          var c = CITIES_TIER3[i];
+          var ll = L.latLng(c[1], c[2]);
+          if (!b.contains(ll)) continue;
+          var pt = map.latLngToContainerPoint(ll);
+          var ok = true;
+          for (var j=0; j<placed.length; j++){
+            var dx = pt.x - placed[j].x;
+            var dy = pt.y - placed[j].y;
+            if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
+          }
+          if (!ok) continue;
+          placed.push(pt);
+          cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+        }
+      })();
+    }
   }
 
   cityLabelLayer.clearLayers();
 
-  // 1) Wide CONUS view
+  // 1) Wide CONUS view: show decluttered major US cities (sparse)
   if (z <= 4){
     var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
     addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
@@ -2824,18 +2931,20 @@ function updateCityLabels(){
     nationalCityLayer.clearLayers();
   }
 
-  // 2) Tier 1 regional anchors
+  // 2) Regional "bubble" cities: phase in gradually + declutter to avoid crowding
+  // Tier 1 (regional anchors) at zoom 5+
   if (z >= 5){
     var minPx1 = (z === 5) ? 70 : 55;
     addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
   }
-
-  // 3) Tier 2 regional fill
+  // Tier 2 (regional fill) at zoom 6+
   if (z >= 6){
     var minPx2 = (z === 6) ? 50 : 40;
+    // add on top of existing; do not clear
     (function(){
       var b = map.getBounds();
       var placed = [];
+      // seed placed with existing labels to prevent overlaps
       cityLabelLayer.eachLayer(function(layer){
         if (layer.getLatLng){
           placed.push(map.latLngToContainerPoint(layer.getLatLng()));
@@ -2858,8 +2967,7 @@ function updateCityLabels(){
       }
     })();
   }
-
-  // 4) Tier 3 local towns
+  // Tier 3 (local 150-mi-ish) at zoom 8+
   if (z >= 8){
     var minPx3 = (z === 8) ? 32 : 26;
     (function(){
