@@ -2898,9 +2898,14 @@ function updateZoomBadge(){
   if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
   var el = zoomBadgeControl.getContainer();
   if (!el) return;
+
   var z = map.getZoom();
-  var band = (z <= 4) ? "National" : (z <= 5 ? "Regional" : (z <= 7 ? "Regional+" : (z <= 9 ? "Local" : "Street")));
-  el.innerHTML = "Zoom: " + z + " <span style="opacity:.72;font-weight:600">(" + band + ")</span>";
+  var band = (z <= 4) ? "National"
+            : (z <= 5 ? "Regional"
+            : (z <= 7 ? "Regional+"
+            : (z <= 9 ? "Local" : "Street")));
+
+  el.innerHTML = 'Zoom: ' + z + ' <span style="opacity:.72;font-weight:600">(' + band + ')</span>';
 }
 
 function updateCityLabels(){
