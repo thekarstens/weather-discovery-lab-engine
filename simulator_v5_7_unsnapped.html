@@ -159,67 +159,78 @@
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
   
-    #wdlHrrrTestPad{
+    #wdlModelPad{
       position:fixed;
-      left:460px;
-      top:180px;
-      z-index:9999999;
-      background:rgba(0,0,0,.92);
-      color:#fff;
-      border:4px solid #00d4ff;
+      right:14px;
+      bottom:74px;
+      z-index:100040;
+      background:rgba(8,25,44,.94);
+      border:1px solid rgba(255,255,255,.12);
       border-radius:16px;
-      padding:12px;
-      box-shadow:0 0 24px rgba(0,212,255,.5);
-      min-width:320px;
+      box-shadow:0 10px 24px rgba(0,0,0,.28);
+      color:#fff;
+      overflow:hidden;
+      width:190px;
     }
-    #wdlHrrrTestPad .head{
-      font:900 16px/1 "Lato", Arial, sans-serif;
-      text-transform:uppercase;
-      letter-spacing:1px;
-      margin-bottom:10px;
-      color:#9be8ff;
-    }
-    #wdlHrrrTestPad .row{
+    #wdlModelPad.is-collapsed .wdl-model-pad-body{ display:none; }
+    .wdl-model-pad-head{
       display:flex;
+      align-items:center;
+      justify-content:space-between;
       gap:8px;
-      flex-wrap:wrap;
-      margin-bottom:8px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.05);
     }
-    #wdlHrrrTestPad button{
+    .wdl-model-pad-title{
+      font:900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing:1px;
+      text-transform:uppercase;
+      color:#d9ecff;
+    }
+    #wdlModelPadToggle{
+      border:none;
+      background:transparent;
+      color:#fff;
+      cursor:pointer;
+      font:900 16px/1 Arial,sans-serif;
+      padding:0 2px;
+    }
+    .wdl-model-pad-body{
+      padding:10px 10px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .wdl-model-row{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .wdl-model-btn{
       border:none;
       border-radius:999px;
-      padding:10px 14px;
+      padding:8px 10px;
       cursor:pointer;
-      background:#f1f5fb;
+      background:#e7eef8;
       color:#16365d;
-      font:900 13px/1 "Lato", Arial, sans-serif;
+      font:900 12px/1 "Lato", Arial, sans-serif;
+      box-shadow:0 4px 10px rgba(0,0,0,.10);
+      min-width:52px;
     }
-    #wdlHrrrTestPad button.mode-active,
-    #wdlHrrrTestPad button.time-active{
+    .wdl-model-btn.active{
       background:#0f67d8;
       color:#fff;
     }
-    ''</style>
+    .wdl-model-note{
+      color:#b9d5f2;
+      font:800 10px/1.2 Arial,sans-serif;
+      letter-spacing:.3px;
+      opacity:.95;
+    }
+  </style>
 </head>
 <body>
   <div id="map"></div>
-  <div id="wdlHrrrTestPad">
-    <div class="head">HRRR TEST CONTROLS</div>
-    <div class="row">
-      <button type="button" data-mode="temp" class="mode-active">Temp</button>
-      <button type="button" data-mode="cape">CAPE</button>
-      <button type="button" data-mode="winds">Winds</button>
-    </div>
-    <div class="row">
-      <button type="button" id="hrrrUnlockBtn">Resume Scrubber</button>
-    </div>
-    <div class="row">
-      <button type="button" data-frame="0">4pm</button>
-      <button type="button" data-frame="1">5pm</button>
-      <button type="button" data-frame="2">6pm</button>
-      <button type="button" data-frame="3">7pm</button>
-    </div>
-  </div>
   <div class="tvbanner"><div class="banner-topline">
       <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops logo" />
       <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
@@ -898,104 +909,88 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   </script>
 <script>
 (function(){
-  window.__wdlHrrrPadMode = 'temp';
-  window.__WDL_HRRR_LOCK__ = false;
-  window.__WDL_HRRR_LOCK_MODE__ = 'temp';
-  window.__WDL_HRRR_LOCK_FRAME__ = 0;
-  window.__WDL_HRRR_BANNER_LOCK__ = '';
-  var pad = document.getElementById('wdlHrrrTestPad');
-  var unlockBtn = document.getElementById('hrrrUnlockBtn');
-  if (!pad) return;
-  var modeBtns = Array.prototype.slice.call(pad.querySelectorAll('[data-mode]'));
-  var frameBtns = Array.prototype.slice.call(pad.querySelectorAll('[data-frame]'));
+  window.__WDL_MODEL_PAD__ = {
+    mode: 'temp',
+    frame: 0,
+    locked: false
+  };
 
-  function setBanner(text){
-    var el = document.getElementById('productLabel');
-    if (!el) return;
-    if (window.__WDL_HRRR_BANNER_LOCK__) {
-      el.textContent = window.__WDL_HRRR_BANNER_LOCK__;
-      return;
-    }
-    el.textContent = text;
-  }
+  var pad = document.getElementById('wdlModelPad');
+  var toggleBtn = document.getElementById('wdlModelPadToggle');
+  var modeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-model-mode]'));
+  var frameBtns = Array.prototype.slice.call(document.querySelectorAll('[data-model-frame]'));
+  var autoBtn = document.querySelector('[data-model-auto]');
+  var productLabel = document.getElementById('productLabel');
 
-  function syncModeUi(){
+  if (!pad || !toggleBtn) return;
+
+  function syncModelPadUi(){
     modeBtns.forEach(function(btn){
-      btn.classList.toggle('mode-active', btn.getAttribute('data-mode') === window.__wdlHrrrPadMode);
+      btn.classList.toggle('active', btn.getAttribute('data-model-mode') === window.__WDL_MODEL_PAD__.mode);
     });
+    frameBtns.forEach(function(btn){
+      btn.classList.toggle('active', Number(btn.getAttribute('data-model-frame')) === Number(window.__WDL_MODEL_PAD__.frame) && window.__WDL_MODEL_PAD__.locked);
+    });
+    if (autoBtn) autoBtn.classList.toggle('active', !window.__WDL_MODEL_PAD__.locked);
+    toggleBtn.textContent = pad.classList.contains('is-collapsed') ? '▸' : '▾';
   }
 
-  function runFrame(frameIndex){
-    window.__WDL_HRRR_LOCK__ = true;
-    window.__WDL_HRRR_LOCK_MODE__ = window.__wdlHrrrPadMode || 'temp';
-    window.__WDL_HRRR_LOCK_FRAME__ = Number(frameIndex) || 0;
+  function labelBase(){
+    if (window.__WDL_MODEL_PAD__.mode === 'cape') return 'Future CAPE';
+    if (window.__WDL_MODEL_PAD__.mode === 'winds') return 'Future Winds';
+    return 'Future Temp';
+  }
 
+  function applyModelChoice(){
     try{
-      if (window.__WDL_HRRR_LOCK_MODE__ === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
-      if (window.__WDL_HRRR_LOCK_MODE__ === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
-      if (window.__WDL_HRRR_LOCK_MODE__ === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
+      if (window.__WDL_MODEL_PAD__.mode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
+      if (window.__WDL_MODEL_PAD__.mode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
+      if (window.__WDL_MODEL_PAD__.mode === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
     }catch(e){}
     try{
-      if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(window.__WDL_HRRR_LOCK_FRAME__);
+      if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(window.__WDL_MODEL_PAD__.frame);
     }catch(e){}
-    if (unlockBtn){
-    unlockBtn.addEventListener('click', function(){
-      window.__WDL_HRRR_LOCK__ = false;
-      window.__WDL_HRRR_BANNER_LOCK__ = '';
-      frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
-      setBanner('Model Follow Scrubber');
-    });
+    if (productLabel){
+      productLabel.textContent = labelBase() + ' ' + ['4PM','5PM','6PM','7PM'][Math.max(0, Math.min(3, Number(window.__WDL_MODEL_PAD__.frame)||0))];
+    }
   }
 
-  frameBtns.forEach(function(btn){
-      btn.classList.toggle('time-active', Number(btn.getAttribute('data-frame')) === window.__WDL_HRRR_LOCK_FRAME__);
-    });
-    var base = 'Future Temp';
-    if (window.__WDL_HRRR_LOCK_MODE__ === 'cape') base = 'Future CAPE';
-    if (window.__WDL_HRRR_LOCK_MODE__ === 'winds') base = 'Future Winds';
-    var times = ['4PM','5PM','6PM','7PM'];
-    window.__WDL_HRRR_BANNER_LOCK__ = base + ' ' + times[Math.max(0, Math.min(3, window.__WDL_HRRR_LOCK_FRAME__))];
-    setBanner(window.__WDL_HRRR_BANNER_LOCK__);
-  }
+  toggleBtn.addEventListener('click', function(){
+    pad.classList.toggle('is-collapsed');
+    syncModelPadUi();
+  });
 
   modeBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
-      window.__wdlHrrrPadMode = btn.getAttribute('data-mode') || 'temp';
-      if (window.__WDL_HRRR_LOCK__) {
-        window.__WDL_HRRR_LOCK_MODE__ = window.__wdlHrrrPadMode;
-        runFrame(window.__WDL_HRRR_LOCK_FRAME__ || 0);
-      } else {
-        syncModeUi();
-      }
+      window.__WDL_MODEL_PAD__.mode = btn.getAttribute('data-model-mode') || 'temp';
+      syncModelPadUi();
+      if (window.__WDL_MODEL_PAD__.locked) applyModelChoice();
     });
   });
-
-  if (unlockBtn){
-    unlockBtn.addEventListener('click', function(){
-      window.__WDL_HRRR_LOCK__ = false;
-      window.__WDL_HRRR_BANNER_LOCK__ = '';
-      frameBtns.forEach(function(b){ b.classList.remove('time-active'); });
-      setBanner('Model Follow Scrubber');
-    });
-  }
 
   frameBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
-      runFrame(Number(btn.getAttribute('data-frame')) || 0);
+      window.__WDL_MODEL_PAD__.frame = Number(btn.getAttribute('data-model-frame')) || 0;
+      window.__WDL_MODEL_PAD__.locked = true;
+      applyModelChoice();
+      syncModelPadUi();
     });
   });
 
-  syncModeUi();
+  if (autoBtn){
+    autoBtn.addEventListener('click', function(){
+      window.__WDL_MODEL_PAD__.locked = false;
+      syncModelPadUi();
+      if (productLabel) productLabel.textContent = labelBase();
+    });
+  }
+
   setInterval(function(){
-    try{
-      if (window.__WDL_HRRR_BANNER_LOCK__){
-        var el = document.getElementById('productLabel');
-        if (el && el.textContent !== window.__WDL_HRRR_BANNER_LOCK__){
-          el.textContent = window.__WDL_HRRR_BANNER_LOCK__;
-        }
-      }
-    }catch(e){}
-  }, 150);
+    if (!window.__WDL_MODEL_PAD__.locked) return;
+    applyModelChoice();
+  }, 350);
+
+  syncModelPadUi();
 })();
 </script>
 </body>
