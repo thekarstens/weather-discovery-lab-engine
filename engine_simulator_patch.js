@@ -4194,7 +4194,7 @@ function nearestHrrrFrameIndexForTime(d){
     if (window.__WDL_SINGLE_CLOCK__ === true) return 'lesson';
     if (window.__WDL_FREE_SCRUB__ === true) return 'lesson';
     var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
-    if ((hrrrTempEnabled || window.hrrrTempEnabled === true) && liveHrrrFrames.length) return 'hrrr';
+    if ((hrrrTempEnabled || window.hrrrTempEnabled === true || window.hrrrProductMode === 'winds' || window.hrrrProductMode === 'cape' || window.hrrrProductMode === 'radar') && liveHrrrFrames.length) return 'hrrr';
     if (typeof metarVisible !== 'undefined' &&
         metarVisible &&
         typeof window.metarUseMasterScrubber !== 'undefined' &&
@@ -5015,7 +5015,7 @@ if (window.createMetarsModule) {
       }
       try{
         var fallback = ['2022-05-12T21:00:00Z','2022-05-12T22:00:00Z','2022-05-12T23:00:00Z','2022-05-13T00:00:00Z'];
-        if (hrrrFrames && hrrrFrames[index] && hrrrFrames[index].time) window.__WDL_HRRR_LABEL_TIME__ = new Date(hrrrFrames[index].time);
+        if (hrrrFrames && hrrrFrames[index] && hrrrFrames[index].time) { window.__WDL_HRRR_LABEL_TIME__ = new Date(hrrrFrames[index].time); curZ = new Date(hrrrFrames[index].time); }
         else window.__WDL_HRRR_LABEL_TIME__ = new Date(fallback[Math.max(0, Math.min(3, index))]);
       }catch(e){}
       return true;
@@ -5918,7 +5918,14 @@ window.setWarningsEnabled = setWarningsEnabled;
         var usePct = scrubberPendingPct;
         scrubberPendingPct = null;
         if (!isFinite(usePct)) return;
-        window.setMasterTime(new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * usePct)));
+        var targetTime = new Date(startZ.getTime() + ((endZ.getTime() - startZ.getTime()) * usePct));
+        try{
+          var liveHrrrFrames = (hrrrFrames && hrrrFrames.length) ? hrrrFrames : ((window.__HRRR_FRAMES__ && window.__HRRR_FRAMES__.length) ? window.__HRRR_FRAMES__ : []);
+          if ((hrrrTempEnabled || window.hrrrTempEnabled === true || window.hrrrProductMode === 'winds' || window.hrrrProductMode === 'cape' || window.hrrrProductMode === 'radar') && liveHrrrFrames.length){
+            setCurrentHrrrFrameIndex(nearestHrrrFrameIndexForTime(targetTime));
+          }
+        }catch(e){}
+        window.setMasterTime(targetTime);
       });
     };
   }
