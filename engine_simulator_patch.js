@@ -355,16 +355,14 @@ var storyStarted = false; // do not auto-open storyboard
   window.map = map;
 
 // ---------- Zoom badge + label transition settings ----------
-var BUBBLE_LABEL_MAX_ZOOM = 9;     // bubble cities visible through this zoom
-var BASE_LABELS_MIN_ZOOM = 10;     // built-in basemap labels begin here
-
+var BUBBLE_LABEL_MAX_ZOOM = 9;
+var BASE_LABELS_MIN_ZOOM = 10;
 var zoomBadgeControl = null;
 
 function ensureZoomBadge(){
   if (zoomBadgeControl) return zoomBadgeControl;
 
   zoomBadgeControl = L.control({ position: "bottomleft" });
-
   zoomBadgeControl.onAdd = function(){
     var div = L.DomUtil.create("div", "zoom-badge-control");
     div.style.background = "rgba(8,16,28,0.88)";
@@ -387,7 +385,6 @@ function ensureZoomBadge(){
 function updateZoomBadge(){
   ensureZoomBadge();
   if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
-
   var el = zoomBadgeControl.getContainer();
   if (!el) return;
 
@@ -2810,40 +2807,44 @@ var CITIES_TIER3 = [
 function updateCityLabels(){
   var z = map.getZoom();
 
+  // Once basemap labels take over, remove custom bubble labels completely.
   if (z >= BASE_LABELS_MIN_ZOOM){
-    try{ cityLabelLayer.clearLayers(); }catch(e){}
-    try{ nationalCityLayer.clearLayers(); }catch(e){}
+    cityLabelLayer.clearLayers();
+    nationalCityLayer.clearLayers();
     return;
   }
 
-  try{ cityLabelLayer.clearLayers(); }catch(e){}
+  cityLabelLayer.clearLayers();
 
+  // 1) Wide CONUS view
   if (z <= 4){
     var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
     addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
   } else {
-    try{ nationalCityLayer.clearLayers(); }catch(e){}
+    nationalCityLayer.clearLayers();
   }
 
+  // 2) Tier 1 regional anchors
   if (z >= 5){
     var minPx1 = (z === 5) ? 70 : 55;
     addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
   }
 
+  // 3) Tier 2 regional fill
   if (z >= 6){
     var minPx2 = (z === 6) ? 50 : 40;
     (function(){
       var b = map.getBounds();
       var placed = [];
       cityLabelLayer.eachLayer(function(layer){
-        if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
       });
-
       for (var i=0; i<CITIES_TIER2.length; i++){
         var c = CITIES_TIER2[i];
         var ll = L.latLng(c[1], c[2]);
         if (!b.contains(ll)) continue;
-
         var pt = map.latLngToContainerPoint(ll);
         var ok = true;
         for (var j=0; j<placed.length; j++){
@@ -2852,27 +2853,27 @@ function updateCityLabels(){
           if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
         }
         if (!ok) continue;
-
         placed.push(pt);
         cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
       }
     })();
   }
 
+  // 4) Tier 3 local towns
   if (z >= 8){
     var minPx3 = (z === 8) ? 32 : 26;
     (function(){
       var b = map.getBounds();
       var placed = [];
       cityLabelLayer.eachLayer(function(layer){
-        if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
       });
-
       for (var i=0; i<CITIES_TIER3.length; i++){
         var c = CITIES_TIER3[i];
         var ll = L.latLng(c[1], c[2]);
         if (!b.contains(ll)) continue;
-
         var pt = map.latLngToContainerPoint(ll);
         var ok = true;
         for (var j=0; j<placed.length; j++){
@@ -2881,7 +2882,6 @@ function updateCityLabels(){
           if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
         }
         if (!ok) continue;
-
         placed.push(pt);
         cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
       }
@@ -2902,13 +2902,79 @@ function updateCityLabels(){
   );
 
   function updateBaseLabels(){
-  var z = map.getZoom();
-
-  if (z >= BASE_LABELS_MIN_ZOOM){
-    if (!map.hasLayer(labels)) labels.addTo(map);
-  } else {
-    if (map.hasLayer(labels)) map.removeLayer(labels);
+    var z = map.getZoom();
+    if (z >= BASE_LABELS_MIN_ZOOM){
+      if (!map.hasLayer(labels)) labels.addTo(map);
+    } else {
+      if (map.hasLayer(labels)) map.removeLayer(labels);
+    }
   }
+  map.on("zoomend", updateBaseLabels);
+  map.on("zoomend", updateZoomBadge);
+  map.on("moveend", updateBaseLabels);
+  map.on("moveend", updateZoomBadge);
+  updateBaseLabels();
+  updateZoomBadge();
+
+
+  // ---------- Story (Google Sheet / CSV) ----------
+  var STORY_CFG = (CFG && CFG.storyboard) ? CFG.storyboard : {};
+  var STORYBOARD_OVERRIDE = (_qs("story") || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.storyboardUrl) || "")).trim();
+  function normalizeStoryboardPath(u){
+    var s = String(u || "").trim();
+    if (!s) return "";
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.indexOf("/") === -1) return "storyboard/" + s;
+    return s.replace(/^\.\//, "");
+  }
+  var STORYBOARD_JSON = normalizeStoryboardPath(
+    (STORY_CFG.type === "json") ? (STORY_CFG.url || STORY_CFG.json || STORY_CFG.file || "storyboard/storyboard.json") : ""
+  );
+  var STORYBOARD_CSV = normalizeStoryboardPath(
+    (STORY_CFG.type === "json")
+      ? ""
+      : (
+          STORYBOARD_OVERRIDE ||
+          ((CFG && CFG.storyboardCSV) ? CFG.storyboardCSV :
+            (STORY_CFG.type === "csv"
+              ? (STORY_CFG.url || STORY_CFG.csv || STORY_CFG.file || "storyboard/storyboard.csv")
+              : ""
+            )
+          )
+        )
+  );
+  var SHEET_ID = STORY_CFG.sheetId || STORY_CFG.googleSheetId || "17Hzg7R2fSHJGbOKAKMqG4QAqA1GlSJwFM-SQwPhQObY";
+  var SHEET_TAB = STORY_CFG.sheetTab || STORY_CFG.tab || "April Blizzard Story";
+  var storyItems = [];
+  var storyMarkers = [];
+  var storyIndex = 0;
+  var focusRing = null;
+  window.__WDL_STORY_TIME_SYNC_ENABLED__ = (window.__WDL_STORY_TIME_SYNC_ENABLED__ === true);
+  window.__WDL_STORYBOARD_JSON__ = STORYBOARD_JSON;
+  window.__WDL_STORYBOARD_CSV__ = STORYBOARD_CSV;
+
+  var storyPanel = document.getElementById("storyPanel");
+  var storyTitleEl = document.getElementById("storyTitle");
+  var storyBodyEl  = document.getElementById("storyBody");
+  var storyStepEl  = document.getElementById("storyStep");
+  var storyStationChipEl = document.getElementById("storyStationChip");
+  var storyShellKickerEl = document.getElementById("storyShellKicker");
+
+  function getStoryNumericLabel(item, idx){
+    var n = idx + 1;
+    if (item && item.order != null && isFinite(Number(item.order))) n = Math.max(1, Math.round(Number(item.order)));
+    return String(n);
+  }
+
+  function storyOpen(){
+    if (!storyPanel) return; storyPanel.classList.add("story-open");
+    var legendPop = document.getElementById("legendPop");
+    if (legendPop) legendPop.classList.add("hidden");
+    setTimeout(function(){ map.invalidateSize(); }, 220);
+  }
+  function storyClose(){
+  collapseGuide();
+  setTimeout(function(){ map.invalidateSize(); }, 220);
 }
 function storyToggle(){
   if (document.body.classList.contains("guide-collapsed")) openGuide();
