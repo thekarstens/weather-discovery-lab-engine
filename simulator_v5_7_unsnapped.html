@@ -158,79 +158,35 @@
     .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
-  
-    #wdlModelPad{
-      position:fixed;
-      right:14px;
-      bottom:74px;
-      z-index:100040;
-      background:rgba(8,25,44,.94);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-      box-shadow:0 10px 24px rgba(0,0,0,.28);
-      color:#fff;
-      overflow:hidden;
-      width:190px;
-    }
-    #wdlModelPad.is-collapsed .wdl-model-pad-body{ display:none; }
-    .wdl-model-pad-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      padding:10px 12px;
-      background:rgba(255,255,255,.05);
-    }
-    .wdl-model-pad-title{
-      font:900 12px/1 "Lato", Arial, sans-serif;
-      letter-spacing:1px;
-      text-transform:uppercase;
-      color:#d9ecff;
-    }
-    #wdlModelPadToggle{
-      border:none;
-      background:transparent;
-      color:#fff;
-      cursor:pointer;
-      font:900 16px/1 Arial,sans-serif;
-      padding:0 2px;
-    }
-    .wdl-model-pad-body{
-      padding:10px 10px 12px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-    .wdl-model-row{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-    }
-    .wdl-model-btn{
-      border:none;
-      border-radius:999px;
-      padding:8px 10px;
-      cursor:pointer;
-      background:#e7eef8;
-      color:#16365d;
-      font:900 12px/1 "Lato", Arial, sans-serif;
-      box-shadow:0 4px 10px rgba(0,0,0,.10);
-      min-width:52px;
-    }
-    .wdl-model-btn.active{
-      background:#0f67d8;
-      color:#fff;
-    }
-    .wdl-model-note{
-      color:#b9d5f2;
-      font:800 10px/1.2 Arial,sans-serif;
-      letter-spacing:.3px;
-      opacity:.95;
-    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <div id="wdlModelPadInline" style="position:fixed; top:170px; right:18px; z-index:99999999; background:rgba(6,18,32,.96); color:#fff; border:3px solid #37b7ff; border-radius:16px; box-shadow:0 0 24px rgba(55,183,255,.45); width:220px; font-family:Lato,Arial,sans-serif;">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:rgba(255,255,255,.06);">
+      <div style="font-weight:900; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#cfefff;">Model Pad</div>
+      <button id="wdlModelPadInlineToggle" type="button" style="border:none; background:transparent; color:#fff; cursor:pointer; font-size:18px; font-weight:900;">▾</button>
+    </div>
+    <div id="wdlModelPadInlineBody" style="padding:10px 10px 12px;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <button type="button" data-model-mode="temp" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#0f67d8; color:#fff; font-weight:900; font-size:12px;">Temp</button>
+        <button type="button" data-model-mode="cape" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">CAPE</button>
+        <button type="button" data-model-mode="winds" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">Winds</button>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <button type="button" data-model-frame="0" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">4PM</button>
+        <button type="button" data-model-frame="1" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">5PM</button>
+        <button type="button" data-model-frame="2" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">6PM</button>
+        <button type="button" data-model-frame="3" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">7PM</button>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button id="wdlModelPadInlineAuto" type="button" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">Auto</button>
+      </div>
+      <div style="margin-top:8px; color:#b9d5f2; font-size:10px; line-height:1.25; font-weight:800;">Pick product, then hour. This ignores simulator time until Auto is pressed.</div>
+    </div>
+  </div>
+
   <div class="tvbanner"><div class="banner-topline">
       <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops logo" />
       <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
@@ -907,32 +863,36 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
     })();
   </script>
+
 <script>
 (function(){
-  window.__WDL_MODEL_PAD__ = {
-    mode: 'temp',
-    frame: 0,
-    locked: false
-  };
+  window.__WDL_MODEL_PAD__ = window.__WDL_MODEL_PAD__ || { mode:'temp', frame:0, locked:false };
 
-  var pad = document.getElementById('wdlModelPad');
-  var toggleBtn = document.getElementById('wdlModelPadToggle');
-  var modeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-model-mode]'));
-  var frameBtns = Array.prototype.slice.call(document.querySelectorAll('[data-model-frame]'));
-  var autoBtn = document.querySelector('[data-model-auto]');
+  var pad = document.getElementById('wdlModelPadInline');
+  var body = document.getElementById('wdlModelPadInlineBody');
+  var toggle = document.getElementById('wdlModelPadInlineToggle');
+  var modeBtns = Array.prototype.slice.call(document.querySelectorAll('#wdlModelPadInline [data-model-mode]'));
+  var frameBtns = Array.prototype.slice.call(document.querySelectorAll('#wdlModelPadInline [data-model-frame]'));
+  var autoBtn = document.getElementById('wdlModelPadInlineAuto');
   var productLabel = document.getElementById('productLabel');
 
-  if (!pad || !toggleBtn) return;
+  if (!pad || !body || !toggle) return;
 
-  function syncModelPadUi(){
+  function setBtnStyle(btn, active){
+    if (!btn) return;
+    btn.style.background = active ? '#0f67d8' : '#e7eef8';
+    btn.style.color = active ? '#fff' : '#16365d';
+  }
+
+  function syncUi(){
     modeBtns.forEach(function(btn){
-      btn.classList.toggle('active', btn.getAttribute('data-model-mode') === window.__WDL_MODEL_PAD__.mode);
+      setBtnStyle(btn, btn.getAttribute('data-model-mode') === window.__WDL_MODEL_PAD__.mode);
     });
     frameBtns.forEach(function(btn){
-      btn.classList.toggle('active', Number(btn.getAttribute('data-model-frame')) === Number(window.__WDL_MODEL_PAD__.frame) && window.__WDL_MODEL_PAD__.locked);
+      setBtnStyle(btn, Number(btn.getAttribute('data-model-frame')) === Number(window.__WDL_MODEL_PAD__.frame) && window.__WDL_MODEL_PAD__.locked);
     });
-    if (autoBtn) autoBtn.classList.toggle('active', !window.__WDL_MODEL_PAD__.locked);
-    toggleBtn.textContent = pad.classList.contains('is-collapsed') ? '▸' : '▾';
+    if (autoBtn) setBtnStyle(autoBtn, !window.__WDL_MODEL_PAD__.locked);
+    toggle.textContent = body.style.display === 'none' ? '▸' : '▾';
   }
 
   function labelBase(){
@@ -941,7 +901,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     return 'Future Temp';
   }
 
-  function applyModelChoice(){
+  function applyChoice(){
     try{
       if (window.__WDL_MODEL_PAD__.mode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
       if (window.__WDL_MODEL_PAD__.mode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
@@ -951,20 +911,21 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
       if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(window.__WDL_MODEL_PAD__.frame);
     }catch(e){}
     if (productLabel){
-      productLabel.textContent = labelBase() + ' ' + ['4PM','5PM','6PM','7PM'][Math.max(0, Math.min(3, Number(window.__WDL_MODEL_PAD__.frame)||0))];
+      var times = ['4PM','5PM','6PM','7PM'];
+      productLabel.textContent = labelBase() + ' ' + times[Math.max(0, Math.min(3, Number(window.__WDL_MODEL_PAD__.frame)||0))];
     }
   }
 
-  toggleBtn.addEventListener('click', function(){
-    pad.classList.toggle('is-collapsed');
-    syncModelPadUi();
+  toggle.addEventListener('click', function(){
+    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    syncUi();
   });
 
   modeBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
       window.__WDL_MODEL_PAD__.mode = btn.getAttribute('data-model-mode') || 'temp';
-      syncModelPadUi();
-      if (window.__WDL_MODEL_PAD__.locked) applyModelChoice();
+      if (window.__WDL_MODEL_PAD__.locked) applyChoice();
+      syncUi();
     });
   });
 
@@ -972,26 +933,26 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     btn.addEventListener('click', function(){
       window.__WDL_MODEL_PAD__.frame = Number(btn.getAttribute('data-model-frame')) || 0;
       window.__WDL_MODEL_PAD__.locked = true;
-      applyModelChoice();
-      syncModelPadUi();
+      applyChoice();
+      syncUi();
     });
   });
 
   if (autoBtn){
     autoBtn.addEventListener('click', function(){
       window.__WDL_MODEL_PAD__.locked = false;
-      syncModelPadUi();
-      if (productLabel) productLabel.textContent = labelBase();
+      syncUi();
     });
   }
 
   setInterval(function(){
     if (!window.__WDL_MODEL_PAD__.locked) return;
-    applyModelChoice();
-  }, 350);
+    applyChoice();
+  }, 400);
 
-  syncModelPadUi();
+  syncUi();
 })();
 </script>
+
 </body>
 </html>
