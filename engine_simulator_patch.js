@@ -2996,18 +2996,29 @@ function updateCityLabels(){
     })();
   }
 }
-
-  // Update labels as you zoom/pan
-  map.on("zoomend", updateCityLabels);
-  map.on("moveend", updateCityLabels);
-  updateCityLabels();
-
-// Optional labels
 // Optional labels (kept on top to help students)
-  var labels = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-    { attribution: "", subdomains:"abcd", maxZoom: 19, pane: "overlayPane" }
-  );
+var labels = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  { attribution: "", subdomains:"abcd", maxZoom: 19, pane: "overlayPane" }
+);
+
+// Update labels as you zoom/pan
+map.on("zoomend", function(){
+  updateCityLabels();
+  updateBaseLabels();
+  updateZoomBadge();
+});
+
+map.on("moveend", function(){
+  updateCityLabels();
+  updateBaseLabels();
+  updateZoomBadge();
+});
+
+// Initial draw
+updateCityLabels();
+updateBaseLabels();
+updateZoomBadge();
 
   function updateBaseLabels(){
     var z = map.getZoom();
