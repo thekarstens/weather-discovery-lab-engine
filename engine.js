@@ -2185,7 +2185,10 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
     { attribution: "© OpenStreetMap © CARTO", subdomains:"abcd", maxZoom: 19, className: "basemap-tiles" }
   ).addTo(map);
-// (No road overlay)
+// --- Reference labels / road context ---
+  // Turn on built-in tile labels a little earlier so towns, highways, and road context
+  // become easier to read before the fully local zoom levels.
+
 
 // --- Extra Midwest city labels (shows more as you zoom in) ---
   var cityLabelLayer = L.layerGroup().addTo(map);
@@ -2296,8 +2299,148 @@ var CITIES_TIER3 = [
     ["Luverne", 43.6541, -96.2125],
     ["Pipestone", 43.9970, -96.3175],
     ["Madison", 44.0061, -97.1133],
-    ["Norfolk", 42.0327, -97.4170]
+    ["Norfolk", 42.0327, -97.4170],
+    ["Tea", 43.4469, -96.8359],
+    ["Harrisburg", 43.4314, -96.6978],
+    ["Brandon", 43.5928, -96.5719],
+    ["Canton", 43.3008, -96.5928],
+    ["Lennox", 43.3525, -96.8928],
+    ["Parker", 43.3975, -97.1362],
+    ["Beresford", 43.0797, -96.7734],
+    ["Dell Rapids", 43.8258, -96.7117],
+    ["Baltic", 43.7619, -96.7395],
+    ["Garretson", 43.7133, -96.5028],
+    ["Salem", 43.7247, -97.3870],
+    ["Freeman", 43.3544, -97.4365],
+    ["Parkston", 43.3978, -97.9726],
+    ["Menno", 43.2386, -97.5770],
+    ["Tyndall", 42.9936, -97.8612],
+    ["Scotland", 43.1494, -97.7162],
+    ["Platte", 43.3861, -98.8448],
+    ["Chamberlain", 43.8108, -99.3307],
+    ["Winner", 43.3767, -99.8596],
+    ["Canistota", 43.5969, -97.2925],
+    ["Bridgewater", 43.5342, -97.4850],
+    ["Marion", 43.4211, -97.2603],
+    ["Irene", 43.0894, -97.2684],
+    ["Alcester", 43.0222, -96.6300],
+    ["Hudson", 43.1294, -96.4542],
+    ["Elk Point", 42.6861, -96.6853],
+    ["North Sioux City", 42.5264, -96.4875],
+    ["Le Mars", 42.7942, -96.1656],
+    ["Orange City", 42.9975, -96.0592],
+    ["Rock Valley", 43.2050, -96.2950],
+    ["Rock Rapids", 43.4300, -96.1759],
+    ["Hull", 43.1886, -96.1334],
+    ["Sheldon", 43.1847, -95.8561],
+    ["Spencer", 43.1414, -95.1444],
+    ["Storm Lake", 42.6411, -95.2097],
+    ["Cherokee", 42.7494, -95.5517],
+    ["Sioux Center", 43.0797, -96.1753],
+    ["Sibley", 43.4036, -95.7595],
+    ["George", 43.3439, -96.0025],
+    ["Jackson", 43.6208, -94.9886],
+    ["Windom", 43.8630, -95.1169],
+    ["Slayton", 43.9877, -95.7558],
+    ["Redwood Falls", 44.5394, -95.1169],
+    ["Montevideo", 44.9489, -95.7170],
+    ["Canby", 44.7097, -96.2764],
+    ["Granite Falls", 44.8097, -95.5458],
+    ["Milan", 44.9422, -95.9075],
+    ["Tracy", 44.2333, -95.6197],
+    ["Tyler", 44.2780, -96.1348],
+    ["Lake Benton", 44.2647, -96.2878],
+    ["Ivanhoe", 44.4639, -96.2478],
+    ["Fulda", 43.8727, -95.6000],
+    ["Adrian", 43.6344, -95.9328]
   ];
+
+var CITIES_TIER4 = [
+    ["Tea", 43.4469, -96.8359],
+    ["Harrisburg", 43.4314, -96.6978],
+    ["Brandon", 43.5928, -96.5719],
+    ["Canton", 43.3008, -96.5928],
+    ["Lennox", 43.3525, -96.8928],
+    ["Parker", 43.3975, -97.1362],
+    ["Beresford", 43.0797, -96.7734],
+    ["Dell Rapids", 43.8258, -96.7117],
+    ["Baltic", 43.7619, -96.7395],
+    ["Garretson", 43.7133, -96.5028],
+    ["Salem", 43.7247, -97.3870],
+    ["Freeman", 43.3544, -97.4365],
+    ["Parkston", 43.3978, -97.9726],
+    ["Alcester", 43.0222, -96.6300],
+    ["Elk Point", 42.6861, -96.6853],
+    ["North Sioux City", 42.5264, -96.4875],
+    ["Le Mars", 42.7942, -96.1656],
+    ["Orange City", 42.9975, -96.0592],
+    ["Rock Valley", 43.2050, -96.2950],
+    ["Rock Rapids", 43.4300, -96.1759],
+    ["Sheldon", 43.1847, -95.8561],
+    ["Sioux Center", 43.0797, -96.1753],
+    ["Jackson", 43.6208, -94.9886],
+    ["Slayton", 43.9877, -95.7558],
+    ["Canby", 44.7097, -96.2764],
+    ["Tyler", 44.2780, -96.1348],
+    ["Lake Benton", 44.2647, -96.2878],
+    ["Adrian", 43.6344, -95.9328]
+  ];
+
+function addTierWithDeclutter(layer, cityList, minPx){
+  var b = map.getBounds();
+  var placed = [];
+  layer.eachLayer(function(existing){
+    if (existing && existing.getLatLng){
+      placed.push(map.latLngToContainerPoint(existing.getLatLng()));
+    }
+  });
+  for (var i=0; i<cityList.length; i++){
+    var c = cityList[i];
+    var ll = L.latLng(c[1], c[2]);
+    if (!b.contains(ll)) continue;
+    var pt = map.latLngToContainerPoint(ll);
+    var ok = true;
+    for (var j=0; j<placed.length; j++){
+      var dx = pt.x - placed[j].x;
+      var dy = pt.y - placed[j].y;
+      if (Math.sqrt(dx*dx + dy*dy) < minPx){ ok = false; break; }
+    }
+    if (!ok) continue;
+    placed.push(pt);
+    layer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+  }
+}
+
+var zoomBadgeControl = null;
+function ensureZoomBadge(){
+  if (zoomBadgeControl || !map || !L || !L.control) return;
+  zoomBadgeControl = L.control({ position: "bottomleft" });
+  zoomBadgeControl.onAdd = function(){
+    var div = L.DomUtil.create("div", "leaflet-bar wdl-zoom-badge");
+    div.style.background = "rgba(18,25,35,0.82)";
+    div.style.color = "#fff";
+    div.style.padding = "6px 10px";
+    div.style.font = "700 13px/1.2 Lato, Arial, sans-serif";
+    div.style.borderRadius = "10px";
+    div.style.boxShadow = "0 2px 10px rgba(0,0,0,.25)";
+    div.style.border = "1px solid rgba(255,255,255,.14)";
+    div.style.pointerEvents = "none";
+    div.innerHTML = "Zoom: --";
+    return div;
+  };
+  zoomBadgeControl.addTo(map);
+}
+
+function updateZoomBadge(){
+  ensureZoomBadge();
+  if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
+  var el = zoomBadgeControl.getContainer();
+  if (!el) return;
+  var z = map.getZoom();
+  var band = (z <= 4) ? "National" : (z <= 5 ? "Regional" : (z <= 7 ? "Regional+" : (z <= 9 ? "Local" : "Street")));
+  el.innerHTML = "Zoom: " + z + " <span style="opacity:.72;font-weight:600">(" + band + ")</span>";
+}
+
 function updateCityLabels(){
   var z = map.getZoom();
 
@@ -2327,66 +2470,26 @@ function updateCityLabels(){
   // Tier 2 (regional fill) at zoom 6+
   if (z >= 6){
     var minPx2 = (z === 6) ? 50 : 40;
-    // add on top of existing; do not clear
-    (function(){
-      var b = map.getBounds();
-      var placed = [];
-      // seed placed with existing labels to prevent overlaps
-      cityLabelLayer.eachLayer(function(layer){
-        if (layer.getLatLng){
-          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-        }
-      });
-      for (var i=0; i<CITIES_TIER2.length; i++){
-        var c = CITIES_TIER2[i];
-        var ll = L.latLng(c[1], c[2]);
-        if (!b.contains(ll)) continue;
-        var pt = map.latLngToContainerPoint(ll);
-        var ok = true;
-        for (var j=0; j<placed.length; j++){
-          var dx = pt.x - placed[j].x;
-          var dy = pt.y - placed[j].y;
-          if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
-        }
-        if (!ok) continue;
-        placed.push(pt);
-        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
-      }
-    })();
+    addTierWithDeclutter(cityLabelLayer, CITIES_TIER2, minPx2);
   }
-  // Tier 3 (local 150-mi-ish) at zoom 8+
-  if (z >= 8){
-    var minPx3 = (z === 8) ? 32 : 26;
-    (function(){
-      var b = map.getBounds();
-      var placed = [];
-      cityLabelLayer.eachLayer(function(layer){
-        if (layer.getLatLng){
-          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-        }
-      });
-      for (var i=0; i<CITIES_TIER3.length; i++){
-        var c = CITIES_TIER3[i];
-        var ll = L.latLng(c[1], c[2]);
-        if (!b.contains(ll)) continue;
-        var pt = map.latLngToContainerPoint(ll);
-        var ok = true;
-        for (var j=0; j<placed.length; j++){
-          var dx = pt.x - placed[j].x;
-          var dy = pt.y - placed[j].y;
-          if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
-        }
-        if (!ok) continue;
-        placed.push(pt);
-        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
-      }
-    })();
+  // Tier 3 (local towns / school communities) at zoom 7+
+  if (z >= 7){
+    var minPx3 = (z === 7) ? 34 : (z === 8 ? 28 : 24);
+    addTierWithDeclutter(cityLabelLayer, CITIES_TIER3, minPx3);
   }
+  // Tier 4 (smallest local labels) at zoom 9+
+  if (z >= 9){
+    var minPx4 = (z === 9) ? 24 : 20;
+    addTierWithDeclutter(cityLabelLayer, CITIES_TIER4, minPx4);
+  }
+
+  updateZoomBadge();
 }
 
   // Update labels as you zoom/pan
   map.on("zoomend", updateCityLabels);
   map.on("moveend", updateCityLabels);
+  ensureZoomBadge();
   updateCityLabels();
 
 // Optional labels
@@ -2398,8 +2501,9 @@ function updateCityLabels(){
 
   function updateBaseLabels(){
     var z = map.getZoom();
-    // Only show built-in labels when EXTREMELY zoomed in (local view)
-    if (z >= 11){
+    // Bring in the built-in label tile a little earlier so roads/highways and
+    // town names help with local orientation before the tightest zoom.
+    if (z >= 9){
       if (!map.hasLayer(labels)) labels.addTo(map);
     } else {
       if (map.hasLayer(labels)) map.removeLayer(labels);
