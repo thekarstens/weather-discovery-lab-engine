@@ -162,11 +162,7 @@
 </head>
 <body>
   <div id="map"></div>
-
-  <div id="wdlModelPadInline" style="position:fixed; top:170px; right:18px; z-index:99999999; background:rgba(6,18,32,.96); color:#fff; border:3px solid #37b7ff; border-radius:16px; box-shadow:0 0 24px rgba(55,183,255,.45); width:220px; font-family:Lato,Arial,sans-serif;">
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:rgba(255,255,255,.06);">
-      <div style="font-weight:900; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#cfefff;">Model Pad</div>
-      <button id="wdlModelPadInlineToggle" type="button" style="border:none; background:transparent; color:#fff; cursor:pointer; font-size:18px; font-weight:900;">▾</button>
+<button id="wdlModelPadInlineToggle" type="button" style="border:none; background:transparent; color:#fff; cursor:pointer; font-size:18px; font-weight:900;">▾</button>
     </div>
     <div id="wdlModelPadInlineBody" style="padding:10px 10px 12px;">
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
@@ -863,96 +859,6 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
     })();
   </script>
-
-<script>
-(function(){
-  window.__WDL_MODEL_PAD__ = window.__WDL_MODEL_PAD__ || { mode:'temp', frame:0, locked:false };
-
-  var pad = document.getElementById('wdlModelPadInline');
-  var body = document.getElementById('wdlModelPadInlineBody');
-  var toggle = document.getElementById('wdlModelPadInlineToggle');
-  var modeBtns = Array.prototype.slice.call(document.querySelectorAll('#wdlModelPadInline [data-model-mode]'));
-  var frameBtns = Array.prototype.slice.call(document.querySelectorAll('#wdlModelPadInline [data-model-frame]'));
-  var autoBtn = document.getElementById('wdlModelPadInlineAuto');
-  var productLabel = document.getElementById('productLabel');
-
-  if (!pad || !body || !toggle) return;
-
-  function setBtnStyle(btn, active){
-    if (!btn) return;
-    btn.style.background = active ? '#0f67d8' : '#e7eef8';
-    btn.style.color = active ? '#fff' : '#16365d';
-  }
-
-  function syncUi(){
-    modeBtns.forEach(function(btn){
-      setBtnStyle(btn, btn.getAttribute('data-model-mode') === window.__WDL_MODEL_PAD__.mode);
-    });
-    frameBtns.forEach(function(btn){
-      setBtnStyle(btn, Number(btn.getAttribute('data-model-frame')) === Number(window.__WDL_MODEL_PAD__.frame) && window.__WDL_MODEL_PAD__.locked);
-    });
-    if (autoBtn) setBtnStyle(autoBtn, !window.__WDL_MODEL_PAD__.locked);
-    toggle.textContent = body.style.display === 'none' ? '▸' : '▾';
-  }
-
-  function labelBase(){
-    if (window.__WDL_MODEL_PAD__.mode === 'cape') return 'Future CAPE';
-    if (window.__WDL_MODEL_PAD__.mode === 'winds') return 'Future Winds';
-    return 'Future Temp';
-  }
-
-  function applyChoice(){
-    try{
-      if (window.__WDL_MODEL_PAD__.mode === 'temp' && typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true);
-      if (window.__WDL_MODEL_PAD__.mode === 'cape' && typeof window.setHrrrCapeEnabled === 'function') window.setHrrrCapeEnabled(true);
-      if (window.__WDL_MODEL_PAD__.mode === 'winds' && typeof window.setHrrrWindsEnabled === 'function') window.setHrrrWindsEnabled(true);
-    }catch(e){}
-    try{
-      if (typeof window.setHrrrFrame === 'function') window.setHrrrFrame(window.__WDL_MODEL_PAD__.frame);
-    }catch(e){}
-    if (productLabel){
-      var times = ['4PM','5PM','6PM','7PM'];
-      productLabel.textContent = labelBase() + ' ' + times[Math.max(0, Math.min(3, Number(window.__WDL_MODEL_PAD__.frame)||0))];
-    }
-  }
-
-  toggle.addEventListener('click', function(){
-    body.style.display = body.style.display === 'none' ? 'block' : 'none';
-    syncUi();
-  });
-
-  modeBtns.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      window.__WDL_MODEL_PAD__.mode = btn.getAttribute('data-model-mode') || 'temp';
-      if (window.__WDL_MODEL_PAD__.locked) applyChoice();
-      syncUi();
-    });
-  });
-
-  frameBtns.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      window.__WDL_MODEL_PAD__.frame = Number(btn.getAttribute('data-model-frame')) || 0;
-      window.__WDL_MODEL_PAD__.locked = true;
-      applyChoice();
-      syncUi();
-    });
-  });
-
-  if (autoBtn){
-    autoBtn.addEventListener('click', function(){
-      window.__WDL_MODEL_PAD__.locked = false;
-      syncUi();
-    });
-  }
-
-  setInterval(function(){
-    if (!window.__WDL_MODEL_PAD__.locked) return;
-    applyChoice();
-  }, 400);
-
-  syncUi();
-})();
-</script>
 
 </body>
 </html>
