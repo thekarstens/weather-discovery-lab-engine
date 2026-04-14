@@ -353,7 +353,6 @@ var storyStarted = false; // do not auto-open storyboard
   var initView = (CFG && CFG.map && CFG.map.initialView) ? CFG.map.initialView : { lat: 43.55, lon: -96.73, zoom: 6 };
   var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.55, initView.lon || -96.73], initView.zoom || 6);
   window.map = map;
-
   // ---------- Simple zoom readout ----------
   var zoomReadoutControl = null;
 
@@ -386,6 +385,7 @@ var storyStarted = false; // do not auto-open storyboard
     if (!el) return;
     el.textContent = "Zoom: " + map.getZoom();
   }
+
 window.CFG = CFG;
 window.DATA_BASE = DATA_BASE;
 window.MASTER_WINDOW_HOURS = MASTER_WINDOW_HOURS;
