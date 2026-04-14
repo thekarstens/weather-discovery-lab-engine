@@ -2709,6 +2709,19 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (ROADS_GEOJSON_CANDIDATES.indexOf(p) === -1) ROADS_GEOJSON_CANDIDATES.push(p);
   });
 
+  (function ensureRoadShieldStyles(){
+    if (document.getElementById('roadShieldStyles')) return;
+    var css = ''
+      + '.road-shield-wrap{background:transparent;border:none;}'
+      + '.road-shield{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:20px;padding:0 7px;border-radius:6px;'
+      + 'font:900 11px/1 "Lato",Arial,sans-serif;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);}'
+      + '.road-shield.interstate{background:#a34d14;color:#fff7ea;border:2px solid rgba(245,204,145,.95);}';
+    var st = document.createElement('style');
+    st.id = 'roadShieldStyles';
+    st.textContent = css;
+    document.head.appendChild(st);
+  })();
+
   function roadLineStyle(feature){
     var hw = String(feature && feature.properties && feature.properties.highway || '').toLowerCase();
     if (hw === 'motorway'){
@@ -2784,12 +2797,116 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       window.roadsEnabled = false;
     }
     updateRoadsToggleButton();
+    updateRoadLabelsVisibility();
     try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
     return roadsEnabled;
   }
   window.setRoadsEnabled = setRoadsEnabled;
   window.toggleRoads = function(){ return setRoadsEnabled(!roadsEnabled); };
   window.roadsEnabled = roadsEnabled;
+
+
+  // ---------- Sparse interstate labels ----------
+  var roadsLabelLayer = L.layerGroup();
+  var roadsLabelsBuilt = false;
+
+  function normalizeRoadRef(ref){
+    ref = String(ref || '').trim();
+    ref = ref.replace(/^I\s+(\d+)$/i, 'I-$1');
+    return ref;
+  }
+
+  function lineMidpointLatLng(coords){
+    if (!Array.isArray(coords) || !coords.length) return null;
+    var pts = [];
+    for (var i=0;i<coords.length;i++){
+      var c = coords[i];
+      if (!Array.isArray(c) || c.length < 2) continue;
+      var lon = Number(c[0]), lat = Number(c[1]);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      pts.push([lat, lon]);
+    }
+    if (!pts.length) return null;
+    var mid = Math.floor(pts.length / 2);
+    return L.latLng(pts[mid][0], pts[mid][1]);
+  }
+
+  function distanceMeters(a, b){
+    try{ return map.distance(a, b); }catch(e){ return Infinity; }
+  }
+
+  function clearRoadLabels(){
+    try{ roadsLabelLayer.clearLayers(); }catch(e){}
+  }
+
+  function buildRoadLabelsFromLayer(){
+    if (!roadsLayer || roadsLabelsBuilt) return;
+    clearRoadLabels();
+    var perRef = Object.create(null);
+
+    roadsLayer.eachLayer(function(layer){
+      var feature = layer && layer.feature ? layer.feature : null;
+      var p = feature && feature.properties ? feature.properties : {};
+      var hw = String(p.highway || '').toLowerCase();
+      if (hw !== 'motorway') return;
+
+      var ref = normalizeRoadRef(p.ref || '');
+      if (!ref) return;
+
+      var ll = null;
+      if (typeof layer.getLatLngs === 'function'){
+        var latlngs = layer.getLatLngs();
+        if (Array.isArray(latlngs) && latlngs.length){
+          // flatten one nesting level if needed
+          if (Array.isArray(latlngs[0])) latlngs = latlngs[0];
+          if (latlngs.length >= 2){
+            ll = latlngs[Math.floor(latlngs.length / 2)];
+          }
+        }
+      }
+      if (!ll && feature && feature.geometry){
+        if (feature.geometry.type === 'LineString'){
+          ll = lineMidpointLatLng(feature.geometry.coordinates);
+        } else if (feature.geometry.type === 'MultiLineString' && Array.isArray(feature.geometry.coordinates) && feature.geometry.coordinates.length){
+          ll = lineMidpointLatLng(feature.geometry.coordinates[0]);
+        }
+      }
+      if (!ll) return;
+
+      if (!perRef[ref]) perRef[ref] = [];
+      var existing = perRef[ref];
+      if (existing.length >= 3) return;
+
+      for (var i=0;i<existing.length;i++){
+        if (distanceMeters(existing[i], ll) < 45000) return; // keep labels sparse
+      }
+
+      existing.push(ll);
+
+      var icon = L.divIcon({
+        className: 'road-shield-wrap',
+        html: '<div class="road-shield interstate">' + ref + '</div>',
+        iconSize: [50, 24],
+        iconAnchor: [25, 12]
+      });
+
+      L.marker(ll, { icon: icon, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
+    });
+
+    roadsLabelsBuilt = true;
+  }
+
+  function updateRoadLabelsVisibility(){
+    var shouldShow = !!roadsEnabled && map.getZoom() >= 8;
+    if (shouldShow){
+      buildRoadLabelsFromLayer();
+      if (!map.hasLayer(roadsLabelLayer)) roadsLabelLayer.addTo(map);
+    } else {
+      if (map.hasLayer(roadsLabelLayer)) map.removeLayer(roadsLabelLayer);
+    }
+  }
+
+  map.on('zoomend', updateRoadLabelsVisibility);
   try{
     var roadsBtn = document.getElementById('roadsToggleBtn');
     if (roadsBtn && !roadsBtn.__wdlBound){
