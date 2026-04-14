@@ -2740,17 +2740,26 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       for (var i=0; i<ROADS_GEOJSON_CANDIDATES.length; i++){
         var rawPath = ROADS_GEOJSON_CANDIDATES[i];
         if (!rawPath) continue;
-        var url = _isAbsUrl(rawPath) ? rawPath : _joinUrl(DATA_BASE, rawPath);
-        try{
-          var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
-          if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
-          var geo = await res.json();
-          roadsLayer = L.geoJSON(geo, { filter: roadsFilter, style: roadLineStyle, pane:'lines' });
-          window.roadsLayer = roadsLayer;
-          console.log('✅ Roads GeoJSON loaded:', url);
-          return roadsLayer;
-        }catch(err){
-          lastErr = err;
+        var urls = [];
+        if (_isAbsUrl(rawPath)) {
+          urls.push(rawPath);
+        } else {
+          urls.push(String(rawPath));
+          urls.push(_joinUrl(DATA_BASE, rawPath));
+        }
+        for (var j=0; j<urls.length; j++){
+          var url = urls[j];
+          try{
+            var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+            var geo = await res.json();
+            roadsLayer = L.geoJSON(geo, { filter: roadsFilter, style: roadLineStyle, pane:'lines' });
+            window.roadsLayer = roadsLayer;
+            console.log('✅ Roads GeoJSON loaded:', url);
+            return roadsLayer;
+          }catch(err){
+            lastErr = err;
+          }
         }
       }
       roadsLoadPromise = null;
@@ -2781,6 +2790,17 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   window.setRoadsEnabled = setRoadsEnabled;
   window.toggleRoads = function(){ return setRoadsEnabled(!roadsEnabled); };
   window.roadsEnabled = roadsEnabled;
+  try{
+    var roadsBtn = document.getElementById('roadsToggleBtn');
+    if (roadsBtn && !roadsBtn.__wdlBound){
+      roadsBtn.__wdlBound = true;
+      roadsBtn.addEventListener('click', function(ev){
+        try{ ev.preventDefault(); }catch(e){}
+        window.toggleRoads();
+      });
+    }
+    updateRoadsToggleButton();
+  }catch(e){}
 
 
 // --- Extra Midwest city labels (shows more as you zoom in) ---
