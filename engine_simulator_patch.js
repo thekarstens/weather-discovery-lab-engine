@@ -2796,178 +2796,87 @@ function addDeclutteredCityLabels(layer, cityList, minPx){
   ];
 
 var CITIES_TIER3 = [
-    ["Mitchell", 43.7094, -98.0298],
-    ["Yankton", 42.8711, -97.3973],
-    ["Vermillion", 42.7794, -96.9292],
-    ["Worthington", 43.6194, -95.5964],
-    ["Marshall", 44.4469, -95.7880],
-    ["Luverne", 43.6541, -96.2125],
-    ["Pipestone", 43.9970, -96.3175],
-    ["Madison", 44.0061, -97.1133],
-    ["Norfolk", 42.0327, -97.4170],
-    ["Brookings", 44.3114, -96.7984],
-    ["Huron", 44.3633, -98.2143],
-    ["Aberdeen", 45.4647, -98.4865],
-    ["Watertown", 44.8994, -97.1151],
-    ["Pierre", 44.3683, -100.3509],
+  ["Mitchell", 43.7094, -98.0298],
+  ["Yankton", 42.8711, -97.3973],
+  ["Vermillion", 42.7794, -96.9292],
+  ["Worthington", 43.6194, -95.5964],
+  ["Marshall", 44.4469, -95.7880],
+  ["Luverne", 43.6541, -96.2125],
+  ["Pipestone", 43.9970, -96.3175],
+  ["Madison", 44.0061, -97.1133],
+  ["Norfolk", 42.0327, -97.4170],
+  ["Brookings", 44.3114, -96.7984],
+  ["Huron", 44.3633, -98.2143],
+  ["Aberdeen", 45.4647, -98.4865],
+  ["Watertown", 44.8994, -97.1151],
+  ["Pierre", 44.3683, -100.3509],
 
-    // Zoom 8 targets
-    ["Parkston", 43.3975, -97.1364],
-    ["Beresford", 43.0805, -96.7737],
-    ["Lake Andes", 43.1564, -98.5409],
-    ["Chamberlain", 43.8108, -99.3307],
-    ["Gregory", 43.2264, -99.4304],
-    ["Redfield", 44.8772, -98.5181],
-    ["Rock Rapids", 43.4311, -96.1759],
-    ["Sibley", 43.4033, -95.7595],
-    ["Sioux Center", 43.0797, -96.1753],
-    ["Cherokee", 42.7494, -95.5517],
-    ["Spencer", 43.1414, -95.1444],
-    ["Windom", 43.8675, -95.1169]
-  ];
+  // Zoom 8 targets
+  ["Parkston", 43.3975, -97.1364],
+  ["Beresford", 43.0805, -96.7737],
+  ["Lake Andes", 43.1564, -98.5409],
+  ["Chamberlain", 43.8108, -99.3307],
+  ["Gregory", 43.2264, -99.4304],
+  ["Redfield", 44.8772, -98.5181],
+  ["Rock Rapids", 43.4311, -96.1759],
+  ["Sibley", 43.4033, -95.7595],
+  ["Sioux Center", 43.0797, -96.1753],
+  ["Cherokee", 42.7494, -95.5517],
+  ["Spencer", 43.1414, -95.1444],
+  ["Windom", 43.8675, -95.1169]
+];
 
-  var CITIES_TIER4 = [
-    // South Dakota bridge/full local set
-    ["Canton", 43.3008, -96.5923],
-    ["Tea", 43.4469, -96.8359],
-    ["Hartford", 43.6236, -96.9423],
-    ["Parker", 43.3975, -97.1364],
-    ["Viborg", 43.1708, -97.0814],
-    ["Freeman", 43.3547, -97.4353],
-    ["Olivet", 43.2403, -97.6759],
-    ["Tyndall", 42.9944, -97.8629],
-    ["Wakonda", 43.0097, -97.1045],
-    ["Alcester", 43.0214, -96.6309],
-    ["Dell Rapids", 43.8261, -96.7128],
-    ["Garretson", 43.7144, -96.5020],
-    ["Flandreau", 44.0494, -96.6003],
-    ["Howard", 44.0108, -97.5262],
-    ["Woonsocket", 44.0536, -98.2754],
-    ["Plankinton", 43.7147, -98.4851],
-    ["Platte", 43.3861, -98.8448],
-    ["Springfield", 42.8497, -97.8970],
-    ["Winner", 43.3767, -99.8596],
-    ["De Smet", 44.3850, -97.5506],
-    ["Clear Lake", 44.7561, -96.6820],
-    ["Castlewood", 44.7227, -97.0331],
-    ["Clark", 44.8777, -97.7337],
+var CITIES_TIER4 = [
+  // South Dakota bridge/full local set
+  ["Canton", 43.3008, -96.5923],
+  ["Tea", 43.4469, -96.8359],
+  ["Hartford", 43.6236, -96.9423],
+  ["Parker", 43.3975, -97.1364],
+  ["Viborg", 43.1708, -97.0814],
+  ["Freeman", 43.3547, -97.4353],
+  ["Olivet", 43.2403, -97.6759],
+  ["Tyndall", 42.9944, -97.8629],
+  ["Wakonda", 43.0097, -97.1045],
+  ["Alcester", 43.0214, -96.6309],
+  ["Dell Rapids", 43.8261, -96.7128],
+  ["Garretson", 43.7144, -96.5020],
+  ["Flandreau", 44.0494, -96.6003],
+  ["Howard", 44.0108, -97.5262],
+  ["Woonsocket", 44.0536, -98.2754],
+  ["Plankinton", 43.7147, -98.4851],
+  ["Platte", 43.3861, -98.8448],
+  ["Springfield", 42.8497, -97.8970],
+  ["Winner", 43.3767, -99.8596],
+  ["De Smet", 44.3850, -97.5506],
+  ["Clear Lake", 44.7561, -96.6820],
+  ["Castlewood", 44.7227, -97.0331],
+  ["Clark", 44.8777, -97.7337],
 
-    // Minnesota
-    ["Slayton", 43.9877, -95.7561],
+  // Minnesota
+  ["Slayton", 43.9877, -95.7561],
 
-    // Northwest Iowa
-    ["Inwood", 43.3061, -96.4317],
-    ["Rock Valley", 43.2055, -96.2953],
-    ["Sheldon", 43.1847, -95.8564],
-    ["Okoboji", 43.3644, -95.1481],
-    ["Storm Lake", 42.6411, -95.2097],
-    ["Le Mars", 42.7942, -96.1656],
+  // Northwest Iowa
+  ["Inwood", 43.3061, -96.4317],
+  ["Rock Valley", 43.2055, -96.2953],
+  ["Sheldon", 43.1847, -95.8564],
+  ["Okoboji", 43.3644, -95.1481],
+  ["Storm Lake", 42.6411, -95.2097],
+  ["Le Mars", 42.7942, -96.1656],
 
-    // Nebraska
-    ["Hartington", 42.6225, -97.2645],
-    ["Bloomfield", 42.5961, -97.6470],
-    ["O'Neill", 42.4572, -98.6470]
-  ];
+  // Nebraska
+  ["Hartington", 42.6225, -97.2645],
+  ["Bloomfield", 42.5961, -97.6470],
+  ["O'Neill", 42.4572, -98.6470]
+];
+
 function updateCityLabels(){
-    var z = map.getZoom();
+  var z = map.getZoom();
 
-    if (z >= BASE_LABELS_MIN_ZOOM){
-      cityLabelLayer.clearLayers();
-      nationalCityLayer.clearLayers();
-      return;
-    }
-
+  // When we're VERY zoomed-in, let the basemap labels do the work (less clutter).
+  if (z >= 11){
     cityLabelLayer.clearLayers();
-
-    if (z <= 4){
-      var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
-      addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
-    } else {
-      nationalCityLayer.clearLayers();
-    }
-
-    if (z >= 5){
-      var minPx1 = (z === 5) ? 70 : 55;
-      addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
-    }
-
-    if (z >= 6){
-      var minPx2 = (z === 6) ? 50 : 40;
-      (function(){
-        var b = map.getBounds();
-        var placed = [];
-        cityLabelLayer.eachLayer(function(layer){
-          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-        });
-        for (var i=0; i<CITIES_TIER2.length; i++){
-          var c = CITIES_TIER2[i];
-          var ll = L.latLng(c[1], c[2]);
-          if (!b.contains(ll)) continue;
-          var pt = map.latLngToContainerPoint(ll);
-          var ok = true;
-          for (var j=0; j<placed.length; j++){
-            var dx = pt.x - placed[j].x;
-            var dy = pt.y - placed[j].y;
-            if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
-          }
-          if (!ok) continue;
-          placed.push(pt);
-          cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
-        }
-      })();
-    }
-
-    if (z >= 8){
-      var minPx3 = (z === 8) ? 34 : 28;
-      (function(){
-        var b = map.getBounds();
-        var placed = [];
-        cityLabelLayer.eachLayer(function(layer){
-          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-        });
-        for (var i=0; i<CITIES_TIER3.length; i++){
-          var c = CITIES_TIER3[i];
-          var ll = L.latLng(c[1], c[2]);
-          if (!b.contains(ll)) continue;
-          var pt = map.latLngToContainerPoint(ll);
-          var ok = true;
-          for (var j=0; j<placed.length; j++){
-            var dx = pt.x - placed[j].x;
-            var dy = pt.y - placed[j].y;
-            if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
-          }
-          if (!ok) continue;
-          placed.push(pt);
-          cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
-        }
-      })();
-    }
-
-    if (z >= 9){
-      var minPx4 = (z === 9) ? 24 : 18;
-      (function(){
-        var b = map.getBounds();
-        var placed = [];
-        cityLabelLayer.eachLayer(function(layer){
-          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-        });
-        for (var i=0; i<CITIES_TIER4.length; i++){
-          var c = CITIES_TIER4[i];
-          var ll = L.latLng(c[1], c[2]);
-          if (!b.contains(ll)) continue;
-          var pt = map.latLngToContainerPoint(ll);
-          var ok = true;
-          for (var j=0; j<placed.length; j++){
-            var dx = pt.x - placed[j].x;
-            var dy = pt.y - placed[j].y;
-            if (Math.sqrt(dx*dx + dy*dy) < minPx4){ ok = false; break; }
-          }
-          if (!ok) continue;
-          placed.push(pt);
-          cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
-        }
-      })();
-    }
+    nationalCityLayer.clearLayers();
+    return;
   }
 
   cityLabelLayer.clearLayers();
@@ -2981,34 +2890,31 @@ function updateCityLabels(){
   }
 
   // 2) Regional "bubble" cities: phase in gradually + declutter to avoid crowding
-  // Tier 1 (regional anchors) at zoom 5+
   if (z >= 5){
     var minPx1 = (z === 5) ? 70 : 55;
     addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
   }
-  // Tier 2 (regional fill) at zoom 6+
+
   if (z >= 6){
     var minPx2 = (z === 6) ? 50 : 40;
-    // add on top of existing; do not clear
     (function(){
       var b = map.getBounds();
       var placed = [];
-      // seed placed with existing labels to prevent overlaps
       cityLabelLayer.eachLayer(function(layer){
         if (layer.getLatLng){
           placed.push(map.latLngToContainerPoint(layer.getLatLng()));
         }
       });
-      for (var i=0; i<CITIES_TIER2.length; i++){
+      for (var i = 0; i < CITIES_TIER2.length; i++){
         var c = CITIES_TIER2[i];
         var ll = L.latLng(c[1], c[2]);
         if (!b.contains(ll)) continue;
         var pt = map.latLngToContainerPoint(ll);
         var ok = true;
-        for (var j=0; j<placed.length; j++){
+        for (var j = 0; j < placed.length; j++){
           var dx = pt.x - placed[j].x;
           var dy = pt.y - placed[j].y;
-          if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
+          if (Math.sqrt(dx * dx + dy * dy) < minPx2){ ok = false; break; }
         }
         if (!ok) continue;
         placed.push(pt);
@@ -3016,9 +2922,10 @@ function updateCityLabels(){
       }
     })();
   }
-  // Tier 3 (local 150-mi-ish) at zoom 8+
+
+  // Zoom 8 targets
   if (z >= 8){
-    var minPx3 = (z === 8) ? 32 : 26;
+    var minPx3 = (z === 8) ? 34 : 28;
     (function(){
       var b = map.getBounds();
       var placed = [];
@@ -3027,16 +2934,45 @@ function updateCityLabels(){
           placed.push(map.latLngToContainerPoint(layer.getLatLng()));
         }
       });
-      for (var i=0; i<CITIES_TIER3.length; i++){
+      for (var i = 0; i < CITIES_TIER3.length; i++){
         var c = CITIES_TIER3[i];
         var ll = L.latLng(c[1], c[2]);
         if (!b.contains(ll)) continue;
         var pt = map.latLngToContainerPoint(ll);
         var ok = true;
-        for (var j=0; j<placed.length; j++){
+        for (var j = 0; j < placed.length; j++){
           var dx = pt.x - placed[j].x;
           var dy = pt.y - placed[j].y;
-          if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
+          if (Math.sqrt(dx * dx + dy * dy) < minPx3){ ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push(pt);
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+      }
+    })();
+  }
+
+  // Zoom 9 bridge toward your fuller zoom 10 layer
+  if (z >= 9){
+    var minPx4 = (z === 9) ? 24 : 18;
+    (function(){
+      var b = map.getBounds();
+      var placed = [];
+      cityLabelLayer.eachLayer(function(layer){
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
+      });
+      for (var i = 0; i < CITIES_TIER4.length; i++){
+        var c = CITIES_TIER4[i];
+        var ll = L.latLng(c[1], c[2]);
+        if (!b.contains(ll)) continue;
+        var pt = map.latLngToContainerPoint(ll);
+        var ok = true;
+        for (var j = 0; j < placed.length; j++){
+          var dx = pt.x - placed[j].x;
+          var dy = pt.y - placed[j].y;
+          if (Math.sqrt(dx * dx + dy * dy) < minPx4){ ok = false; break; }
         }
         if (!ok) continue;
         placed.push(pt);
@@ -3045,6 +2981,7 @@ function updateCityLabels(){
     })();
   }
 }
+
 // Optional labels (kept on top to help students)
 var labels = L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
