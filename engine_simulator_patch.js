@@ -354,50 +354,39 @@ var storyStarted = false; // do not auto-open storyboard
   var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.55, initView.lon || -96.73], initView.zoom || 6);
   window.map = map;
 
-// ---------- Zoom badge + label transition settings ----------
-  var BUBBLE_LABEL_MAX_ZOOM = 9;
-  var BASE_LABELS_MIN_ZOOM = 10;
-  var zoomBadgeControl = null;
+  // ---------- Simple zoom readout ----------
+  var zoomReadoutControl = null;
 
-  function ensureZoomBadge(){
-    if (zoomBadgeControl) return zoomBadgeControl;
+  function ensureZoomReadout(){
+    if (zoomReadoutControl) return zoomReadoutControl;
 
-    zoomBadgeControl = L.control({ position: "topright" });
-    zoomBadgeControl.onAdd = function(){
-      var div = L.DomUtil.create("div", "zoom-badge-control");
-      div.style.background = "rgba(8,16,28,0.92)";
+    zoomReadoutControl = L.control({ position: "topright" });
+    zoomReadoutControl.onAdd = function(){
+      var div = L.DomUtil.create("div", "simple-zoom-readout");
+      div.style.background = "rgba(0,0,0,0.82)";
       div.style.color = "#ffffff";
-      div.style.padding = "8px 12px";
-      div.style.borderRadius = "12px";
-      div.style.border = "1px solid rgba(255,255,255,0.24)";
-      div.style.boxShadow = "0 4px 14px rgba(0,0,0,0.35)";
-      div.style.font = "700 13px/1.2 Lato, Arial, sans-serif";
-      div.style.letterSpacing = ".2px";
+      div.style.padding = "8px 10px";
+      div.style.borderRadius = "8px";
+      div.style.border = "1px solid rgba(255,255,255,0.25)";
+      div.style.boxShadow = "0 3px 10px rgba(0,0,0,0.35)";
+      div.style.font = "700 14px/1.1 Arial, sans-serif";
       div.style.pointerEvents = "none";
-      div.style.marginTop = "56px";
+      div.style.marginTop = "64px";
       div.style.marginRight = "8px";
-      div.innerHTML = "Zoom: --";
+      div.textContent = "Zoom: --";
       return div;
     };
 
-    zoomBadgeControl.addTo(map);
-    return zoomBadgeControl;
+    zoomReadoutControl.addTo(map);
+    return zoomReadoutControl;
   }
 
-  function updateZoomBadge(){
-    ensureZoomBadge();
-    if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
-    var el = zoomBadgeControl.getContainer();
+  function updateZoomReadout(){
+    ensureZoomReadout();
+    if (!zoomReadoutControl || !zoomReadoutControl.getContainer) return;
+    var el = zoomReadoutControl.getContainer();
     if (!el) return;
-
-    var z = map.getZoom();
-    var band = (z <= 4) ? "National"
-             : (z <= 5) ? "Regional"
-             : (z <= 7) ? "Regional+"
-             : (z <= 9) ? "Local"
-             : "Basemap";
-
-    el.innerHTML = 'Zoom: ' + z + ' <span style="opacity:.72;font-weight:600">(' + band + ')</span>';
+    el.textContent = "Zoom: " + map.getZoom();
   }
 window.CFG = CFG;
 window.DATA_BASE = DATA_BASE;
@@ -2795,7 +2784,6 @@ function addDeclutteredCityLabels(layer, cityList, minPx){
     ["Pierre", 44.3683, -100.3509]
   ];
 
-
 var CITIES_TIER3 = [
     ["Mitchell", 43.7094, -98.0298],
     ["Yankton", 42.8711, -97.3973],
@@ -2810,6 +2798,8 @@ var CITIES_TIER3 = [
     ["Huron", 44.3633, -98.2143],
     ["Aberdeen", 45.4647, -98.4865],
     ["Watertown", 44.8994, -97.1151],
+    ["Mobridge", 45.5353, -100.4276],
+    ["Pierre", 44.3683, -100.3510],
     ["Tea", 43.4469, -96.8359],
     ["Harrisburg", 43.4314, -96.6970],
     ["Brandon", 43.5947, -96.5717],
@@ -2844,53 +2834,7 @@ var CITIES_TIER3 = [
     ["Windom", 43.8675, -95.1169],
     ["Fairmont", 43.6522, -94.4611]
   ];
-
-  var BUBBLE_LABEL_MAX_ZOOM = 9;
-  var BASE_LABELS_MIN_ZOOM = 10;
-  var zoomBadgeControl = null;
-
-  function ensureZoomBadge(){
-    if (zoomBadgeControl) return zoomBadgeControl;
-
-    zoomBadgeControl = L.control({ position: "topright" });
-    zoomBadgeControl.onAdd = function(){
-      var div = L.DomUtil.create("div", "zoom-badge-control");
-      div.style.background = "rgba(8,16,28,0.92)";
-      div.style.color = "#ffffff";
-      div.style.padding = "8px 12px";
-      div.style.borderRadius = "12px";
-      div.style.border = "1px solid rgba(255,255,255,0.24)";
-      div.style.boxShadow = "0 4px 14px rgba(0,0,0,0.35)";
-      div.style.font = "700 13px/1.2 Lato, Arial, sans-serif";
-      div.style.letterSpacing = ".2px";
-      div.style.pointerEvents = "none";
-      div.style.marginTop = "56px";
-      div.style.marginRight = "8px";
-      div.innerHTML = "Zoom: --";
-      return div;
-    };
-
-    zoomBadgeControl.addTo(map);
-    return zoomBadgeControl;
-  }
-
-  function updateZoomBadge(){
-    ensureZoomBadge();
-    if (!zoomBadgeControl || !zoomBadgeControl.getContainer) return;
-    var el = zoomBadgeControl.getContainer();
-    if (!el) return;
-
-    var z = map.getZoom();
-    var band = (z <= 4) ? "National"
-             : (z <= 5) ? "Regional"
-             : (z <= 7) ? "Regional+"
-             : (z <= 9) ? "Local"
-             : "Basemap";
-
-    el.innerHTML = 'Zoom: ' + z + ' <span style="opacity:.72;font-weight:600">(' + band + ')</span>';
-  }
-
-  function updateCityLabels(){
+function updateCityLabels(){
     var z = map.getZoom();
 
     if (z >= BASE_LABELS_MIN_ZOOM){
@@ -2919,9 +2863,7 @@ var CITIES_TIER3 = [
         var b = map.getBounds();
         var placed = [];
         cityLabelLayer.eachLayer(function(layer){
-          if (layer.getLatLng){
-            placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-          }
+          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
         });
         for (var i=0; i<CITIES_TIER2.length; i++){
           var c = CITIES_TIER2[i];
@@ -2947,9 +2889,7 @@ var CITIES_TIER3 = [
         var b = map.getBounds();
         var placed = [];
         cityLabelLayer.eachLayer(function(layer){
-          if (layer.getLatLng){
-            placed.push(map.latLngToContainerPoint(layer.getLatLng()));
-          }
+          if (layer.getLatLng) placed.push(map.latLngToContainerPoint(layer.getLatLng()));
         });
         for (var i=0; i<CITIES_TIER3.length; i++){
           var c = CITIES_TIER3[i];
@@ -2970,12 +2910,103 @@ var CITIES_TIER3 = [
     }
   }
 
-  var labels = L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-    { attribution: "", subdomains:"abcd", maxZoom: 19, pane: "overlayPane" }
-  );
+  cityLabelLayer.clearLayers();
 
-  function updateBaseLabels(){
+  // 1) Wide CONUS view: show decluttered major US cities (sparse)
+  if (z <= 4){
+    var minPxNat = (z <= 2) ? 125 : (z === 3 ? 105 : 90);
+    addDeclutteredCityLabels(nationalCityLayer, NATIONAL_CITIES, minPxNat);
+  } else {
+    nationalCityLayer.clearLayers();
+  }
+
+  // 2) Regional "bubble" cities: phase in gradually + declutter to avoid crowding
+  // Tier 1 (regional anchors) at zoom 5+
+  if (z >= 5){
+    var minPx1 = (z === 5) ? 70 : 55;
+    addDeclutteredCityLabels(cityLabelLayer, CITIES_TIER1, minPx1);
+  }
+  // Tier 2 (regional fill) at zoom 6+
+  if (z >= 6){
+    var minPx2 = (z === 6) ? 50 : 40;
+    // add on top of existing; do not clear
+    (function(){
+      var b = map.getBounds();
+      var placed = [];
+      // seed placed with existing labels to prevent overlaps
+      cityLabelLayer.eachLayer(function(layer){
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
+      });
+      for (var i=0; i<CITIES_TIER2.length; i++){
+        var c = CITIES_TIER2[i];
+        var ll = L.latLng(c[1], c[2]);
+        if (!b.contains(ll)) continue;
+        var pt = map.latLngToContainerPoint(ll);
+        var ok = true;
+        for (var j=0; j<placed.length; j++){
+          var dx = pt.x - placed[j].x;
+          var dy = pt.y - placed[j].y;
+          if (Math.sqrt(dx*dx + dy*dy) < minPx2){ ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push(pt);
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+      }
+    })();
+  }
+  // Tier 3 (local 150-mi-ish) at zoom 8+
+  if (z >= 8){
+    var minPx3 = (z === 8) ? 32 : 26;
+    (function(){
+      var b = map.getBounds();
+      var placed = [];
+      cityLabelLayer.eachLayer(function(layer){
+        if (layer.getLatLng){
+          placed.push(map.latLngToContainerPoint(layer.getLatLng()));
+        }
+      });
+      for (var i=0; i<CITIES_TIER3.length; i++){
+        var c = CITIES_TIER3[i];
+        var ll = L.latLng(c[1], c[2]);
+        if (!b.contains(ll)) continue;
+        var pt = map.latLngToContainerPoint(ll);
+        var ok = true;
+        for (var j=0; j<placed.length; j++){
+          var dx = pt.x - placed[j].x;
+          var dy = pt.y - placed[j].y;
+          if (Math.sqrt(dx*dx + dy*dy) < minPx3){ ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push(pt);
+        cityLabelLayer.addLayer(makeCityLabel(c[0], c[1], c[2]));
+      }
+    })();
+  }
+}
+// Optional labels (kept on top to help students)
+var labels = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  { attribution: "", subdomains:"abcd", maxZoom: 19, pane: "overlayPane" }
+);
+
+// Update labels as you zoom/pan
+map.on("zoomend", function(){
+  updateCityLabels();
+  updateBaseLabels();
+  updateZoomReadout();
+});
+
+map.on("moveend", function(){
+  updateCityLabels();
+  updateBaseLabels();
+});
+
+// Initial draw
+updateCityLabels();
+updateBaseLabels();
+function updateBaseLabels(){
     var z = map.getZoom();
     if (z >= BASE_LABELS_MIN_ZOOM){
       if (!map.hasLayer(labels)) labels.addTo(map);
@@ -2983,26 +3014,10 @@ var CITIES_TIER3 = [
       if (map.hasLayer(labels)) map.removeLayer(labels);
     }
   }
-
-  map.on("zoomend", function(){
-    updateCityLabels();
-    updateBaseLabels();
-    updateZoomBadge();
-  });
-
-  map.on("moveend", function(){
-    updateCityLabels();
-    updateBaseLabels();
-    updateZoomBadge();
-  });
-
-  updateCityLabels();
-  updateBaseLabels();
-  updateZoomBadge();
-
-
-  // ---------- Story (Google Sheet / CSV) ----------
-
+  map.on("zoomend", updateBaseLabels);
+map.on("moveend", updateBaseLabels);
+updateBaseLabels();
+// ---------- Story (Google Sheet / CSV) ----------
   var STORY_CFG = (CFG && CFG.storyboard) ? CFG.storyboard : {};
   var STORYBOARD_OVERRIDE = (_qs("story") || ((window.WDL_SIM_CONFIG && window.WDL_SIM_CONFIG.storyboardUrl) || "")).trim();
   function normalizeStoryboardPath(u){
