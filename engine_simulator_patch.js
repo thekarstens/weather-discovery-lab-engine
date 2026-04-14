@@ -2695,6 +2695,94 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   ).addTo(map);
 // (No road overlay)
 
+  // ---------- Roads overlay (GeoJSON) ----------
+  var roadsEnabled = false;
+  var roadsLayer = null;
+  var roadsLoadPromise = null;
+  var ROADS_GEOJSON_CANDIDATES = [];
+  try{
+    var roadsCfg = (CFG && CFG.roads) ? CFG.roads : {};
+    var configuredRoads = roadsCfg.geojson || roadsCfg.file || roadsCfg.url || '';
+    if (configuredRoads) ROADS_GEOJSON_CANDIDATES.push(configuredRoads);
+  }catch(e){}
+  ["roads.geojson","export.geojson","export(1).geojson","data/roads/roads.geojson","data/roads/export.geojson","data/roads/export(1).geojson"].forEach(function(p){
+    if (ROADS_GEOJSON_CANDIDATES.indexOf(p) === -1) ROADS_GEOJSON_CANDIDATES.push(p);
+  });
+
+  function roadLineStyle(feature){
+    var hw = String(feature && feature.properties && feature.properties.highway || '').toLowerCase();
+    if (hw === 'motorway'){
+      return { pane:'lines', color:'#a34d14', weight:4, opacity:0.88, lineCap:'round', lineJoin:'round' };
+    }
+    return { pane:'lines', color:'#d8a326', weight:2.5, opacity:0.82, lineCap:'round', lineJoin:'round' };
+  }
+
+  function roadsFilter(feature){
+    var p = feature && feature.properties ? feature.properties : {};
+    var hw = String(p.highway || '').toLowerCase();
+    var ref = String(p.ref || '').trim();
+    return !!ref && ['motorway','trunk','primary'].indexOf(hw) >= 0;
+  }
+
+  function updateRoadsToggleButton(){
+    var btn = document.getElementById('roadsToggleBtn');
+    if (!btn) return;
+    btn.textContent = roadsEnabled ? 'Roads ON' : 'Roads OFF';
+    btn.classList.toggle('is-active', !!roadsEnabled);
+    btn.setAttribute('aria-pressed', roadsEnabled ? 'true' : 'false');
+  }
+
+  async function loadRoadsGeoJsonOnce(){
+    if (roadsLayer) return roadsLayer;
+    if (roadsLoadPromise) return roadsLoadPromise;
+    roadsLoadPromise = (async function(){
+      var lastErr = null;
+      for (var i=0; i<ROADS_GEOJSON_CANDIDATES.length; i++){
+        var rawPath = ROADS_GEOJSON_CANDIDATES[i];
+        if (!rawPath) continue;
+        var url = _isAbsUrl(rawPath) ? rawPath : _joinUrl(DATA_BASE, rawPath);
+        try{
+          var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+          var geo = await res.json();
+          roadsLayer = L.geoJSON(geo, { filter: roadsFilter, style: roadLineStyle, pane:'lines' });
+          window.roadsLayer = roadsLayer;
+          console.log('✅ Roads GeoJSON loaded:', url);
+          return roadsLayer;
+        }catch(err){
+          lastErr = err;
+        }
+      }
+      roadsLoadPromise = null;
+      throw (lastErr || new Error('Roads GeoJSON not found'));
+    })();
+    return roadsLoadPromise;
+  }
+
+  async function setRoadsEnabled(on){
+    roadsEnabled = !!on;
+    window.roadsEnabled = roadsEnabled;
+    try{
+      if (roadsEnabled){
+        var layer = await loadRoadsGeoJsonOnce();
+        if (layer && !map.hasLayer(layer)) layer.addTo(map);
+      } else if (roadsLayer && map.hasLayer(roadsLayer)) {
+        map.removeLayer(roadsLayer);
+      }
+    }catch(err){
+      console.error('Roads overlay failed:', err);
+      roadsEnabled = false;
+      window.roadsEnabled = false;
+    }
+    updateRoadsToggleButton();
+    try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
+    return roadsEnabled;
+  }
+  window.setRoadsEnabled = setRoadsEnabled;
+  window.toggleRoads = function(){ return setRoadsEnabled(!roadsEnabled); };
+  window.roadsEnabled = roadsEnabled;
+
+
 // --- Extra Midwest city labels (shows more as you zoom in) ---
   var cityLabelLayer = L.layerGroup().addTo(map);
 
@@ -6592,6 +6680,7 @@ document.addEventListener('DOMContentLoaded', function(){
     dock.querySelectorAll('[data-action="lightning-sound"]').forEach(function(el){ el.classList.toggle('active', !!window.lightningSoundEnabled); });
     dock.querySelectorAll('[data-action="states"]').forEach(function(el){ el.classList.toggle('active', !!window.statesEnabled); });
     dock.querySelectorAll('[data-action="counties"]').forEach(function(el){ el.classList.toggle('active', !!window.countiesEnabled); });
+    dock.querySelectorAll('[data-action="roads"]').forEach(function(el){ el.classList.toggle('active', !!window.roadsEnabled); });
   }
 
   window.syncDockUi = refreshDockStates;
@@ -6697,6 +6786,12 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof window.setHrrrWindsEnabled === 'function') {
         var nextWindsOn = !(window.hrrrTempEnabled && window.hrrrProductMode === 'winds');
         await window.setHrrrWindsEnabled(nextWindsOn);
+      }
+      return;
+    }
+    if (action === 'roads'){
+      if (typeof window.setRoadsEnabled === 'function') {
+        await window.setRoadsEnabled(!window.roadsEnabled);
       }
       return;
     }
