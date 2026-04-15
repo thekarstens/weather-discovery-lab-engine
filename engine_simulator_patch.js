@@ -1769,7 +1769,8 @@ window.setReportsFilter = setReportsFilter;
   var toolTrackBtn   = document.getElementById("toolTrack");
   var toolDrawBtn    = document.getElementById("toolDraw");
   var toolEraseBtn   = document.getElementById("toolErase");
-  var toolHomeBtn    = document.getElementById("toolHome");
+  var toolClearBtn   = document.getElementById('toolClear');
+var toolHomeBtn    = document.getElementById("toolHome");
 
   // Teacher/student mode (URL param): ?mode=student to disable teacher tools
   var isTeacherMode = true;
