@@ -2433,42 +2433,53 @@ window.setReportsFilter = setReportsFilter;
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
+    drawing = false;
+    currentLine = null;
   }
   window.clearDrawings = clearDrawings;
 
   function ensureDrawOverlay(){
     if (drawOverlay) return drawOverlay;
-    var mapPane = map && map.getPanes ? map.getPanes().overlayPane : null;
-    if (!mapPane) return null;
+    var mapContainer = map && map.getContainer ? map.getContainer() : null;
+    if (!mapContainer) return null;
+
+    if (window.getComputedStyle(mapContainer).position === 'static') {
+      mapContainer.style.position = 'relative';
+    }
 
     drawOverlay = document.createElement('div');
     drawOverlay.id = 'engineDrawCaptureOverlay';
     drawOverlay.style.position = 'absolute';
     drawOverlay.style.left = '0';
     drawOverlay.style.top = '0';
-    drawOverlay.style.width = '100%';
-    drawOverlay.style.height = '100%';
+    drawOverlay.style.right = '0';
+    drawOverlay.style.bottom = '0';
     drawOverlay.style.pointerEvents = 'none';
     drawOverlay.style.touchAction = 'none';
     drawOverlay.style.cursor = 'crosshair';
-    drawOverlay.style.zIndex = '399';
+    drawOverlay.style.zIndex = '650';
     drawOverlay.style.background = 'transparent';
-    mapPane.appendChild(drawOverlay);
+    mapContainer.appendChild(drawOverlay);
 
     function eventLatLng(ev){
       try{
         var src = (ev.touches && ev.touches.length) ? ev.touches[0]
                  : ((ev.changedTouches && ev.changedTouches.length) ? ev.changedTouches[0] : ev);
-        var rect = drawOverlay.getBoundingClientRect();
+        var rect = mapContainer.getBoundingClientRect();
         var pt = L.point(src.clientX - rect.left, src.clientY - rect.top);
         return map.containerPointToLatLng(pt);
       }catch(e){ return null; }
     }
 
+    function consume(ev){
+      if (!document.body.classList.contains('draw-active')) return false;
+      if (ev && ev.cancelable) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      return true;
+    }
+
     function begin(ev){
-      if (!document.body.classList.contains('draw-active')) return;
-      ev.preventDefault();
-      ev.stopPropagation();
+      if (!consume(ev)) return;
       var ll = eventLatLng(ev);
       if (!ll) return;
       drawing = true;
@@ -2483,8 +2494,7 @@ window.setReportsFilter = setReportsFilter;
 
     function move(ev){
       if (!document.body.classList.contains('draw-active') || !drawing || !currentLine) return;
-      ev.preventDefault();
-      ev.stopPropagation();
+      consume(ev);
       var ll = eventLatLng(ev);
       if (!ll) return;
       currentLine.addLatLng(ll);
@@ -2492,8 +2502,7 @@ window.setReportsFilter = setReportsFilter;
 
     function end(ev){
       if (!document.body.classList.contains('draw-active') || !drawing) return;
-      ev.preventDefault();
-      ev.stopPropagation();
+      consume(ev);
       drawing = false;
       currentLine = null;
     }
@@ -2508,80 +2517,47 @@ window.setReportsFilter = setReportsFilter;
       drawOverlay.addEventListener(name, end, { passive:false });
     });
     ['click','dblclick','contextmenu'].forEach(function(name){
-      drawOverlay.addEventListener(name, function(ev){
-        if (!document.body.classList.contains('draw-active')) return;
-        ev.preventDefault();
-        ev.stopPropagation();
-      }, { passive:false });
+      drawOverlay.addEventListener(name, function(ev){ consume(ev); }, { passive:false });
     });
 
     return drawOverlay;
   }
 
-function setDrawMode(on){
-  if (!isTeacherMode){
-    setToolActive(toolDrawBtn, false);
-    setToolActive(toolEraseBtn, false);
-    document.body.classList.remove('draw-active');
-    return;
+  function setDrawMode(on){
+    if (!isTeacherMode){
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      document.body.classList.remove('draw-active');
+      return;
+    }
+
+    ensureDrawOverlay();
+
+    if (on){
+      document.body.classList.add('draw-active');
+      document.body.classList.remove('measure-active');
+      document.body.classList.remove('probe-active');
+      document.body.classList.remove('track-active');
+      setToolActive(toolTrackBtn, false);
+      clearStormTrackGraphics();
+      setToolActive(toolDrawBtn, true);
+      setToolActive(toolEraseBtn, true);
+      setToolActive(toolMeasureBtn, false);
+      setToolActive(toolProbeBtn, false);
+      clearDrawings();
+      setMapInteractionsEnabled(false);
+      if (drawOverlay) drawOverlay.style.pointerEvents = 'auto';
+    } else {
+      document.body.classList.remove('draw-active');
+      setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
+      clearDrawings();
+      if (drawOverlay) drawOverlay.style.pointerEvents = 'none';
+      setMapInteractionsEnabled(true);
+    }
   }
-
-  ensureDrawOverlay();
-
-  if (on){
-    document.body.classList.add('draw-active');
-    document.body.classList.remove('measure-active');
-    document.body.classList.remove('probe-active');
-    document.body.classList.remove('track-active');
-    setToolActive(toolTrackBtn, false);
-    clearStormTrackGraphics();
-    setToolActive(toolDrawBtn, true);
-    setToolActive(toolEraseBtn, true);
-    setToolActive(toolMeasureBtn, false);
-    setToolActive(toolProbeBtn, false);
-
-    drawing = false;
-    currentLine = null;
-
-    setMapInteractionsEnabled(false);
-    if (drawOverlay) drawOverlay.style.pointerEvents = 'auto';
-  } else {
-    document.body.classList.remove('draw-active');
-    setToolActive(toolDrawBtn, false);
-    setToolActive(toolEraseBtn, false);
-    drawing = false;
-    currentLine = null;
-
-    if (drawOverlay) drawOverlay.style.pointerEvents = 'none';
-    setMapInteractionsEnabled(true);
-  }
-}
-window.setDrawMode = setDrawMode;
-window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contains('draw-active')); };
-
-  try{
-    (drawColorBtns || []).forEach(function(btn){
-      btn.addEventListener('click', function(ev){
-        ev.preventDefault();
-        ev.stopPropagation();
-        setDrawColor(btn.getAttribute('data-draw-color') || '#fdd835');
-        setDrawMode(true);
-      });
-      btn.addEventListener('mousedown', function(ev){ ev.preventDefault(); ev.stopPropagation(); }, { passive:false });
-      btn.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); }, { passive:false });
-    });
-  }catch(e){}
-
-  if (toolEraseBtn) toolEraseBtn.addEventListener('click', function(ev){
-    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
-    clearDrawings();
-  });
-  if (toolClearBtn) toolClearBtn.addEventListener('click', function(ev){
-    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
-    clearDrawings();
-    clearMeasureGraphics();
-    clearStormTrackGraphics();
-  });
+  window.setDrawMode = setDrawMode;
+  window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contains('draw-active')); };
 
   setDrawColor(currentDrawColor);
 
