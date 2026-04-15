@@ -2875,24 +2875,6 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   }
 
 
-
-  function offsetRoadLabelLatLng(ref, latlng){
-    if (!latlng) return latlng;
-    ref = normalizeRoadRef(ref);
-    var lat = Number(latlng.lat), lng = Number(latlng.lng);
-    if (!isFinite(lat) || !isFinite(lng)) return latlng;
-
-    // Nudge a couple Sioux Falls-area state signs away from the city core
-    // so they do not stack near the I-229 / I-29 cluster.
-    if (ref === 'SD-11'){
-      return L.latLng(lat - 0.055, lng + 0.070);
-    }
-    if (ref === 'SD-115'){
-      return L.latLng(lat - 0.015, lng - 0.080);
-    }
-    return latlng;
-  }
-
   function escapeRoadLabelHtml(s){
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -2972,6 +2954,32 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     return '';
   }
 
+
+  function chooseRoadLabelLatLng(ref, layer){
+    var ll = getLayerRepresentativeLatLng(layer);
+    if (!layer || typeof layer.getLatLngs !== 'function') return ll;
+
+    var latlngs = layer.getLatLngs();
+    while (Array.isArray(latlngs) && latlngs.length && Array.isArray(latlngs[0])) {
+      latlngs = latlngs[0];
+    }
+    if (!Array.isArray(latlngs) || !latlngs.length) return ll;
+
+    ref = normalizeRoadRef(ref);
+
+    // Pick a different point along the actual road geometry instead of
+    // freehand-offsetting the shield away from the line.
+    if (ref === 'SD-11') {
+      var idx11 = Math.max(0, Math.floor(latlngs.length * 0.70));
+      return latlngs[idx11] || ll;
+    }
+    if (ref === 'SD-115') {
+      var idx115 = Math.max(0, Math.floor(latlngs.length * 0.35));
+      return latlngs[idx115] || ll;
+    }
+    return ll;
+  }
+
   function rebuildRoadLabels(){
     clearRoadLabels();
     if (!roadsLayer || !areRoadsActuallyOn() || map.getZoom() < 6) return;
@@ -2994,8 +3002,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       var kind = classifyRoadShield(ref, hw);
       if (kind === 'other') return;
 
-      var ll = getLayerRepresentativeLatLng(layer);
-      ll = offsetRoadLabelLatLng(ref, ll);
+      var ll = chooseRoadLabelLatLng(ref, layer);
       if (!ll || !bounds.contains(ll)) return;
 
       if (!perRef[ref]) perRef[ref] = [];
