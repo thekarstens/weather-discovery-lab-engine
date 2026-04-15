@@ -425,13 +425,14 @@ window.createMetarsModule = function(opts){
   }
 
   function metarMinSepForZoom(z){
-    // Larger separation when zoomed out so temp bubbles do not crowd.
+    // Keep zoomed-out views clean, but let more stations pop in as you zoom closer.
     if (z <= 5) return 78;
-    if (z <= 6) return 60;
-    if (z <= 7) return 42;
-    if (z <= 8) return 28;
-    if (z <= 9) return 18;
-    return 12;
+    if (z <= 6) return 58;
+    if (z <= 7) return 40;
+    if (z <= 8) return 24;
+    if (z <= 9) return 14;
+    if (z <= 10) return 9;
+    return 6;
   }
 
   function getMetarPreviousRow(r){
