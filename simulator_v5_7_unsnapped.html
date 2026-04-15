@@ -826,14 +826,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
         toolStormTrack.classList.toggle('active', turningOn);
         syncSimpleToolStates();
       });
-      if (toolDraw) toolDraw.addEventListener('click', function(ev){
-        if (ev){ ev.preventDefault(); ev.stopPropagation(); }
-        clearTrackLocal();
-        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
-        try{ document.body.classList.add('draw-active'); document.body.classList.remove('measure-active','probe-active','track-active'); }catch(e){}
-        syncSimpleToolStates();
-        toolDraw.classList.add('active');
-      });
+      if (toolDraw) toolDraw.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} syncSimpleToolStates(); toolDraw.classList.add('active'); });
       if (toolErase) toolErase.addEventListener('click', function(){
         clearTrackLocal();
         try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
@@ -863,7 +856,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
           var color = btn.getAttribute('data-draw-color') || '#fdd835';
           try{ if (typeof window.setDrawColor === 'function') window.setDrawColor(color); }catch(e){}
           try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
-          try{ document.body.classList.add('draw-active'); document.body.classList.remove('measure-active','probe-active','track-active'); }catch(e){}
+          document.body.classList.add('draw-active');
           drawColorDots.forEach(function(b){ b.classList.remove('is-active'); });
           btn.classList.add('is-active');
           if (toolDraw) toolDraw.classList.add('active');
@@ -884,6 +877,161 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
     })();
   </script>
+
+
+<script>
+(function () {
+  const mapEl = document.getElementById("map");
+  const drawBtn = document.getElementById("toolDraw");
+  const eraseBtn = document.getElementById("toolErase");
+  const clearBtn = document.getElementById("toolClear");
+
+  if (!mapEl || !drawBtn) return;
+
+  const host = mapEl.parentElement || document.body;
+
+  const wrap = document.createElement("div");
+  wrap.id = "simpleDrawOverlay";
+  wrap.style.position = "absolute";
+  wrap.style.left = "0";
+  wrap.style.top = "0";
+  wrap.style.right = "0";
+  wrap.style.bottom = "0";
+  wrap.style.zIndex = "99999";
+  wrap.style.pointerEvents = "none";
+  wrap.style.touchAction = "none";
+  wrap.style.cursor = "crosshair";
+
+  const canvas = document.createElement("canvas");
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  wrap.appendChild(canvas);
+  host.appendChild(wrap);
+
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let enabled = false;
+
+  function resizeCanvas() {
+    const rect = wrap.getBoundingClientRect();
+    const old = document.createElement("canvas");
+    old.width = canvas.width;
+    old.height = canvas.height;
+    const oldCtx = old.getContext("2d");
+    if (canvas.width && canvas.height) oldCtx.drawImage(canvas, 0, 0);
+
+    canvas.width = Math.max(1, Math.round(rect.width));
+    canvas.height = Math.max(1, Math.round(rect.height));
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#fdd835";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (old.width && old.height) ctx.drawImage(old, 0, 0, canvas.width, canvas.height);
+  }
+
+  function setMapLocked(lock) {
+    if (!window.map) return;
+    try { lock ? map.dragging.disable() : map.dragging.enable(); } catch(e) {}
+    try { lock ? map.touchZoom.disable() : map.touchZoom.enable(); } catch(e) {}
+    try { lock ? map.doubleClickZoom.disable() : map.doubleClickZoom.enable(); } catch(e) {}
+    try { lock ? map.scrollWheelZoom.disable() : map.scrollWheelZoom.enable(); } catch(e) {}
+    try { lock ? map.boxZoom.disable() : map.boxZoom.enable(); } catch(e) {}
+    try { lock ? map.keyboard.disable() : map.keyboard.enable(); } catch(e) {}
+    try { if (map.tap) lock ? map.tap.disable() : map.tap.enable(); } catch(e) {}
+  }
+
+  function getPoint(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const e = ev.touches && ev.touches.length ? ev.touches[0] : ev;
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  function start(ev) {
+    if (!enabled) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    drawing = true;
+    const p = getPoint(ev);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+
+  function move(ev) {
+    if (!enabled || !drawing) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const p = getPoint(ev);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+
+  function end(ev) {
+    if (!enabled) return;
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    drawing = false;
+  }
+
+  function setDraw(on) {
+    enabled = !!on;
+    wrap.style.pointerEvents = enabled ? "auto" : "none";
+    setMapLocked(enabled);
+    drawBtn.classList.toggle("active", enabled);
+    if (!enabled) drawing = false;
+  }
+
+  function clearDrawing() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  drawBtn.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    setDraw(!enabled);
+  });
+
+  if (eraseBtn) {
+    eraseBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      clearDrawing();
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      clearDrawing();
+    });
+  }
+
+  canvas.addEventListener("mousedown", start, { passive: false });
+  canvas.addEventListener("mousemove", move, { passive: false });
+  canvas.addEventListener("mouseup", end, { passive: false });
+  canvas.addEventListener("mouseleave", end, { passive: false });
+
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end, { passive: false });
+  canvas.addEventListener("touchcancel", end, { passive: false });
+
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  window.simpleYellowDraw = {
+    on: () => setDraw(true),
+    off: () => setDraw(false),
+    clear: clearDrawing
+  };
+})();
+</script>
 
 </body>
 </html>
