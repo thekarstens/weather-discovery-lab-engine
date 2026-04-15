@@ -2875,6 +2875,24 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   }
 
 
+
+  function offsetRoadLabelLatLng(ref, latlng){
+    if (!latlng) return latlng;
+    ref = normalizeRoadRef(ref);
+    var lat = Number(latlng.lat), lng = Number(latlng.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return latlng;
+
+    // Nudge a couple Sioux Falls-area state signs away from the city core
+    // so they do not stack near the I-229 / I-29 cluster.
+    if (ref === 'SD-11'){
+      return L.latLng(lat - 0.055, lng + 0.070);
+    }
+    if (ref === 'SD-115'){
+      return L.latLng(lat - 0.015, lng - 0.080);
+    }
+    return latlng;
+  }
+
   function escapeRoadLabelHtml(s){
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -2977,6 +2995,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (kind === 'other') return;
 
       var ll = getLayerRepresentativeLatLng(layer);
+      ll = offsetRoadLabelLatLng(ref, ll);
       if (!ll || !bounds.contains(ll)) return;
 
       if (!perRef[ref]) perRef[ref] = [];
