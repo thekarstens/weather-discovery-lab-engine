@@ -1770,7 +1770,8 @@ window.setReportsFilter = setReportsFilter;
   var toolDrawBtn    = document.getElementById("toolDraw");
   var toolEraseBtn   = document.getElementById("toolErase");
   var toolClearBtn   = document.getElementById('toolClear');
-var toolHomeBtn    = document.getElementById("toolHome");
+  var toolHomeBtn    = document.getElementById("toolHome");
+  var drawColorBtns  = Array.prototype.slice.call(document.querySelectorAll('[data-draw-color]'));
 
   // Teacher/student mode (URL param): ?mode=student to disable teacher tools
   var isTeacherMode = true;
@@ -2400,7 +2401,7 @@ var toolHomeBtn    = document.getElementById("toolHome");
   function setDrawColor(color){
     currentDrawColor = String(color || '#fdd835');
     try{
-      drawColorBtns.forEach(function(btn){
+      (drawColorBtns || []).forEach(function(btn){
         var c = String(btn.getAttribute('data-draw-color') || '').toLowerCase();
         btn.classList.toggle('is-active', c === currentDrawColor.toLowerCase());
       });
@@ -2559,7 +2560,7 @@ window.setDrawMode = setDrawMode;
 window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contains('draw-active')); };
 
   try{
-    drawColorBtns.forEach(function(btn){
+    (drawColorBtns || []).forEach(function(btn){
       btn.addEventListener('click', function(ev){
         ev.preventDefault();
         ev.stopPropagation();
@@ -2571,12 +2572,15 @@ window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contain
     });
   }catch(e){}
 
-  if (toolEraseBtn) toolEraseBtn.addEventListener('click', function(){
+  if (toolEraseBtn) toolEraseBtn.addEventListener('click', function(ev){
+    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
     clearDrawings();
-    setDrawMode(false);
   });
-  if (toolClearBtn) toolClearBtn.addEventListener('click', function(){
+  if (toolClearBtn) toolClearBtn.addEventListener('click', function(ev){
+    try{ if (ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
     clearDrawings();
+    clearMeasureGraphics();
+    clearStormTrackGraphics();
   });
 
   setDrawColor(currentDrawColor);
