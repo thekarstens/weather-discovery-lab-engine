@@ -2428,6 +2428,7 @@ function setDrawMode(on){
     try{ map.scrollWheelZoom.disable(); }catch(e){}
     try{ map.keyboard.disable(); }catch(e){}
     try{ map.touchZoom.disable(); }catch(e){}
+    try{ if (map.tap && map.tap.disable) map.tap.disable(); }catch(e){}
   } else {
     document.body.classList.remove("draw-active");
     setToolActive(toolDrawBtn, false);
@@ -2441,6 +2442,7 @@ function setDrawMode(on){
     try{ map.scrollWheelZoom.enable(); }catch(e){}
     try{ map.keyboard.enable(); }catch(e){}
     try{ map.touchZoom.enable(); }catch(e){}
+    try{ if (map.tap && map.tap.enable) map.tap.enable(); }catch(e){}
   }
 }
 
@@ -2467,11 +2469,19 @@ function setDrawMode(on){
   function moveDraw(e){
     if (!drawing || !currentLine) return;
     if (!e || !e.latlng) return;
+    if (e.originalEvent) {
+      if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+      if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
+    }
     currentLine.addLatLng(e.latlng);
   }
 
-  function endDraw(){
+  function endDraw(e){
     if (!drawing) return;
+    if (e && e.originalEvent) {
+      if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+      if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
+    }
     drawing = false;
     currentLine = null;
   }
