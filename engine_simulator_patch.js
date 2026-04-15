@@ -2712,15 +2712,19 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   (function ensureRoadShieldStyles(){
     if (document.getElementById('roadShieldStyles')) return;
     var css = ''
-      + '.road-shield-wrap{background:transparent;border:none;}'
+      + '.road-shield-wrap{background:transparent !important;border:none !important;box-shadow:none !important;}'
       + '.road-shield{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:20px;padding:0 7px;border-radius:6px;'
-      + 'font:900 11px/1 "Lato",Arial,sans-serif;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);}'
+      + 'font:900 11px/1 "Lato",Arial,sans-serif;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap;}'
       + '.road-shield.interstate{background:#a34d14;color:#fff7ea;border:2px solid rgba(245,204,145,.95);}';
     var st = document.createElement('style');
     st.id = 'roadShieldStyles';
     st.textContent = css;
     document.head.appendChild(st);
   })();
+
+  function areRoadsActuallyOn(){
+    return !!(roadsLayer && map && map.hasLayer && map.hasLayer(roadsLayer));
+  }
 
   function roadLineStyle(feature){
     var hw = String(feature && feature.properties && feature.properties.highway || '').toLowerCase();
@@ -2738,6 +2742,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   }
 
   function updateRoadsToggleButton(){
+    roadsEnabled = areRoadsActuallyOn();
+    window.roadsEnabled = roadsEnabled;
     var btn = document.getElementById('roadsToggleBtn');
     if (!btn) return;
     btn.textContent = roadsEnabled ? 'Roads ON' : 'Roads OFF';
@@ -2782,32 +2788,31 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   }
 
   async function setRoadsEnabled(on){
-    roadsEnabled = !!on;
-    window.roadsEnabled = roadsEnabled;
+    var wantOn = !!on;
     try{
-      if (roadsEnabled){
-        var layer = await loadRoadsGeoJsonOnce();
+      var layer = await loadRoadsGeoJsonOnce();
+      if (wantOn){
         if (layer && !map.hasLayer(layer)) layer.addTo(map);
-      } else if (roadsLayer && map.hasLayer(roadsLayer)) {
-        map.removeLayer(roadsLayer);
+      } else {
+        if (layer && map.hasLayer(layer)) map.removeLayer(layer);
       }
     }catch(err){
       console.error('Roads overlay failed:', err);
-      roadsEnabled = false;
-      window.roadsEnabled = false;
     }
+    roadsEnabled = areRoadsActuallyOn();
+    window.roadsEnabled = roadsEnabled;
     updateRoadsToggleButton();
     updateRoadLabelsVisibility();
     try{ if (typeof syncDockUi === 'function') syncDockUi(); }catch(e){}
     return roadsEnabled;
   }
   window.setRoadsEnabled = setRoadsEnabled;
-  window.toggleRoads = function(){ return setRoadsEnabled(!roadsEnabled); };
+  window.toggleRoads = async function(){ return setRoadsEnabled(!areRoadsActuallyOn()); };
   window.roadsEnabled = roadsEnabled;
 
 
   // ---------- Sparse interstate labels (viewport-aware) ----------
-  var roadsLabelLayer = L.layerGroup();
+  var roadsLabelLayer = L.layerGroup().addTo(map);
 
   function normalizeRoadRef(ref){
     ref = String(ref || '').trim();
@@ -2855,13 +2860,14 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
   function rebuildRoadLabels(){
     clearRoadLabels();
-    if (!roadsLayer || !roadsEnabled || map.getZoom() < 8) return;
+    if (!roadsLayer || !areRoadsActuallyOn() || map.getZoom() < 6) return;
 
     var bounds = null;
-    try{ bounds = map.getBounds().pad(0.12); }catch(e){}
+    try{ bounds = map.getBounds().pad(0.18); }catch(e){}
     if (!bounds) return;
 
     var perRef = Object.create(null);
+    var foundAny = false;
 
     roadsLayer.eachLayer(function(layer){
       var feature = layer && layer.feature ? layer.feature : null;
@@ -2878,8 +2884,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (!perRef[ref]) perRef[ref] = [];
       var existing = perRef[ref];
 
-      var minSpacing = (map.getZoom() >= 10) ? 25000 : 45000;
-      var maxPerRef = (map.getZoom() >= 10) ? 3 : 2;
+      var minSpacing = (map.getZoom() >= 9) ? 18000 : 32000;
+      var maxPerRef = (map.getZoom() >= 9) ? 3 : 2;
 
       if (existing.length >= maxPerRef) return;
       for (var i=0;i<existing.length;i++){
@@ -2887,27 +2893,39 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       }
 
       existing.push(ll);
+      foundAny = true;
 
       var icon = L.divIcon({
         className: 'road-shield-wrap',
         html: '<div class="road-shield interstate">' + ref + '</div>',
-        iconSize: [50, 24],
-        iconAnchor: [25, 12]
+        iconSize: [54, 24],
+        iconAnchor: [27, 12]
       });
 
       L.marker(ll, { icon: icon, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
     });
+
+    if (!foundAny && areRoadsActuallyOn()){
+      try{
+        var center = map.getCenter();
+        var fallback = L.divIcon({
+          className: 'road-shield-wrap',
+          html: '<div class="road-shield interstate">I-29</div>',
+          iconSize: [54, 24],
+          iconAnchor: [27, 12]
+        });
+        L.marker(center, { icon: fallback, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
+      }catch(e){}
+    }
   }
 
   function updateRoadLabelsVisibility(){
-    var shouldShow = !!roadsEnabled && map.getZoom() >= 8;
-    if (shouldShow){
-      rebuildRoadLabels();
-      if (!map.hasLayer(roadsLabelLayer)) roadsLabelLayer.addTo(map);
-    } else {
-      if (map.hasLayer(roadsLabelLayer)) map.removeLayer(roadsLabelLayer);
+    var shouldShow = !!areRoadsActuallyOn() && map.getZoom() >= 6;
+    if (!shouldShow){
       clearRoadLabels();
+      return;
     }
+    rebuildRoadLabels();
   }
 
   map.on('zoomend', updateRoadLabelsVisibility);
@@ -2916,15 +2934,15 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     var roadsBtn = document.getElementById('roadsToggleBtn');
     if (roadsBtn && !roadsBtn.__wdlBound){
       roadsBtn.__wdlBound = true;
-      roadsBtn.addEventListener('click', function(ev){
+      roadsBtn.addEventListener('click', async function(ev){
         try{ ev.preventDefault(); }catch(e){}
-        window.toggleRoads();
+        try{ ev.stopPropagation(); }catch(e){}
+        await window.toggleRoads();
       });
     }
     updateRoadsToggleButton();
+    updateRoadLabelsVisibility();
   }catch(e){}
-
-
 // --- Extra Midwest city labels (shows more as you zoom in) ---
   var cityLabelLayer = L.layerGroup().addTo(map);
 
