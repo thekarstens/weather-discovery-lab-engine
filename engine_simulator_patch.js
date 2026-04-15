@@ -643,21 +643,38 @@ function getReportsManifestUrl(){
 function normalizeReportType(feature){
   var p = (feature && feature.properties) ? feature.properties : {};
   var raw = String(
-    p.type || p.typetext || p.category || p.event || p.report_type || p.phenomena || ""
+    p.type || p.typetext || p.category || p.event || p.report_type || p.phenomena || p.typ || p.rpttype || ""
+  ).toLowerCase();
+  var remark = String(
+    p.remark || p.comments || p.text || p.narrative || p.headline || p.message || ""
   ).toLowerCase();
 
-  if (raw.indexOf('tornado') !== -1 || raw === 'tor') return 'tornado';
-  if (raw.indexOf('hail') !== -1) return 'hail';
+  var full = (raw + " " + remark).trim();
+
   if (
-    raw.indexOf('wind') !== -1 ||
-    raw.indexOf('tstm') !== -1 ||
-    raw.indexOf('thunderstorm') !== -1 ||
-    raw.indexOf('severe thunderstorm') !== -1 ||
-    raw.indexOf('gust') !== -1
+    full.indexOf('tornado') !== -1 ||
+    raw === 'tor' || raw === 'to'
+  ) return 'tornado';
+
+  if (
+    full.indexOf('hail') !== -1 ||
+    raw === 'hail' || raw === 'ha'
+  ) return 'hail';
+
+  if (
+    full.indexOf('wind') !== -1 ||
+    full.indexOf('gust') !== -1 ||
+    full.indexOf('wnd dmg') !== -1 ||
+    full.indexOf('wind dmg') !== -1 ||
+    full.indexOf('non-tstm wnd') !== -1 ||
+    full.indexOf('tstm wnd') !== -1 ||
+    full.indexOf('thunderstorm wind') !== -1 ||
+    raw === 'wind' || raw === 'w'
   ) return 'wind';
+
   if (
-    raw.indexOf('flood') !== -1 ||
-    raw.indexOf('flash') !== -1
+    full.indexOf('flood') !== -1 ||
+    full.indexOf('flash') !== -1
   ) return 'flood';
 
   return 'other';
@@ -752,6 +769,54 @@ function reportRadius(type, p){
   return 5;
 }
 
+function buildReportIcon(type){
+  if (type === 'tornado'){
+    return L.divIcon({
+      className: 'report-icon report-icon-tornado',
+      html: '<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><polygon points="9,1 17,16 1,16" fill="#e53935" stroke="#0b1c2d" stroke-width="1.2"/></svg>',
+      iconSize: [18,18],
+      iconAnchor: [9,9],
+      popupAnchor: [0,-8]
+    });
+  }
+  if (type === 'hail'){
+    return L.divIcon({
+      className: 'report-icon report-icon-hail',
+      html: '<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="7" fill="#39b54a" stroke="#0b1c2d" stroke-width="1.2"/></svg>',
+      iconSize: [18,18],
+      iconAnchor: [9,9],
+      popupAnchor: [0,-8]
+    });
+  }
+  if (type === 'wind'){
+    return L.divIcon({
+      className: 'report-icon report-icon-wind',
+      html: '<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="14" height="14" rx="2" ry="2" fill="#1e88e5" stroke="#0b1c2d" stroke-width="1.2"/></svg>',
+      iconSize: [20,20],
+      iconAnchor: [10,10],
+      popupAnchor: [0,-8]
+    });
+  }
+  return null;
+}
+
+function pointLayerForReport(feature, latlng){
+  var p = feature.properties || {};
+  var t = normalizeReportType(feature);
+  var icon = buildReportIcon(t);
+  if (icon){
+    return L.marker(latlng, { icon: icon, keyboard:false });
+  }
+  return L.circleMarker(latlng, {
+    radius: reportRadius(t, p),
+    fillColor: reportColor(t),
+    color: '#0b1c2d',
+    weight: 1.5,
+    opacity: 1,
+    fillOpacity: 0.92
+  });
+}
+
 function buildReportPopup(p, type){
   var title = escapeHtml((p.type || p.typetext || p.event || 'Storm Report'));
   var when = escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
@@ -804,16 +869,7 @@ function updateReportsLayer(){
 
   reportsLayer = L.geoJSON(filtered, {
     pointToLayer: function(feature, latlng){
-      var p = feature.properties || {};
-      var t = normalizeReportType(feature);
-      return L.circleMarker(latlng, {
-        radius: reportRadius(t, p),
-        fillColor: reportColor(t),
-        color: '#0b1c2d',
-        weight: 1.5,
-        opacity: 1,
-        fillOpacity: 0.92
-      });
+      return pointLayerForReport(feature, latlng);
     },
     onEachFeature: function(feature, layer){
       var p = feature.properties || {};
