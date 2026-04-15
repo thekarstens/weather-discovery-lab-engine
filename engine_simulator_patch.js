@@ -2710,6 +2710,101 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   var roadsLayer = null;
   var roadsLoadPromise = null;
   var ROADS_GEOJSON_CANDIDATES = [];
+
+  // ---------- Story fronts/custom GeoJSON overlay ----------
+  var storyOverlayLayer = null;
+  var storyOverlayLoadToken = 0;
+  var storyOverlaySourceUrl = '';
+
+  function getActiveStorySceneConfig(){
+    try{
+      var item = (Array.isArray(storyItems) && storyItems.length) ? (storyItems[storyIndex] || null) : null;
+      return (item && item.scene && typeof item.scene === 'object') ? item.scene : (item || {});
+    }catch(e){
+      return {};
+    }
+  }
+
+  function getStoryOverlayUrl(){
+    var scene = getActiveStorySceneConfig();
+    var rel = scene.overlayUrl || scene.geojson || scene.url || scene.dataUrl || '';
+    if (!rel) return '';
+    return _isAbsUrl(rel) ? rel : _joinUrl(DATA_BASE, rel);
+  }
+
+  window.storyOverlayLayer = storyOverlayLayer;
+  function clearStoryOverlay(){
+    try{
+      if (storyOverlayLayer && map && map.hasLayer && map.hasLayer(storyOverlayLayer)) map.removeLayer(storyOverlayLayer);
+    }catch(e){}
+    storyOverlayLayer = null;
+    storyOverlaySourceUrl = '';
+  }
+
+  function storyFrontStyle(feature){
+    var p = feature && feature.properties ? feature.properties : {};
+    var kind = String(p.front || p.type || p.kind || '').toLowerCase();
+    if (kind.indexOf('warm') !== -1){
+      return { pane:'lines', color:'#d23b2d', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round' };
+    }
+    if (kind.indexOf('cold') !== -1){
+      return { pane:'lines', color:'#1d57c8', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round' };
+    }
+    if (kind.indexOf('occluded') !== -1){
+      return { pane:'lines', color:'#7b3fc4', weight:4, opacity:0.95, dashArray:'8 6', lineCap:'round', lineJoin:'round' };
+    }
+    if (kind.indexOf('stationary') !== -1){
+      return { pane:'lines', color:'#7a4a12', weight:4, opacity:0.90, dashArray:'10 8', lineCap:'round', lineJoin:'round' };
+    }
+    if (kind.indexOf('dryline') !== -1){
+      return { pane:'lines', color:'#d08a21', weight:4, opacity:0.90, dashArray:'6 8', lineCap:'round', lineJoin:'round' };
+    }
+    return { pane:'lines', color:'#1f5fa8', weight:Number(p.width || 4), opacity:0.92, lineCap:'round', lineJoin:'round' };
+  }
+
+  async function setStoryOverlayEnabled(on){
+    if (!on){
+      clearStoryOverlay();
+      return;
+    }
+    var url = getStoryOverlayUrl();
+    if (!url){
+      clearStoryOverlay();
+      return;
+    }
+    if (storyOverlayLayer && storyOverlaySourceUrl === url){
+      if (!map.hasLayer(storyOverlayLayer)) storyOverlayLayer.addTo(map);
+      return;
+    }
+    var myToken = ++storyOverlayLoadToken;
+    try{
+      var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
+      if (!res.ok) throw new Error('Story overlay HTTP ' + res.status + ': ' + url);
+      var gj = await res.json();
+      if (myToken !== storyOverlayLoadToken) return;
+      clearStoryOverlay();
+      storyOverlayLayer = L.geoJSON(gj, {
+        style: storyFrontStyle,
+        pointToLayer: function(feature, latlng){
+          return L.circleMarker(latlng, {
+            radius: 4,
+            color: '#173a63',
+            weight: 1.5,
+            fillColor: '#ffffff',
+            fillOpacity: 0.95,
+            opacity: 1
+          });
+        }
+      }).addTo(map);
+      storyOverlaySourceUrl = url;
+      window.storyOverlayLayer = storyOverlayLayer;
+      setStatus('Surface fronts: ' + url.split('/').pop());
+    }catch(err){
+      console.error('Story overlay failed:', err);
+      if (myToken === storyOverlayLoadToken) clearStoryOverlay();
+    }
+  }
+  window.setStoryOverlayEnabled = setStoryOverlayEnabled;
   try{
     var roadsCfg = (CFG && CFG.roads) ? CFG.roads : {};
     var configuredRoads = roadsCfg.geojson || roadsCfg.file || roadsCfg.url || '';
@@ -3543,6 +3638,9 @@ function safeLink(url){
     var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
       productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
 
+    var wantsFronts = _has(layers, ['fronts','surface_fronts','surface_map']) ||
+      productName.indexOf('front') !== -1;
+
     try {
       if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(wantsSpc);
     } catch (e) { console.warn('SPC step apply failed', e); }
@@ -3570,6 +3668,10 @@ function safeLink(url){
     try {
       if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(wantsSatellite);
     } catch (e) { console.warn('Satellite step apply failed', e); }
+
+    try {
+      if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(wantsFronts);
+    } catch (e) { console.warn('Story overlay step apply failed', e); }
 
     try {
       if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(!!wantsMetars); } catch(e) {} }
@@ -5886,20 +5988,6 @@ function parseHrrrPointsPayload(raw){
         obj.value
       ]);
     }
-    if (window.hrrrProductMode === 'cape') {
-      return firstFinite([
-        obj.cape,
-        obj.CAPE,
-        obj.sbcape,
-        obj.sbCAPE,
-        obj.mlcape,
-        obj.mlCAPE,
-        obj.surface_based_cape,
-        obj.surfaceBasedCape,
-        obj.most_unstable_cape,
-        obj.value
-      ]);
-    }
     return firstFinite([
       obj.tF,
       obj.tempF,
@@ -7305,7 +7393,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }catch(e){}
 
     function wantsStates(){
-      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled || window.lightningEnabled);
+      return !!(window.obsRadarEnabled || window.metarVisible || window.hrrrTempEnabled || window.spcDay1Enabled || window.lightningEnabled || (window.storyOverlayLayer && map && map.hasLayer && map.hasLayer(window.storyOverlayLayer)));
     }
     function wantsCounties(){
       return !!window.obsRadarEnabled;
