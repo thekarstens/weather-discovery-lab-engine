@@ -2806,29 +2806,13 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   window.roadsEnabled = roadsEnabled;
 
 
-  // ---------- Sparse interstate labels ----------
+  // ---------- Sparse interstate labels (viewport-aware) ----------
   var roadsLabelLayer = L.layerGroup();
-  var roadsLabelsBuilt = false;
 
   function normalizeRoadRef(ref){
     ref = String(ref || '').trim();
     ref = ref.replace(/^I\s+(\d+)$/i, 'I-$1');
     return ref;
-  }
-
-  function lineMidpointLatLng(coords){
-    if (!Array.isArray(coords) || !coords.length) return null;
-    var pts = [];
-    for (var i=0;i<coords.length;i++){
-      var c = coords[i];
-      if (!Array.isArray(c) || c.length < 2) continue;
-      var lon = Number(c[0]), lat = Number(c[1]);
-      if (!isFinite(lat) || !isFinite(lon)) continue;
-      pts.push([lat, lon]);
-    }
-    if (!pts.length) return null;
-    var mid = Math.floor(pts.length / 2);
-    return L.latLng(pts[mid][0], pts[mid][1]);
   }
 
   function distanceMeters(a, b){
@@ -2839,9 +2823,44 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     try{ roadsLabelLayer.clearLayers(); }catch(e){}
   }
 
-  function buildRoadLabelsFromLayer(){
-    if (!roadsLayer || roadsLabelsBuilt) return;
+  function getLayerRepresentativeLatLng(layer){
+    if (!layer) return null;
+    try{
+      if (typeof layer.getCenter === 'function'){
+        var center = layer.getCenter();
+        if (center && isFinite(center.lat) && isFinite(center.lng)) return center;
+      }
+    }catch(e){}
+    try{
+      if (typeof layer.getBounds === 'function'){
+        var b = layer.getBounds();
+        if (b && typeof b.getCenter === 'function'){
+          var c = b.getCenter();
+          if (c && isFinite(c.lat) && isFinite(c.lng)) return c;
+        }
+      }
+    }catch(e){}
+    try{
+      if (typeof layer.getLatLngs === 'function'){
+        var latlngs = layer.getLatLngs();
+        while (Array.isArray(latlngs) && latlngs.length && Array.isArray(latlngs[0])) latlngs = latlngs[0];
+        if (Array.isArray(latlngs) && latlngs.length){
+          var mid = latlngs[Math.floor(latlngs.length / 2)];
+          if (mid && isFinite(mid.lat) && isFinite(mid.lng)) return mid;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function rebuildRoadLabels(){
     clearRoadLabels();
+    if (!roadsLayer || !roadsEnabled || map.getZoom() < 8) return;
+
+    var bounds = null;
+    try{ bounds = map.getBounds().pad(0.12); }catch(e){}
+    if (!bounds) return;
+
     var perRef = Object.create(null);
 
     roadsLayer.eachLayer(function(layer){
@@ -2853,32 +2872,18 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       var ref = normalizeRoadRef(p.ref || '');
       if (!ref) return;
 
-      var ll = null;
-      if (typeof layer.getLatLngs === 'function'){
-        var latlngs = layer.getLatLngs();
-        if (Array.isArray(latlngs) && latlngs.length){
-          // flatten one nesting level if needed
-          if (Array.isArray(latlngs[0])) latlngs = latlngs[0];
-          if (latlngs.length >= 2){
-            ll = latlngs[Math.floor(latlngs.length / 2)];
-          }
-        }
-      }
-      if (!ll && feature && feature.geometry){
-        if (feature.geometry.type === 'LineString'){
-          ll = lineMidpointLatLng(feature.geometry.coordinates);
-        } else if (feature.geometry.type === 'MultiLineString' && Array.isArray(feature.geometry.coordinates) && feature.geometry.coordinates.length){
-          ll = lineMidpointLatLng(feature.geometry.coordinates[0]);
-        }
-      }
-      if (!ll) return;
+      var ll = getLayerRepresentativeLatLng(layer);
+      if (!ll || !bounds.contains(ll)) return;
 
       if (!perRef[ref]) perRef[ref] = [];
       var existing = perRef[ref];
-      if (existing.length >= 3) return;
 
+      var minSpacing = (map.getZoom() >= 10) ? 25000 : 45000;
+      var maxPerRef = (map.getZoom() >= 10) ? 3 : 2;
+
+      if (existing.length >= maxPerRef) return;
       for (var i=0;i<existing.length;i++){
-        if (distanceMeters(existing[i], ll) < 45000) return; // keep labels sparse
+        if (distanceMeters(existing[i], ll) < minSpacing) return;
       }
 
       existing.push(ll);
@@ -2892,21 +2897,21 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
       L.marker(ll, { icon: icon, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
     });
-
-    roadsLabelsBuilt = true;
   }
 
   function updateRoadLabelsVisibility(){
     var shouldShow = !!roadsEnabled && map.getZoom() >= 8;
     if (shouldShow){
-      buildRoadLabelsFromLayer();
+      rebuildRoadLabels();
       if (!map.hasLayer(roadsLabelLayer)) roadsLabelLayer.addTo(map);
     } else {
       if (map.hasLayer(roadsLabelLayer)) map.removeLayer(roadsLabelLayer);
+      clearRoadLabels();
     }
   }
 
   map.on('zoomend', updateRoadLabelsVisibility);
+  map.on('moveend', updateRoadLabelsVisibility);
   try{
     var roadsBtn = document.getElementById('roadsToggleBtn');
     if (roadsBtn && !roadsBtn.__wdlBound){
