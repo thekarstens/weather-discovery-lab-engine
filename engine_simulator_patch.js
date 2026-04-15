@@ -3790,7 +3790,10 @@ function safeLink(url){
     } catch (e) { console.warn('Satellite step apply failed', e); }
 
     try {
-      if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(wantsFronts);
+      if (typeof window.setStoryOverlayEnabled === 'function') {
+        await window.setStoryOverlayEnabled(!!wantsFronts);
+        if (!wantsFronts) { try{ window.setStoryOverlayEnabled(false); }catch(e){} }
+      }
     } catch (e) { console.warn('Story overlay step apply failed', e); }
 
     try {
@@ -6108,6 +6111,20 @@ function parseHrrrPointsPayload(raw){
         obj.value
       ]);
     }
+    if (window.hrrrProductMode === 'cape') {
+      return firstFinite([
+        obj.cape,
+        obj.CAPE,
+        obj.sbcape,
+        obj.sbCAPE,
+        obj.mlcape,
+        obj.mlCAPE,
+        obj.surface_based_cape,
+        obj.surfaceBasedCape,
+        obj.most_unstable_cape,
+        obj.value
+      ]);
+    }
     return firstFinite([
       obj.tF,
       obj.tempF,
@@ -6376,6 +6393,8 @@ function parseHrrrPointsPayload(raw){
 
 
   var radarLoadToken = 0;
+  var radarDisplayedUrl = '';
+  var radarPendingUrl = '';
   function updateRadar(){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
