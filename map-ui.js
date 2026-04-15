@@ -77,6 +77,17 @@ window.createMapUiModule = function(opts){
   var drawGroup = L.layerGroup().addTo(map);
   var drawing = false;
   var currentLine = null;
+  var currentDrawColor = "#fdd835";
+
+  function setDrawColor(color){
+    currentDrawColor = String(color || "#fdd835");
+    try{
+      document.querySelectorAll("[data-draw-color]").forEach(function(btn){
+        btn.classList.toggle("is-active", (btn.getAttribute("data-draw-color") || "").toLowerCase() === currentDrawColor.toLowerCase());
+      });
+    }catch(e){}
+  }
+  window.setDrawColor = setDrawColor;
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
@@ -85,6 +96,7 @@ window.createMapUiModule = function(opts){
 
   function setMapInteractionsEnabled(enabled){
     try{
+      var c = map && map.getContainer ? map.getContainer() : null;
       if (enabled){
         if (map.dragging) map.dragging.enable();
         if (map.touchZoom) map.touchZoom.enable();
@@ -93,6 +105,7 @@ window.createMapUiModule = function(opts){
         if (map.keyboard) map.keyboard.enable();
         if (map.scrollWheelZoom) map.scrollWheelZoom.enable();
         if (map.tap && map.tap.enable) map.tap.enable();
+        if (c){ c.style.touchAction = ""; c.style.cursor = ""; }
       } else {
         if (map.dragging) map.dragging.disable();
         if (map.touchZoom) map.touchZoom.disable();
@@ -101,6 +114,7 @@ window.createMapUiModule = function(opts){
         if (map.keyboard) map.keyboard.disable();
         if (map.scrollWheelZoom) map.scrollWheelZoom.disable();
         if (map.tap && map.tap.disable) map.tap.disable();
+        if (c){ c.style.touchAction = "none"; c.style.cursor = "crosshair"; }
       }
     }catch(e){}
   }
@@ -185,7 +199,7 @@ window.createMapUiModule = function(opts){
     setMapInteractionsEnabled(false);
     drawing = true;
     currentLine = L.polyline([e.latlng], {
-      color: "#fdd835", weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round"
+      color: currentDrawColor, weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round"
     }).addTo(drawGroup);
   }
   function moveDraw(e){
@@ -211,6 +225,19 @@ window.createMapUiModule = function(opts){
   map.on("touchstart", startDraw);
   map.on("touchmove", moveDraw);
   map.on("touchend", endDraw);
+
+  try{
+    var mapContainer = map && map.getContainer ? map.getContainer() : null;
+    if (mapContainer){
+      ["pointerdown","pointermove","pointerup","touchstart","touchmove","touchend"].forEach(function(evt){
+        mapContainer.addEventListener(evt, function(ev){
+          if (!document.body.classList.contains("draw-active")) return;
+          if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+          if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+        }, { passive:false });
+      });
+    }
+  }catch(e){}
 
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
@@ -291,6 +318,8 @@ window.createMapUiModule = function(opts){
   const zOut = document.getElementById("zoomOutBtn");
   if (zIn) zIn.onclick = function(){ map.zoomIn(); };
   if (zOut) zOut.onclick = function(){ map.zoomOut(); };
+
+  setDrawColor(currentDrawColor);
 
   return {
     setMeasureMode:setMeasureMode,
