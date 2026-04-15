@@ -2713,9 +2713,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (document.getElementById('roadShieldStyles')) return;
     var css = ''
       + '.road-shield-wrap{background:transparent !important;border:none !important;box-shadow:none !important;}'
-      + '.road-shield{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:20px;padding:0 7px;border-radius:6px;'
-      + 'font:900 11px/1 "Lato",Arial,sans-serif;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap;}'
-      + '.road-shield.interstate{background:#a34d14;color:#fff7ea;border:2px solid rgba(245,204,145,.95);}';
+      + '.road-shield-svg{display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,.40));}';
     var st = document.createElement('style');
     st.id = 'roadShieldStyles';
     st.textContent = css;
@@ -2858,6 +2856,37 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     return null;
   }
 
+
+  function escapeRoadLabelHtml(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function shieldHtmlForRoad(ref, hw){
+    ref = normalizeRoadRef(ref);
+    var safeRef = escapeRoadLabelHtml(ref);
+    var isInterstate = String(hw || '').toLowerCase() === 'motorway';
+
+    if (isInterstate){
+      return ''
+        + '<svg class="road-shield-svg" width="44" height="34" viewBox="0 0 44 34" aria-hidden="true">'
+        +   '<path d="M6 3h32c1.7 0 3 1.3 3 3v6H3V6c0-1.7 1.3-3 3-3z" fill="#c62828"/>'
+        +   '<path d="M3 12h38v7c0 8.2-8.7 11.6-19 13-10.3-1.4-19-4.8-19-13v-7z" fill="#1e4fa8"/>'
+        +   '<path d="M6 1.5h32A4.5 4.5 0 0 1 42.5 6v13.1c0 9.5-9.8 13.3-20.5 14.7C11.3 32.4 1.5 28.6 1.5 19.1V6A4.5 4.5 0 0 1 6 1.5z" fill="none" stroke="#ffffff" stroke-width="2"/>'
+        +   '<text x="22" y="22.6" text-anchor="middle" font-family="Lato, Arial, sans-serif" font-size="11.5" font-weight="900" fill="#ffffff">' + safeRef + '</text>'
+        + '</svg>';
+    }
+
+    return ''
+      + '<svg class="road-shield-svg" width="42" height="34" viewBox="0 0 42 34" aria-hidden="true">'
+      +   '<path d="M10 2h22l6 6v8c0 10-8.1 13.2-17 15-8.9-1.8-17-5-17-15V8l6-6z" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
+      +   '<text x="21" y="21.6" text-anchor="middle" font-family="Lato, Arial, sans-serif" font-size="11" font-weight="900" fill="#111111">' + safeRef + '</text>'
+      + '</svg>';
+  }
+
   function rebuildRoadLabels(){
     clearRoadLabels();
     if (!roadsLayer || !areRoadsActuallyOn() || map.getZoom() < 6) return;
@@ -2873,7 +2902,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       var feature = layer && layer.feature ? layer.feature : null;
       var p = feature && feature.properties ? feature.properties : {};
       var hw = String(p.highway || '').toLowerCase();
-      if (hw !== 'motorway') return;
+      if (['motorway','trunk','primary'].indexOf(hw) < 0) return;
 
       var ref = normalizeRoadRef(p.ref || '');
       if (!ref) return;
@@ -2884,8 +2913,13 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (!perRef[ref]) perRef[ref] = [];
       var existing = perRef[ref];
 
-      var minSpacing = (map.getZoom() >= 9) ? 18000 : 32000;
-      var maxPerRef = (map.getZoom() >= 9) ? 3 : 2;
+      var isInterstate = (hw === 'motorway');
+      var minSpacing = isInterstate
+        ? ((map.getZoom() >= 9) ? 18000 : 32000)
+        : ((map.getZoom() >= 9) ? 22000 : 42000);
+      var maxPerRef = isInterstate
+        ? ((map.getZoom() >= 9) ? 3 : 2)
+        : ((map.getZoom() >= 9) ? 2 : 1);
 
       if (existing.length >= maxPerRef) return;
       for (var i=0;i<existing.length;i++){
@@ -2897,9 +2931,9 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
       var icon = L.divIcon({
         className: 'road-shield-wrap',
-        html: '<div class="road-shield interstate">' + ref + '</div>',
-        iconSize: [54, 24],
-        iconAnchor: [27, 12]
+        html: shieldHtmlForRoad(ref, hw),
+        iconSize: isInterstate ? [44, 34] : [42, 34],
+        iconAnchor: isInterstate ? [22, 17] : [21, 17]
       });
 
       L.marker(ll, { icon: icon, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
@@ -2910,9 +2944,9 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
         var center = map.getCenter();
         var fallback = L.divIcon({
           className: 'road-shield-wrap',
-          html: '<div class="road-shield interstate">I-29</div>',
-          iconSize: [54, 24],
-          iconAnchor: [27, 12]
+          html: shieldHtmlForRoad('I-29', 'motorway'),
+          iconSize: [44, 34],
+          iconAnchor: [22, 17]
         });
         L.marker(center, { icon: fallback, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
       }catch(e){}
