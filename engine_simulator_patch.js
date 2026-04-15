@@ -2892,11 +2892,13 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
     if (kind === 'interstate'){
       return ''
-        + '<svg class="road-shield-svg" width="40" height="32" viewBox="0 0 40 32" aria-hidden="true">'
-        +   '<path d="M7 3.5h26a4 4 0 0 1 4 4v4.5H3V7.5a4 4 0 0 1 4-4z" fill="#c62828"/>'
-        +   '<path d="M3 12h34v5.2c0 7.2-7.6 10.2-17 11.8C10.6 27.4 3 24.4 3 17.2V12z" fill="#1f4ea3"/>'
-        +   '<path d="M7 2h26A5.5 5.5 0 0 1 38.5 7.5v9.7c0 8.3-8.5 11.7-18.5 13.3C10 28.9 1.5 25.5 1.5 17.2V7.5A5.5 5.5 0 0 1 7 2z" fill="none" stroke="#ffffff" stroke-width="2.2"/>'
-        +   '<text x="20" y="21.1" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#ffffff">' + num + '</text>'
+        + '<svg class="road-shield-svg" width="42" height="36" viewBox="0 0 42 36" aria-hidden="true">'
+        +   '<path d="M7.5 2.5c4.7 0 8.5-1.4 13.5-1.4s8.8 1.4 13.5 1.4l3.5 5.2v9.3c0 9.7-8.8 14-17 16.2-8.2-2.2-17-6.5-17-16.2V7.7l3.5-5.2z" fill="#ffffff"/>'
+        +   '<path d="M8.7 4.3c4.1 0 7.7-1.2 12.3-1.2s8.2 1.2 12.3 1.2l2.7 4.1v7H6V8.4l2.7-4.1z" fill="#c62828"/>'
+        +   '<path d="M6 15.4h30v1.6c0 8.7-7.8 12.6-15 14.7C13.8 29.6 6 25.7 6 17v-1.6z" fill="#0d47a1"/>'
+        +   '<path d="M7.5 2.5c4.7 0 8.5-1.4 13.5-1.4s8.8 1.4 13.5 1.4l3.5 5.2v9.3c0 9.7-8.8 14-17 16.2-8.2-2.2-17-6.5-17-16.2V7.7l3.5-5.2z" fill="none" stroke="#222222" stroke-width=".55"/>'
+        +   '<text x="21" y="11.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="4.5" font-weight="700" fill="#ffffff">INTERSTATE</text>'
+        +   '<text x="21" y="24.2" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">' + num + '</text>'
         + '</svg>';
     }
 
@@ -2911,37 +2913,42 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     if (kind === 'state'){
       if (state == 'MN'){
         return ''
-          + '<svg class="road-shield-svg" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">'
-          +   '<rect x="2.5" y="2.5" width="29" height="29" rx="4" fill="#0d47a1" stroke="#ffffff" stroke-width="2"/>'
-          +   '<text x="17" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#ffffff">' + num + '</text>'
+          + '<svg class="road-shield-svg" width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">'
+          +   '<rect x="2.5" y="2.5" width="33" height="33" rx="2.5" fill="#c8a96a" stroke="#f3e3ba" stroke-width="1.2"/>'
+          +   '<rect x="5.5" y="12.5" width="27" height="20" rx="1.2" fill="#1565c0"/>'
+          +   '<path d="M7.5 5.8l3.6 0 0 3.2 2.4-1.3-.2 2.5 2.3.8-2.4.8-.1 1.5-2-1.2-3.6 0z" fill="#1565c0"/>'
+          +   '<text x="22.5" y="9.6" text-anchor="middle" font-family="Arial, sans-serif" font-size="4.4" font-weight="700" fill="#1565c0">MINNESOTA</text>'
+          +   '<text x="19" y="27.2" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">' + num + '</text>'
           + '</svg>';
       }
       if (state == 'IA'){
         return ''
-          + '<svg class="road-shield-svg" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">'
-          +   '<circle cx="17" cy="17" r="13.5" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
-          +   '<text x="17" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#111111">' + num + '</text>'
+          + '<svg class="road-shield-svg" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">'
+          +   '<circle cx="18" cy="18" r="14.2" fill="#f3f3f3" stroke="#7a7a7a" stroke-width="1.2"/>'
+          +   '<circle cx="18" cy="5.8" r="1" fill="#8c8c8c"/>'
+          +   '<circle cx="18" cy="30.2" r="1" fill="#8c8c8c"/>'
+          +   '<text x="18" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#222222">' + num + '</text>'
+          + '</svg>';
+      }
+      if (state == 'SD'){
+        return ''
+          + '<svg class="road-shield-svg" width="42" height="38" viewBox="0 0 42 38" aria-hidden="true">'
+          +   '<rect x="2.5" y="2.5" width="37" height="33" rx="2.5" fill="#0b7a53" stroke="#0b7a53" stroke-width="1.2"/>'
+          +   '<path d="M7 6.5h25.4l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2H6.8l.2-21.2z" fill="#f7f7f7"/>'
+          +   '<path d="M32.4 6.5l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2-3.3 0 .7-2.2-.7-1.1.7-1.2-.8-1.2.8-1.3-.9-1.1.9-1.2-.7-1.2.7-1.4-.9-1.1.9-1.2-.7-1.1.7-1.2z" fill="#f7f7f7"/>'
+          +   '<text x="19.2" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#111111">' + num + '</text>'
           + '</svg>';
       }
       if (state == 'NE'){
         return ''
-          + '<svg class="road-shield-svg" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">'
-          +   '<rect x="3" y="3" width="28" height="28" rx="3" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
-          +   '<text x="17" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#111111">' + num + '</text>'
+          + '<svg class="road-shield-svg" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">'
+          +   '<rect x="3" y="3" width="30" height="30" rx="2.5" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
+          +   '<text x="18" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="12.5" font-weight="700" fill="#111111">' + num + '</text>'
           + '</svg>';
       }
-      return ''
-        + '<svg class="road-shield-svg" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">'
-        +   '<rect x="3" y="3" width="28" height="28" rx="3" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
-        +   '<text x="17" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#111111">' + num + '</text>'
-        + '</svg>';
     }
 
-    return ''
-      + '<svg class="road-shield-svg" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">'
-      +   '<rect x="3" y="3" width="28" height="28" rx="3" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
-      +   '<text x="17" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" fill="#111111">' + num + '</text>'
-      + '</svg>';
+    return '';
   }
 
   function rebuildRoadLabels(){
@@ -2963,6 +2970,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
       var ref = normalizeRoadRef(p.ref || '');
       if (!ref) return;
+      var kind = classifyRoadShield(ref, hw);
+      if (kind === 'other') return;
 
       var ll = getLayerRepresentativeLatLng(layer);
       if (!ll || !bounds.contains(ll)) return;
@@ -2987,28 +2996,19 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       existing.push(ll);
       foundAny = true;
 
+      var kind = classifyRoadShield(ref, hw);
+      var html = shieldHtmlForRoad(ref, hw);
+      if (!html) return;
+      var size = (kind === 'interstate') ? [42, 36] : ((kind === 'us') ? [38, 34] : [38, 38]);
       var icon = L.divIcon({
         className: 'road-shield-wrap',
-        html: shieldHtmlForRoad(ref, hw),
-        iconSize: isInterstate ? [44, 34] : [42, 34],
-        iconAnchor: isInterstate ? [22, 17] : [21, 17]
+        html: html,
+        iconSize: size,
+        iconAnchor: [Math.round(size[0]/2), Math.round(size[1]/2)]
       });
 
       L.marker(ll, { icon: icon, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
     });
-
-    if (!foundAny && areRoadsActuallyOn()){
-      try{
-        var center = map.getCenter();
-        var fallback = L.divIcon({
-          className: 'road-shield-wrap',
-          html: shieldHtmlForRoad('I-29', 'motorway'),
-          iconSize: [44, 34],
-          iconAnchor: [22, 17]
-        });
-        L.marker(center, { icon: fallback, interactive: false, keyboard: false, zIndexOffset: 500 }).addTo(roadsLabelLayer);
-      }catch(e){}
-    }
   }
 
   function updateRoadLabelsVisibility(){
