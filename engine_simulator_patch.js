@@ -2393,25 +2393,144 @@ window.setReportsFilter = setReportsFilter;
   var drawGroup = L.layerGroup().addTo(map);
   var drawing = false;
   var currentLine = null;
+  var currentDrawColor = '#fdd835';
+  var drawOverlay = null;
+
+  function setDrawColor(color){
+    currentDrawColor = String(color || '#fdd835');
+    try{
+      drawColorBtns.forEach(function(btn){
+        var c = String(btn.getAttribute('data-draw-color') || '').toLowerCase();
+        btn.classList.toggle('is-active', c === currentDrawColor.toLowerCase());
+      });
+    }catch(e){}
+  }
+  window.setDrawColor = setDrawColor;
+
+  function setMapInteractionsEnabled(enabled){
+    try{
+      if (enabled){
+        if (map.dragging) map.dragging.enable();
+        if (map.boxZoom) map.boxZoom.enable();
+        if (map.doubleClickZoom) map.doubleClickZoom.enable();
+        if (map.scrollWheelZoom) map.scrollWheelZoom.enable();
+        if (map.keyboard) map.keyboard.enable();
+        if (map.touchZoom) map.touchZoom.enable();
+        if (map.tap && map.tap.enable) map.tap.enable();
+      } else {
+        if (map.dragging) map.dragging.disable();
+        if (map.boxZoom) map.boxZoom.disable();
+        if (map.doubleClickZoom) map.doubleClickZoom.disable();
+        if (map.scrollWheelZoom) map.scrollWheelZoom.disable();
+        if (map.keyboard) map.keyboard.disable();
+        if (map.touchZoom) map.touchZoom.disable();
+        if (map.tap && map.tap.disable) map.tap.disable();
+      }
+    }catch(e){}
+  }
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
   }
+  window.clearDrawings = clearDrawings;
+
+  function ensureDrawOverlay(){
+    if (drawOverlay) return drawOverlay;
+    var mapPane = map && map.getPanes ? map.getPanes().overlayPane : null;
+    if (!mapPane) return null;
+
+    drawOverlay = document.createElement('div');
+    drawOverlay.id = 'engineDrawCaptureOverlay';
+    drawOverlay.style.position = 'absolute';
+    drawOverlay.style.left = '0';
+    drawOverlay.style.top = '0';
+    drawOverlay.style.width = '100%';
+    drawOverlay.style.height = '100%';
+    drawOverlay.style.pointerEvents = 'none';
+    drawOverlay.style.touchAction = 'none';
+    drawOverlay.style.cursor = 'crosshair';
+    drawOverlay.style.zIndex = '399';
+    drawOverlay.style.background = 'transparent';
+    mapPane.appendChild(drawOverlay);
+
+    function eventLatLng(ev){
+      try{
+        var src = (ev.touches && ev.touches.length) ? ev.touches[0]
+                 : ((ev.changedTouches && ev.changedTouches.length) ? ev.changedTouches[0] : ev);
+        var rect = drawOverlay.getBoundingClientRect();
+        var pt = L.point(src.clientX - rect.left, src.clientY - rect.top);
+        return map.containerPointToLatLng(pt);
+      }catch(e){ return null; }
+    }
+
+    function begin(ev){
+      if (!document.body.classList.contains('draw-active')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var ll = eventLatLng(ev);
+      if (!ll) return;
+      drawing = true;
+      currentLine = L.polyline([ll], {
+        color: currentDrawColor,
+        weight: 5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(drawGroup);
+    }
+
+    function move(ev){
+      if (!document.body.classList.contains('draw-active') || !drawing || !currentLine) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var ll = eventLatLng(ev);
+      if (!ll) return;
+      currentLine.addLatLng(ll);
+    }
+
+    function end(ev){
+      if (!document.body.classList.contains('draw-active') || !drawing) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      drawing = false;
+      currentLine = null;
+    }
+
+    ['mousedown','touchstart','pointerdown'].forEach(function(name){
+      drawOverlay.addEventListener(name, begin, { passive:false });
+    });
+    ['mousemove','touchmove','pointermove'].forEach(function(name){
+      drawOverlay.addEventListener(name, move, { passive:false });
+    });
+    ['mouseup','mouseleave','touchend','touchcancel','pointerup','pointercancel'].forEach(function(name){
+      drawOverlay.addEventListener(name, end, { passive:false });
+    });
+    ['click','dblclick','contextmenu'].forEach(function(name){
+      drawOverlay.addEventListener(name, function(ev){
+        if (!document.body.classList.contains('draw-active')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+      }, { passive:false });
+    });
+
+    return drawOverlay;
+  }
 
 function setDrawMode(on){
   if (!isTeacherMode){
-    // student mode: do nothing, keep disabled
     setToolActive(toolDrawBtn, false);
     setToolActive(toolEraseBtn, false);
-    document.body.classList.remove("draw-active");
+    document.body.classList.remove('draw-active');
     return;
   }
 
+  ensureDrawOverlay();
+
   if (on){
-    document.body.classList.add("draw-active");
-    document.body.classList.remove("measure-active");
-    document.body.classList.remove("probe-active");
-    document.body.classList.remove("track-active");
+    document.body.classList.add('draw-active');
+    document.body.classList.remove('measure-active');
+    document.body.classList.remove('probe-active');
+    document.body.classList.remove('track-active');
     setToolActive(toolTrackBtn, false);
     clearStormTrackGraphics();
     setToolActive(toolDrawBtn, true);
@@ -2422,70 +2541,44 @@ function setDrawMode(on){
     drawing = false;
     currentLine = null;
 
-    try{ map.dragging.disable(); }catch(e){}
-    try{ map.boxZoom.disable(); }catch(e){}
-    try{ map.doubleClickZoom.disable(); }catch(e){}
-    try{ map.scrollWheelZoom.disable(); }catch(e){}
-    try{ map.keyboard.disable(); }catch(e){}
-    try{ map.touchZoom.disable(); }catch(e){}
+    setMapInteractionsEnabled(false);
+    if (drawOverlay) drawOverlay.style.pointerEvents = 'auto';
   } else {
-    document.body.classList.remove("draw-active");
+    document.body.classList.remove('draw-active');
     setToolActive(toolDrawBtn, false);
     setToolActive(toolEraseBtn, false);
     drawing = false;
     currentLine = null;
 
-    try{ map.dragging.enable(); }catch(e){}
-    try{ map.boxZoom.enable(); }catch(e){}
-    try{ map.doubleClickZoom.enable(); }catch(e){}
-    try{ map.scrollWheelZoom.enable(); }catch(e){}
-    try{ map.keyboard.enable(); }catch(e){}
-    try{ map.touchZoom.enable(); }catch(e){}
+    if (drawOverlay) drawOverlay.style.pointerEvents = 'none';
+    setMapInteractionsEnabled(true);
   }
 }
+window.setDrawMode = setDrawMode;
+window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contains('draw-active')); };
 
-  function startDraw(e){
-  if (!document.body.classList.contains("draw-active")) return;
-  if (!e || !e.latlng) return;
+  try{
+    drawColorBtns.forEach(function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        setDrawColor(btn.getAttribute('data-draw-color') || '#fdd835');
+        setDrawMode(true);
+      });
+      btn.addEventListener('mousedown', function(ev){ ev.preventDefault(); ev.stopPropagation(); }, { passive:false });
+      btn.addEventListener('touchstart', function(ev){ ev.preventDefault(); ev.stopPropagation(); }, { passive:false });
+    });
+  }catch(e){}
 
-  if (e.originalEvent) {
-    if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
-    if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
-  }
+  if (toolEraseBtn) toolEraseBtn.addEventListener('click', function(){
+    clearDrawings();
+    setDrawMode(false);
+  });
+  if (toolClearBtn) toolClearBtn.addEventListener('click', function(){
+    clearDrawings();
+  });
 
-  drawing = true;
-
-  currentLine = L.polyline([e.latlng], {
-    color: "#fdd835",
-    weight: 5,
-    opacity: 0.95,
-    lineCap: "round",
-    lineJoin: "round"
-  }).addTo(drawGroup);
-}
-
-  function moveDraw(e){
-    if (!drawing || !currentLine) return;
-    if (!e || !e.latlng) return;
-    currentLine.addLatLng(e.latlng);
-  }
-
-  function endDraw(){
-    if (!drawing) return;
-    drawing = false;
-    currentLine = null;
-  }
-
-  // Pointer/touch drawing
-  map.on("mousedown", startDraw);
-  map.on("mousemove", moveDraw);
-  map.on("mouseup", endDraw);
-  map.on("touchstart", startDraw);
-  map.on("touchmove", moveDraw);
-  map.on("touchend", endDraw);
-  map.on("mousedown", startTrackDrag);
-  map.on("mousemove", moveTrackDrag);
-  map.on("mouseup", endTrackDrag);
+  setDrawColor(currentDrawColor);
 
   // ----- Probe click handler (HRRR temp nearest point) -----
   function handleProbeClick(e){
