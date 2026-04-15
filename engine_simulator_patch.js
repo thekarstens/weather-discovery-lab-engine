@@ -4970,13 +4970,15 @@ if (window.createMetarsModule) {
   var spcDay1Enabled = false;
 
   function getSpcDay1Url(){
+    var storyUrl = getStorySpcGeoJsonUrl();
+    if (storyUrl && activeStoryWantsSpcOverride()) return storyUrl;
     try {
       if (CFG && Array.isArray(CFG.overlays)) {
         for (var i=0;i<CFG.overlays.length;i++){
           var o = CFG.overlays[i] || {};
           var nm = String(o.name || '').toLowerCase();
-          if (nm.indexOf('day 1') !== -1 || nm.indexOf('spc') !== -1 || nm.indexOf('outlook') !== -1){
-            var u = o.url || o.file;
+          if (nm.indexOf('day 1') !== -1 || nm.indexOf('spc') !== -1 || nm.indexOf('outlook') !== -1 || nm.indexOf('watch') !== -1){
+            var u = o.url || o.file || o.geojson;
             if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
           }
         }
@@ -5191,12 +5193,12 @@ if (window.createMetarsModule) {
         var url = tries[i];
         var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
         if (!res.ok) throw new Error('SPC text HTTP ' + res.status + ': ' + url);
+        var raw = await res.text();
         var data;
         try{
-          data = await res.json();
+          data = JSON.parse(raw);
         }catch(parseErr){
-          var plain = await res.text();
-          data = parseSpcPlainText(plain, url, product, null);
+          data = parseSpcPlainText(raw, url, product, null);
         }
         if (typeof data === 'string') data = parseSpcPlainText(data, url, product, null);
         data.__url = url;
