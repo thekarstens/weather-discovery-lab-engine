@@ -82,6 +82,40 @@ window.createMapUiModule = function(opts){
     try{ drawGroup.clearLayers(); }catch(e){}
   }
 
+
+  function setMapInteractionsEnabled(enabled){
+    try{
+      if (enabled){
+        if (map.dragging) map.dragging.enable();
+        if (map.touchZoom) map.touchZoom.enable();
+        if (map.doubleClickZoom) map.doubleClickZoom.enable();
+        if (map.boxZoom) map.boxZoom.enable();
+        if (map.keyboard) map.keyboard.enable();
+        if (map.scrollWheelZoom) map.scrollWheelZoom.enable();
+        if (map.tap && map.tap.enable) map.tap.enable();
+      } else {
+        if (map.dragging) map.dragging.disable();
+        if (map.touchZoom) map.touchZoom.disable();
+        if (map.doubleClickZoom) map.doubleClickZoom.disable();
+        if (map.boxZoom) map.boxZoom.disable();
+        if (map.keyboard) map.keyboard.disable();
+        if (map.scrollWheelZoom) map.scrollWheelZoom.disable();
+        if (map.tap && map.tap.disable) map.tap.disable();
+      }
+    }catch(e){}
+  }
+
+  function stopMapEvent(e){
+    try{
+      if (e && e.originalEvent) {
+        if (typeof e.originalEvent.preventDefault === "function") e.originalEvent.preventDefault();
+        if (typeof e.originalEvent.stopPropagation === "function") e.originalEvent.stopPropagation();
+      }
+      if (window.L && L.DomEvent && e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+    }catch(_){}
+  }
+
+
   function setDrawMode(on){
     if (!isTeacherMode){
       setToolActive(toolDrawBtn, false);
@@ -97,14 +131,14 @@ window.createMapUiModule = function(opts){
       setToolActive(toolEraseBtn, true);
       setToolActive(toolMeasureBtn, false);
       setToolActive(toolProbeBtn, false);
-      try{ map.dragging.disable(); }catch(e){}
+      setMapInteractionsEnabled(false);
     } else {
       document.body.classList.remove("draw-active");
       setToolActive(toolDrawBtn, false);
       setToolActive(toolEraseBtn, false);
       drawing = false;
       currentLine = null;
-      try{ map.dragging.enable(); }catch(e){}
+      setMapInteractionsEnabled(true);
     }
   }
 
@@ -147,6 +181,8 @@ window.createMapUiModule = function(opts){
   function startDraw(e){
     if (!document.body.classList.contains("draw-active")) return;
     if (!e || !e.latlng) return;
+    stopMapEvent(e);
+    setMapInteractionsEnabled(false);
     drawing = true;
     currentLine = L.polyline([e.latlng], {
       color: "#fdd835", weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round"
@@ -154,12 +190,19 @@ window.createMapUiModule = function(opts){
   }
   function moveDraw(e){
     if (!drawing || !currentLine || !e || !e.latlng) return;
+    stopMapEvent(e);
     currentLine.addLatLng(e.latlng);
   }
-  function endDraw(){
+  function endDraw(e){
     if (!drawing) return;
+    stopMapEvent(e);
     drawing = false;
     currentLine = null;
+    if (document.body.classList.contains("draw-active")) {
+      setMapInteractionsEnabled(false);
+    } else {
+      setMapInteractionsEnabled(true);
+    }
   }
 
   map.on("mousedown", startDraw);
