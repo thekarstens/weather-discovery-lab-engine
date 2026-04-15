@@ -82,88 +82,6 @@ window.createMapUiModule = function(opts){
   var currentDrawColor = "#fdd835";
   var drawOverlay = null;
 
-  function setDrawColor(color){
-    currentDrawColor = String(color || "#fdd835");
-    drawColorBtns.forEach(function(btn){
-      btn.classList.toggle("is-active", (btn.getAttribute("data-draw-color") || "").toLowerCase() === currentDrawColor.toLowerCase());
-    });
-  }
-
-  function ensureDrawOverlay(){
-    if (drawOverlay) return drawOverlay;
-    var c = map && map.getContainer ? map.getContainer() : null;
-    if (!c) return null;
-    if (window.getComputedStyle(c).position === "static") c.style.position = "relative";
-    drawOverlay = document.createElement("div");
-    drawOverlay.id = "drawCaptureOverlay";
-    drawOverlay.style.position = "absolute";
-    drawOverlay.style.left = "0";
-    drawOverlay.style.top = "0";
-    drawOverlay.style.right = "0";
-    drawOverlay.style.bottom = "0";
-    drawOverlay.style.zIndex = "650";
-    drawOverlay.style.pointerEvents = "none";
-    drawOverlay.style.touchAction = "none";
-    drawOverlay.style.cursor = "crosshair";
-    c.appendChild(drawOverlay);
-
-    function eventLatLng(ev){
-      try{
-        var src = ev.touches && ev.touches.length ? ev.touches[0]
-                 : (ev.changedTouches && ev.changedTouches.length ? ev.changedTouches[0] : ev);
-        return map.mouseEventToLatLng(src);
-      }catch(e){ return null; }
-    }
-
-    function begin(ev){
-      if (!document.body.classList.contains("draw-active")) return;
-      if (typeof ev.preventDefault === "function") ev.preventDefault();
-      if (typeof ev.stopPropagation === "function") ev.stopPropagation();
-      var ll = eventLatLng(ev);
-      if (!ll) return;
-      drawing = true;
-      currentLine = L.polyline([ll], {
-        color: currentDrawColor, weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round"
-      }).addTo(drawGroup);
-    }
-
-    function move(ev){
-      if (!document.body.classList.contains("draw-active") || !drawing || !currentLine) return;
-      if (typeof ev.preventDefault === "function") ev.preventDefault();
-      if (typeof ev.stopPropagation === "function") ev.stopPropagation();
-      var ll = eventLatLng(ev);
-      if (!ll) return;
-      currentLine.addLatLng(ll);
-    }
-
-    function end(ev){
-      if (!document.body.classList.contains("draw-active") || !drawing) return;
-      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
-      if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-      drawing = false;
-      currentLine = null;
-    }
-
-    ["mousedown","touchstart","pointerdown"].forEach(function(evt){
-      drawOverlay.addEventListener(evt, begin, { passive:false });
-    });
-    ["mousemove","touchmove","pointermove"].forEach(function(evt){
-      drawOverlay.addEventListener(evt, move, { passive:false });
-    });
-    ["mouseup","mouseleave","touchend","touchcancel","pointerup","pointercancel"].forEach(function(evt){
-      drawOverlay.addEventListener(evt, end, { passive:false });
-    });
-    ["click","dblclick","contextmenu"].forEach(function(evt){
-      drawOverlay.addEventListener(evt, function(ev){
-        if (!document.body.classList.contains("draw-active")) return;
-        if (typeof ev.preventDefault === "function") ev.preventDefault();
-        if (typeof ev.stopPropagation === "function") ev.stopPropagation();
-      }, { passive:false });
-    });
-
-    return drawOverlay;
-  }
-
   function setMapInteractionsEnabled(enabled){
     try{
       if (enabled){
@@ -186,8 +104,100 @@ window.createMapUiModule = function(opts){
     }catch(e){}
   }
 
+  function setDrawColor(color){
+    currentDrawColor = String(color || "#fdd835");
+    drawColorBtns.forEach(function(btn){
+      var c = String(btn.getAttribute("data-draw-color") || "").toLowerCase();
+      btn.classList.toggle("is-active", c === currentDrawColor.toLowerCase());
+    });
+  }
+
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
+  }
+
+  function ensureDrawOverlay(){
+    if (drawOverlay) return drawOverlay;
+    var mapPane = map && map.getPanes ? map.getPanes().overlayPane : null;
+    if (!mapPane) return null;
+
+    drawOverlay = document.createElement("div");
+    drawOverlay.id = "drawCaptureOverlay";
+    drawOverlay.style.position = "absolute";
+    drawOverlay.style.left = "0";
+    drawOverlay.style.top = "0";
+    drawOverlay.style.width = "100%";
+    drawOverlay.style.height = "100%";
+    drawOverlay.style.pointerEvents = "none";
+    drawOverlay.style.touchAction = "none";
+    drawOverlay.style.cursor = "crosshair";
+    drawOverlay.style.zIndex = "399";
+    drawOverlay.style.background = "transparent";
+    mapPane.appendChild(drawOverlay);
+
+    function eventLatLng(ev){
+      try{
+        var src = (ev.touches && ev.touches.length) ? ev.touches[0] :
+                  ((ev.changedTouches && ev.changedTouches.length) ? ev.changedTouches[0] : ev);
+        var rect = drawOverlay.getBoundingClientRect();
+        var pt = L.point(src.clientX - rect.left, src.clientY - rect.top);
+        return map.containerPointToLatLng(pt);
+      }catch(e){
+        return null;
+      }
+    }
+
+    function begin(ev){
+      if (!document.body.classList.contains("draw-active")) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var ll = eventLatLng(ev);
+      if (!ll) return;
+      drawing = true;
+      currentLine = L.polyline([ll], {
+        color: currentDrawColor,
+        weight: 5,
+        opacity: 0.95,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(drawGroup);
+    }
+
+    function move(ev){
+      if (!document.body.classList.contains("draw-active") || !drawing || !currentLine) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var ll = eventLatLng(ev);
+      if (!ll) return;
+      currentLine.addLatLng(ll);
+    }
+
+    function end(ev){
+      if (!document.body.classList.contains("draw-active") || !drawing) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      drawing = false;
+      currentLine = null;
+    }
+
+    ["mousedown","touchstart","pointerdown"].forEach(function(name){
+      drawOverlay.addEventListener(name, begin, { passive:false });
+    });
+    ["mousemove","touchmove","pointermove"].forEach(function(name){
+      drawOverlay.addEventListener(name, move, { passive:false });
+    });
+    ["mouseup","mouseleave","touchend","touchcancel","pointerup","pointercancel"].forEach(function(name){
+      drawOverlay.addEventListener(name, end, { passive:false });
+    });
+    ["click","dblclick","contextmenu"].forEach(function(name){
+      drawOverlay.addEventListener(name, function(ev){
+        if (!document.body.classList.contains("draw-active")) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+      }, { passive:false });
+    });
+
+    return drawOverlay;
   }
 
   function setDrawMode(on){
@@ -255,7 +265,6 @@ window.createMapUiModule = function(opts){
     measureStart = null;
   }
 
-
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
     var hrrrTempLayer = getHrrrTempLayer();
@@ -288,14 +297,14 @@ window.createMapUiModule = function(opts){
       .openOn(map);
   }
 
-
   drawColorBtns.forEach(function(btn){
     btn.onclick = function(ev){
-      try{ if (ev && ev.preventDefault) ev.preventDefault(); }catch(e){}
-      try{ if (ev && ev.stopPropagation) ev.stopPropagation(); }catch(e){}
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       setDrawColor(btn.getAttribute("data-draw-color") || "#fdd835");
       if (!document.body.classList.contains("draw-active")) setDrawMode(true);
     };
+    btn.addEventListener("mousedown", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} }, { passive:false });
+    btn.addEventListener("touchstart", function(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} }, { passive:false });
   });
 
   if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
@@ -334,6 +343,7 @@ window.createMapUiModule = function(opts){
   if (toolHomeBtn) toolHomeBtn.onclick = function(){
     setMeasureMode(false); setProbeMode(false); setDrawMode(false);
     clearMeasureGraphics();
+    clearDrawings();
     map.setView([homeView.lat, homeView.lon], homeView.zoom);
   };
   if (openLessonBtn){
