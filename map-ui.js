@@ -26,6 +26,7 @@ window.createMapUiModule = function(opts){
   var toolEraseBtn   = document.getElementById("toolErase");
   var toolHomeBtn    = document.getElementById("toolHome");
   var openLessonBtn  = document.getElementById("openLessonBtn");
+  var drawColorBtns  = Array.prototype.slice.call(document.querySelectorAll("[data-draw-color]"));
 
   var measureStart = null;
   var measureLine = null;
@@ -192,24 +193,44 @@ window.createMapUiModule = function(opts){
     measureStart = null;
   }
 
-  function startDraw(e){
+  function getEventLatLng(ev){
+    try{
+      if (!ev || !map || typeof map.mouseEventToLatLng !== "function") return null;
+      var srcEv = ev.touches && ev.touches.length ? ev.touches[0]
+               : (ev.changedTouches && ev.changedTouches.length ? ev.changedTouches[0] : ev);
+      return map.mouseEventToLatLng(srcEv);
+    }catch(e){
+      return null;
+    }
+  }
+
+  function startDrawFromEvent(ev){
     if (!document.body.classList.contains("draw-active")) return;
-    if (!e || !e.latlng) return;
-    stopMapEvent(e);
+    if (!ev) return;
+    if (typeof ev.preventDefault === "function") ev.preventDefault();
+    if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+    var ll = getEventLatLng(ev);
+    if (!ll) return;
     setMapInteractionsEnabled(false);
     drawing = true;
-    currentLine = L.polyline([e.latlng], {
+    currentLine = L.polyline([ll], {
       color: currentDrawColor, weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round"
     }).addTo(drawGroup);
   }
-  function moveDraw(e){
-    if (!drawing || !currentLine || !e || !e.latlng) return;
-    stopMapEvent(e);
-    currentLine.addLatLng(e.latlng);
+
+  function moveDrawFromEvent(ev){
+    if (!drawing || !currentLine || !ev) return;
+    if (typeof ev.preventDefault === "function") ev.preventDefault();
+    if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+    var ll = getEventLatLng(ev);
+    if (!ll) return;
+    currentLine.addLatLng(ll);
   }
-  function endDraw(e){
+
+  function endDrawFromEvent(ev){
     if (!drawing) return;
-    stopMapEvent(e);
+    if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+    if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
     drawing = false;
     currentLine = null;
     if (document.body.classList.contains("draw-active")) {
@@ -219,21 +240,32 @@ window.createMapUiModule = function(opts){
     }
   }
 
-  map.on("mousedown", startDraw);
-  map.on("mousemove", moveDraw);
-  map.on("mouseup", endDraw);
-  map.on("touchstart", startDraw);
-  map.on("touchmove", moveDraw);
-  map.on("touchend", endDraw);
-
   try{
     var mapContainer = map && map.getContainer ? map.getContainer() : null;
     if (mapContainer){
-      ["pointerdown","pointermove","pointerup","touchstart","touchmove","touchend"].forEach(function(evt){
+      ["mousedown","touchstart","pointerdown"].forEach(function(evt){
         mapContainer.addEventListener(evt, function(ev){
           if (!document.body.classList.contains("draw-active")) return;
-          if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
-          if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+          startDrawFromEvent(ev);
+        }, { passive:false });
+      });
+      ["mousemove","touchmove","pointermove"].forEach(function(evt){
+        mapContainer.addEventListener(evt, function(ev){
+          if (!document.body.classList.contains("draw-active")) return;
+          moveDrawFromEvent(ev);
+        }, { passive:false });
+      });
+      ["mouseup","mouseleave","touchend","touchcancel","pointerup","pointercancel"].forEach(function(evt){
+        mapContainer.addEventListener(evt, function(ev){
+          if (!document.body.classList.contains("draw-active")) return;
+          endDrawFromEvent(ev);
+        }, { passive:false });
+      });
+      ["click","dblclick","contextmenu"].forEach(function(evt){
+        mapContainer.addEventListener(evt, function(ev){
+          if (!document.body.classList.contains("draw-active")) return;
+          if (typeof ev.preventDefault === "function") ev.preventDefault();
+          if (typeof ev.stopPropagation === "function") ev.stopPropagation();
         }, { passive:false });
       });
     }
@@ -270,6 +302,24 @@ window.createMapUiModule = function(opts){
       .setContent(content)
       .openOn(map);
   }
+
+  drawColorBtns.forEach(function(btn){
+    btn.addEventListener("click", function(ev){
+      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+      if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+      var color = btn.getAttribute("data-draw-color") || "#fdd835";
+      setDrawColor(color);
+      if (!document.body.classList.contains("draw-active")) setDrawMode(true);
+    });
+    btn.addEventListener("mousedown", function(ev){
+      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+      if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+    });
+    btn.addEventListener("touchstart", function(ev){
+      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+      if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+    }, { passive:false });
+  });
 
   if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     var on = !document.body.classList.contains("measure-active");
@@ -320,6 +370,8 @@ window.createMapUiModule = function(opts){
   if (zOut) zOut.onclick = function(){ map.zoomOut(); };
 
   setDrawColor(currentDrawColor);
+  window.setDrawMode = setDrawMode;
+  window.toggleDrawMode = function(){ setDrawMode(!document.body.classList.contains("draw-active")); };
 
   return {
     setMeasureMode:setMeasureMode,
