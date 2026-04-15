@@ -425,14 +425,14 @@ window.createMetarsModule = function(opts){
   }
 
   function metarMinSepForZoom(z){
-    // Keep zoomed-out views clean, but let more stations pop in as you zoom closer.
+    // Thin aggressively when zoomed out, then allow many more stations as you zoom in.
     if (z <= 5) return 78;
-    if (z <= 6) return 58;
-    if (z <= 7) return 40;
-    if (z <= 8) return 24;
-    if (z <= 9) return 14;
-    if (z <= 10) return 9;
-    return 6;
+    if (z <= 6) return 56;
+    if (z <= 7) return 36;
+    if (z <= 8) return 22;
+    if (z <= 9) return 12;
+    if (z <= 10) return 8;
+    return 5;
   }
 
   function getMetarPreviousRow(r){
