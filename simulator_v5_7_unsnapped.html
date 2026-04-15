@@ -912,6 +912,8 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   const ctx = canvas.getContext("2d");
   let drawing = false;
   let enabled = false;
+  let currentColor = "#fdd835";
+  const colorDots = Array.from(document.querySelectorAll("[data-draw-color]"));
 
   function resizeCanvas() {
     const rect = wrap.getBoundingClientRect();
@@ -924,7 +926,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     canvas.width = Math.max(1, Math.round(rect.width));
     canvas.height = Math.max(1, Math.round(rect.height));
     ctx.lineWidth = 5;
-    ctx.strokeStyle = "#fdd835";
+    ctx.strokeStyle = currentColor;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     if (old.width && old.height) ctx.drawImage(old, 0, 0, canvas.width, canvas.height);
@@ -990,6 +992,37 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  function syncColorDots() {
+    colorDots.forEach(function (dot) {
+      const c = (dot.getAttribute("data-draw-color") || "").toLowerCase();
+      dot.classList.toggle("is-active", c === currentColor.toLowerCase());
+    });
+  }
+
+  function setColor(color) {
+    currentColor = String(color || "#fdd835");
+    ctx.strokeStyle = currentColor;
+    syncColorDots();
+  }
+
+
+  colorDots.forEach(function (dot) {
+    function applyColor(ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      setColor(dot.getAttribute("data-draw-color") || "#fdd835");
+      if (!enabled) setDraw(true);
+    }
+    dot.addEventListener("click", applyColor);
+    dot.addEventListener("mousedown", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }, { passive: false });
+    dot.addEventListener("touchstart", applyColor, { passive: false });
+  });
+
   drawBtn.addEventListener("click", function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
@@ -1024,11 +1057,13 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
+  setColor(currentColor);
 
   window.simpleYellowDraw = {
     on: () => setDraw(true),
     off: () => setDraw(false),
-    clear: clearDrawing
+    clear: clearDrawing,
+    color: (c) => setColor(c)
   };
 })();
 </script>
