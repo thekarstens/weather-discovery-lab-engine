@@ -2713,6 +2713,92 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
   // ---------- Story fronts/custom GeoJSON overlay ----------
   var storyOverlayLayer = null;
+  var frontsDecorGroup = null;
+
+  function clearFrontDecorators(){
+    if (frontsDecorGroup){
+      try { map.removeLayer(frontsDecorGroup); } catch(e){}
+      frontsDecorGroup = null;
+    }
+  }
+
+  function buildFrontDecorators(_retry){
+    _retry = _retry || 0;
+    if (!L || typeof L.polylineDecorator !== "function") {
+      if (_retry < 15) {
+        if (_retry === 0) console.warn("leaflet-polylinedecorator not ready yet; retrying…");
+        setTimeout(function(){ buildFrontDecorators(_retry + 1); }, 200);
+        return;
+      }
+      console.warn("leaflet-polylinedecorator did not load: front symbols disabled.");
+      return;
+    }
+    if (typeof L === "undefined" || !L.polylineDecorator || !storyOverlayLayer) return;
+
+    clearFrontDecorators();
+
+    var coldLines = [];
+    var warmLines = [];
+
+    storyOverlayLayer.eachLayer(function(layer){
+      if (!layer || !layer.feature || !layer.feature.properties) return;
+      if (!(layer instanceof L.Polyline) || (layer instanceof L.Polygon)) return;
+      var p = layer.feature.properties;
+      var fr = String(p.front || p.FRONT || p.kind || p.type || "").toLowerCase();
+      if (fr.indexOf("cold") !== -1) coldLines.push(layer);
+      if (fr.indexOf("warm") !== -1) warmLines.push(layer);
+    });
+
+    var patterns = [];
+
+    if (coldLines.length){
+      var coldIcon = L.divIcon({
+        className: "",
+        html: '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><polygon points="8,1 15,15 1,15" fill="#1e88e5"/></svg>',
+        iconSize: [16,16],
+        iconAnchor: [8,16]
+      });
+
+      patterns.push(L.polylineDecorator(coldLines, {
+        patterns: [{
+          offset: 8,
+          repeat: 34,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: -90,
+            markerOptions: { icon: coldIcon }
+          })
+        }]
+      }));
+    }
+
+    if (warmLines.length){
+      var warmIcon = L.divIcon({
+        className: "",
+        html: '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1 15 A7 7 0 0 1 15 15 Z" fill="#e53935"/></svg>',
+        iconSize: [16,16],
+        iconAnchor: [8,16]
+      });
+
+      patterns.push(L.polylineDecorator(warmLines, {
+        patterns: [{
+          offset: 8,
+          repeat: 34,
+          symbol: L.Symbol.marker({
+            rotate: true,
+            angleCorrection: -90,
+            markerOptions: { icon: warmIcon }
+          })
+        }]
+      }));
+    }
+
+    if (!patterns.length) return;
+    frontsDecorGroup = L.layerGroup(patterns);
+    if (storyOverlayLayer){ frontsDecorGroup.addTo(map); }
+  }
+
+
   var storyOverlayLoadToken = 0;
   var storyOverlaySourceUrl = '';
 
@@ -2742,24 +2828,62 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   }
 
   function storyFrontStyle(feature){
-    var p = feature && feature.properties ? feature.properties : {};
-    var kind = String(p.front || p.type || p.kind || '').toLowerCase();
-    if (kind.indexOf('warm') !== -1){
-      return { pane:'lines', color:'#d23b2d', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round' };
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var ftype = String(p.front || p.FRONT || p.kind || p.type || "").toLowerCase();
+
+    var color = "#111";
+    if (ftype.indexOf("cold") !== -1) color = "#1e88e5";
+    else if (ftype.indexOf("warm") !== -1) color = "#e53935";
+    else if (ftype.indexOf("occluded") !== -1) color = "#8e24aa";
+    else if (ftype.indexOf("stationary") !== -1) color = "#43a047";
+    else if (ftype.indexOf("dryline") !== -1) color = "#d08a21";
+
+    var w = parseFloat(p.width);
+    if (!isFinite(w)) w = 3;
+
+    return { pane:"lines", color: color, weight: w, opacity: 0.95 };
+  }
+
+  function makeHLIcon(letter){
+    var isH = String(letter).toUpperCase() === "H";
+    var fg = isH ? "#1e88e5" : "#e53935";
+
+    var svg = '<svg width="52" height="52" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="26" cy="26" r="22" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.30)" stroke-width="2"/>' +
+      '<text x="26" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="900" fill="' + fg + '">' + (isH ? 'H' : 'L') + '</text>' +
+      '</svg>';
+
+    return L.divIcon({
+      className: "",
+      html: svg,
+      iconSize: [52, 52],
+      iconAnchor: [26, 26]
+    });
+  }
+
+  function storyFrontsPointToLayer(feature, latlng){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var sym = String(p.symbol || p.SYMBOL || p.pressure || p.PRESSURE || "").toUpperCase();
+    var letter = "H";
+    if (sym.indexOf("LOW") !== -1 || sym === "L") letter = "L";
+    if (sym.indexOf("HIGH") !== -1 || sym === "H") letter = "H";
+    return L.marker(latlng, { icon: makeHLIcon(letter), pane: "lines" });
+  }
+
+  function storyFrontsOnEach(feature, layer){
+    var p = (feature && feature.properties) ? feature.properties : {};
+    var txt = "";
+    if (feature.geometry && feature.geometry.type === "Point"){
+      var sym = (p.symbol || p.pressure || "").toString();
+      var val = (p.value || p.press || p.pressure_mb || p.pressure_hpa || "").toString();
+      txt = (sym ? sym : "Pressure") + (val ? (" " + val) : "");
+    } else {
+      var fr = (p.front || p.type || "").toString();
+      txt = fr ? (fr.charAt(0).toUpperCase() + fr.slice(1) + " front") : "Front";
     }
-    if (kind.indexOf('cold') !== -1){
-      return { pane:'lines', color:'#1d57c8', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round' };
+    if (txt && layer && layer.bindTooltip){
+      layer.bindTooltip(txt, { direction:"top", opacity:0.9, sticky:true });
     }
-    if (kind.indexOf('occluded') !== -1){
-      return { pane:'lines', color:'#7b3fc4', weight:4, opacity:0.95, dashArray:'8 6', lineCap:'round', lineJoin:'round' };
-    }
-    if (kind.indexOf('stationary') !== -1){
-      return { pane:'lines', color:'#7a4a12', weight:4, opacity:0.90, dashArray:'10 8', lineCap:'round', lineJoin:'round' };
-    }
-    if (kind.indexOf('dryline') !== -1){
-      return { pane:'lines', color:'#d08a21', weight:4, opacity:0.90, dashArray:'6 8', lineCap:'round', lineJoin:'round' };
-    }
-    return { pane:'lines', color:'#1f5fa8', weight:Number(p.width || 4), opacity:0.92, lineCap:'round', lineJoin:'round' };
   }
 
   async function setStoryOverlayEnabled(on){
@@ -2774,6 +2898,8 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
     }
     if (storyOverlayLayer && storyOverlaySourceUrl === url){
       if (!map.hasLayer(storyOverlayLayer)) storyOverlayLayer.addTo(map);
+      if (storyOverlayLayer && !frontsDecorGroup) buildFrontDecorators();
+      if (frontsDecorGroup && !map.hasLayer(frontsDecorGroup)) frontsDecorGroup.addTo(map);
       return;
     }
     var myToken = ++storyOverlayLoadToken;
@@ -2784,20 +2910,14 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (myToken !== storyOverlayLoadToken) return;
       clearStoryOverlay();
       storyOverlayLayer = L.geoJSON(gj, {
+        pane: 'lines',
         style: storyFrontStyle,
-        pointToLayer: function(feature, latlng){
-          return L.circleMarker(latlng, {
-            radius: 4,
-            color: '#173a63',
-            weight: 1.5,
-            fillColor: '#ffffff',
-            fillOpacity: 0.95,
-            opacity: 1
-          });
-        }
+        pointToLayer: storyFrontsPointToLayer,
+        onEachFeature: storyFrontsOnEach
       }).addTo(map);
       storyOverlaySourceUrl = url;
       window.storyOverlayLayer = storyOverlayLayer;
+      buildFrontDecorators();
       setStatus('Surface fronts: ' + url.split('/').pop());
     }catch(err){
       console.error('Story overlay failed:', err);
