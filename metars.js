@@ -425,10 +425,12 @@ window.createMetarsModule = function(opts){
   }
 
   function metarMinSepForZoom(z){
-    if (z <= 5) return 42;
-    if (z <= 6) return 32;
-    if (z <= 7) return 24;
-    if (z <= 8) return 18;
+    // Larger separation when zoomed out so temp bubbles do not crowd.
+    if (z <= 5) return 78;
+    if (z <= 6) return 60;
+    if (z <= 7) return 42;
+    if (z <= 8) return 28;
+    if (z <= 9) return 18;
     return 12;
   }
 
