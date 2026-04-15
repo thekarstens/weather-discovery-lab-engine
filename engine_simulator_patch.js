@@ -5886,6 +5886,20 @@ function parseHrrrPointsPayload(raw){
         obj.value
       ]);
     }
+    if (window.hrrrProductMode === 'cape') {
+      return firstFinite([
+        obj.cape,
+        obj.CAPE,
+        obj.sbcape,
+        obj.sbCAPE,
+        obj.mlcape,
+        obj.mlCAPE,
+        obj.surface_based_cape,
+        obj.surfaceBasedCape,
+        obj.most_unstable_cape,
+        obj.value
+      ]);
+    }
     return firstFinite([
       obj.tF,
       obj.tempF,
@@ -6154,49 +6168,24 @@ function parseHrrrPointsPayload(raw){
 
 
   var radarLoadToken = 0;
-  var radarDisplayedUrl = '';
-  var radarPendingUrl = '';
   function updateRadar(){
     if (!obsRadarEnabled){
       hideRadarSweepCanvas();
-      radarPendingUrl = '';
-      radarDisplayedUrl = '';
       if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
       return;
     }
-
     var url = radarUrlFor(curZ);
-    if (!url) return;
-
-    var op = 0.70;
-    var rs = document.getElementById("radarOpacity");
-    if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
-
-    // Do not reload the same frame over and over.
-    if (!radarSweepEnabled && (url === radarDisplayedUrl || url === radarPendingUrl)) {
-      if (obsRadarOverlay && obsRadarEnabled) obsRadarOverlay.setOpacity(op);
-      return;
-    }
-    if (radarSweepEnabled && (url === radarSweepImageUrl || url === radarPendingUrl)) {
-      ensureRadarSweepCanvas();
-      radarSweepCanvas.style.opacity = String(op);
-      return;
-    }
-
-    radarPendingUrl = url;
     var myToken = ++radarLoadToken;
 
     var img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = function(){
       if (myToken !== radarLoadToken) return;
-      radarPendingUrl = '';
-
       radarSweepImage = img;
       radarSweepImageUrl = url;
+      var op = 0.70; var rs = document.getElementById("radarOpacity"); if (rs){ op = Math.max(0.2, Math.min(1, parseInt(rs.value||"70",10)/100)); }
 
       if (radarSweepEnabled){
-        radarDisplayedUrl = '';
         if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
         ensureRadarSweepCanvas();
         radarSweepCanvas.style.opacity = String(op);
@@ -6206,45 +6195,17 @@ function parseHrrrPointsPayload(raw){
       } else {
         hideRadarSweepCanvas();
         updateSweepUi();
-
-        var newOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
-        newOverlay.addTo(map);
-
-        if (obsRadarOverlay){
-          try{ map.removeLayer(obsRadarOverlay); }catch(e){}
-        }
-        obsRadarOverlay = newOverlay;
-        radarDisplayedUrl = url;
+        if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} }
+        obsRadarOverlay = L.imageOverlay(url, RADAR_BOUNDS, { opacity: op, interactive:false });
+        obsRadarOverlay.addTo(map);
         applyActiveOpacity();
         setStatus("Radar: " + url);
       }
-
-      // Lightweight preload of the next frame to reduce visible stutter in loops.
-      try{
-        var pool = getRadarFramePool();
-        if (pool && pool.length > 1){
-          var active = findNearestRadarFrame(curZ);
-          var idx = pool.indexOf(active);
-          if (idx >= 0){
-            var next = pool[(idx + 1) % pool.length];
-            var nextPng = next && (next.png || next.file || next.filename || next.name || null);
-            if (nextPng){
-              var nextUrl = _isAbsUrl(nextPng) ? nextPng : _joinUrl(RADAR_MANIFEST_FOLDER || DATA_BASE, nextPng);
-              var pre = new Image();
-              pre.crossOrigin = "anonymous";
-              pre.src = nextUrl;
-            }
-          }
-        }
-      }catch(e){}
     };
     img.onerror = function(){
       if (myToken !== radarLoadToken) return;
-      radarPendingUrl = '';
-      if (!radarDisplayedUrl) hideRadarSweepCanvas();
-      setStatus(radarDisplayedUrl
-        ? ("Radar held on previous frame")
-        : ("Radar missing: " + url + " (check manifest/frames path)"));
+      hideRadarSweepCanvas();
+      setStatus("Radar missing: " + url + " (check manifest/frames path)");
     };
     img.src = url;
   }
