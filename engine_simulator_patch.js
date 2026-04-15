@@ -5118,7 +5118,7 @@ if (window.createMetarsModule) {
       var watchNum = watchLine ? watchLine[1] : '';
       out.title = watchNum ? ('Watch ' + watchNum + ' — PDS Severe Thunderstorm Watch') : 'PDS Severe Thunderstorm Watch';
       out.category = /Particularly Dangerous Situation/i.test(text) ? 'PDS Watch' : 'Severe Thunderstorm Watch';
-      out.summary = firstMatch(/SUMMARY\.\.\.([\s\S]*?)(?:\n\s*The severe thunderstorm watch area|\n\s*PRECAUTIONARY|$)/i) or 'Particularly Dangerous Situation watch details.';
+      out.summary = firstMatch(/SUMMARY\.\.\.([\s\S]*?)(?:\n\s*The severe thunderstorm watch area|\n\s*PRECAUTIONARY|$)/i) || 'Particularly Dangerous Situation watch details.';
       out.issued = issuedLine ? issuedLine[1] : '';
       var hazards = [];
       var hm = text.match(/Primary threats include\.\.\.([\s\S]*?)(?:\n\s*SUMMARY\.\.\.|$)/i);
