@@ -879,47 +879,73 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   </script>
 
 
+
+
+
 <script>
 (function () {
   const mapEl = document.getElementById("map");
   const drawBtn = document.getElementById("toolDraw");
   const eraseBtn = document.getElementById("toolErase");
   const clearBtn = document.getElementById("toolClear");
+  const colorDots = Array.from(document.querySelectorAll("[data-draw-color]"));
 
   if (!mapEl || !drawBtn) return;
 
-  const host = mapEl.parentElement || document.body;
+  mapEl.style.position = mapEl.style.position || "relative";
 
   const wrap = document.createElement("div");
   wrap.id = "simpleDrawOverlay";
   wrap.style.position = "absolute";
   wrap.style.left = "0";
   wrap.style.top = "0";
-  wrap.style.right = "0";
-  wrap.style.bottom = "0";
-  wrap.style.zIndex = "99999";
+  wrap.style.width = "100%";
+  wrap.style.height = "100%";
+  wrap.style.zIndex = "650";
   wrap.style.pointerEvents = "none";
   wrap.style.touchAction = "none";
   wrap.style.cursor = "crosshair";
+  wrap.style.background = "transparent";
 
   const canvas = document.createElement("canvas");
+  canvas.style.position = "absolute";
+  canvas.style.left = "0";
+  canvas.style.top = "0";
   canvas.style.width = "100%";
   canvas.style.height = "100%";
   canvas.style.display = "block";
   wrap.appendChild(canvas);
-  host.appendChild(wrap);
+  mapEl.appendChild(wrap);
 
   const ctx = canvas.getContext("2d");
   let drawing = false;
   let enabled = false;
   let currentColor = "#fdd835";
-  const colorDots = Array.from(document.querySelectorAll("[data-draw-color]"));
+  let lastPoint = null;
+
+  function syncColorDots() {
+    colorDots.forEach(function (dot) {
+      const c = String(dot.getAttribute("data-draw-color") || "").toLowerCase();
+      dot.classList.toggle("is-active", c === currentColor.toLowerCase());
+    });
+  }
+
+  function syncDrawUi() {
+    drawBtn.classList.toggle("active", enabled);
+    try { document.body.classList.toggle("draw-active", enabled); } catch (e) {}
+  }
+
+  function setColor(color) {
+    currentColor = String(color || "#fdd835");
+    ctx.strokeStyle = currentColor;
+    syncColorDots();
+  }
 
   function resizeCanvas() {
-    const rect = wrap.getBoundingClientRect();
+    const rect = mapEl.getBoundingClientRect();
     const old = document.createElement("canvas");
-    old.width = canvas.width;
-    old.height = canvas.height;
+    old.width = canvas.width || 1;
+    old.height = canvas.height || 1;
     const oldCtx = old.getContext("2d");
     if (canvas.width && canvas.height) oldCtx.drawImage(canvas, 0, 0);
 
@@ -943,48 +969,56 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     try { if (map.tap) lock ? map.tap.disable() : map.tap.enable(); } catch(e) {}
   }
 
+  function stopEvent(ev) {
+    if (!ev) return;
+    if (typeof ev.preventDefault === "function") ev.preventDefault();
+    if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+  }
+
   function getPoint(ev) {
     const rect = canvas.getBoundingClientRect();
-    const e = ev.touches && ev.touches.length ? ev.touches[0] : ev;
+    const src = (ev.touches && ev.touches.length) ? ev.touches[0]
+               : ((ev.changedTouches && ev.changedTouches.length) ? ev.changedTouches[0] : ev);
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: src.clientX - rect.left,
+      y: src.clientY - rect.top
     };
   }
 
-  function start(ev) {
+  function beginStroke(ev) {
     if (!enabled) return;
-    ev.preventDefault();
-    ev.stopPropagation();
+    stopEvent(ev);
     drawing = true;
-    const p = getPoint(ev);
+    lastPoint = getPoint(ev);
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
+    ctx.moveTo(lastPoint.x, lastPoint.y);
   }
 
-  function move(ev) {
+  function moveStroke(ev) {
     if (!enabled || !drawing) return;
-    ev.preventDefault();
-    ev.stopPropagation();
+    stopEvent(ev);
     const p = getPoint(ev);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
+    lastPoint = p;
   }
 
-  function end(ev) {
+  function endStroke(ev) {
     if (!enabled) return;
-    if (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
+    stopEvent(ev);
     drawing = false;
+    lastPoint = null;
   }
 
   function setDraw(on) {
     enabled = !!on;
     wrap.style.pointerEvents = enabled ? "auto" : "none";
+    if (!enabled) {
+      drawing = false;
+      lastPoint = null;
+    }
     setMapLocked(enabled);
-    if (!enabled) drawing = false;
     syncDrawUi();
   }
 
@@ -992,71 +1026,45 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  function syncColorDots() {
-  
-  function syncDrawUi() {
-    drawBtn.classList.toggle("active", enabled);
-    try {
-      document.body.classList.toggle("draw-active", enabled);
-      if (!enabled) {
-        document.body.classList.remove("measure-active", "probe-active", "track-active");
-      }
-    } catch (e) {}
-  }
-
   colorDots.forEach(function (dot) {
     function applyColor(ev) {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      }
+      stopEvent(ev);
       setColor(dot.getAttribute("data-draw-color") || "#fdd835");
       if (!enabled) setDraw(true);
     }
     dot.addEventListener("click", applyColor, true);
-    dot.addEventListener("mousedown", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-    }, { passive: false, capture: true });
+    dot.addEventListener("mousedown", stopEvent, { passive: false, capture: true });
     dot.addEventListener("touchstart", applyColor, { passive: false, capture: true });
   });
 
   drawBtn.addEventListener("click", function (ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    stopEvent(ev);
     setDraw(!enabled);
   }, true);
 
   if (eraseBtn) {
     eraseBtn.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      stopEvent(ev);
       clearDrawing();
     }, true);
   }
 
   if (clearBtn) {
     clearBtn.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      stopEvent(ev);
       clearDrawing();
     }, true);
   }
 
-  canvas.addEventListener("mousedown", start, { passive: false });
-  canvas.addEventListener("mousemove", move, { passive: false });
-  canvas.addEventListener("mouseup", end, { passive: false });
-  canvas.addEventListener("mouseleave", end, { passive: false });
-
-  canvas.addEventListener("touchstart", start, { passive: false });
-  canvas.addEventListener("touchmove", move, { passive: false });
-  canvas.addEventListener("touchend", end, { passive: false });
-  canvas.addEventListener("touchcancel", end, { passive: false });
+  ["mousedown","pointerdown","touchstart"].forEach(function(name){
+    canvas.addEventListener(name, beginStroke, { passive:false });
+  });
+  ["mousemove","pointermove","touchmove"].forEach(function(name){
+    canvas.addEventListener(name, moveStroke, { passive:false });
+  });
+  ["mouseup","mouseleave","pointerup","pointercancel","touchend","touchcancel"].forEach(function(name){
+    canvas.addEventListener(name, endStroke, { passive:false });
+  });
 
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
@@ -1064,10 +1072,10 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
   syncDrawUi();
 
   window.simpleYellowDraw = {
-    on: () => setDraw(true),
-    off: () => setDraw(false),
+    on: function(){ setDraw(true); },
+    off: function(){ setDraw(false); },
     clear: clearDrawing,
-    color: (c) => setColor(c)
+    color: function(c){ setColor(c); }
   };
 })();
 </script>
