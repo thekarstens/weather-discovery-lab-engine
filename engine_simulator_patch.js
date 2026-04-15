@@ -3504,8 +3504,8 @@ function safeLink(url){
     var interactionCfg = (item && item.interaction && typeof item.interaction === 'object') ? item.interaction : {};
     var uiCfg = (item && item.ui && typeof item.ui === 'object') ? item.ui : {};
 
-    var wantsSpc = _has(layers, ['spc_outlook','spc_day1','day1_outlook']) ||
-      productName.indexOf('spc') !== -1 || productName.indexOf('outlook') !== -1;
+    var wantsSpc = _has(layers, ['spc_outlook','spc_day1','day1_outlook','watch','pds_watch','spc_watch']) ||
+      productName.indexOf('spc') !== -1 || productName.indexOf('outlook') !== -1 || productName.indexOf('watch') !== -1;
 
     var wantsRadar = _has(layers, ['radar','radar_reflectivity','obs_radar','reflectivity','live_doppler']) ||
       productName.indexOf('radar') !== -1 || productName.indexOf('doppler') !== -1;
@@ -5049,9 +5049,37 @@ if (window.createMetarsModule) {
     }
   }
 
+  function getActiveStorySceneConfig(){
+    var item = getActiveStoryItem();
+    if (!item || typeof item !== 'object') return {};
+    var scene = (item.scene && typeof item.scene === 'object') ? item.scene : item;
+    return scene || {};
+  }
+
+  function activeStoryWantsSpcOverride(){
+    var scene = getActiveStorySceneConfig();
+    var product = String(scene.product || '').toLowerCase();
+    var layers = Array.isArray(scene.layers) ? scene.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+    function has(name){ return layers.indexOf(String(name).toLowerCase()) !== -1; }
+    return has('spc') || has('spc_day1') || has('spc_outlook') || has('day1_outlook') ||
+           has('watch') || has('pds_watch') || has('spc_watch') ||
+           product.indexOf('spc') !== -1 || product.indexOf('outlook') !== -1 ||
+           product.indexOf('watch') !== -1;
+  }
+
+  function getStorySpcGeoJsonUrl(){
+    var scene = getActiveStorySceneConfig();
+    var rel = scene.overlayUrl || scene.geojson || scene.url || scene.dataUrl || scene.layerUrl || '';
+    if (!rel) return '';
+    return _isAbsUrl(rel) ? rel : _joinUrl(DATA_BASE, rel);
+  }
+
   function getSpcTextUrlForProduct(product, detailsFile){
     if (detailsFile) return _isAbsUrl(detailsFile) ? detailsFile : _joinUrl(DATA_BASE, detailsFile);
-    var p = String(product || '').toLowerCase();
+    var scene = getActiveStorySceneConfig();
+    var storyDetails = scene.detailsFile || scene.textUrl || scene.textFile || '';
+    if (storyDetails) return _isAbsUrl(storyDetails) ? storyDetails : _joinUrl(DATA_BASE, storyDetails);
+    var p = String(product || scene.product || '').toLowerCase();
     if (p === 'spc_day1_12z') return _joinUrl(DATA_BASE, 'spc/day1_12z_text.json');
     if (p === 'spc_day1_1630') return _joinUrl(DATA_BASE, 'spc/day1_1630_text.json');
     return _joinUrl(DATA_BASE, 'spc/day1_12z_text.json');
@@ -5226,8 +5254,12 @@ if (window.createMetarsModule) {
 
 
   async function ensureSpcDay1Layer(){
-    if (spcDay1Layer) return spcDay1Layer;
     var url = getSpcDay1Url();
+    if (spcDay1Layer && spcDay1Layer.__sourceUrl === url) return spcDay1Layer;
+    if (spcDay1Layer){
+      try{ if (map && map.hasLayer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer); }catch(e){}
+      spcDay1Layer = null;
+    }
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
     var gj = await res.json();
@@ -5257,6 +5289,7 @@ if (window.createMetarsModule) {
         });
       }
     });
+    spcDay1Layer.__sourceUrl = url;
     return spcDay1Layer;
   }
 
