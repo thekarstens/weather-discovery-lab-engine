@@ -2825,7 +2825,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   function classifyRoadShield(ref, hw){
     ref = normalizeRoadRef(ref);
     var upper = String(ref || '').toUpperCase();
-    if (String(hw || '').toLowerCase() === 'motorway' || /^I-\d+/.test(upper)) return 'interstate';
+    if (/^I-(29|90|229)$/.test(upper)) return 'interstate';
     if (/^US-\d+/.test(upper)) return 'us';
     if (/^(SD|MN|IA|NE)-\d+/.test(upper)) return 'state';
     return 'other';
@@ -2904,9 +2904,10 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
 
     if (kind === 'us'){
       return ''
-        + '<svg class="road-shield-svg" width="38" height="34" viewBox="0 0 38 34" aria-hidden="true">'
-        +   '<path d="M11 2.5h16l5 4.8v8.3c0 9.1-7.2 12.4-13 14.1-5.8-1.7-13-5-13-14.1V7.3l5-4.8z" fill="#ffffff" stroke="#111111" stroke-width="2"/>'
-        +   '<text x="19" y="20.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#111111">' + num + '</text>'
+        + '<svg class="road-shield-svg" width="40" height="36" viewBox="0 0 40 36" aria-hidden="true">'
+        +   '<path d="M12 2.5h16.2l5.2 5v8.7c0 9.5-7.6 12.9-14.2 14.8-6.6-1.9-14.2-5.3-14.2-14.8V7.5l5.2-5z" fill="#fbfbfb" stroke="#111111" stroke-width="2"/>'
+        +   '<path d="M12.6 4.2h14.8l4 3.9v7.8c0 8-6.5 10.9-12.4 12.6-5.9-1.7-12.4-4.6-12.4-12.6V8.1l4-3.9z" fill="none" stroke="#d9d9d9" stroke-width="0.8"/>'
+        +   '<text x="19.5" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="12.5" font-weight="700" fill="#111111">' + num + '</text>'
         + '</svg>';
     }
 
@@ -2933,9 +2934,11 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (state == 'SD'){
         return ''
           + '<svg class="road-shield-svg" width="42" height="38" viewBox="0 0 42 38" aria-hidden="true">'
-          +   '<rect x="2.5" y="2.5" width="37" height="33" rx="2.5" fill="#0b7a53" stroke="#0b7a53" stroke-width="1.2"/>'
-          +   '<path d="M7 6.5h25.4l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2H6.8l.2-21.2z" fill="#f7f7f7"/>'
-          +   '<path d="M32.4 6.5l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2-3.3 0 .7-2.2-.7-1.1.7-1.2-.8-1.2.8-1.3-.9-1.1.9-1.2-.7-1.2.7-1.4-.9-1.1.9-1.2-.7-1.1.7-1.2z" fill="#f7f7f7"/>'
+          +   '<defs><linearGradient id="sdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#138a63"/><stop offset="100%" stop-color="#0b6f4a"/></linearGradient></defs>'
+          +   '<rect x="2.5" y="2.5" width="37" height="33" rx="2.5" fill="url(#sdg)" stroke="#0a6b47" stroke-width="1.2"/>'
+          +   '<path d="M7 6.5h25.4l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2H6.8l.2-21.2z" fill="#fbfbfb"/>'
+          +   '<path d="M32.4 6.5l2.2 3-1 1.1 1 1.1-.8 2 .8 1.2-1.1 1.2 1 1.6-.8 1 1.1 1.3-.9 1.3 1 1.2-.8 5.2-3.3 0 .7-2.2-.7-1.1.7-1.2-.8-1.2.8-1.3-.9-1.1.9-1.2-.7-1.2.7-1.4-.9-1.1.9-1.2-.7-1.1.7-1.2z" fill="#fbfbfb"/>'
+          +   '<path d="M7.8 7.5h24.1l1.6 2.1-.7.8.7.8-.6 1.4.6.9-.8.8.7 1.1-.6.7.8.9-.7.9.7.8-.6 4H7.6z" fill="none" stroke="#d7d7d7" stroke-width="0.7"/>'
           +   '<text x="19.2" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#111111">' + num + '</text>'
           + '</svg>';
       }
@@ -2979,11 +2982,12 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
       if (!perRef[ref]) perRef[ref] = [];
       var existing = perRef[ref];
 
-      var isInterstate = (hw === 'motorway');
+      var kindHere = classifyRoadShield(ref, hw);
+      var isInterstate = (kindHere === 'interstate');
       if (!isInterstate && map.getZoom() < 9) return;
       var minSpacing = isInterstate
         ? ((map.getZoom() >= 9) ? 32000 : 52000)
-        : ((map.getZoom() >= 9) ? 42000 : 65000);
+        : ((map.getZoom() >= 10) ? 48000 : 70000);
       var maxPerRef = isInterstate
         ? ((map.getZoom() >= 9) ? 2 : 1)
         : 1;
