@@ -2393,18 +2393,10 @@ window.setReportsFilter = setReportsFilter;
   var drawGroup = L.layerGroup().addTo(map);
   var drawing = false;
   var currentLine = null;
-  var currentDrawColor = "#fdd835";
-
-  function setDrawColor(color){
-    currentDrawColor = String(color || "#fdd835");
-    window.__wdlDrawColor = currentDrawColor;
-  }
-  window.setDrawColor = setDrawColor;
 
   function clearDrawings(){
     try{ drawGroup.clearLayers(); }catch(e){}
   }
-  window.clearDrawings = clearDrawings;
 
 function setDrawMode(on){
   if (!isTeacherMode){
@@ -2436,7 +2428,6 @@ function setDrawMode(on){
     try{ map.scrollWheelZoom.disable(); }catch(e){}
     try{ map.keyboard.disable(); }catch(e){}
     try{ map.touchZoom.disable(); }catch(e){}
-    try{ if (map.tap && map.tap.disable) map.tap.disable(); }catch(e){}
   } else {
     document.body.classList.remove("draw-active");
     setToolActive(toolDrawBtn, false);
@@ -2450,13 +2441,8 @@ function setDrawMode(on){
     try{ map.scrollWheelZoom.enable(); }catch(e){}
     try{ map.keyboard.enable(); }catch(e){}
     try{ map.touchZoom.enable(); }catch(e){}
-    try{ if (map.tap && map.tap.enable) map.tap.enable(); }catch(e){}
   }
 }
-window.setDrawMode = setDrawMode;
-window.toggleDrawMode = function(){
-  setDrawMode(!document.body.classList.contains("draw-active"));
-};
 
   function startDraw(e){
   if (!document.body.classList.contains("draw-active")) return;
@@ -2470,7 +2456,7 @@ window.toggleDrawMode = function(){
   drawing = true;
 
   currentLine = L.polyline([e.latlng], {
-    color: currentDrawColor,
+    color: "#fdd835",
     weight: 5,
     opacity: 0.95,
     lineCap: "round",
@@ -2481,31 +2467,14 @@ window.toggleDrawMode = function(){
   function moveDraw(e){
     if (!drawing || !currentLine) return;
     if (!e || !e.latlng) return;
-    if (e.originalEvent) {
-      if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
-      if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
-    }
     currentLine.addLatLng(e.latlng);
   }
 
-  function endDraw(e){
+  function endDraw(){
     if (!drawing) return;
-    if (e && e.originalEvent) {
-      if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
-      if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
-    }
     drawing = false;
     currentLine = null;
   }
-
-  try{
-    var activeDrawDot = document.querySelector('.draw-color-dot.is-active');
-    if (activeDrawDot && activeDrawDot.getAttribute('data-draw-color')) {
-      setDrawColor(activeDrawDot.getAttribute('data-draw-color'));
-    } else {
-      setDrawColor(currentDrawColor);
-    }
-  }catch(e){}
 
   // Pointer/touch drawing
   map.on("mousedown", startDraw);
