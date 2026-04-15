@@ -5011,6 +5011,7 @@ if (window.createMetarsModule) {
   }
 
   function spcStyle(feature){
+    if (isWatchFeature(feature && feature.properties)) return watchStyle(feature && feature.properties);
     var c = {
       TSTM:{fill:'#C1E9C1',stroke:'#55BB55'},
       MRGL:{fill:'#66A366',stroke:'#005500'},
@@ -5024,7 +5025,15 @@ if (window.createMetarsModule) {
 
   function buildSpcPopupHtml(props){
     props = props || {};
-    if (isStoryWatchScene()) return buildWatchPopupHtml(props);
+    if (isWatchFeature(props)){
+      var watchNum = props.NUM || props.watch_num || props.WATCHNUM || '';
+      var watchTitle = (props.IS_PDS || props.is_pds || props.PDS) ? ('PDS Watch ' + watchNum) : ('Watch ' + watchNum);
+      return "<div class='spc-mini-popup'>" +
+        "<div class='spc-mini-title'>" + escapeHtml(watchTitle) + "</div>" +
+        "<div class='spc-mini-sub'>Click for full watch text</div>" +
+        "<button type='button' class='spc-details-btn' style='margin-top:8px;border:0;border-radius:999px;padding:7px 12px;font:900 12px/1 Arial,sans-serif;background:#173a63;color:#fff;cursor:pointer'>Details</button>" +
+      "</div>";
+    }
     var cat = normalizeSpcCategory(props);
     var labelMap = {
       TSTM:'General Thunderstorms',
@@ -5075,58 +5084,86 @@ if (window.createMetarsModule) {
     return _isAbsUrl(rel) ? rel : _joinUrl(DATA_BASE, rel);
   }
 
-  function getStorySpcWatchNumber(){
+  function getStoryWatchNumber(){
     var scene = getActiveStorySceneConfig();
-    var num = Number(scene.watchNumber || scene.num || scene.watch || scene.watchNum || NaN);
-    return isFinite(num) ? num : null;
+    var n = Number(scene.watchNumber || scene.watch || scene.num || scene.number);
+    return isFinite(n) ? n : null;
   }
 
-  function isStoryWatchScene(){
+  function featureMatchesActiveStory(feature){
     var scene = getActiveStorySceneConfig();
-    var product = String(scene.product || '').toLowerCase();
-    var layers = Array.isArray(scene.layers) ? scene.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
-    function has(name){ return layers.indexOf(String(name).toLowerCase()) !== -1; }
-    return has('watch') || has('pds_watch') || has('spc_watch') ||
-           product.indexOf('watch') !== -1 || product.indexOf('pds') !== -1;
-  }
-
-  function normalizeSpcOrWatchFeatures(gj){
-    var feats = (gj && Array.isArray(gj.features)) ? gj.features.slice() : [];
-    if (isStoryWatchScene()){
-      var watchNum = getStorySpcWatchNumber();
-      if (watchNum != null){
-        feats = feats.filter(function(f){
-          var p = (f && f.properties) ? f.properties : {};
-          return Number(p.NUM ?? p.num ?? p.watch_num ?? p.watch) === watchNum;
-        });
-      }
-    }
-    return { type:'FeatureCollection', features:feats };
-  }
-
-  function buildWatchPopupHtml(props){
-    props = props || {};
-    var num = props.NUM || props.num || props.watch_num || '?';
-    var type = String(props.TYPE || props.type || 'Watch').toUpperCase();
-    var isPds = !!(props.IS_PDS || props.is_pds);
-    var title = (type === 'SVR' ? 'Severe Thunderstorm Watch ' : 'Tornado Watch ') + num;
-    return "<div class='spc-mini-popup'>" +
-      "<div class='spc-mini-title'>" + escapeHtml(title) + "</div>" +
-      "<div class='spc-mini-sub'>" + (isPds ? 'Particularly Dangerous Situation' : 'SPC Watch Area') + "</div>" +
-      "<button type='button' class='spc-details-btn' style='margin-top:8px;border:0;border-radius:999px;padding:7px 12px;font:900 12px/1 Arial,sans-serif;background:#173a63;color:#fff;cursor:pointer'>Details</button>" +
-    "</div>";
-  }
-
-  function watchStyle(feature){
+    var watchNum = getStoryWatchNumber();
+    if (!watchNum) return true;
     var p = (feature && feature.properties) ? feature.properties : {};
-    var isPds = !!(p.IS_PDS || p.is_pds);
+    var num = Number(p.NUM || p.num || p.watch_num || p.watchNumber || p.WATCHNUM);
+    if (!isFinite(num)) return false;
+    return num === watchNum;
+  }
+
+  function parseSpcPlainText(rawText, url, product, props){
+    var text = String(rawText || '').replace(/\r/g, '').trim();
+    var lines = text.split('\n');
+    var out = { __url:url || '', official_text:text };
+
+    function firstMatch(re){
+      var m = text.match(re);
+      return m ? m[1].trim() : '';
+    }
+
+    var title = lines[0] ? lines[0].trim() : '';
+    var watchLine = text.match(/Watch Number\s+(\d+)/i);
+    var issuedLine = text.match(/\n\s*([^\n]*\d{1,2}:\d{2}\s*[AP]M\s*[A-Z]{2,4}\s*\w*\s*\w*\s*\w*\s*\d{1,2}\s*\d{4})/i);
+
+    if (/Particularly Dangerous Situation/i.test(text) || /Watch Number/i.test(text)) {
+      var watchNum = watchLine ? watchLine[1] : '';
+      out.title = watchNum ? ('Watch ' + watchNum + ' — PDS Severe Thunderstorm Watch') : 'PDS Severe Thunderstorm Watch';
+      out.category = /Particularly Dangerous Situation/i.test(text) ? 'PDS Watch' : 'Severe Thunderstorm Watch';
+      out.summary = firstMatch(/SUMMARY\.\.\.([\s\S]*?)(?:\n\s*The severe thunderstorm watch area|\n\s*PRECAUTIONARY|$)/i) or 'Particularly Dangerous Situation watch details.';
+      out.issued = issuedLine ? issuedLine[1] : '';
+      var hazards = [];
+      var hm = text.match(/Primary threats include\.\.\.([\s\S]*?)(?:\n\s*SUMMARY\.\.\.|$)/i);
+      if (hm){
+        for (var line of hm[1].split('\n')){
+          line = line.replace(/^\s*\*\s*/,'').trim();
+          if (line) hazards.push(line.replace(/\s+/g,' '));
+        }
+      }
+      out.hazards = hazards;
+      return out;
+    }
+
+    out.title = /MODERATE RISK/i.test(text) ? 'Moderate Risk' : (title || 'SPC Day 1 Outlook');
+    out.category = /HIGH RISK/i.test(text) ? 'High Risk'
+      : /MODERATE RISK/i.test(text) ? 'Moderate Risk'
+      : /ENHANCED RISK/i.test(text) ? 'Enhanced Risk'
+      : /SLIGHT RISK/i.test(text) ? 'Slight Risk'
+      : /MARGINAL RISK/i.test(text) ? 'Marginal Risk'
+      : 'SPC Outlook';
+    out.summary = firstMatch(/\.\.\.SUMMARY\.\.\.([\s\S]*?)(?:\n\s*\.\.\.|\n\s*\.\.[A-Z]|$)/i) || '';
+    out.issued = issuedLine ? issuedLine[1] : '';
+    var hazards = [];
+    if (out.summary){
+      hazards = out.summary.split(',').map(function(s){ return s.trim(); }).filter(Boolean).slice(0,4);
+    }
+    out.hazards = hazards;
+    return out;
+  }
+
+  function isWatchFeature(props){
+    props = props || {};
+    return !!(props.NUM || props.watch_num || props.WATCHNUM || props.IS_PDS || props.TYPE === 'SVR' || props.TYPE === 'TOR');
+  }
+
+  function watchStyle(props){
+    var p = props || {};
+    var isPds = !!(p.IS_PDS || p.is_pds || p.PDS);
     return {
-      color: isPds ? '#7a0018' : '#8b2f00',
-      weight: 3,
+      color: isPds ? '#8b0000' : '#b22222',
+      weight: isPds ? 4 : 3,
       opacity: 0.98,
-      fillColor: isPds ? '#ff5e5e' : '#ff9b57',
-      fillOpacity: isPds ? 0.22 : 0.16,
-      dashArray: isPds ? '' : '8 5'
+      fillColor: isPds ? '#ffb347' : '#ffd59a',
+      fillOpacity: isPds ? 0.18 : 0.10,
+      dashArray: isPds ? '8 6' : '6 5'
     };
   }
 
@@ -5154,7 +5191,14 @@ if (window.createMetarsModule) {
         var url = tries[i];
         var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
         if (!res.ok) throw new Error('SPC text HTTP ' + res.status + ': ' + url);
-        var data = await res.json();
+        var data;
+        try{
+          data = await res.json();
+        }catch(parseErr){
+          var plain = await res.text();
+          data = parseSpcPlainText(plain, url, product, null);
+        }
+        if (typeof data === 'string') data = parseSpcPlainText(data, url, product, null);
         data.__url = url;
         return data;
       }catch(err){
@@ -5171,26 +5215,44 @@ if (window.createMetarsModule) {
       if (!existing){
         existing = document.createElement('div');
         existing.id = 'spcInfoPanel';
-        existing.style.position = 'fixed';
-        existing.style.left = '50%';
-        existing.style.top = '52%';
-        existing.style.transform = 'translate(-50%, -50%)';
-        existing.style.zIndex = '100090';
-        existing.style.width = 'min(1100px, 92vw)';
-        existing.style.height = 'min(78vh, 820px)';
-        existing.style.overflow = 'hidden';
-        existing.style.background = 'rgba(255,255,255,0.985)';
+        existing.style.position = 'absolute';
+        existing.style.left = '17%';
+        existing.style.top = '118px';
+        existing.style.zIndex = '100004';
+        existing.style.width = '66%';
+        existing.style.maxWidth = '1120px';
+        existing.style.maxHeight = '72vh';
+        existing.style.overflow = 'auto';
+        existing.style.background = 'rgba(255,255,255,0.97)';
         existing.style.border = '1px solid rgba(0,0,0,0.18)';
-        existing.style.borderRadius = '18px';
-        existing.style.boxShadow = '0 24px 60px rgba(0,0,0,.32)';
-        existing.style.padding = '0';
+        existing.style.borderRadius = '16px';
+        existing.style.boxShadow = '0 10px 28px rgba(0,0,0,.18)';
+        existing.style.padding = '12px';
+        existing.style.cursor = 'move';
         document.body.appendChild(existing);
+
+        var drag = { on:false, x:0, y:0, l:18, t:132 };
+        existing.addEventListener('mousedown', function(ev){
+          if (ev.target && ev.target.closest && ev.target.closest('.spc-panel-close')) return;
+          if (ev.target && ev.target.closest && ev.target.closest('.spc-panel-scroll')) return;
+          drag.on = true; drag.x = ev.clientX; drag.y = ev.clientY;
+          drag.l = parseInt(existing.style.left || '18', 10);
+          drag.t = parseInt(existing.style.top || '132', 10);
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function(ev){
+          if (!drag.on) return;
+          existing.style.left = (drag.l + ev.clientX - drag.x) + 'px';
+          existing.style.top = (drag.t + ev.clientY - drag.y) + 'px';
+        });
+        window.addEventListener('mouseup', function(){ drag.on = false; });
       }
 
-      var scene = getActiveStorySceneConfig() || {};
-      var product = scene.product || '';
-      var detailsFile = scene.detailsFile || '';
-      var isWatch = isStoryWatchScene();
+      var activeStory = getActiveStoryItem() || {};
+      var sceneCfg = getActiveStorySceneConfig() || {};
+      var product = sceneCfg.product || activeStory.product || '';
+      var detailsFile = sceneCfg.detailsFile || activeStory.detailsFile || '';
+      var isWatch = isWatchFeature(props);
       var cat = normalizeSpcCategory(props);
       var labelMap = {
         TSTM:'General Thunderstorms',
@@ -5200,35 +5262,27 @@ if (window.createMetarsModule) {
         MDT:'Moderate Risk',
         HIGH:'High Risk'
       };
-      var riskTheme = isWatch
-        ? {bg:'linear-gradient(135deg,#6f0f12 0%,#33070a 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)'}
-        : ({
-            TSTM:{bg:'linear-gradient(135deg,#49a85d 0%,#2f7f42 100%)', accent:'#dff5df', chip:'rgba(255,255,255,.16)'},
-            MRGL:{bg:'linear-gradient(135deg,#2d7a36 0%,#1f5a26 100%)', accent:'#d9f1dc', chip:'rgba(255,255,255,.16)'},
-            SLGT:{bg:'linear-gradient(135deg,#c79b14 0%,#9d7300 100%)', accent:'#fff3c5', chip:'rgba(255,255,255,.18)'},
-            ENH:{bg:'linear-gradient(135deg,#d66b1f 0%,#a84700 100%)', accent:'#ffe0cb', chip:'rgba(255,255,255,.18)'},
-            MDT:{bg:'linear-gradient(135deg,#a81f24 0%,#6f0f12 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)'},
-            HIGH:{bg:'linear-gradient(135deg,#8e2acb 0%,#5d1493 100%)', accent:'#f0d8ff', chip:'rgba(255,255,255,.20)'}
-          }[cat] || {bg:'linear-gradient(135deg,#173a63 0%,#0f2744 100%)', accent:'#d9e9ff', chip:'rgba(255,255,255,.18)'});
-
-      var title = isWatch
-        ? ((String((props && (props.TYPE || props.type)) || 'SVR').toUpperCase() === 'SVR' ? 'Severe Thunderstorm Watch ' : 'Tornado Watch ') + String((props && (props.NUM || props.num || props.watch_num)) || '?'))
-        : (labelMap[cat] || 'SPC Day 1 Outlook');
+      var riskTheme = {
+        TSTM:{bg:'linear-gradient(135deg,#49a85d 0%,#2f7f42 100%)', accent:'#dff5df', chip:'rgba(255,255,255,.16)'},
+        MRGL:{bg:'linear-gradient(135deg,#2d7a36 0%,#1f5a26 100%)', accent:'#d9f1dc', chip:'rgba(255,255,255,.16)'},
+        SLGT:{bg:'linear-gradient(135deg,#c79b14 0%,#9d7300 100%)', accent:'#fff3c5', chip:'rgba(255,255,255,.18)'},
+        ENH:{bg:'linear-gradient(135deg,#d66b1f 0%,#a84700 100%)', accent:'#ffe0cb', chip:'rgba(255,255,255,.18)'},
+        MDT:{bg:'linear-gradient(135deg,#a81f24 0%,#6f0f12 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)'},
+        HIGH:{bg:'linear-gradient(135deg,#8e2acb 0%,#5d1493 100%)', accent:'#f0d8ff', chip:'rgba(255,255,255,.20)'}
+      }[cat] || {bg:'linear-gradient(135deg,#173a63 0%,#0f2744 100%)', accent:'#d9e9ff', chip:'rgba(255,255,255,.18)'};
 
       existing.innerHTML =
-        "<div style='height:100%;display:flex;flex-direction:column'>" +
-          "<div style='padding:16px 20px 14px;background:" + riskTheme.bg + ";color:#fff;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)'>" +
-            "<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start'>" +
-              "<div>" +
-                "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.88'>" + (isWatch ? "SPC Watch Details" : "SPC Outlook Details") + "</div>" +
-                "<div style='font:900 30px/1.02 Lato,Arial,sans-serif;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.25)'>" + escapeHtml(title) + "</div>" +
-                "<div style='display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:" + riskTheme.chip + ";font:900 11px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase'>" + (isWatch ? (props && (props.IS_PDS || props.is_pds) ? 'PDS' : 'Watch') : 'Official SPC Text') + "</div>" +
-              "</div>" +
-              "<button class='spc-panel-close' style='border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:6px 10px;font-weight:900;cursor:pointer'>X</button>" +
+        "<div style='margin:-12px -12px 0 -12px;padding:14px 16px 12px 16px;background:" + riskTheme.bg + ";color:#fff;border-radius:16px 16px 0 0;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)'>" +
+          "<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start'>" +
+            "<div>" +
+              "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.88'>" + (isWatch ? 'SPC Watch Details' : 'SPC Outlook Details') + "</div>" +
+              "<div style='font:900 22px/1.02 Lato,Arial,sans-serif;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.25)'>" + escapeHtml(labelMap[cat] || 'SPC Day 1 Outlook') + "</div>" +
+              "<div style='display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:" + riskTheme.chip + ";font:900 11px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase'>Loading details…</div>" +
             "</div>" +
+            "<button class='spc-panel-close' style='border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
           "</div>" +
-          "<div class='spc-panel-scroll' style='flex:1;overflow:auto;padding:18px 22px 20px 22px;font:800 15px/1.5 Arial,sans-serif;color:#122033'>Fetching SPC text…</div>" +
-        "</div>";
+        "</div>" +
+        "<div style='margin-top:12px;font:800 13px/1.35 Arial,sans-serif'>Fetching SPC text…</div>";
 
       var closeBtn0 = existing.querySelector('.spc-panel-close');
       if (closeBtn0) closeBtn0.onclick = function(){ existing.style.display = 'none'; };
@@ -5243,30 +5297,64 @@ if (window.createMetarsModule) {
 
       var summary = payload && payload.summary ? String(payload.summary) : "This highlighted area shows where forecasters expected the most concerning severe weather threat.";
       var hazards = payload && Array.isArray(payload.hazards) ? payload.hazards : [];
-      var officialText = payload && payload.official_text ? String(payload.official_text) : '';
-      var issueTime = payload && (payload.issue_time || payload.issued || payload.valid || payload.valid_time) ? String(payload.issue_time || payload.issued || payload.valid || payload.valid_time) : '';
-      var sourceName = payload && payload.source ? String(payload.source) : 'Storm Prediction Center';
+      var officialText = payload && payload.official_text ? String(payload.official_text) : "";
+      var title = payload && payload.title ? String(payload.title) : (isWatch ? ('Watch ' + (props.NUM || props.watch_num || '') ) : "SPC Day 1 Outlook");
+      var issued = payload && payload.issued ? String(payload.issued) : "";
+      var category = payload && payload.category ? String(payload.category) : (labelMap[cat] || "");
+      var sourceLabel = payload && payload.__url ? payload.__url.split('/').slice(-1)[0] : "";
+      var riskTheme = {
+        TSTM:{bg:'linear-gradient(135deg,#49a85d 0%,#2f7f42 100%)', accent:'#dff5df', chip:'rgba(255,255,255,.16)', body:'#f4fbf4', line:'rgba(33,93,43,.20)'},
+        MRGL:{bg:'linear-gradient(135deg,#2d7a36 0%,#1f5a26 100%)', accent:'#d9f1dc', chip:'rgba(255,255,255,.16)', body:'#f4fbf4', line:'rgba(33,93,43,.20)'},
+        SLGT:{bg:'linear-gradient(135deg,#c79b14 0%,#9d7300 100%)', accent:'#fff3c5', chip:'rgba(255,255,255,.18)', body:'#fffaf0', line:'rgba(157,115,0,.22)'},
+        ENH:{bg:'linear-gradient(135deg,#d66b1f 0%,#a84700 100%)', accent:'#ffe0cb', chip:'rgba(255,255,255,.18)', body:'#fff6f0', line:'rgba(168,71,0,.22)'},
+        MDT:{bg:'linear-gradient(135deg,#a81f24 0%,#6f0f12 100%)', accent:'#ffd7d9', chip:'rgba(255,255,255,.20)', body:'#fff4f4', line:'rgba(111,15,18,.22)'},
+        HIGH:{bg:'linear-gradient(135deg,#8e2acb 0%,#5d1493 100%)', accent:'#f0d8ff', chip:'rgba(255,255,255,.20)', body:'#fbf5ff', line:'rgba(93,20,147,.22)'}
+      }[cat] || {bg:'linear-gradient(135deg,#173a63 0%,#0f2744 100%)', accent:'#d9e9ff', chip:'rgba(255,255,255,.18)', body:'#f7fafe', line:'rgba(15,39,68,.18)'};
 
-      var hazardHtml = hazards.length ? (
-        "<div style='margin-top:14px'><div style='font:900 13px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#173a63'>Key Points</div>" +
-        "<ul style='margin:10px 0 0 18px;padding:0'>" +
-        hazards.map(function(h){ return "<li style='margin:0 0 8px 0'>" + escapeHtml(String(h)) + "</li>"; }).join('') +
-        "</ul></div>"
-      ) : '';
+      var html = "<div style='margin:-12px -12px 0 -12px;padding:14px 16px 12px 16px;background:" + riskTheme.bg + ";color:#fff;border-radius:16px 16px 0 0;box-shadow:inset 0 -1px 0 rgba(255,255,255,.12)'>" +
+          "<div style='display:flex;justify-content:space-between;gap:12px;align-items:flex-start'>" +
+            "<div>" +
+              "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:.88'>" + (isWatch ? 'SPC Watch Details' : 'SPC Outlook Details') + "</div>" +
+              "<div style='font:900 22px/1.02 Lato,Arial,sans-serif;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.25)'>" + escapeHtml(title) + "</div>" +
+              "<div style='display:inline-block;margin-top:8px;padding:4px 9px;border-radius:999px;background:" + riskTheme.chip + ";font:900 11px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase'>" + escapeHtml(category || (labelMap[cat] || 'SPC Outlook')) + "</div>" +
+            "</div>" +
+            "<button class='spc-panel-close' style='border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:4px 8px;font-weight:900;cursor:pointer'>X</button>" +
+          "</div>" +
+        "</div>";
 
-      var bodyHtml =
-        "<div style='font:900 12px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#173a63'>" + escapeHtml(sourceName) + "</div>" +
-        (issueTime ? "<div style='margin-top:6px;font:800 13px/1.3 Arial,sans-serif;color:#35506e'><b>Issued:</b> " + escapeHtml(issueTime) + "</div>" : "") +
-        "<div style='margin-top:14px;font:900 18px/1.25 Lato,Arial,sans-serif;color:#10253d'>" + escapeHtml(summary) + "</div>" +
-        hazardHtml +
-        (officialText ? "<div style='margin-top:18px;padding-top:14px;border-top:1px solid rgba(16,37,61,.12)'><div style='font:900 13px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#173a63'>Full Text</div><pre style='white-space:pre-wrap;margin:12px 0 0 0;font:800 14px/1.45 Arial,sans-serif;color:#122033'>" + escapeHtml(officialText) + "</pre></div>" : "");
+      if (issued){
+        html += "<div style='margin-top:10px;font:800 11px/1.35 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.68'>Issued " + escapeHtml(issued) + "</div>";
+      }
 
-      var body = existing.querySelector('.spc-panel-scroll');
-      if (body) body.innerHTML = bodyHtml;
-    }catch(err){
-      console.error(err);
-    }
+      html += "<div style='margin-top:10px;padding:12px 13px;background:" + riskTheme.body + ";border:1px solid " + riskTheme.line + ";border-radius:14px;font:800 13px/1.48 Arial,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.04)'>" + escapeHtml(summary) + "</div>";
+
+      if (hazards.length){
+        html += "<div style='margin-top:12px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;opacity:.72'>Main threats</div>";
+        html += "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:8px'>";
+        for (var i = 0; i < hazards.length; i++){
+          html += "<div style='padding:6px 10px;border-radius:999px;background:" + riskTheme.body + ";border:1px solid " + riskTheme.line + ";font:800 12px/1.25 Arial,sans-serif'>" + escapeHtml(String(hazards[i])) + "</div>";
+        }
+        html += "</div>";
+      }
+
+      if (officialText){
+        html += "<div style='margin-top:14px;font:900 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;opacity:.72'>Official outlook text</div>";
+        html += "<div class='spc-panel-scroll' style='margin-top:8px;white-space:pre-wrap;font:700 12px/1.48 \"Courier New\",monospace;background:#faf7f2;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px 12px;cursor:text;max-height:28vh;overflow:auto'>" + escapeHtml(officialText) + "</div>";
+      } else {
+        html += "<div style='margin-top:12px;font:800 13px/1.4 Arial,sans-serif'>Official text file not found yet for this step.</div>";
+      }
+
+      if (sourceLabel){
+        html += "<div style='margin-top:8px;font:700 11px/1.3 Arial,sans-serif;opacity:.62'>Source: " + escapeHtml(sourceLabel) + "</div>";
+      }
+
+      existing.innerHTML = html;
+      var closeBtn = existing.querySelector('.spc-panel-close');
+      if (closeBtn) closeBtn.onclick = function(){ existing.style.display = 'none'; };
+      existing.style.display = 'block';
+    }catch(e){}
   }
+
 
   async function ensureSpcDay1Layer(){
     var url = getSpcDay1Url();
@@ -5278,9 +5366,14 @@ if (window.createMetarsModule) {
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
     var gj = await res.json();
-    gj = normalizeSpcOrWatchFeatures(gj);
+    if (gj && Array.isArray(gj.features)) {
+      gj = {
+        type: gj.type || 'FeatureCollection',
+        features: gj.features.filter(featureMatchesActiveStory)
+      };
+    }
     spcDay1Layer = L.geoJSON(gj, {
-      style:(isStoryWatchScene() ? watchStyle : spcStyle),
+      style:spcStyle,
       onEachFeature:function(feature, layer){
         layer.on('click', function(ev){
           try{
