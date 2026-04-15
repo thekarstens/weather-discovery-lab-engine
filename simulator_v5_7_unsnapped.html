@@ -826,7 +826,14 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
         toolStormTrack.classList.toggle('active', turningOn);
         syncSimpleToolStates();
       });
-      if (toolDraw) toolDraw.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} syncSimpleToolStates(); toolDraw.classList.add('active'); });
+      if (toolDraw) toolDraw.addEventListener('click', function(ev){
+        if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+        clearTrackLocal();
+        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
+        try{ document.body.classList.add('draw-active'); document.body.classList.remove('measure-active','probe-active','track-active'); }catch(e){}
+        syncSimpleToolStates();
+        toolDraw.classList.add('active');
+      });
       if (toolErase) toolErase.addEventListener('click', function(){
         clearTrackLocal();
         try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
@@ -856,7 +863,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
           var color = btn.getAttribute('data-draw-color') || '#fdd835';
           try{ if (typeof window.setDrawColor === 'function') window.setDrawColor(color); }catch(e){}
           try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
-          document.body.classList.add('draw-active');
+          try{ document.body.classList.add('draw-active'); document.body.classList.remove('measure-active','probe-active','track-active'); }catch(e){}
           drawColorDots.forEach(function(b){ b.classList.remove('is-active'); });
           btn.classList.add('is-active');
           if (toolDraw) toolDraw.classList.add('active');
