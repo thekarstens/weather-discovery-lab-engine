@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Weather Discovery Lab — Live Severe Weather Simulator v5</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./leaflet.css" />
+  <link rel="stylesheet" href="./leaflet-velocity.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet" />
+  <script src="./leaflet.js"></script>
+  <script src="./leaflet-velocity.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+  <style>
+    html, body { height:100%; margin:0; background:#07131f; font-family:"Lato", Arial, sans-serif; overflow:hidden; }
+    #map { height:100%; width:100%; background:#fff; }
+    .tvbanner{ position:absolute; top:0; left:0; right:0; z-index:100000; background:rgba(11,28,45,.94); color:#fff; border-bottom:2px solid rgba(255,255,255,.12); box-shadow:0 10px 28px rgba(0,0,0,.22); min-height:156px; }
+    .tvbanner::before{ content:""; position:absolute; top:0; left:0; right:0; height:4px; background:#2f4e94; }
+    .banner-topline{ position:relative; min-height:156px; }
+    #brandLogo{ position:absolute; left:10px; top:2px; width:240px; z-index:100010; filter:drop-shadow(0 4px 14px rgba(0,0,0,.40)); pointer-events:none; }
+    .banner-center{ position:absolute; left:50%; top:14px; transform:translateX(-50%); width:min(920px, calc(100% - 760px)); text-align:center; pointer-events:none; }
+    .brand-line{ font:900 28px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; }
+    .case-line{ margin-top:6px; font:900 17px/1 "Lato", Arial, sans-serif; text-transform:uppercase; }
+    .region-line{ margin-top:4px; font:800 12px/1 "Lato", Arial, sans-serif; opacity:.95; }
+    .sim-version{ position:absolute; left:250px; top:62px; z-index:100006; color:rgba(255,255,255,.74); font:800 10px/1 Arial,sans-serif; letter-spacing:1px; text-transform:uppercase; }
+
+    .mode-toggle{ display:none;
+      position:absolute; left:250px; top:38px; z-index:100009;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:999px; padding:8px 14px;
+      background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96));
+      color:#fff; font:900 12px/1 "Lato", Arial, sans-serif;
+      letter-spacing:.6px; text-transform:uppercase; cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+    .mode-toggle.test-mode{
+      background:linear-gradient(180deg,#f5b52c,#d88400 65%,#b66600);
+      color:#111;
+    }
+
+    .scrub-wrap{ position:absolute; left:250px; right:408px; top:84px; height:26px; z-index:100006; display:flex; align-items:center; gap:10px; }
+    .scrub-mini{ color:rgba(255,255,255,.95); font:900 12px/1 "Lato", Arial, sans-serif; min-width:48px; text-align:center; }
+    .scrub-shell{ flex:1; height:16px; padding:0 12px; display:flex; align-items:center; border-radius:999px; background:rgba(7,19,31,.72); border:1px solid rgba(255,255,255,.10); box-shadow:0 6px 14px rgba(0,0,0,.18); }
+    #cbScrubber{ width:100%; margin:0; -webkit-appearance:none; appearance:none; background:transparent; }
+    #cbScrubber::-webkit-slider-runnable-track{ height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:18px; height:18px; margin-top:-5px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
+    #cbScrubber::-moz-range-track{ height:8px; border-radius:999px; background:linear-gradient(90deg, rgba(80,120,170,.65), rgba(115,170,245,.96)); }
+    #cbScrubber::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background:#ffffff; border:2px solid #37b7ff; box-shadow:0 0 12px rgba(55,183,255,.85); }
+    .clock-stack{ position:absolute; right:16px; top:10px; display:flex; gap:12px; align-items:flex-start; z-index:100008; }
+    .sim-clock{ min-width:284px; border-radius:18px; background:linear-gradient(180deg,#020202,#101010 70%,#050505); border:2px solid rgba(255,64,64,.88); box-shadow:0 0 0 1px rgba(255,64,64,.35), 0 0 14px rgba(255,45,45,.45), 0 0 34px rgba(180,0,0,.28), inset 0 0 18px rgba(255,255,255,.03); padding:10px 16px 12px; position:relative; overflow:hidden; }
+    .sim-clock-label{ color:#ffb8b8; font:800 10px/1 Arial, sans-serif; letter-spacing:1.35px; text-transform:uppercase; margin-bottom:6px; text-align:center; opacity:.95; }
+    .sim-clock .time{ color:#ff4d4d; font:900 38px/1 "Lato", Arial, sans-serif; text-align:center; letter-spacing:1px; text-shadow:0 0 10px rgba(255,70,70,.48), 0 0 22px rgba(255,50,50,.28); font-variant-numeric:tabular-nums; }
+    #simPlayPauseBtn{ min-width:220px; min-height:104px; border-radius:20px; border:1px solid rgba(160,235,255,.98); background:linear-gradient(180deg,#0da7ff,#046fe6 58%,#0449a8); color:#fff; cursor:pointer; text-shadow:0 1px 4px rgba(0,0,0,.40); box-shadow:0 0 14px rgba(0,170,255,.52), 0 0 30px rgba(0,120,255,.26), inset 0 0 10px rgba(255,255,255,.10); text-transform:uppercase; letter-spacing:.9px; font:900 17px/1.1 "Lato", Arial, sans-serif; padding:10px 16px; }
+    #simPlayPauseBtn.is-ready{ animation:simPulse 1.45s infinite; }
+    #simPlayPauseBtn.is-running{ background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.9),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18); animation:none; }
+    @keyframes simPulse{ 0%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} 50%{ box-shadow:0 0 24px rgba(0,200,255,.92), 0 0 42px rgba(0,120,255,.42), inset 0 0 12px rgba(255,255,255,.14);} 100%{ box-shadow:0 0 10px rgba(0,170,255,.40), 0 0 20px rgba(0,120,255,.18), inset 0 0 10px rgba(255,255,255,.08);} }
+    
+    .product-row{ position:absolute; left:250px; right:240px; top:114px; z-index:100007; display:flex; gap:9px; overflow-x:auto; padding-bottom:6px; }
+    .product-group{ position:relative; flex:0 0 auto; }
+    .sim-group-toggle{ min-width:136px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96)); color:#fff; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:.65px; text-transform:uppercase; padding:12px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; pointer-events:auto; }
+    .sim-group-toggle:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-group-toggle.is-open{ background:linear-gradient(180deg, #1b4b7e, #12345a 65%, #0d233d); }
+    .product-menu{ position:absolute; left:0; top:calc(100% + 8px); min-width:220px; display:none; flex-direction:column; gap:6px; padding:10px; border-radius:18px; background:rgba(9,22,38,.97); border:1px solid rgba(255,255,255,.10); box-shadow:0 16px 30px rgba(0,0,0,.28); }
+    .product-group.is-open .product-menu{ display:flex; }
+    .product-menu .sim-product-btn{ min-width:0; width:100%; text-align:left; padding:10px 14px; border-radius:14px; font-size:12px; }
+    .product-menu .sim-product-btn.is-disabled{ opacity:.45; cursor:default; }
+    
+    .topic-rail{ display:none !important; pointer-events:none !important; visibility:hidden !important;
+      position:absolute; left:8px; top:182px; bottom:56px; width:74px; z-index:100021;
+      display:flex; flex-direction:column; gap:8px; overflow:auto; padding-right:4px;
+    }
+    .topic-rail::-webkit-scrollbar{ width:8px; }
+    .topic-rail::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+    .topic-tab{
+      border:none; cursor:pointer; border-radius:18px; min-height:62px; padding:8px 6px;
+      color:#fff; font:900 12px/1.05 "Lato", Arial, sans-serif; text-transform:uppercase;
+      box-shadow:0 8px 16px rgba(0,0,0,.22); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    }
+    .topic-tab .num{ width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.24); display:flex; align-items:center; justify-content:center; font:900 16px/1 "Lato", Arial, sans-serif; }
+    .topic-tab .label{ font:900 10px/1.05 "Lato", Arial, sans-serif; text-align:center; opacity:.98; }
+    .topic-tab.is-active{ outline:3px solid rgba(255,255,255,.82); transform:translateX(2px); }
+
+    .storyPanel{ position:absolute; left:92px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); display:flex; flex-direction:column; }
+    .story-stack{ display:flex; flex-direction:column; gap:8px; padding:12px 12px 10px; max-height:220px; overflow:auto; background:rgba(241,243,246,.95); border-bottom:1px solid rgba(16,36,58,.10); }
+    .story-stack::-webkit-scrollbar{ width:8px; }
+    .story-stack::-webkit-scrollbar-thumb{ background:rgba(13,44,87,.25); border-radius:999px; }
+    .story-card-chip{ display:grid; grid-template-columns:54px 1fr; gap:12px; align-items:center; border:none; width:100%; text-align:left; border-radius:18px; padding:10px 12px; cursor:pointer; background:#ffffff; color:#10253d; box-shadow:0 6px 14px rgba(0,0,0,.10); border-left:10px solid #1f6ad1; }
+    .story-card-chip:hover{ transform:translateY(-1px); filter:brightness(1.01); }
+    .story-card-chip.is-active{ box-shadow:0 0 0 3px rgba(17,96,215,.20), 0 10px 18px rgba(0,0,0,.14); }
+    .story-chip-num{ width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:900 20px/1 "Lato", Arial, sans-serif; color:#fff; background:rgba(12,45,88,.90); }
+    .story-chip-copy{ min-width:0; }
+    .story-chip-kicker{ font:800 10px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; opacity:.75; }
+    .story-chip-title{ margin-top:4px; font:900 15px/1.05 "Lato", Arial, sans-serif; }
+    .story-chip-meta{ margin-top:6px; font:800 11px/1 "Lato", Arial, sans-serif; opacity:.72; text-transform:uppercase; letter-spacing:.4px; }
+
+    .product-row::-webkit-scrollbar{ height:8px; }
+    .product-row::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:999px; }
+    .sim-product-btn{ flex:0 0 auto; min-width:136px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96)); color:#fff; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:.65px; text-transform:uppercase; padding:12px 16px; box-shadow:0 8px 18px rgba(0,0,0,.20); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; pointer-events:auto; }
+    .sim-product-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+    .sim-product-btn.is-active{ background:linear-gradient(180deg, #1fb8ff, #1068d6 65%, #0c3f94); box-shadow:0 0 16px rgba(42,190,255,.62), 0 8px 18px rgba(0,0,0,.24); border-color:rgba(181,237,255,.96); }
+    .sim-aux-btn{ background:linear-gradient(180deg, rgba(41,28,10,.98), rgba(70,42,8,.96)); border-color:rgba(255,191,88,.38); }
+    .sim-aux-btn:hover{ filter:brightness(1.08); }
+    .sim-aux-btn.is-active{ background:linear-gradient(180deg, #bf641f, #8f4513 60%, #6f330f); box-shadow:0 0 16px rgba(214,123,42,.50), 0 8px 18px rgba(0,0,0,.24); border-color:rgba(255,214,160,.92); }
+    .product-slot{
+      position:absolute; right:18px; top:146px; z-index:100021; pointer-events:none;
+      width:460px; max-width:calc(100% - 520px);
+    }
+    .product-pill{
+      display:flex; align-items:center; justify-content:flex-start;
+      min-height:56px; padding:0 18px; border-radius:0;
+      background:#ffffff; color:#111111; border:4px solid #f1a400;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+      font-family:"Lato", Arial, sans-serif; text-transform:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-weight:900; font-size:28px; line-height:1;
+    }
+    .storyPanel{ position:absolute; left:12px; top:172px; width:438px; max-height:calc(100% - 224px); z-index:100020; border-radius:20px; overflow:hidden; background:rgba(255,255,255,.96); box-shadow:0 18px 34px rgba(0,0,0,.22); }
+    .story-shell-header{ display:flex; align-items:center; gap:14px; padding:12px 12px 14px; color:#fff; background:linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300); }
+    .story-station-chip{ width:78px; height:78px; border-radius:50%; background:rgba(255,255,255,.22); border:3px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font:900 32px/1 "Lato", Arial, sans-serif; flex:0 0 auto; }
+    .story-station-chip.compact{ font-size:26px; letter-spacing:-0.5px; }
+    .story-head-copy{ min-width:0; flex:1; }
+    .story-shell-kicker{ font:800 12px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; opacity:.96; }
+    .story-title{ margin-top:6px; font:900 34px/0.96 "Lato", Arial, sans-serif; letter-spacing:-0.7px; }
+    #storyCollapseBtn{ border:none; background:#0f2e57; color:#fff; border-radius:14px; padding:12px 16px; cursor:pointer; font:900 15px/1 "Lato", Arial, sans-serif; box-shadow:0 10px 16px rgba(0,0,0,.20); }
+        .story-content{ padding:12px 14px 14px; }
+    .sim-scene-lead{ margin-bottom:12px; border-radius:16px; background:#f1f3f6; color:#1c3d63; padding:12px 14px; font:900 16px/1.1 "Lato", Arial, sans-serif; letter-spacing:.2px; text-transform:uppercase; }
+    .story-body{ color:#172b45; font:900 17px/1.45 "Lato", Arial, sans-serif; }
+    .story-body p{ margin:0 0 14px; }
+    .story-shell-footer{ border-top:1px solid rgba(16,36,58,.10); background:#fbfbfc; padding:10px 14px 14px; }
+    .story-footer-row{ display:flex; align-items:center; gap:10px; justify-content:space-between; flex-wrap:wrap; }
+    .story-step{ color:#173a62; font:900 14px/1 "Lato", Arial, sans-serif; letter-spacing:.5px; text-transform:uppercase; }
+    .story-actions-right{ display:flex; gap:8px; align-items:center; }
+    .story-action, .story-nav-btn{ border:none; border-radius:16px; padding:12px 16px; cursor:pointer; background:#0f2e57; color:#fff; font:900 15px/1 "Lato", Arial, sans-serif; box-shadow:0 8px 14px rgba(0,0,0,.16); }
+    .story-action.story-doppler-inline{ background:linear-gradient(180deg,#0d57d6,#0b7cff 55%,#083f9d); border:1px solid rgba(160,235,255,.98); text-shadow:0 1px 4px rgba(0,0,0,.40); box-shadow:0 0 14px rgba(0,170,255,.60), inset 0 0 10px rgba(255,255,255,.10); }
+    .story-action.story-doppler-inline.active{ background:linear-gradient(180deg,#15b5ff,#067ef1 55%,#0658d3); box-shadow:0 0 22px rgba(0,200,255,.90),0 0 40px rgba(0,120,255,.45), inset 0 0 10px rgba(255,255,255,.18); }
+    .story-action.story-doppler-inline.pulsing{ animation:dopplerPulse 1.4s infinite; }
+    @keyframes dopplerPulse{ 0%{box-shadow:0 0 10px rgba(0,170,255,.45);}50%{box-shadow:0 0 24px rgba(0,200,255,.95),0 0 38px rgba(0,120,255,.55);}100%{box-shadow:0 0 10px rgba(0,170,255,.45);} }
+    .story-nav{ margin-top:10px; display:flex; gap:10px; }
+    .story-nav .story-nav-btn{ flex:1; }
+    body.story-collapsed .story-content, body.story-collapsed .story-shell-footer { display:none; }
+    .toolBox{ position:absolute; right:10px; top:208px; z-index:100019; width:130px; background:rgba(8,25,44,.86); border:1px solid rgba(255,255,255,.08); border-radius:24px; padding:10px 8px 12px; box-shadow:0 14px 26px rgba(0,0,0,.22); backdrop-filter:blur(3px); transition:transform .22s ease, opacity .22s ease; transform-origin: top right; } .toolBox.is-collapsed{ width:118px; } .toolBox.is-collapsed .tool-btn{ display:none; }
+    .tool-head{ display:flex; justify-content:center; align-items:center; margin-bottom:8px; }
+    .tool-head-pill{ min-width:96px; text-align:center; padding:10px 12px; border-radius:999px; background:rgba(255,255,255,.06); color:#fff; font:900 14px/1 "Lato", Arial, sans-serif; text-transform:uppercase; cursor:grab; user-select:none; touch-action:none; } .toolBox.is-dragging .tool-head-pill{ cursor:grabbing; }
+    .tool-btn{ width:100%; margin:6px 0 0; border-radius:18px; border:1px solid rgba(255,255,255,.10); padding:12px 8px; background:#0d2c57; color:#fff; cursor:pointer; font:900 14px/1 "Lato", Arial, sans-serif; box-shadow:0 8px 14px rgba(0,0,0,.16); }
+    .tool-btn.active{ background:#f5d835; color:#111; }
+    .zoom-corner{ position:absolute; left:12px; bottom:84px; z-index:100030; display:flex; flex-direction:column; gap:8px; }
+    .zoom-corner-btn{ width:52px; height:52px; border:none; border-radius:16px; cursor:pointer; background:linear-gradient(180deg, rgba(8,25,44,.96), rgba(13,44,87,.96)); color:#fff; font:900 30px/1 "Lato", Arial, sans-serif; box-shadow:0 10px 22px rgba(0,0,0,.26); border:1px solid rgba(255,255,255,.12); }
+    .zoom-corner-btn:hover{ filter:brightness(1.08); }
+    body.draw-active #map{ cursor:crosshair; touch-action:none !important; }
+    .draw-color-row{display:none; gap:8px; margin:8px 0 2px; justify-content:center; max-height:0; opacity:0; overflow:hidden; transition:max-height .18s ease, opacity .18s ease, margin .18s ease;}
+    body.draw-active .toolBox:not(.is-collapsed) .draw-color-row{display:flex; max-height:34px; opacity:1; margin:8px 0 2px;}
+    .draw-color-dot{width:20px; height:20px; border-radius:50%; border:2px solid rgba(255,255,255,.45); cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.18);}
+    .draw-color-dot.is-active{ outline:3px solid rgba(255,255,255,.92); transform:scale(1.06);}
+ .draw-color-row{display:flex; gap:8px; margin:8px 0 2px; justify-content:center;} .draw-color-dot{width:20px; height:20px; border-radius:50%; border:2px solid rgba(255,255,255,.45); cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.18);} .draw-color-dot.is-active{ outline:3px solid rgba(255,255,255,.92); transform:scale(1.06);} .model-time-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;} .model-time-chip{border:none; border-radius:999px; padding:9px 12px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10);} .model-time-chip.active{background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16);} .model-time-label{margin-top:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.8px; text-transform:uppercase; color:#45698f;}
+    .sim-alert{ position:absolute; bottom:66px; right:-540px; top:auto; width:500px; z-index:100029; border-radius:24px 0 0 24px; color:#fff; opacity:0; background:linear-gradient(180deg, rgba(129,0,0,.98), rgba(185,0,0,.96)); border-left:5px solid rgba(255,255,255,.24); border-top:2px solid rgba(255,255,255,.14); border-bottom:2px solid rgba(255,255,255,.14); box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 26px rgba(255,0,0,.28); transition:right .36s ease, opacity .2s ease; cursor:pointer; }
+    .sim-alert.visible{ right:12px; opacity:1; }
+    .sim-alert.theme-severe{ background:linear-gradient(180deg, rgba(177,90,0,.98), rgba(255,132,0,.96)); }
+    .sim-alert.theme-tornado{ background:linear-gradient(180deg, rgba(116,0,0,.98), rgba(220,0,0,.96)); animation:warnFlash 0.8s linear infinite alternate; }
+    .sim-alert.theme-reports{ background:linear-gradient(180deg, rgba(0,98,58,.98), rgba(0,165,96,.96)); }
+    .sim-alert.theme-info{ background:linear-gradient(180deg, rgba(0,63,128,.98), rgba(0,124,227,.96)); }
+    @keyframes warnFlash{ 0%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 10px rgba(255,0,0,.18);} 100%{ box-shadow:0 16px 40px rgba(0,0,0,.34), 0 0 34px rgba(255,0,0,.60);} }
+    .sim-alert-kicker{ padding:14px 20px 0; font:900 13px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; opacity:.92; }
+    .sim-alert-headline{ padding:8px 20px 0; font:900 30px/1 "Lato", Arial, sans-serif; text-transform:uppercase; }
+    .sim-alert-body{ padding:12px 20px 18px; font:900 17px/1.4 "Lato", Arial, sans-serif; } .sim-alert-close{position:absolute; top:10px; right:12px; width:34px; height:34px; border:none; border-radius:50%; cursor:pointer; background:rgba(255,255,255,.14); color:#fff; font:900 22px/1 Arial,sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.18);} .sim-alert-close:hover{background:rgba(255,255,255,.22);} .model-time-wrap{margin-top:14px; padding-top:10px; border-top:1px solid rgba(16,36,58,.12);} .model-time-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;} .model-time-chip{border:none; border-radius:999px; padding:10px 14px; cursor:pointer; background:#e7eef8; color:#16365d; font:900 13px/1 "Lato", Arial, sans-serif; box-shadow:0 4px 10px rgba(0,0,0,.10);} .model-time-chip.active{background:#0f67d8; color:#fff; box-shadow:0 0 0 2px rgba(15,103,216,.20), 0 8px 14px rgba(0,0,0,.16);} .model-time-label{margin-top:2px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.8px; text-transform:uppercase; color:#45698f;}
+    .warning-count-box{ position:absolute; right:10px; bottom:48px; z-index:100028; min-width:150px; padding:10px 14px; border-radius:16px; background:linear-gradient(180deg, rgba(10,22,36,.96), rgba(5,14,24,.96)); border:1px solid rgba(255,255,255,.12); box-shadow:0 10px 22px rgba(0,0,0,.24); color:#fff; text-align:center; }
+    .warning-count-box .label{ font:800 10px/1 Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; opacity:.8; }
+    .warning-count-box .count{ margin-top:4px; font:900 28px/1 "Lato", Arial, sans-serif; color:#ffcb45; }
+    .ticker-wrap{ position:absolute; left:0; right:0; bottom:0; height:60px; z-index:100030; background:linear-gradient(180deg, rgba(8,22,38,.99), rgba(3,10,20,.99)); border-top:3px solid rgba(255,255,255,.14); display:flex; align-items:center; overflow:hidden; box-shadow:0 -10px 28px rgba(0,0,0,.28), inset 0 0 14px rgba(255,255,255,.03); }
+    .ticker-label{ flex:0 0 auto; height:100%; display:flex; align-items:center; padding:0 20px; background:linear-gradient(180deg,#bb0808,#ff2a2a 60%, #9b0000); color:#fff; font:900 19px/1 "Lato", Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; text-shadow:0 0 8px rgba(255,255,255,.22), 0 0 14px rgba(255,80,80,.28); box-shadow:inset 0 0 10px rgba(255,255,255,.08); }
+    .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
+    .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
+    .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
+  
+/* ===== PUBLIC DEMO V2 OVERRIDES ===== */
+.mode-toggle,
+.scrub-wrap,
+.clock-stack,
+.product-row,
+.sim-alert,
+.warning-count-box,
+.ticker-wrap,
+.zoom-badge-control{
+  display:none !important;
+}
+.tvbanner{
+  min-height:96px !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.22) !important;
+}
+.banner-topline{
+  min-height:96px !important;
+}
+#brandLogo{
+  width:190px !important;
+  top:6px !important;
+}
+.banner-center{
+  top:12px !important;
+  width:min(760px, calc(100% - 280px)) !important;
+}
+.brand-line{
+  font-size:28px !important;
+}
+.case-line{
+  margin-top:5px !important;
+  font-size:17px !important;
+}
+.region-line{
+  margin-top:3px !important;
+  font-size:12px !important;
+}
+.sim-version{
+  display:none !important;
+}
+.storyPanel{
+  left:12px !important;
+  top:112px !important;
+  width:430px !important;
+  max-height:calc(100% - 132px) !important;
+}
+.toolBox{
+  top:116px !important;
+}
+.toolBox.is-collapsed{
+  width:118px !important;
+}
+.zoom-corner{
+  bottom:18px !important;
+}
+@media (max-width: 900px){
+  #brandLogo{
+    width:154px !important;
+  }
+  .banner-center{
+    top:10px !important;
+    width:min(560px, calc(100% - 210px)) !important;
+  }
+  .brand-line{
+    font-size:22px !important;
+  }
+  .case-line{
+    font-size:14px !important;
+  }
+  .region-line{
+    font-size:11px !important;
+  }
+  .storyPanel{
+    width:392px !important;
+  }
+}
+@media (max-width: 640px){
+  .tvbanner{
+    min-height:10px !important;
+    height:10px !important;
+    overflow:hidden !important;
+    border-bottom:none !important;
+    box-shadow:none !important;
+  }
+  .tvbanner::before{
+    display:none !important;
+  }
+  #brandLogo,
+  .banner-center,
+  .sim-version{
+    display:none !important;
+  }
+  .storyPanel{
+    left:0 !important;
+    right:0 !important;
+    width:auto !important;
+    top:auto !important;
+    bottom:0 !important;
+    max-height:34vh !important;
+    border-radius:18px 18px 0 0 !important;
+    box-shadow:0 -10px 24px rgba(0,0,0,.22) !important;
+  }
+  body.story-mobile-collapsed .storyPanel{
+    max-height:128px !important;
+  }
+  body.story-mobile-collapsed .story-content{
+    display:none !important;
+  }
+  .story-shell-header{
+    cursor:pointer;
+    padding:10px 12px 12px !important;
+  }
+  .story-station-chip{
+    width:56px !important;
+    height:56px !important;
+    font-size:22px !important;
+  }
+  .story-title{
+    font-size:24px !important;
+    line-height:1 !important;
+  }
+  .story-shell-kicker,
+  .story-step{
+    font-size:11px !important;
+  }
+  .story-body{
+    font-size:14px !important;
+    line-height:1.3 !important;
+  }
+  .story-shell-footer{
+    padding:8px 10px 10px !important;
+  }
+  .story-footer-row{
+    gap:8px !important;
+  }
+  .story-actions-right{
+    width:100%;
+    justify-content:flex-end;
+  }
+  .story-nav{
+    gap:8px !important;
+  }
+  .story-action,
+  .story-nav-btn{
+    padding:10px 12px !important;
+    font-size:14px !important;
+  }
+  .toolBox{
+    top:12px !important;
+    right:8px !important;
+    transform:scale(.92);
+    transform-origin:top right;
+  }
+  .zoom-corner{
+    bottom:14px !important;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+<button id="wdlModelPadInlineToggle" type="button" style="border:none; background:transparent; color:#fff; cursor:pointer; font-size:18px; font-weight:900;">▾</button>
+    </div>
+    <div id="wdlModelPadInlineBody" style="padding:10px 10px 12px;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <button type="button" data-model-mode="temp" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#0f67d8; color:#fff; font-weight:900; font-size:12px;">Temp</button>
+        <button type="button" data-model-mode="cape" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">CAPE</button>
+        <button type="button" data-model-mode="winds" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">Winds</button>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+        <button type="button" data-model-frame="0" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">4PM</button>
+        <button type="button" data-model-frame="1" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">5PM</button>
+        <button type="button" data-model-frame="2" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">6PM</button>
+        <button type="button" data-model-frame="3" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">7PM</button>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button id="wdlModelPadInlineAuto" type="button" style="border:none; border-radius:999px; padding:8px 10px; cursor:pointer; background:#e7eef8; color:#16365d; font-weight:900; font-size:12px;">Auto</button>
+      </div>
+      <div style="margin-top:8px; color:#b9d5f2; font-size:10px; line-height:1.25; font-weight:800;">Pick product, then hour. This ignores simulator time until Auto is pressed.</div>
+    </div>
+  </div>
+
+  <div class="tvbanner"><div class="banner-topline">
+      <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops logo" />
+      <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
+      <button id="modeToggleBtn" class="mode-toggle" type="button">Simulator Mode</button>
+      <div class="sim-version">Simulator v5 • Topic Cards</div>
+      <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
+      <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
+      <div class="product-row" id="simProductRow">
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Radar ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn is-active" data-product="radar">Reflectivity</button>
+            <button class="sim-product-btn" data-product="future_radar">Future Radar</button>
+            <button class="sim-product-btn" data-product="live_doppler">Live Doppler</button>
+            <button class="sim-product-btn is-disabled" type="button">Velocity (next)</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Current Conditions ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="temps">Temperature</button>
+            <button class="sim-product-btn" data-product="metar_dewpoint">Dew Points</button>
+            <button class="sim-product-btn" data-product="metar_wind">Wind Gusts</button>
+            <button class="sim-product-btn" data-product="metar_pressure">Pressure</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">SPC ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="spc">Day 1 Outlook</button>
+            <button class="sim-product-btn" data-product="watch">Watch</button>
+            <button class="sim-product-btn is-disabled" type="button">Meso (next)</button>
+          </div>
+        </div>
+        <div class="product-group">
+          <button class="sim-group-toggle" type="button">Reports ▾</button>
+          <div class="product-menu">
+            <button class="sim-product-btn" data-product="reports">All Reports</button>
+            <button class="sim-product-btn is-disabled" type="button">Wind (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Hail (next)</button>
+            <button class="sim-product-btn is-disabled" type="button">Tornado (next)</button>
+          </div>
+        </div>
+        <button class="sim-product-btn" data-product="lightning">Lightning</button>
+        <button class="sim-product-btn" data-product="satellite">Satellite</button>
+        <button class="sim-product-btn" data-product="warnings">Warnings</button>
+        <button class="sim-product-btn sim-aux-btn" id="roadsToggleBtn" type="button" aria-pressed="false">Roads OFF</button>
+      </div>
+      <div class="product-slot"><div class="product-pill" id="productLabel">Map</div></div>
+  </div></div>
+
+  <div class="topic-rail" id="topicRail"></div>
+
+  <div class="storyPanel" id="storyPanel">
+    <div class="story-shell-header"><div class="story-station-chip" id="storyStationChip">3PM</div><div class="story-head-copy"><div class="story-shell-kicker" id="storyShellKicker">Setup</div><div class="story-title" id="storyTitle">SPC Outlook</div></div><button id="storyCollapseBtn" type="button">Hide</button></div>
+    
+    <div class="story-content"><div class="sim-scene-lead" id="simSceneLead">Current Topic • 3:00 PM</div><div class="story-body" id="storyBody"><p>Topic cards change with time. Pick one card to guide the discussion at the current clock time.</p></div></div>
+    <div class="story-shell-footer"><div class="story-footer-row"><div class="story-step" id="storyStep">3 PM topics</div><div class="story-actions-right"><button class="story-action story-doppler-inline pulsing" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button></div></div><div class="story-nav"><button class="story-nav-btn" id="storyPrevBtn" type="button">◀ Topic</button><button class="story-nav-btn" id="storyNextBtn" type="button">Topic ▶</button></div></div>
+  </div>
+
+  <div class="toolBox" id="toolBox"><div class="tool-head"><button class="tool-head-pill" id="toolToggleBtn" type="button">Tools ▾</button></div>
+    <button class="tool-btn" id="toolMeasure" type="button">Ruler</button>
+    <button class="tool-btn" id="toolProbe" type="button">Probe</button>
+    <button class="tool-btn" id="toolStormTrack" type="button">Track</button>
+    <button class="tool-btn" id="toolDraw" type="button">Draw</button><div class="draw-color-row" id="drawColorRow"><button class="draw-color-dot is-active" type="button" data-draw-color="#fdd835" style="background:#fdd835" aria-label="Yellow"></button><button class="draw-color-dot" type="button" data-draw-color="#ff4d4d" style="background:#ff4d4d" aria-label="Red"></button><button class="draw-color-dot" type="button" data-draw-color="#00d084" style="background:#00d084" aria-label="Green"></button><button class="draw-color-dot" type="button" data-draw-color="#42a5f5" style="background:#42a5f5" aria-label="Blue"></button></div>
+    <button class="tool-btn" id="toolErase" type="button">Erase</button>
+    <button class="tool-btn" id="toolClear" type="button">Clear</button>
+    <button class="tool-btn" id="toolHome" type="button">Home</button>
+  </div>
+
+  <div class="zoom-corner" id="zoomCorner">
+    <button class="zoom-corner-btn" id="zoomCornerPlus" type="button" aria-label="Zoom in">+</button>
+    <button class="zoom-corner-btn" id="zoomCornerMinus" type="button" aria-label="Zoom out">−</button>
+  </div>
+
+  <div class="sim-alert theme-tornado" id="simAlertBox" aria-live="polite"><button type="button" class="sim-alert-close" id="simAlertCloseBtn" aria-label="Close alert">×</button><div class="sim-alert-kicker" id="simAlertKicker">Live Alert</div><div class="sim-alert-headline" id="simAlertHeadline">Simulation Ready</div><div class="sim-alert-body" id="simAlertBody">Warnings and special moments will appear here. <strong>Click for details.</strong></div></div>
+  <div class="warning-count-box" id="warningCountBox"><div class="label">Warnings in Effect</div><div class="count" id="warningCountValue">0</div></div>
+  <div class="ticker-wrap" id="simTickerWrap"><div class="ticker-label">Weather Alert</div><div class="ticker-marquee"><div class="ticker-marquee-inner" id="simTickerText">Simulator v5 ready • Storyboard now works as time-group topic cards • Advance Timeline moves time forward •</div></div></div>
+
+  <script>function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
+  <script src="./simulatorConfig_v5.js"></script>
+  <script src="./radar.js"></script>
+  <script src="./metars.js"></script>
+  <script src="./map-ui.js"></script>
+  <script>
+    window.__WDL_SIMPLE_MODE__ = true;
+    window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
+    window.__WDL_SIMULATOR_LOCAL_STORY__ = true;
+    window.__WDL_FREE_SCRUB__ = true;
+  </script>
+  <script src="./engine_simulator_patch.js"></script>
+  <script>
+    (function(){
+      var cfg = window.WDL_SIM_CONFIG || {};
+      cfg.timelineEvents = [{"id": "warn-20", "kind": "warning", "type": "warning", "displayTime": "3:02 PM", "activeMinutes": 43, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northeastern Rock County, Northwestern Holt County, Eastern Keya Paha County +1", "message": "In effect until 3:45 PM. 60.0 mph \u2022 1.5\" hail.", "detailsHint": "Issued 3:02 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northeastern Rock County, Northwestern Holt County, Eastern Keya Paha County +1 until 3:45 PM"]}, {"id": "warn-11", "kind": "warning", "type": "warning", "displayTime": "3:16 PM", "activeMinutes": 44, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Charles Mix County, Western Gregory County", "message": "In effect until 4:00 PM. 60.0 mph \u2022 1.5\" hail.", "detailsHint": "Issued 3:16 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Charles Mix County, Western Gregory County until 4:00 PM"]}, {"id": "warn-58", "kind": "warning", "type": "warning", "displayTime": "3:19 PM", "activeMinutes": 41, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Southeastern Itasca County, Northern Aitkin County, Central Cass County +3", "message": "In effect until 4:00 PM.", "detailsHint": "Issued 3:19 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Southeastern Itasca County, Northern Aitkin County, Central Cass County +3 until 4:00 PM"]}, {"id": "warn-59", "kind": "warning", "type": "warning", "displayTime": "3:19 PM", "activeMinutes": 41, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Pierce County, Antelope County, Southwestern Knox County", "message": "In effect until 4:00 PM.", "detailsHint": "Issued 3:19 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Pierce County, Antelope County, Southwestern Knox County until 4:00 PM"]}, {"id": "warn-18", "kind": "warning", "type": "warning", "displayTime": "3:21 PM", "activeMinutes": 24, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for North central Charles Mix County, South central Gregory County, West central Douglas County", "message": "In effect until 3:45 PM. 70.0 mph \u2022 1.25\" hail \u2022 Considerable.", "detailsHint": "Issued 3:21 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for North central Charles Mix County, South central Gregory County, West central Douglas County until 3:45 PM"]}, {"id": "warn-24", "kind": "warning", "type": "warning", "displayTime": "3:25 PM", "activeMinutes": 48, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Holt County, Boyd County, Northern Wheeler County", "message": "In effect until 4:13 PM. 70.0 mph \u2022 1.5\" hail \u2022 Considerable.", "detailsHint": "Issued 3:25 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Holt County, Boyd County, Northern Wheeler County until 4:13 PM"]}, {"id": "warn-47", "kind": "warning", "type": "warning", "displayTime": "3:36 PM", "activeMinutes": 54, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Knox County", "message": "In effect until 4:30 PM. 70.0 mph \u2022 1.0\" hail \u2022 Considerable.", "detailsHint": "Issued 3:36 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Knox County until 4:30 PM"]}, {"id": "warn-9", "kind": "warning", "type": "warning", "displayTime": "3:40 PM", "activeMinutes": 50, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Southwestern Davison County, Southern Aurora County, Central Charles Mix County +2", "message": "In effect until 4:30 PM. 70.0 mph \u2022 1.5\" hail \u2022 Considerable.", "detailsHint": "Issued 3:40 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Southwestern Davison County, Southern Aurora County, Central Charles Mix County +2 until 4:30 PM"]}, {"id": "warn-60", "kind": "warning", "type": "warning", "displayTime": "3:40 PM", "activeMinutes": 50, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northeastern Madison County, Western Wayne County, Pierce County +2", "message": "In effect until 4:30 PM.", "detailsHint": "Issued 3:40 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northeastern Madison County, Western Wayne County, Pierce County +2 until 4:30 PM"]}, {"id": "warn-23", "kind": "warning", "type": "warning", "displayTime": "3:46 PM", "activeMinutes": 44, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Aurora County, Southwestern Jerauld County, Northwestern Charles Mix County +2", "message": "In effect until 4:30 PM. 70.0 mph \u2022 1.0\" hail \u2022 Considerable.", "detailsHint": "Issued 3:46 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Aurora County, Southwestern Jerauld County, Northwestern Charles Mix County +2 until 4:30 PM"]}, {"id": "warn-61", "kind": "warning", "type": "warning", "displayTime": "3:53 PM", "activeMinutes": 22, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Pierce County, Northeastern Antelope County, Southwestern Knox County", "message": "In effect until 4:15 PM.", "detailsHint": "Issued 3:53 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Pierce County, Northeastern Antelope County, Southwestern Knox County until 4:15 PM"]}, {"id": "warn-55", "kind": "warning", "type": "warning", "displayTime": "3:59 PM", "activeMinutes": 46, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Davison County, Northern Clay County, Southeastern Aurora County +9", "message": "In effect until 4:45 PM. 70.0 mph \u2022 1.0\" hail \u2022 Considerable.", "detailsHint": "Issued 3:59 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Davison County, Northern Clay County, Southeastern Aurora County +9 until 4:45 PM"]}, {"id": "warn-57", "kind": "warning", "type": "warning", "displayTime": "3:59 PM", "activeMinutes": 61, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Wayne County, Pierce County, Knox County +2", "message": "In effect until 5:00 PM. 90.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 3:59 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Wayne County, Pierce County, Knox County +2 until 5:00 PM"]}, {"id": "warn-31", "kind": "warning", "type": "warning", "displayTime": "4:11 PM", "activeMinutes": 49, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Davison County, Southwestern Sanborn County, Aurora County +4", "message": "In effect until 5:00 PM. 70.0 mph \u2022 1.75\" hail \u2022 Considerable.", "detailsHint": "Issued 4:11 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Davison County, Southwestern Sanborn County, Aurora County +4 until 5:00 PM"]}, {"id": "report-24", "kind": "report", "type": "report", "displayTime": "4:14 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near Hartington", "message": "SEVERAL REPORTS OF STRONG WIND GUSTS OF 70 TO 80 MPH NEAR HARTINGTON AND AREAS OF SOUTHERN CEDAR COUNTY. VISIBILITY VERY LOW DUE TO DUST.", "detailsHint": "Observed 4:14 PM", "durationMs": 5200, "ticker": ["80 mph wind report near Hartington"]}, {"id": "warn-45", "kind": "warning", "type": "warning", "displayTime": "4:20 PM", "activeMinutes": 40, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Woodbury County, Southwestern Sioux County, Western Plymouth County +8", "message": "In effect until 5:00 PM. 70.0 mph \u2022 1.25\" hail \u2022 Considerable.", "detailsHint": "Issued 4:20 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Woodbury County, Southwestern Sioux County, Western Plymouth County +8 until 5:00 PM"]}, {"id": "report-12", "kind": "report", "type": "report", "displayTime": "4:23 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "88 mph wind report near 2 Wnw Scotland", "message": "88 mph wind report in Bon Homme County, SD.", "detailsHint": "Observed 4:23 PM", "durationMs": 5200, "ticker": ["88 mph wind report near 2 Wnw Scotland"]}, {"id": "report-14", "kind": "report", "type": "report", "displayTime": "4:25 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "89 mph wind report near 2 Wsw Gayville", "message": "MESONET STATION 197 SD RWIS GAYVILLE.", "detailsHint": "Observed 4:25 PM", "durationMs": 5200, "ticker": ["89 mph wind report near 2 Wsw Gayville"]}, {"id": "report-20", "kind": "report", "type": "report", "displayTime": "4:25 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "107 mph wind report near 2 Nw Tripp", "message": "MESONET STATION 26 SD RWIS TRIPP.", "detailsHint": "Observed 4:25 PM", "durationMs": 5200, "ticker": ["107 mph wind report near 2 Nw Tripp"]}, {"id": "warn-26", "kind": "warning", "type": "warning", "displayTime": "4:30 PM", "activeMinutes": 45, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Eastern Hand County, Southeastern Faulk County, Southwestern Spink County", "message": "In effect until 5:15 PM. 70.0 mph \u2022 1.5\" hail \u2022 Considerable.", "detailsHint": "Issued 4:30 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Eastern Hand County, Southeastern Faulk County, Southwestern Spink County until 5:15 PM"]}, {"id": "warn-54", "kind": "warning", "type": "warning", "displayTime": "4:33 PM", "activeMinutes": 42, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northeastern Todd County, Northern Tripp County, Southeastern Mellette County", "message": "In effect until 5:15 PM. 60.0 mph \u2022 1.5\" hail.", "detailsHint": "Issued 4:33 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northeastern Todd County, Northern Tripp County, Southeastern Mellette County until 5:15 PM"]}, {"id": "report-11", "kind": "report", "type": "report", "displayTime": "4:35 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "84 mph wind report near 5 S Freeman", "message": "MESONET STATION 163 SD RWIS FREEMAN.", "detailsHint": "Observed 4:35 PM", "durationMs": 5200, "ticker": ["84 mph wind report near 5 S Freeman"]}, {"id": "warn-52", "kind": "warning", "type": "warning", "displayTime": "4:40 PM", "activeMinutes": 50, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Lyon County, Western Rock County, Miner County +10", "message": "In effect until 5:30 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 4:40 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Lyon County, Western Rock County, Miner County +10 until 5:30 PM"]}, {"id": "report-9", "kind": "report", "type": "report", "displayTime": "4:40 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "82 mph wind report near 5 Sse Centerville", "message": "MESONET STATION BFMS2 BERESFORD 7 WSW (SD MESONET).", "detailsHint": "Observed 4:40 PM", "durationMs": 5200, "ticker": ["82 mph wind report near 5 Sse Centerville"]}, {"id": "warn-37", "kind": "warning", "type": "warning", "displayTime": "4:46 PM", "activeMinutes": 44, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Kingsbury County, Sanborn County, Beadle County +2", "message": "In effect until 5:30 PM. 70.0 mph \u2022 1.25\" hail \u2022 Considerable.", "detailsHint": "Issued 4:46 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Kingsbury County, Sanborn County, Beadle County +2 until 5:30 PM"]}, {"id": "report-4", "kind": "report", "type": "report", "displayTime": "4:48 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near 3 N Dolton", "message": "FARM EQUIPMENT BLOWN ACROSS THE ROAD AND DAMAGE TO FARMS/OUT-BUILDINGS.", "detailsHint": "Observed 4:48 PM", "durationMs": 5200, "ticker": ["80 mph wind report near 3 N Dolton"]}, {"id": "warn-5", "kind": "warning", "type": "warning", "displayTime": "4:49 PM", "activeMinutes": 28, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southwestern Lake County, Eastern Miner County, Western McCook County +1", "message": "In effect until 5:17 PM. 0.75\" hail.", "detailsHint": "Issued 4:49 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southwestern Lake County, Eastern Miner County, Western McCook County +1 until 5:17 PM"]}, {"id": "report-6", "kind": "report", "type": "report", "displayTime": "4:49 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "81 mph wind report near 4 Ene Alexandria", "message": "MESONET STATION 213 SD RWIS ALEXANDRIA.", "detailsHint": "Observed 4:49 PM", "durationMs": 5200, "ticker": ["81 mph wind report near 4 Ene Alexandria"]}, {"id": "warn-43", "kind": "warning", "type": "warning", "displayTime": "4:53 PM", "activeMinutes": 37, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Cherokee County, Lyon County, Northwestern Woodbury County +9", "message": "In effect until 5:30 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 4:53 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Cherokee County, Lyon County, Northwestern Woodbury County +9 until 5:30 PM"]}, {"id": "warn-21", "kind": "warning", "type": "warning", "displayTime": "4:55 PM", "activeMinutes": 50, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Southeastern Edmunds County, Northwestern Hand County, Eastern Faulk County", "message": "In effect until 5:45 PM. 70.0 mph \u2022 1.5\" hail \u2022 Considerable.", "detailsHint": "Issued 4:55 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Southeastern Edmunds County, Northwestern Hand County, Eastern Faulk County until 5:45 PM"]}, {"id": "report-13", "kind": "report", "type": "report", "displayTime": "4:55 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "88 mph wind report near 4 S Salem", "message": "88 mph wind report in Mccook County, SD.", "detailsHint": "Observed 4:55 PM", "durationMs": 5200, "ticker": ["88 mph wind report near 4 S Salem"]}, {"id": "warn-13", "kind": "warning", "type": "warning", "displayTime": "4:58 PM", "activeMinutes": 20, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Beadle County", "message": "In effect until 5:18 PM. 1.0\" hail.", "detailsHint": "Issued 4:58 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Beadle County until 5:18 PM"]}, {"id": "warn-36", "kind": "warning", "type": "warning", "displayTime": "5:01 PM", "activeMinutes": 59, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Hamlin County, Clark County, Spink County +1", "message": "In effect until 6:00 PM. 80.0 mph \u2022 1.5\" hail \u2022 Destructive.", "detailsHint": "Issued 5:01 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Hamlin County, Clark County, Spink County +1 until 6:00 PM"]}, {"id": "report-15", "kind": "report", "type": "report", "displayTime": "5:01 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "90 mph wind report near 2 Nnw Huron", "message": "ASOS STATION KHON HURON REGIONAL AIRPORT.", "detailsHint": "Observed 5:01 PM", "durationMs": 5200, "ticker": ["90 mph wind report near 2 Nnw Huron"]}, {"id": "report-8", "kind": "report", "type": "report", "displayTime": "5:05 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "81 mph wind report near 2 Ese Colton", "message": "MESONET STATION CTNS2 COLTON 2 ESE (SD MESONET).", "detailsHint": "Observed 5:05 PM", "durationMs": 5200, "ticker": ["81 mph wind report near 2 Ese Colton"]}, {"id": "report-19", "kind": "report", "type": "report", "displayTime": "5:09 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "97 mph wind report near 1 Ene Madison", "message": "AWOS STATION KMDS MADISON AIRPORT.", "detailsHint": "Observed 5:09 PM", "durationMs": 5200, "ticker": ["97 mph wind report near 1 Ene Madison"]}, {"id": "report-1", "kind": "report", "type": "report", "displayTime": "5:10 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near 7 Nne Huron", "message": "80 mph wind report in Beadle County, SD.", "detailsHint": "Observed 5:10 PM", "durationMs": 5200, "ticker": ["80 mph wind report near 7 Nne Huron"]}, {"id": "warn-33", "kind": "warning", "type": "warning", "displayTime": "5:13 PM", "activeMinutes": 47, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Lyon County, Southwestern Lyon County, Lincoln County +10", "message": "In effect until 6:00 PM. 90.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 5:13 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Lyon County, Southwestern Lyon County, Lincoln County +10 until 6:00 PM"]}, {"id": "report-18", "kind": "report", "type": "report", "displayTime": "5:15 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "96 mph wind report near 3 Sw Wentworth", "message": "96 mph wind report in Lake County, SD.", "detailsHint": "Observed 5:15 PM", "durationMs": 5200, "ticker": ["96 mph wind report near 3 Sw Wentworth"]}, {"id": "report-16", "kind": "report", "type": "report", "displayTime": "5:16 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "90 mph wind report near 5 Wnw Madison", "message": "90 mph wind report in Lake County, SD.", "detailsHint": "Observed 5:16 PM", "durationMs": 5200, "ticker": ["90 mph wind report near 5 Wnw Madison"]}, {"id": "warn-35", "kind": "warning", "type": "warning", "displayTime": "5:22 PM", "activeMinutes": 38, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northern Cherokee County, Lyon County, Osceola County +9", "message": "In effect until 6:00 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 5:22 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northern Cherokee County, Lyon County, Osceola County +9 until 6:00 PM"]}, {"id": "warn-29", "kind": "warning", "type": "warning", "displayTime": "5:27 PM", "activeMinutes": 33, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Northwestern Clark County, Spink County", "message": "In effect until 6:00 PM. 0.75\" hail.", "detailsHint": "Issued 5:27 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Northwestern Clark County, Spink County until 6:00 PM"]}, {"id": "report-5", "kind": "report", "type": "report", "displayTime": "5:31 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near 2 Nnw Trosky", "message": "MINNESOTA RWIS.", "detailsHint": "Observed 5:31 PM", "durationMs": 5200, "ticker": ["80 mph wind report near 2 Nnw Trosky"]}, {"id": "report-17", "kind": "report", "type": "report", "displayTime": "5:31 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "90 mph wind report near 3 Nne Flandreau", "message": "MESONET STATION FLNS2 FLANDREAU 3 NNE (SD MESONET).", "detailsHint": "Observed 5:31 PM", "durationMs": 5200, "ticker": ["90 mph wind report near 3 Nne Flandreau"]}, {"id": "warn-15", "kind": "warning", "type": "warning", "displayTime": "5:34 PM", "activeMinutes": 26, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southeastern Clark County, Southwestern Codington County", "message": "In effect until 6:00 PM. 0.75\" hail.", "detailsHint": "Issued 5:34 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southeastern Clark County, Southwestern Codington County until 6:00 PM"]}, {"id": "report-2", "kind": "report", "type": "report", "displayTime": "5:35 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near 1 S Little Rock", "message": "ZERO VISIBILITY DUE TO STRONG WINDS AND DUST STORM FOR THE LAST 10 MINUTES.", "detailsHint": "Observed 5:35 PM", "durationMs": 5200, "ticker": ["80 mph wind report near 1 S Little Rock"]}, {"id": "warn-3", "kind": "warning", "type": "warning", "displayTime": "5:36 PM", "activeMinutes": 54, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Deuel County, Eastern Hamlin County, Southeastern Grant County +1", "message": "In effect until 6:30 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 5:36 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Deuel County, Eastern Hamlin County, Southeastern Grant County +1 until 6:30 PM"]}, {"id": "warn-27", "kind": "warning", "type": "warning", "displayTime": "5:37 PM", "activeMinutes": 53, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Eastern Edmunds County, Southwestern Brown County, Northeastern Faulk County +2", "message": "In effect until 6:30 PM. 70.0 mph \u2022 1.5\" hail \u2022 Considerable.", "detailsHint": "Issued 5:37 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Eastern Edmunds County, Southwestern Brown County, Northeastern Faulk County +2 until 6:30 PM"]}, {"id": "warn-49", "kind": "warning", "type": "warning", "displayTime": "5:37 PM", "activeMinutes": 23, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Lyon County, Western Sioux County, Western Plymouth County +9", "message": "In effect until 6:00 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 5:37 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Lyon County, Western Sioux County, Western Plymouth County +9 until 6:00 PM"]}, {"id": "warn-7", "kind": "warning", "type": "warning", "displayTime": "5:41 PM", "activeMinutes": 34, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Northern Clark County, Northwestern Codington County", "message": "In effect until 6:15 PM. 0.75\" hail.", "detailsHint": "Issued 5:41 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Northern Clark County, Northwestern Codington County until 6:15 PM"]}, {"id": "warn-41", "kind": "warning", "type": "warning", "displayTime": "5:41 PM", "activeMinutes": 49, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Parle County, Central Chippewa County, Yellow Medicine County +1", "message": "In effect until 6:30 PM. 90.0 mph \u2022 1.0\" hail \u2022 Destructive.", "detailsHint": "Issued 5:41 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Parle County, Central Chippewa County, Yellow Medicine County +1 until 6:30 PM"]}, {"id": "warn-46", "kind": "warning", "type": "warning", "displayTime": "5:42 PM", "activeMinutes": 33, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Lyon County, Lincoln County, Northeastern Rock County +7", "message": "In effect until 6:15 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 5:42 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Lyon County, Lincoln County, Northeastern Rock County +7 until 6:15 PM"]}, {"id": "report-3", "kind": "report", "type": "report", "displayTime": "5:43 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "80 mph wind report near Florence", "message": "RWIS SITE.", "detailsHint": "Observed 5:43 PM", "durationMs": 5200, "ticker": ["80 mph wind report near Florence"]}, {"id": "warn-28", "kind": "warning", "type": "warning", "displayTime": "5:51 PM", "activeMinutes": 54, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Deuel County, Southwestern Roberts County, Day County +6", "message": "In effect until 6:45 PM. 80.0 mph \u2022 1.0\" hail \u2022 Destructive.", "detailsHint": "Issued 5:51 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Deuel County, Southwestern Roberts County, Day County +6 until 6:45 PM"]}, {"id": "warn-40", "kind": "warning", "type": "warning", "displayTime": "5:51 PM", "activeMinutes": 39, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northern Cherokee County, Osceola County, Dickinson County +9", "message": "In effect until 6:30 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 5:51 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northern Cherokee County, Osceola County, Dickinson County +9 until 6:30 PM"]}, {"id": "warn-17", "kind": "warning", "type": "warning", "displayTime": "5:52 PM", "activeMinutes": 23, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southeastern Day County, Northeastern Hamlin County, West central Grant County +1", "message": "In effect until 6:15 PM. 0.75\" hail.", "detailsHint": "Issued 5:52 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southeastern Day County, Northeastern Hamlin County, West central Grant County +1 until 6:15 PM"]}, {"id": "report-7", "kind": "report", "type": "report", "displayTime": "5:54 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "81 mph wind report near Taunton", "message": "RWIS SITE.", "detailsHint": "Observed 5:54 PM", "durationMs": 5200, "ticker": ["81 mph wind report near Taunton"]}, {"id": "report-10", "kind": "report", "type": "report", "displayTime": "5:55 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "82 mph wind report near 3 Ne Sibley", "message": "DELAYED REPORT. IOWA RWIS STATION RSYI4.", "detailsHint": "Observed 5:55 PM", "durationMs": 5200, "ticker": ["82 mph wind report near 3 Ne Sibley"]}, {"id": "warn-12", "kind": "warning", "type": "warning", "displayTime": "6:01 PM", "activeMinutes": 29, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southeastern Day County, Northeastern Clark County, Northwestern Codington County", "message": "In effect until 6:30 PM. 0.75\" hail.", "detailsHint": "Issued 6:01 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southeastern Day County, Northeastern Clark County, Northwestern Codington County until 6:30 PM"]}, {"id": "warn-48", "kind": "warning", "type": "warning", "displayTime": "6:02 PM", "activeMinutes": 58, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Redwood County, Martin County, Southeastern Yellow Medicine County +4", "message": "In effect until 7:00 PM. 70.0 mph \u2022 1.0\" hail \u2022 Considerable.", "detailsHint": "Issued 6:02 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Redwood County, Martin County, Southeastern Yellow Medicine County +4 until 7:00 PM"]}, {"id": "warn-32", "kind": "warning", "type": "warning", "displayTime": "6:03 PM", "activeMinutes": 27, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for South central Big Stone County, Northern Deuel County, Southeastern Roberts County +2", "message": "In effect until 6:30 PM. 1.0\" hail.", "detailsHint": "Issued 6:03 PM", "durationMs": 7000, "ticker": ["Tornado Warning for South central Big Stone County, Northern Deuel County, Southeastern Roberts County +2 until 6:30 PM"]}, {"id": "warn-62", "kind": "warning", "type": "warning", "displayTime": "6:07 PM", "activeMinutes": 8, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Burt County, Eastern Wayne County, Northern Cuming County +3", "message": "In effect until 6:15 PM.", "detailsHint": "Issued 6:07 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Burt County, Eastern Wayne County, Northern Cuming County +3 until 6:15 PM"]}, {"id": "warn-2", "kind": "warning", "type": "warning", "displayTime": "6:08 PM", "activeMinutes": 26, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southwestern Day County, Southeastern Brown County, Northwestern Clark County +1", "message": "In effect until 6:34 PM. 0.75\" hail.", "detailsHint": "Issued 6:08 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southwestern Day County, Southeastern Brown County, Northwestern Clark County +1 until 6:34 PM"]}, {"id": "report-21", "kind": "report", "type": "report", "displayTime": "6:08 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Wind Damage Report", "headline": "94 mph wind report near 2 Sse Madison", "message": "MEASURED AT MADISON AIRPORT AWOS.", "detailsHint": "Observed 6:08 PM", "durationMs": 5200, "ticker": ["94 mph wind report near 2 Sse Madison"]}, {"id": "report-23", "kind": "report", "type": "report", "displayTime": "6:09 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Tornado Report", "headline": "Tornado Report near 1 Sse Madison", "message": "THIS TORNADO MOVED ACROSS THE SOUTHEAST SECTION OF MADISON. A HOUSE HAD ITS ROOF REMOVED, A CAMPER WAS ROLLED, AND THREE LIGHT POLES IN THE BASEBALL FIELD WERE BENT OVER, WITH 1 HAVING THE CEMENT SUPPORT RIPPED OUT OF THE GROUND. THERE WAS ALSO EXTENSIVE TREE DAMAGE AS WELL. THE TORNADO WAS ON THE GROUND FOR 0.9 MILES. IT WAS RATED EF1 WITH ESTIMATED MAXIMUM WINDS OF 100 MPH.", "detailsHint": "Observed 6:09 PM", "durationMs": 5200, "ticker": ["Tornado Report near 1 Sse Madison"]}, {"id": "warn-6", "kind": "warning", "type": "warning", "displayTime": "6:11 PM", "activeMinutes": 19, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northeastern Murray County, Northwestern Cottonwood County", "message": "In effect until 6:30 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 6:11 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northeastern Murray County, Northwestern Cottonwood County until 6:30 PM"]}, {"id": "warn-8", "kind": "warning", "type": "warning", "displayTime": "6:11 PM", "activeMinutes": 19, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southwestern Roberts County, Southeastern Day County, Northwestern Grant County +1", "message": "In effect until 6:30 PM. 0.75\" hail.", "detailsHint": "Issued 6:11 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southwestern Roberts County, Southeastern Day County, Northwestern Grant County +1 until 6:30 PM"]}, {"id": "warn-22", "kind": "warning", "type": "warning", "displayTime": "6:15 PM", "activeMinutes": 29, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Emmet County, Western Kossuth County, Palo Alto County", "message": "In effect until 6:44 PM. 60.0 mph \u2022 0.75\" hail.", "detailsHint": "Issued 6:15 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Emmet County, Western Kossuth County, Palo Alto County until 6:44 PM"]}, {"id": "warn-44", "kind": "warning", "type": "warning", "displayTime": "6:15 PM", "activeMinutes": 15, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Parle County, Southwestern Swift County", "message": "In effect until 6:30 PM.", "detailsHint": "Issued 6:15 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Parle County, Southwestern Swift County until 6:30 PM"]}, {"id": "warn-53", "kind": "warning", "type": "warning", "displayTime": "6:16 PM", "activeMinutes": 44, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Pope County, Chippewa County, Stevens County +2", "message": "In effect until 7:00 PM. 100.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 6:16 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Pope County, Chippewa County, Stevens County +2 until 7:00 PM"]}, {"id": "warn-51", "kind": "warning", "type": "warning", "displayTime": "6:17 PM", "activeMinutes": 58, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Traverse County, Big Stone County, Roberts County +1", "message": "In effect until 7:15 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 6:17 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Traverse County, Big Stone County, Roberts County +1 until 7:15 PM"]}, {"id": "report-22", "kind": "report", "type": "report", "displayTime": "6:19 PM", "activeMinutes": 12, "rearmOnBacktrack": true, "theme": "report", "kicker": "Tornado Report", "headline": "Tornado Report near 2 Ese Louisburg", "message": "THIS TORNADO CAUSED MAJOR DAMAGE TO A HOUSE, WHICH HAD ITS ROOF COMPLETELY REMOVED AND SEVERAL WALLS THEN COLLAPSED. THE GARAGE WAS DESTROYED. MANY TREES WERE BROKEN OR SNAPPED. THE TORNADO WAS ON THE GROUND FOR 1.1 MILES. IT WAS RATED EF1 WITH ESTIMATED MAXIMUM WINDS OF 105 MPH.", "detailsHint": "Observed 6:19 PM", "durationMs": 5200, "ticker": ["Tornado Report near 2 Ese Louisburg"]}, {"id": "warn-39", "kind": "warning", "type": "warning", "displayTime": "6:20 PM", "activeMinutes": 40, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Lyon County, Jackson County, Eastern Nobles County +3", "message": "In effect until 7:00 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 6:20 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Lyon County, Jackson County, Eastern Nobles County +3 until 7:00 PM"]}, {"id": "warn-42", "kind": "warning", "type": "warning", "displayTime": "6:24 PM", "activeMinutes": 36, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southern Traverse County, Big Stone County, Roberts County +1", "message": "In effect until 7:00 PM. 0.75\" hail.", "detailsHint": "Issued 6:24 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southern Traverse County, Big Stone County, Roberts County +1 until 7:00 PM"]}, {"id": "warn-25", "kind": "warning", "type": "warning", "displayTime": "6:26 PM", "activeMinutes": 64, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Western Meeker County, Southwestern Stearns County, Kandiyohi County", "message": "In effect until 7:30 PM. 80.0 mph \u2022 0.75\" hail \u2022 Destructive.", "detailsHint": "Issued 6:26 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Western Meeker County, Southwestern Stearns County, Kandiyohi County until 7:30 PM"]}, {"id": "warn-1", "kind": "warning", "type": "warning", "displayTime": "6:28 PM", "activeMinutes": 47, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Roberts County, Northern Day County, Marshall County +1", "message": "In effect until 7:15 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 6:28 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Roberts County, Northern Day County, Marshall County +1 until 7:15 PM"]}, {"id": "warn-30", "kind": "warning", "type": "warning", "displayTime": "6:29 PM", "activeMinutes": 31, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Day County, Marshall County", "message": "In effect until 7:00 PM. 0.75\" hail.", "detailsHint": "Issued 6:29 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Day County, Marshall County until 7:00 PM"]}, {"id": "warn-63", "kind": "warning", "type": "warning", "displayTime": "6:29 PM", "activeMinutes": 46, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Northwestern Woodbury County, Southwestern Plymouth County, Dakota County +3", "message": "In effect until 7:15 PM.", "detailsHint": "Issued 6:29 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Northwestern Woodbury County, Southwestern Plymouth County, Dakota County +3 until 7:15 PM"]}, {"id": "warn-50", "kind": "warning", "type": "warning", "displayTime": "6:34 PM", "activeMinutes": 26, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Parle County, Eastern Yellow Medicine County", "message": "In effect until 7:00 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 6:34 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Parle County, Eastern Yellow Medicine County until 7:00 PM"]}, {"id": "warn-10", "kind": "warning", "type": "warning", "displayTime": "6:42 PM", "activeMinutes": 63, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Eastern Dickey County", "message": "In effect until 7:45 PM. 70.0 mph \u2022 0.88\" hail \u2022 Considerable.", "detailsHint": "Issued 6:42 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Eastern Dickey County until 7:45 PM"]}, {"id": "warn-4", "kind": "warning", "type": "warning", "displayTime": "6:43 PM", "activeMinutes": 17, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southeastern Pope County, West central Stearns County, Northeastern Swift County +1", "message": "In effect until 7:00 PM.", "detailsHint": "Issued 6:43 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southeastern Pope County, West central Stearns County, Northeastern Swift County +1 until 7:00 PM"]}, {"id": "warn-14", "kind": "warning", "type": "warning", "displayTime": "6:47 PM", "activeMinutes": 13, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southwestern Kandiyohi County, North central Renville County", "message": "In effect until 7:00 PM.", "detailsHint": "Issued 6:47 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southwestern Kandiyohi County, North central Renville County until 7:00 PM"]}, {"id": "warn-34", "kind": "warning", "type": "warning", "displayTime": "6:47 PM", "activeMinutes": 58, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Southwestern Otter Tail County, Grant County, Southern Wilkin County +3", "message": "In effect until 7:45 PM. 70.0 mph \u2022 1.0\" hail \u2022 Considerable.", "detailsHint": "Issued 6:47 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Southwestern Otter Tail County, Grant County, Southern Wilkin County +3 until 7:45 PM"]}, {"id": "warn-56", "kind": "warning", "type": "warning", "displayTime": "6:52 PM", "activeMinutes": 53, "rearmOnBacktrack": true, "theme": "severe", "kicker": "Severe Thunderstorm Warning", "headline": "Severe Thunderstorm Warning for Sibley County, Eastern Redwood County, McLeod County +3", "message": "In effect until 7:45 PM. 70.0 mph \u2022 0.75\" hail \u2022 Considerable.", "detailsHint": "Issued 6:52 PM", "durationMs": 6000, "ticker": ["Severe Thunderstorm Warning for Sibley County, Eastern Redwood County, McLeod County +3 until 7:45 PM"]}, {"id": "warn-38", "kind": "warning", "type": "warning", "displayTime": "6:53 PM", "activeMinutes": 22, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Traverse County, Northern Roberts County", "message": "In effect until 7:15 PM. 0.75\" hail.", "detailsHint": "Issued 6:53 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Traverse County, Northern Roberts County until 7:15 PM"]}, {"id": "warn-19", "kind": "warning", "type": "warning", "displayTime": "6:58 PM", "activeMinutes": 17, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Southeastern Pope County, Pope County", "message": "In effect until 7:15 PM.", "detailsHint": "Issued 6:58 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Southeastern Pope County, Pope County until 7:15 PM"]}, {"id": "warn-16", "kind": "warning", "type": "warning", "displayTime": "6:59 PM", "activeMinutes": 16, "rearmOnBacktrack": true, "theme": "tornado", "kicker": "Tornado Warning", "headline": "Tornado Warning for Northeastern Marshall County, Marshall County", "message": "In effect until 7:15 PM. 0.75\" hail.", "detailsHint": "Issued 6:59 PM", "durationMs": 7000, "ticker": ["Tornado Warning for Northeastern Marshall County, Marshall County until 7:15 PM"]}];
+
+      var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel'), drawColorDots = Array.prototype.slice.call(document.querySelectorAll('[data-draw-color]')), simAlertCloseBtn = document.getElementById('simAlertCloseBtn');
+      var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome'), toolToggleBtn = document.getElementById('toolToggleBtn'), toolBox = document.getElementById('toolBox');
+      var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
+      var lastRenderedCardKey = '';
+      var lastAppliedProductSignature = '';
+      var applyProductRequestId = 0;
+
+      function qstring(name){ try { return new URLSearchParams(window.location.search).get(name); } catch(e){ return null; } }
+      function parseMs(v){ var d = new Date(v); return isNaN(d) ? NaN : d.getTime(); }
+      function clamp01(v){ v = Number(v); if (!isFinite(v)) return 0; if (v < 0) return 0; if (v > 1) return 1; return v; }
+      function setBannerText(){ var ui = cfg.ui || {}; document.getElementById('simBrandLine').textContent = ui.title || 'Weather Discovery Lab'; document.getElementById('simCaseLine').textContent = ui.subtitle || 'Live Severe Weather Simulator'; document.getElementById('simRegionLine').textContent = ui.region || ''; clockLabel.textContent = (cfg.masterClock && cfg.masterClock.label) || 'Master Simulator Clock'; }
+      function updateModeToggleUi(){
+        if (!modeToggleBtn) return;
+        modeToggleBtn.style.display = 'none';
+        manualClockMode = true;
+      }
+      function setManualClockMode(on){
+        manualClockMode = true;
+        try{
+          if (typeof window.setFreeScrubMode === 'function') window.setFreeScrubMode(true);
+          else window.__WDL_FREE_SCRUB__ = true;
+          window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
+          window.__WDL_SIMPLE_MODE__ = true;
+        }catch(e){}
+        updateModeToggleUi();
+        if (typeof manualProductMode === 'undefined') manualProductMode = null;
+        if (typeof manualProductLayers === 'undefined') manualProductLayers = null;
+        if (typeof manualProductLabel === 'undefined') manualProductLabel = '';
+        window.__WDL_HTML_SCRUBBING__ = false;
+        return;
+      }
+      function getActualWindow(){ var start = parseMs(cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ start = parseMs('2022-05-12T20:00:00Z'); end = parseMs('2022-05-13T00:00:00Z'); } return { start:start, end:end }; }
+      function getDisplayWindow(){ var mc = cfg.masterClock || {}, start = parseMs(mc.displayStartZ || cfg.startZ || '2022-05-12T20:00:00Z'), end = parseMs(mc.displayEndZ || cfg.endZ || '2022-05-13T00:00:00Z'); if (!isFinite(start) || !isFinite(end) || end <= start){ var a=getActualWindow(); start=a.start; end=a.end; } return { start:start, end:end }; }
+      function percentFromActualMs(ms){ var a=getActualWindow(); if (!isFinite(ms) || a.end <= a.start) return 0; return clamp01((ms-a.start)/(a.end-a.start)); }
+      function actualMsFromPercent(p){ var a=getActualWindow(); p=clamp01(p); return Math.round(a.start+((a.end-a.start)*p)); }
+      function displayMsFromPercent(p){ var d=getDisplayWindow(); p=clamp01(p); return Math.round(d.start+((d.end-d.start)*p)); }
+      function displayPercentFromDisplayTime(displayTimeString){ if (!displayTimeString) return NaN; try { var parts = String(displayTimeString).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i); if (!parts) return NaN; var hh = Number(parts[1]) % 12, mm = Number(parts[2]), ss = Number(parts[3] || 0); if (/PM/i.test(parts[4])) hh += 12; var d = getDisplayWindow(); var start = new Date(d.start); start.setHours(hh, mm, ss, 0); return clamp01((start.getTime() - d.start) / (d.end - d.start)); } catch(e){ return NaN; } }
+      function formatDisplayClock(ms){ try { return new Date(ms).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' }); } catch(e){ return '--:--'; } }
+      function formatScrubEdge(ms){ try { return new Date(ms).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' }).replace(':00',''); } catch(e){ return '--'; } }
+      function readLiveActualMs(){ try { if (window.curZ) { var d0 = new Date(window.curZ); if (!isNaN(d0)) return d0.getTime(); } if (window.__SIM_LAST_CLOCK__) { var d1 = new Date(window.__SIM_LAST_CLOCK__); if (!isNaN(d1)) return d1.getTime(); } } catch(e){} return NaN; }
+      var tickerRotationIndex = 0;
+      var tickerRotationLines = [];
+      var pendingAlertQueue = [];
+      var alertShowing = false;
+      function setTicker(lines){
+        tickerRotationLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
+        tickerRotationIndex = 0;
+        tickerText.textContent = tickerRotationLines.length ? ('⚠ ' + tickerRotationLines[0] + ' •') : 'Simulator v5 ready •';
+      }
+      function updateTickerForPercent(pct){
+        var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
+        var activeLines = [];
+        events.forEach(function(ev, idx){
+          if (!ev || !ev.displayTime || !Array.isArray(ev.ticker) || !ev.ticker.length) return;
+          var startPct = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime);
+          if (!isFinite(startPct)) return;
+          var durMin = Number(ev.activeMinutes || ((ev.kind === 'report') ? 12 : 30));
+          var d = getDisplayWindow();
+          var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start)));
+          if (pct >= startPct && pct <= (startPct + durationPct)) {
+            ev.ticker.forEach(function(line){ if (line) activeLines.push(line); });
+          }
+        });
+        if (!activeLines.length) activeLines = ['Simulator v5 ready'];
+        var joined = activeLines.join('\n');
+        if (tickerRotationLines.join('\n') !== joined) {
+          tickerRotationLines = activeLines;
+          tickerRotationIndex = 0;
+        }
+        tickerText.textContent = tickerRotationLines.length ? ('⚠ ' + tickerRotationLines[tickerRotationIndex % tickerRotationLines.length] + ' •') : 'Simulator v5 ready •';
+      }
+      function playEventSound(eventData){ try { if (!eventData || !eventData.sound) return; var a = new Audio(eventData.sound); a.volume = Number(eventData.volume || 0.8); a.play().catch(function(){}); } catch(e){} }
+      function dequeueAndShowAlert(){
+        if (alertShowing || !pendingAlertQueue.length) return;
+        var eventData = pendingAlertQueue.shift();
+        if (!eventData) return;
+        alertShowing = true;
+        var theme = eventData.theme || ((cfg.eventThemes || {})[eventData.type]) || 'info';
+        alertBox.className = 'sim-alert visible theme-' + theme;
+        alertKicker.textContent = (eventData.kicker || 'Live Alert').toUpperCase();
+        alertHeadline.textContent = eventData.headline || 'Live Alert';
+        alertBody.innerHTML = ((eventData.message || '') + (eventData.detailsHint ? ' <strong>' + eventData.detailsHint + '</strong>' : '')).trim();
+        if (alertTimer) clearTimeout(alertTimer);
+        alertTimer = setTimeout(function(){
+          alertBox.className = 'sim-alert theme-' + theme;
+          alertShowing = false;
+          dequeueAndShowAlert();
+        }, Number(eventData.durationMs || 5000));
+        playEventSound(eventData);
+      }
+      function showAlert(eventData){
+        if (!eventData) return;
+        pendingAlertQueue.push(eventData);
+        dequeueAndShowAlert();
+      }
+      function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || ev.kind !== 'warning' || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
+      function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
+      function maybeFireTimedEvents(pct){
+        var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
+        var due = [];
+        events.forEach(function(ev, idx){
+          var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime);
+          if (!isFinite(threshold)) return;
+          var key = String(ev.id || idx);
+          if (pct >= threshold && !triggeredEvents[key]) {
+            triggeredEvents[key] = true;
+            due.push(ev);
+          }
+          if (pct < threshold - 0.01 && triggeredEvents[key] && ev.rearmOnBacktrack) delete triggeredEvents[key];
+        });
+        if (!due.length) return;
+        due.sort(function(a,b){
+          var pa = (a.kind === 'warning') ? 0 : 1;
+          var pb = (b.kind === 'warning') ? 0 : 1;
+          if (pa !== pb) return pa - pb;
+          return Number(b.durationMs || 0) - Number(a.durationMs || 0);
+        });
+        due.forEach(showAlert);
+      }
+      function updateClockAndScrubber(forcePercent){ var pct; if (typeof forcePercent === 'number' && isFinite(forcePercent)) pct = clamp01(forcePercent); else if (!manualClockMode) pct = percentFromActualMs(readLiveActualMs()); if (!isFinite(pct)) pct = displayPercent; displayPercent = clamp01(pct); clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent)); if (scrubber && !isScrubbing && !window.__WDL_HTML_SCRUBBING__) { var min = Number(scrubber.min || 0), max = Number(scrubber.max || 100), span = Math.max(1, max - min); scrubber.value = String(min + (displayPercent * span)); } updateWarningCount(displayPercent); maybeFireTimedEvents(displayPercent); updateTickerForPercent(displayPercent); }
+      function syncEngineToPercent(pct){
+        pct = clamp01(pct);
+        try {
+          if (typeof window.setMasterTime === 'function') {
+            window.setMasterTime(new Date(actualMsFromPercent(pct)));
+            return true;
+          }
+        } catch(e){}
+        return false;
+      }
+      function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
+      async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
+      function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
+      function normalizeProductLabel(product){
+        var map = {
+          future_radar:'Future Radar',
+          live_doppler:'Live Doppler',
+          temps:'METARs',
+          spc:'SPC Outlook',
+          spc_day1:'SPC Outlook',
+          watch:'PDS Watch',
+          warnings:'Warnings',
+          reports:'Storm Reports',
+          lightning:'Lightning',
+          satellite:'Satellite',
+          radar:'Radar',
+          photos:'Photos',
+          future_winds:'Future Winds',
+          future_temp:'Future Temperatures',
+          metar_temp:'Temperatures',
+          temps:'Temperatures',
+          metar_dewpoint:'Dew Points',
+          metar_wind:'Wind Gusts',
+          metar_pressure:'Barometer'
+        };
+        return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+      }
+      function rebuildTopicCards(){
+        var nextCards = [];
+        timeGroups.forEach(function(g){
+          (g.cards || []).forEach(function(card){
+            var clone = Object.assign({}, card);
+            clone.__groupLabel = g.label || 'Topic';
+            clone.__groupUtc = g.utc || null;
+            clone.__groupMs = g.ms;
+            nextCards.push(clone);
+          });
+        });
+        topicCards = nextCards.map(function(card, idx){
+          card.__topicNumber = idx + 1;
+          return card;
+        });
+      }
+      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
+      function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
+      function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
+      function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
+      function advanceTimeline(){ if (animating) { stopAnimation(); return; } var next = Math.min(currentGroupIndex + 1, Math.max(0, timeGroups.length - 1)); if (next === currentGroupIndex) return; animateToGroup(next); }
+      function syncGroupToTime(ms){ return; }
+      function currentGroup(){ return timeGroups[currentGroupIndex] || { label:'Time', cards:[] }; }
+      function currentCard(){ var g = currentGroup(); if (!g.cards.length) return null; currentCardIndex = Math.max(0, Math.min(g.cards.length - 1, currentCardIndex)); return g.cards[currentCardIndex]; }
+      async function applyProductMode(mode, layers, displayOverride){
+        var requestId = ++applyProductRequestId;
+        productButtons.forEach(function(btn){ btn.classList.toggle('is-active', btn.getAttribute('data-product') === mode); });
+        var displayLabel = displayOverride || normalizeProductLabel(mode);
+        if (!displayOverride && Array.isArray(layers) && layers.length) {
+          displayLabel = (layers.length === 1) ? normalizeProductLabel(layers[0]) : layers.map(normalizeProductLabel).join(' + ');
+        }
+        productLabel.textContent = displayLabel;
+
+        var activeLayers = Array.isArray(layers) ? layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+        if (!activeLayers.length && mode) activeLayers = [String(mode).toLowerCase()];
+        var signature = JSON.stringify({ mode: String(mode || ''), layers: activeLayers.slice(), label: String(displayLabel || '') });
+        if (signature === lastAppliedProductSignature) {
+          return false;
+        }
+        function has(name){ return activeLayers.indexOf(String(name).toLowerCase()) !== -1; }
+
+        try {
+          if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false);
+          if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(false);
+          if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(false);
+          if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+          if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+          if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
+          if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(false);
+          if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false);
+          if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(false);
+          if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(false);
+          if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(false);
+          if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+        } catch(e){ console.warn('Product reset issue', e); }
+
+        try {
+          if (has('spc') || has('spc_day1') || has('spc_outlook') || has('day1_outlook')) {
+            if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+          }
+          if (has('radar') || has('obs_radar') || has('radar_reflectivity') || has('reflectivity') || has('live_doppler') || has('doppler')) {
+            if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+            if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+          }
+          if (has('warnings') || has('alerts')) {
+            if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(true);
+          }
+          if (has('reports') || has('storm_reports') || has('lsr')) {
+            if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+          }
+          if (has('lightning')) {
+            if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+          }
+          if (has('satellite') || has('goes') || has('truecolor')) {
+            if (typeof window.setSatelliteEnabled === 'function') await window.setSatelliteEnabled(true);
+          }
+          if (has('metars') || has('metar_temp') || has('metar_dewpoint') || has('metar_wind') || has('metar_pressure')) {
+            if (typeof window.setMetarUseMasterScrubber === 'function') { try { window.setMetarUseMasterScrubber(true); } catch(e){} }
+            if (typeof window.setMetarDisplayMode === 'function') {
+              if (has('metar_dewpoint')) window.setMetarDisplayMode('dewpoint');
+              else if (has('metar_wind')) window.setMetarDisplayMode('wind');
+              else if (has('metar_pressure')) window.setMetarDisplayMode('pressure');
+              else window.setMetarDisplayMode('temp');
+            }
+            if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
+          }
+          if (has('future_radar') || has('hrrr_radar')) {
+            if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(true);
+          } else if (has('future_winds') || has('hrrr_winds') || has('windgust') || has('future_wind_gusts')) {
+            if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(true);
+          } else if (has('future_temp') || has('hrrr_temp') || has('model_temp')) {
+            if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
+          } else if (has('cape') || has('hrrr_cape')) {
+            if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(true);
+          }
+        } catch(e){ console.warn('Product toggle issue', e); }
+      }
+      function updateDopplerButton(showDoppler){ storyDopplerBtn.classList.remove('active', 'pulsing'); if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active'); else if (showDoppler) storyDopplerBtn.classList.add('pulsing'); storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF'; }
+      function storyAccentFor(product){
+        var p = String(product || '').toLowerCase();
+        if (p === 'spc' || p === 'spc_day1' || p === 'watch') return '#f09a00';
+        if (p === 'radar' || p === 'live_doppler' || p === 'future_radar') return '#1f6ad1';
+        if (p === 'temps' || p === 'metar_dewpoint' || p === 'metar_wind' || p === 'metar_pressure') return '#009a6b';
+        if (p === 'lightning') return '#d4b000';
+        if (p === 'reports' || p === 'warnings') return '#c73737';
+        if (p === 'satellite') return '#6d59c9';
+        return '#1f6ad1';
+      }
+
+      function isModelProduct(cardOrProduct){
+        var p = '';
+        var t = '';
+        var layers = [];
+        if (cardOrProduct && typeof cardOrProduct === 'object'){
+          p = String(cardOrProduct.product || '').toLowerCase();
+          t = String(cardOrProduct.title || cardOrProduct.topicLabel || '').toLowerCase();
+          layers = Array.isArray(cardOrProduct.layers) ? cardOrProduct.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+        } else {
+          p = String(cardOrProduct || '').toLowerCase();
+        }
+        var modelNames = ['future_radar','hrrr_radar','future_winds','hrrr_winds','future_temp','hrrr_temp','model_temp','cape','hrrr_cape','windgust','future_wind_gusts'];
+        if (modelNames.indexOf(p) >= 0) return true;
+        if (t.indexOf('future') >= 0 || t.indexOf('hrrr') >= 0 || t.indexOf('cape') >= 0) return true;
+        return layers.some(function(v){ return modelNames.indexOf(v) >= 0; });
+      }
+      function getModelTimeOptions(card){
+        var opts = [];
+        if (Array.isArray(card && card.modelTimes) && card.modelTimes.length){
+          card.modelTimes.forEach(function(v){
+            var d = new Date(v);
+            if (!isNaN(d)) opts.push(d);
+          });
+        }
+        if (!opts.length){
+          [16,17,18,19].forEach(function(h){ opts.push(new Date(Date.UTC(2022,4,12,h+5,0,0))); });
+        }
+        return opts;
+      }
+      function renderModelTimeControls(card){
+        if (!card || !isModelProduct(card)) return;
+        var target = storyBody;
+        if (!target) return;
+        var oldWrap = document.getElementById('modelTimeWrap');
+        if (oldWrap && oldWrap.parentNode) oldWrap.parentNode.removeChild(oldWrap);
+        var opts = getModelTimeOptions(card);
+        if (!opts.length) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'model-time-wrap';
+        wrap.id = 'modelTimeWrap';
+        var lab = document.createElement('div');
+        lab.className = 'model-time-label';
+        lab.textContent = 'Futurecast Times';
+        wrap.appendChild(lab);
+        var row = document.createElement('div');
+        row.className = 'model-time-row';
+        opts.forEach(function(d){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'model-time-chip';
+          var label = d.toLocaleTimeString('en-US', {hour:'numeric', hour12:true, timeZone:'America/Chicago'}).toLowerCase();
+          btn.textContent = label;
+          var active = false;
+          try{
+            var cur = window.curZ instanceof Date ? window.curZ : new Date(window.curZ);
+            active = !isNaN(cur) && cur.getUTCHours() === d.getUTCHours() && cur.getUTCMinutes() === d.getUTCMinutes();
+          }catch(e){}
+          if (active) btn.classList.add('active');
+          btn.addEventListener('click', function(){
+            try{
+              if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(d.getTime()));
+              else if (typeof window.curZ !== 'undefined') window.curZ = new Date(d.getTime());
+            }catch(e){}
+            try{ updateClockAndScrubber(percentFromActualMs(d.getTime())); }catch(e){}
+            row.querySelectorAll('.model-time-chip').forEach(function(b){ b.classList.remove('active'); });
+            btn.classList.add('active');
+          });
+          row.appendChild(btn);
+        });
+        wrap.appendChild(row);
+        target.appendChild(wrap);
+      }
+
+      function renderTopicRail(){
+        if (!topicRail) return;
+        topicRail.innerHTML = '';
+        topicRail.style.display = 'none';
+        topicRail.setAttribute('aria-hidden', 'true');
+      }
+      function renderCardChips(){
+        if (storyCardRow){
+          storyCardRow.innerHTML = '';
+          storyCardRow.style.display = 'none';
+          storyCardRow.setAttribute('aria-hidden', 'true');
+        }
+        renderTopicRail();
+      }
+      function renderCurrentCard(){
+        if (!topicCards.length) {
+          lastRenderedCardKey = '';
+          storyTitle.textContent = 'No Topics';
+          storyBody.innerHTML = '<p>No topic cards loaded for this simulator.</p>';
+          return;
+        }
+
+        currentTopicIndex = Math.max(0, Math.min(topicCards.length - 1, Number(currentTopicIndex) || 0));
+        var card = topicCards[currentTopicIndex] || null;
+        if (!card) {
+          lastRenderedCardKey = '';
+          storyTitle.textContent = 'No Topics';
+          storyBody.innerHTML = '<p>No topic cards loaded for this simulator.</p>';
+          return;
+        }
+
+        var cardKey = 'topic:' + currentTopicIndex + ':' + (card.id || card.title || '');
+        var cardChanged = cardKey !== lastRenderedCardKey;
+        lastRenderedCardKey = cardKey;
+
+        var chipText = String((currentTopicIndex || 0) + 1);
+        storyStationChip.textContent = chipText;
+        storyStationChip.classList.toggle('compact', chipText.length >= 3);
+        storyShellKicker.textContent = card.kicker || 'Topic';
+        storyTitle.textContent = card.title || card.topicLabel || 'Topic';
+        storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
+        sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+        storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
+          return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
+        }).join('');
+        renderModelTimeControls(card);
+
+        if (typeof renderCardChips === 'function') renderCardChips();
+
+        if (cardChanged) {
+          if (manualClockMode && manualProductMode && manualProductLayers && manualProductLayers.length) {
+            applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
+          } else {
+            var baseMode = card.product || 'radar';
+            var baseLayers = card.layers || [card.product || 'radar'];
+            applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
+          }
+        }
+      }
+
+      function setLocalTrackMode(on){
+        try{
+          document.body.classList.toggle('track-active', !!on);
+          document.body.classList.remove('measure-active');
+          document.body.classList.remove('probe-active');
+          document.body.classList.remove('draw-active');
+          if (window.map && window.map.dragging) {
+            if (on) window.map.dragging.disable(); else window.map.dragging.enable();
+          }
+          if (window.map && window.map.boxZoom) {
+            if (on) window.map.boxZoom.disable(); else window.map.boxZoom.enable();
+          }
+          if (window.map && window.map.doubleClickZoom) {
+            if (on) window.map.doubleClickZoom.disable(); else window.map.doubleClickZoom.enable();
+          }
+        }catch(e){}
+      }
+
+      function clearTrackLocal(){
+        try{
+          if (typeof window.clearStormTrack === 'function') window.clearStormTrack();
+          else if (typeof window.clearStormTrackGraphics === 'function') window.clearStormTrackGraphics();
+        }catch(e){}
+        setLocalTrackMode(false);
+      }
+
+      productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
+        if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
+        ev.preventDefault(); ev.stopPropagation();
+        var clicked = String(btn.getAttribute('data-product') || '').toLowerCase();
+
+        manualProductMode = clicked;
+        manualProductLayers = [clicked];
+        manualProductLabel = normalizeProductLabel(clicked);
+
+        applyProductMode(clicked, [clicked], manualProductLabel);
+        setTicker([manualProductLabel + ' view selected', 'Topic card stays in place while changing the visible layer']);
+
+        document.querySelectorAll('.product-group').forEach(function(g){
+          g.classList.remove('is-open');
+          var t = g.querySelector('.sim-group-toggle');
+          if (t) t.classList.remove('is-open');
+        });
+      }); });
+
+      playBtn.addEventListener('click', advanceTimeline);
+      if (modeToggleBtn) window.WDL_TEST_MODE = function(on){ setManualClockMode(true); };
+      function beginScrub(){
+        isScrubbing = true;
+        window.__WDL_HTML_SCRUBBING__ = true;
+      }
+
+      function endScrub(){
+        isScrubbing = false;
+        window.__WDL_HTML_SCRUBBING__ = false;
+        var min = Number(scrubber.min || 0);
+        var max = Number(scrubber.max || 100);
+        var val = Number(scrubber.value);
+        if (!isFinite(val)) return;
+        var span = Math.max(1, max - min);
+        var pct = clamp01((val - min) / span);
+        updateClockAndScrubber(pct);
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+      }
+
+      scrubber.addEventListener('mousedown', beginScrub);
+      scrubber.addEventListener('touchstart', beginScrub, { passive:true });
+      window.addEventListener('mouseup', endScrub);
+      window.addEventListener('touchend', endScrub, { passive:true });
+      scrubber.addEventListener('change', endScrub);
+
+      scrubber.addEventListener('input', function(){
+        stopAnimation();
+        setManualClockMode(true);
+
+        var min = Number(scrubber.min || 0);
+        var max = Number(scrubber.max || 100);
+        var val = Number(scrubber.value);
+
+        if (!isFinite(val)) return;
+
+        var span = Math.max(1, max - min);
+        var pct = clamp01((val - min) / span);
+
+        displayPercent = pct;
+        clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+      });
+      storyCollapseBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        document.body.classList.toggle('story-collapsed');
+        storyCollapseBtn.textContent = document.body.classList.contains('story-collapsed') ? 'Resume' : 'Hide';
+      });
+      storyDopplerBtn.addEventListener('click', async function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false); } catch(e){}
+        try { if (typeof window.setRadarEnabled === 'function' && !window.obsRadarEnabled) await window.setRadarEnabled(true); } catch(e){}
+        try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){}
+        updateDopplerButton(true);
+      });
+      storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
+      storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
+      alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
+            if (toolToggleBtn && toolBox) toolToggleBtn.addEventListener('click', function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        toolBox.classList.toggle('is-collapsed');
+        toolToggleBtn.textContent = toolBox.classList.contains('is-collapsed') ? 'Tools ▸' : 'Tools ▾';
+      });
+if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
+      if (toolProbe) toolProbe.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} syncSimpleToolStates(); toolProbe.classList.add('active'); });
+      function syncSimpleToolStates(){
+        if (toolStormTrack) toolStormTrack.classList.toggle('active', document.body.classList.contains('track-active'));
+        if (toolDraw) toolDraw.classList.toggle('active', document.body.classList.contains('draw-active'));
+        if (toolMeasure) toolMeasure.classList.toggle('active', document.body.classList.contains('measure-active'));
+        if (toolProbe) toolProbe.classList.toggle('active', document.body.classList.contains('probe-active'));
+      }
+      if (toolStormTrack) toolStormTrack.addEventListener('click', function(){
+        var turningOn = !document.body.classList.contains('track-active');
+        try{
+          if (typeof window.toggleStormTrackMode === 'function') {
+            window.toggleStormTrackMode();
+          } else if (typeof window.setTrackMode === 'function') {
+            window.setTrackMode(turningOn);
+          } else {
+            setLocalTrackMode(turningOn);
+          }
+        }catch(e){
+          setLocalTrackMode(turningOn);
+        }
+        if (!document.body.classList.contains('track-active') && turningOn) setLocalTrackMode(true);
+        if (!turningOn) clearTrackLocal();
+        toolStormTrack.classList.toggle('active', turningOn);
+        syncSimpleToolStates();
+      });
+      if (toolDraw) toolDraw.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleDrawMode) window.toggleDrawMode(); else if (window.setDrawMode) window.setDrawMode(true); }catch(e){} syncSimpleToolStates(); toolDraw.classList.add('active'); });
+      if (toolErase) toolErase.addEventListener('click', function(){
+        clearTrackLocal();
+        try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
+        try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
+        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(false); }catch(e){}
+        try{ document.body.classList.remove('measure-active','draw-active'); }catch(e){}
+        syncSimpleToolStates();
+        toolErase.classList.add('active');
+      });
+      if (toolClear) toolClear.addEventListener('click', function(){
+        clearTrackLocal();
+        try{ if (typeof window.setMeasureMode === 'function') window.setMeasureMode(false); }catch(e){}
+        try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(false); }catch(e){}
+        try{ if (window.clearMeasureGraphics) window.clearMeasureGraphics(); }catch(e){}
+        try{ if (window.clearDrawings) window.clearDrawings(); }catch(e){}
+        try{ document.body.classList.remove('measure-active','draw-active','track-active'); }catch(e){}
+        syncSimpleToolStates();
+      });
+      if (toolHome) toolHome.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.resetViewHome) window.resetViewHome(); }catch(e){} syncSimpleToolStates(); });
+
+      if (simAlertCloseBtn) simAlertCloseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); if (alertTimer) clearTimeout(alertTimer); alertBox.className = alertBox.className.replace(/\s*visible\b/g, ''); });
+
+      drawColorDots.forEach(function(btn){
+        btn.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          var color = btn.getAttribute('data-draw-color') || '#fdd835';
+          try{ if (typeof window.setDrawColor === 'function') window.setDrawColor(color); }catch(e){}
+          try{ if (typeof window.setDrawMode === 'function') window.setDrawMode(true); }catch(e){}
+          document.body.classList.add('draw-active');
+          drawColorDots.forEach(function(b){ b.classList.remove('is-active'); });
+          btn.classList.add('is-active');
+          if (toolDraw) toolDraw.classList.add('active');
+          if (toolStormTrack) toolStormTrack.classList.remove('active');
+        });
+      });
+
+            window.addEventListener('wdl:storychange', function(ev){ return; });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
+      setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); syncSimpleToolStates(); } }, 300);
+
+      setInterval(function(){
+        if (!tickerRotationLines || !tickerRotationLines.length) return;
+        if (tickerRotationLines.length <= 1) return;
+        tickerRotationIndex = (tickerRotationIndex + 1) % tickerRotationLines.length;
+        tickerText.textContent = '⚠ ' + tickerRotationLines[tickerRotationIndex] + ' •';
+      }, 5000);
+
+    })();
+  </script>
+
+
+
+
+
+<script>
+(function () {
+  const mapEl = document.getElementById("map");
+  const drawBtn = document.getElementById("toolDraw");
+  const eraseBtn = document.getElementById("toolErase");
+  const clearBtn = document.getElementById("toolClear");
+  const colorDots = Array.from(document.querySelectorAll("[data-draw-color]"));
+
+  if (!mapEl || !drawBtn) return;
+
+  mapEl.style.position = mapEl.style.position || "relative";
+
+  const wrap = document.createElement("div");
+  wrap.id = "simpleDrawOverlay";
+  wrap.style.position = "absolute";
+  wrap.style.left = "0";
+  wrap.style.top = "0";
+  wrap.style.width = "100%";
+  wrap.style.height = "100%";
+  wrap.style.zIndex = "650";
+  wrap.style.pointerEvents = "none";
+  wrap.style.touchAction = "none";
+  wrap.style.cursor = "crosshair";
+  wrap.style.background = "transparent";
+
+  const canvas = document.createElement("canvas");
+  canvas.style.position = "absolute";
+  canvas.style.left = "0";
+  canvas.style.top = "0";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  wrap.appendChild(canvas);
+  mapEl.appendChild(wrap);
+
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let enabled = false;
+  let currentColor = "#fdd835";
+  let lastPoint = null;
+
+  function syncColorDots() {
+    colorDots.forEach(function (dot) {
+      const c = String(dot.getAttribute("data-draw-color") || "").toLowerCase();
+      dot.classList.toggle("is-active", c === currentColor.toLowerCase());
+    });
+  }
+
+  function syncDrawUi() {
+    drawBtn.classList.toggle("active", enabled);
+    try { document.body.classList.toggle("draw-active", enabled); } catch (e) {}
+  }
+
+  function setColor(color) {
+    currentColor = String(color || "#fdd835");
+    ctx.strokeStyle = currentColor;
+    syncColorDots();
+  }
+
+  function resizeCanvas() {
+    const rect = mapEl.getBoundingClientRect();
+    const old = document.createElement("canvas");
+    old.width = canvas.width || 1;
+    old.height = canvas.height || 1;
+    const oldCtx = old.getContext("2d");
+    if (canvas.width && canvas.height) oldCtx.drawImage(canvas, 0, 0);
+
+    canvas.width = Math.max(1, Math.round(rect.width));
+    canvas.height = Math.max(1, Math.round(rect.height));
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = currentColor;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (old.width && old.height) ctx.drawImage(old, 0, 0, canvas.width, canvas.height);
+  }
+
+  function setMapLocked(lock) {
+    if (!window.map) return;
+    try { lock ? map.dragging.disable() : map.dragging.enable(); } catch(e) {}
+    try { lock ? map.touchZoom.disable() : map.touchZoom.enable(); } catch(e) {}
+    try { lock ? map.doubleClickZoom.disable() : map.doubleClickZoom.enable(); } catch(e) {}
+    try { lock ? map.scrollWheelZoom.disable() : map.scrollWheelZoom.enable(); } catch(e) {}
+    try { lock ? map.boxZoom.disable() : map.boxZoom.enable(); } catch(e) {}
+    try { lock ? map.keyboard.disable() : map.keyboard.enable(); } catch(e) {}
+    try { if (map.tap) lock ? map.tap.disable() : map.tap.enable(); } catch(e) {}
+  }
+
+  function stopEvent(ev) {
+    if (!ev) return;
+    if (typeof ev.preventDefault === "function") ev.preventDefault();
+    if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+    if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+  }
+
+  function getPoint(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const src = (ev.touches && ev.touches.length) ? ev.touches[0]
+               : ((ev.changedTouches && ev.changedTouches.length) ? ev.changedTouches[0] : ev);
+    return {
+      x: src.clientX - rect.left,
+      y: src.clientY - rect.top
+    };
+  }
+
+  function beginStroke(ev) {
+    if (!enabled) return;
+    stopEvent(ev);
+    drawing = true;
+    lastPoint = getPoint(ev);
+    ctx.beginPath();
+    ctx.moveTo(lastPoint.x, lastPoint.y);
+  }
+
+  function moveStroke(ev) {
+    if (!enabled || !drawing) return;
+    stopEvent(ev);
+    const p = getPoint(ev);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastPoint = p;
+  }
+
+  function endStroke(ev) {
+    if (!enabled) return;
+    stopEvent(ev);
+    drawing = false;
+    lastPoint = null;
+  }
+
+  function setDraw(on) {
+    enabled = !!on;
+    wrap.style.pointerEvents = enabled ? "auto" : "none";
+    if (!enabled) {
+      drawing = false;
+      lastPoint = null;
+    }
+    setMapLocked(enabled);
+    syncDrawUi();
+  }
+
+  function clearDrawing() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  colorDots.forEach(function (dot) {
+    function applyColor(ev) {
+      stopEvent(ev);
+      setColor(dot.getAttribute("data-draw-color") || "#fdd835");
+      if (!enabled) setDraw(true);
+    }
+    dot.addEventListener("click", applyColor, true);
+    dot.addEventListener("mousedown", stopEvent, { passive: false, capture: true });
+    dot.addEventListener("touchstart", applyColor, { passive: false, capture: true });
+  });
+
+  drawBtn.addEventListener("click", function (ev) {
+    stopEvent(ev);
+    setDraw(!enabled);
+  }, true);
+
+  if (eraseBtn) {
+    eraseBtn.addEventListener("click", function (ev) {
+      stopEvent(ev);
+      clearDrawing();
+    }, true);
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", function (ev) {
+      stopEvent(ev);
+      clearDrawing();
+    }, true);
+  }
+
+  ["mousedown","pointerdown","touchstart"].forEach(function(name){
+    canvas.addEventListener(name, beginStroke, { passive:false });
+  });
+  ["mousemove","pointermove","touchmove"].forEach(function(name){
+    canvas.addEventListener(name, moveStroke, { passive:false });
+  });
+  ["mouseup","mouseleave","pointerup","pointercancel","touchend","touchcancel"].forEach(function(name){
+    canvas.addEventListener(name, endStroke, { passive:false });
+  });
+
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+  setColor(currentColor);
+  syncDrawUi();
+
+  window.simpleYellowDraw = {
+    on: function(){ setDraw(true); },
+    off: function(){ setDraw(false); },
+    clear: clearDrawing,
+    color: function(c){ setColor(c); }
+  };
+})();
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    var toolBox = document.getElementById('toolBox');
+    if (toolBox) toolBox.classList.add('is-collapsed');
+  }catch(e){}
+
+  function syncMobileStoryMode(){
+    try{
+      var isPhone = window.innerWidth <= 640;
+      document.body.classList.toggle('story-mobile-collapsed', isPhone);
+    }catch(e){}
+  }
+
+  syncMobileStoryMode();
+  window.addEventListener('resize', syncMobileStoryMode);
+
+  try{
+    var storyHeader = document.querySelector('.story-shell-header');
+    if (storyHeader){
+      storyHeader.addEventListener('click', function(ev){
+        if (window.innerWidth > 640) return;
+        var t = ev.target;
+        if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('#storyCollapseBtn') || t.closest('#storyDopplerBtn'))) return;
+        document.body.classList.toggle('story-mobile-collapsed');
+      });
+    }
+  }catch(e){}
+});
+</script>
+
+</body>
+</html>
