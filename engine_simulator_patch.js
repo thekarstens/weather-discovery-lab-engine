@@ -5993,6 +5993,7 @@ if (window.createMetarsModule) {
   var radarVelocityLoadPromise = null;
   var radarVelocityPointsPromise = null;
   var radarVelocityPointsFileLoaded = '';
+  var radarVelocityPointsTargetUrl = '';
   var radarVelocityPointsLoadToken = 0;
   var radarVelocityFixedBounds = null;
   var currentRadarVelocityFrame = null;
@@ -6155,6 +6156,8 @@ if (window.createMetarsModule) {
       ? currentRadarVelocityFrame.points
       : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.points);
 
+    radarVelocityPointsTargetUrl = pointsUrl;
+
     if (radarVelocityPoints && radarVelocityPointsFileLoaded === pointsUrl) return radarVelocityPoints;
     if (radarVelocityPointsPromise && radarVelocityPointsFileLoaded === pointsUrl) return radarVelocityPointsPromise;
 
@@ -6166,9 +6169,12 @@ if (window.createMetarsModule) {
       })
       .then(function(raw){
         if (myToken !== radarVelocityPointsLoadToken) return radarVelocityPoints;
+        if (radarVelocityPointsTargetUrl !== pointsUrl) return radarVelocityPoints;
+
         radarVelocityPoints = raw || null;
         radarVelocityPointsFileLoaded = pointsUrl;
         window.radarVelocityPoints = radarVelocityPoints;
+        window.__radarVelocityPointsFileLoaded = radarVelocityPointsFileLoaded;
 
         var inferred = inferRadarVelocityBoundsFromPoints(radarVelocityPoints);
         if (inferred && !radarVelocityFixedBounds){
@@ -6188,6 +6194,7 @@ if (window.createMetarsModule) {
           radarVelocityPoints = null;
           radarVelocityPointsFileLoaded = '';
           window.radarVelocityPoints = null;
+          window.__radarVelocityPointsFileLoaded = '';
         }
         console.error('Velocity points load failed:', err);
         throw err;
@@ -6216,8 +6223,10 @@ if (window.createMetarsModule) {
       radarVelocityPoints = null;
       radarVelocityPointsPromise = null;
       radarVelocityPointsFileLoaded = '';
+      radarVelocityPointsTargetUrl = '';
       radarVelocityPointsLoadToken++;
       window.radarVelocityPoints = null;
+      window.__radarVelocityPointsFileLoaded = '';
       window.__lastRadarVelocityPointsFile__ = nextPoints;
     }
 
