@@ -435,64 +435,6 @@
         } catch (e) {}
       }
 
-      function applyMobileIframeLayout(doc){
-        if (!doc) return;
-        var isPhone = window.innerWidth <= 640;
-        if (!isPhone) return;
-        try {
-          [
-            '#brandLogo', '.banner-center', '.sim-version', '.product-row', '.scrub-wrap', '#scrubWrap', '#cbScrubber', '.clock-stack', '#simClockBox', '#warningCountBox', '#simTickerWrap'
-          ].forEach(function(sel){
-            try {
-              doc.querySelectorAll(sel).forEach(function(el){ el.style.display = 'none'; });
-            } catch (e) {}
-          });
-
-          var banner = doc.querySelector('.tvbanner');
-          if (banner) {
-            banner.style.minHeight = '58px';
-            banner.style.height = '58px';
-            banner.style.overflow = 'hidden';
-          }
-
-          var modeToggle = doc.querySelector('.mode-toggle');
-          if (modeToggle) {
-            modeToggle.style.left = '12px';
-            modeToggle.style.top = '10px';
-            modeToggle.style.transform = 'scale(.9)';
-            modeToggle.style.transformOrigin = 'top left';
-          }
-
-          var story = doc.getElementById('storyPanel') || doc.querySelector('.storyPanel');
-          if (story) {
-            story.style.left = '10px';
-            story.style.right = '10px';
-            story.style.width = 'auto';
-            story.style.maxHeight = '62vh';
-            story.style.top = '70px';
-            story.style.bottom = 'auto';
-            story.style.borderRadius = '18px';
-          }
-
-          var zoomPlus = doc.getElementById('zoomPlus');
-          var zoomMinus = doc.getElementById('zoomMinus');
-          [zoomPlus, zoomMinus].forEach(function(btn){
-            if (!btn) return;
-            btn.style.width = '52px';
-            btn.style.height = '52px';
-          });
-
-          var toolBox = doc.getElementById('toolBox');
-          if (toolBox) {
-            toolBox.classList.add('is-collapsed');
-            toolBox.style.top = '76px';
-            toolBox.style.right = '8px';
-            toolBox.style.transform = 'scale(.92)';
-            toolBox.style.transformOrigin = 'top right';
-          }
-        } catch (e) {}
-      }
-
       async function setLayer(fnName, value, cw){
         try {
           if (typeof cw[fnName] === 'function') await cw[fnName](value);
@@ -516,7 +458,6 @@
         injectHideCss(doc);
         forceHideChrome(doc);
         forceCollapseTools(doc);
-        applyMobileIframeLayout(doc);
         applyMobileIframeLayout(doc);
         if (heroCard) heroCard.style.display = 'none';
         updateCardShell();
