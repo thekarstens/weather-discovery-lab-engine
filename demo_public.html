@@ -285,6 +285,10 @@
           '.leaflet-top.leaflet-left, .leaflet-top.leaflet-right { margin-top: 8px !important; }'
         ].join('
 ');
+        style.textContent += '
+.storyPanel, .story-panel, .story-shell, .story-stack, .story-detail, .story-detail-shell, .story-detail-body, .story-bottom-nav, .story-footer, .story-nav, .story-level-nav, .story-level-controls, .story-guide-shell, .story-guide-card, .story-guide-footer, .topic-shell, .topic-shell-footer, .topic-nav, .topic-footer, .step-footer, .step-nav, .lesson-shell, .lesson-card-shell { display:none !important; }';
+        style.textContent += '
+#warningCountBox { display:none !important; }';
         doc.head.appendChild(style);
       }
 
@@ -354,7 +358,7 @@
 
         try { cw.updateAll(); } catch (e) {}
         if (dopplerBtn) dopplerBtn.textContent = cw && cw.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
-        setStatus('Showing step ' + card.step + ' at ' + card.timeLabel + '.');
+        setStatus('Showing demo step ' + card.step + ' at ' + card.timeLabel + '.');
         return true;
       }
 
