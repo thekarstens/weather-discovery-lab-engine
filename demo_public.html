@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Discovery Lab — Public Demo</title>
+  <style>
+    :root{
+      --bg:#07131f;
+      --panel:rgba(7,19,31,.86);
+      --panelBorder:rgba(255,255,255,.14);
+      --text:#ffffff;
+      --muted:rgba(255,255,255,.78);
+      --accent:#2db7ff;
+      --accent2:#ff3d3d;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Lato", Arial, sans-serif;
+      overflow: hidden;
+    }
+    #shell {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    #simFrame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+    .hero-card {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      z-index: 20;
+      width: min(420px, calc(100vw - 36px));
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(10,26,44,.94), rgba(7,19,31,.88));
+      border: 1px solid var(--panelBorder);
+      box-shadow: 0 14px 34px rgba(0,0,0,.34);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+    .hero-bar {
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .hero-inner {
+      padding: 16px 18px 18px;
+    }
+    .kicker {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.72);
+    }
+    .title {
+      margin-top: 8px;
+      font-size: 28px;
+      line-height: 1.02;
+      font-weight: 900;
+    }
+    .sub {
+      margin-top: 10px;
+      font-size: 15px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .lookfor {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .lookfor b { color: #fff; }
+    .demo-controls {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .demo-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, #1b4b7e, #12345a 65%, #0d233d);
+      color: #fff;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font: 900 13px/1 Arial, sans-serif;
+      letter-spacing: .4px;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+    .demo-btn.secondary {
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    }
+    .status {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 20;
+      max-width: min(520px, calc(100vw - 36px));
+      border-radius: 16px;
+      background: rgba(0,0,0,.5);
+      color: rgba(255,255,255,.85);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 10px 12px;
+      font: 700 12px/1.35 Arial, sans-serif;
+      backdrop-filter: blur(6px);
+    }
+    @media (max-width: 740px) {
+      .hero-card {
+        width: calc(100vw - 24px);
+        left: 12px;
+        top: 12px;
+      }
+      .title { font-size: 24px; }
+      .sub, .lookfor { font-size: 13px; }
+      .status {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="shell">
+    <iframe
+      id="simFrame"
+      src="./simulator_v5_7_unsnapped.html?lesson=derecho-2022-demo"
+      title="Weather Discovery Lab Public Demo"
+      loading="eager"
+      referrerpolicy="same-origin"
+    ></iframe>
+
+    <div class="hero-card">
+      <div class="hero-bar"></div>
+      <div class="hero-inner">
+        <div class="kicker">Interactive Severe Weather Demo</div>
+        <div class="title">May 12, 2022 Derecho</div>
+        <div class="sub">
+          A first look at a real severe weather event using live-style radar, warnings, and storm reports.
+        </div>
+        <div class="lookfor">
+          <b>Look for:</b> the fast-moving radar line, active warnings, and how the storm fills the map around <span id="demoTimeLabel">4:45 PM</span>.
+        </div>
+        <div class="demo-controls">
+          <button class="demo-btn" id="refreshSceneBtn" type="button">Refresh Scene</button>
+          <button class="demo-btn secondary" id="toggleCaptionBtn" type="button">Hide Caption</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status" id="demoStatus">Loading public demo scene…</div>
+  </div>
+
+  <script>
+    (function(){
+      var frame = document.getElementById('simFrame');
+      var statusEl = document.getElementById('demoStatus');
+      var refreshBtn = document.getElementById('refreshSceneBtn');
+      var toggleCaptionBtn = document.getElementById('toggleCaptionBtn');
+      var heroCard = document.querySelector('.hero-card');
+      var DEMO_TIME_ISO = '2022-05-12T21:45:00Z';
+      var DEMO_TIME_LABEL = '4:45 PM';
+      var attemptTimer = null;
+      var attemptCount = 0;
+      var maxAttempts = 60;
+
+      function setStatus(msg){
+        if (statusEl) statusEl.textContent = msg;
+      }
+
+      function injectHideCss(doc){
+        if (!doc || doc.getElementById('publicDemoHideCss')) return;
+        var style = doc.createElement('style');
+        style.id = 'publicDemoHideCss';
+        style.textContent = [
+          '.tvbanner, .product-row, .mode-toggle, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn, #storyDopplerBtn { display:none !important; }',
+          '#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }',
+          '#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }',
+          '#toolToggleBtn { display:inline-flex !important; }',
+          '#warningCountBox { top: 18px !important; right: 18px !important; z-index: 100025 !important; }',
+          '#simTickerWrap { left: 18px !important; right: 18px !important; bottom: 12px !important; z-index: 100024 !important; }',
+          '#simAlertBox { top: 18px !important; right: 18px !important; z-index: 100026 !important; }',
+          '.leaflet-top.leaflet-left, .leaflet-top.leaflet-right { margin-top: 8px !important; }'
+        ].join('\n');
+        doc.head.appendChild(style);
+      }
+
+      async function configureScene(){
+        attemptCount += 1;
+        var cw, doc;
+        try {
+          cw = frame.contentWindow;
+          doc = cw.document;
+        } catch (err) {
+          setStatus('Waiting for demo frame…');
+          return false;
+        }
+
+        if (!cw || !doc || !doc.body) {
+          setStatus('Waiting for simulator page…');
+          return false;
+        }
+
+        injectHideCss(doc);
+
+        if (doc.body) {
+          doc.body.classList.add('guide-collapsed');
+          doc.body.classList.remove('explore-mode');
+        }
+
+        try {
+          var toolBox = doc.getElementById('toolBox');
+          if (toolBox) toolBox.classList.add('is-collapsed');
+        } catch (e) {}
+
+        if (typeof cw.updateAll !== 'function' || typeof cw.setMasterTime !== 'function') {
+          setStatus('Waiting for engine functions…');
+          return false;
+        }
+
+        try {
+          if (typeof cw.pauseSimulator === 'function') cw.pauseSimulator();
+        } catch (e) {}
+
+        try {
+          if (typeof cw.setFreeScrubMode === 'function') cw.setFreeScrubMode(true);
+        } catch (e) {}
+
+        try {
+          if (typeof cw.setSpcDay1Enabled === 'function') await cw.setSpcDay1Enabled(false);
+          if (typeof cw.setSatelliteEnabled === 'function') await cw.setSatelliteEnabled(false);
+          if (typeof cw.setMetarsEnabled === 'function') await cw.setMetarsEnabled(false);
+          if (typeof cw.setHrrrRadarEnabled === 'function') await cw.setHrrrRadarEnabled(false);
+          if (typeof cw.setHrrrWindsEnabled === 'function') await cw.setHrrrWindsEnabled(false);
+          if (typeof cw.setHrrrCapeEnabled === 'function') await cw.setHrrrCapeEnabled(false);
+          if (typeof cw.setHrrrTempEnabled === 'function') await cw.setHrrrTempEnabled(false);
+        } catch (e) {}
+
+        try {
+          await cw.setMasterTime(new Date(DEMO_TIME_ISO));
+        } catch (e) {
+          setStatus('Could not set fixed demo time yet…');
+          return false;
+        }
+
+        try {
+          if (typeof cw.setObsRadarEnabled === 'function') await cw.setObsRadarEnabled(true);
+          if (typeof cw.setRadarEnabled === 'function') await cw.setRadarEnabled(true);
+          if (typeof cw.setWarningsEnabled === 'function') await cw.setWarningsEnabled(true);
+          if (typeof cw.setReportsEnabled === 'function') await cw.setReportsEnabled(true);
+          if (typeof cw.setLightningEnabled === 'function') await cw.setLightningEnabled(true);
+          if (typeof cw.toggleSweep === 'function' && !cw.radarSweepEnabled) cw.toggleSweep();
+        } catch (e) {
+          console.warn('Public demo toggle issue', e);
+        }
+
+        try {
+          cw.updateAll();
+        } catch (e) {}
+
+        setStatus('Public demo scene loaded at ' + DEMO_TIME_LABEL + '.');
+        return true;
+      }
+
+      async function runSetupLoop(){
+        if (attemptTimer) clearInterval(attemptTimer);
+        attemptCount = 0;
+        setStatus('Loading public demo scene…');
+        attemptTimer = setInterval(async function(){
+          var ok = await configureScene();
+          if (ok) {
+            clearInterval(attemptTimer);
+            attemptTimer = null;
+          } else if (attemptCount >= maxAttempts) {
+            clearInterval(attemptTimer);
+            attemptTimer = null;
+            setStatus('Demo page loaded, but the stripped public scene needs another pass.');
+          }
+        }, 500);
+      }
+
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function(){
+          runSetupLoop();
+        });
+      }
+
+      if (toggleCaptionBtn) {
+        toggleCaptionBtn.addEventListener('click', function(){
+          var hidden = heroCard.style.display === 'none';
+          heroCard.style.display = hidden ? '' : 'none';
+          toggleCaptionBtn.textContent = hidden ? 'Hide Caption' : 'Show Caption';
+        });
+      }
+
+      frame.addEventListener('load', function(){
+        runSetupLoop();
+      });
+
+      document.getElementById('demoTimeLabel').textContent = DEMO_TIME_LABEL;
+    })();
+  </script>
+</body>
+</html>
