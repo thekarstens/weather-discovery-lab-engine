@@ -2869,14 +2869,15 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   };
 
   if (toolProbeBtn) toolProbeBtn.onclick = function(){
-    // Allow probing for either HRRR temps or active 500 mb winds.
     try{
       var canProbeHrrr = !!(map && typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer));
       var canProbeJet = !!(jet500Enabled && currentJetVelocityData);
-      if (!(canProbeHrrr || canProbeJet)){
+      var canProbeVelocity = !!(radarVelocityEnabled && radarVelocityLayer && radarVelocityPoints);
+
+      if (!(canProbeHrrr || canProbeJet || canProbeVelocity)){
         L.popup({ closeButton:true, className:"hrrr-popup" })
           .setLatLng(map.getCenter())
-          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>Future Temperatures</b>, <b>Future Wind Gusts</b>, or <b>500 mb Winds</b> to probe.</div>")
+          .setContent("<div style='font:900 16px/1.1 Arial,sans-serif'>Probe</div><div style='font:900 18px/1.1 Arial,sans-serif'>Turn on <b>Future Temperatures</b>, <b>Future Wind Gusts</b>, <b>500 mb Winds</b>, or <b>Radar Velocity</b> to probe.</div>")
           .openOn(map);
         setProbeMode(false);
         return;
