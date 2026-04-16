@@ -266,31 +266,39 @@
         var style = doc.createElement('style');
         style.id = 'publicDemoHideCss';
         style.textContent = [
-          '.product-row, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn { display:none !important; }',
+          '#simAlertBox, #warningCountBox { display:none !important; }',
           '#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }',
           '#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }',
           '#toolToggleBtn { display:inline-flex !important; }',
-          '#simAlertBox { display:none !important; }',
-          '#warningCountBox { top: 18px !important; right: 18px !important; z-index: 100025 !important; }',
-          '#simTickerWrap { left: 18px !important; right: 18px !important; bottom: 12px !important; z-index: 100024 !important; }',
           '.leaflet-top.leaflet-left, .leaflet-top.leaflet-right { margin-top: 8px !important; }'
-        ].join('
-');
-        style.textContent += '
-.storyPanel, .story-panel, .story-shell, .story-stack, .story-detail, .story-detail-shell, .story-detail-body, .story-bottom-nav, .story-footer, .story-nav, .story-level-nav, .story-level-controls, .story-guide-shell, .story-guide-card, .story-guide-footer, .topic-shell, .topic-shell-footer, .topic-nav, .topic-footer, .step-footer, .step-nav, .lesson-shell, .lesson-card-shell { display:none !important; }';
-        style.textContent += '
-#warningCountBox { display:none !important; }';
-        style.textContent += '
-.scrub-wrap, #scrubWrap, #cbScrubber, .product-row, .sim-group-toggle, .product-menu, .sim-product-btn, .clock-stack, #simClockBox { display:none !important; }';
-        style.textContent += '
-#warningCountBox { display:none !important; }';
-        style.textContent += '
-#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }';
-        style.textContent += '
-#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }';
-        style.textContent += '
-#toolToggleBtn { display:inline-flex !important; }';
+        ].join('\n');
+        style.textContent += '\n.scrub-wrap, #scrubWrap, #cbScrubber, .product-row, .sim-group-toggle, .product-menu, .sim-product-btn, .clock-stack, #simClockBox, .sim-clock, .sim-clock-label, .scrub-mini { display:none !important; }';
         doc.head.appendChild(style);
+      }
+
+      function forceHideChrome(doc){
+        if (!doc) return;
+        [
+          '.product-row', '.scrub-wrap', '#scrubWrap', '#cbScrubber', '.clock-stack', '#simClockBox', '.sim-clock', '.sim-clock-label', '.scrub-mini'
+        ].forEach(function(sel){
+          try {
+            doc.querySelectorAll(sel).forEach(function(el){ el.style.display = 'none'; });
+          } catch (e) {}
+        });
+      }
+
+      function forceCollapseTools(doc){
+        if (!doc) return;
+        try {
+          var toolBox = doc.getElementById('toolBox');
+          if (toolBox) {
+            toolBox.classList.add('is-collapsed');
+            toolBox.style.right = '12px';
+            toolBox.style.top = '12px';
+          }
+          var toggle = doc.getElementById('toolToggleBtn');
+          if (toggle) toggle.style.display = 'inline-flex';
+        } catch (e) {}
       }
 
       async function setLayer(fnName, value, cw){
@@ -314,6 +322,8 @@
         }
 
         injectHideCss(doc);
+        forceHideChrome(doc);
+        forceCollapseTools(doc);
         if (heroCard) heroCard.style.display = 'none';
         updateCardShell();
 
@@ -323,7 +333,11 @@
         }
         try {
           var toolBox = doc.getElementById('toolBox');
-          if (toolBox) toolBox.classList.add('is-collapsed');
+          if (toolBox) {
+            toolBox.classList.add('is-collapsed');
+            toolBox.style.right = '12px';
+            toolBox.style.top = '12px';
+          }
         } catch (e) {}
 
         if (typeof cw.updateAll !== 'function' || typeof cw.setMasterTime !== 'function') {
