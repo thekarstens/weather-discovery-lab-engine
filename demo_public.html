@@ -37,16 +37,7 @@
       background: #000;
     }
     .hero-card {
-      position: absolute;
-      left: 18px;
-      top: 176px;
-      z-index: 20;
-      width: min(430px, calc(100vw - 36px));
-      border-radius: 22px;
-      background: rgba(255,255,255,.96);
-      border: 1px solid rgba(16,36,58,.10);
-      box-shadow: 0 18px 34px rgba(0,0,0,.22);
-      overflow: hidden;
+      display: none !important;
     }
     .hero-bar {
       height: 10px;
@@ -289,6 +280,16 @@
 .storyPanel, .story-panel, .story-shell, .story-stack, .story-detail, .story-detail-shell, .story-detail-body, .story-bottom-nav, .story-footer, .story-nav, .story-level-nav, .story-level-controls, .story-guide-shell, .story-guide-card, .story-guide-footer, .topic-shell, .topic-shell-footer, .topic-nav, .topic-footer, .step-footer, .step-nav, .lesson-shell, .lesson-card-shell { display:none !important; }';
         style.textContent += '
 #warningCountBox { display:none !important; }';
+        style.textContent += '
+.scrub-wrap, #scrubWrap, #cbScrubber, .product-row, .sim-group-toggle, .product-menu, .sim-product-btn, .clock-stack, #simClockBox { display:none !important; }';
+        style.textContent += '
+#warningCountBox { display:none !important; }';
+        style.textContent += '
+#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }';
+        style.textContent += '
+#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }';
+        style.textContent += '
+#toolToggleBtn { display:inline-flex !important; }';
         doc.head.appendChild(style);
       }
 
@@ -313,6 +314,7 @@
         }
 
         injectHideCss(doc);
+        if (heroCard) heroCard.style.display = 'none';
         updateCardShell();
 
         if (doc.body) {
@@ -358,7 +360,7 @@
 
         try { cw.updateAll(); } catch (e) {}
         if (dopplerBtn) dopplerBtn.textContent = cw && cw.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
-        setStatus('Showing demo step ' + card.step + ' at ' + card.timeLabel + '.');
+        setStatus('Established story shell active. Toolbar retracted.');
         return true;
       }
 
