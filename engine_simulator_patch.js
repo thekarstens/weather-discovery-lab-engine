@@ -6157,30 +6157,73 @@ if (window.createMetarsModule) {
   function getRadarVelocityProbeAtLatLng(latlng){
     var raw = radarVelocityPoints;
     if (!raw || !latlng) return null;
-    var lats = raw.latitude, lons = raw.longitude, vals = raw.values_mph || raw.values || raw.velocity_mph || raw.velocity || null;
-    if (!Array.isArray(lats) || !Array.isArray(lons) || !Array.isArray(vals) || !lats.length || !lons.length || !vals.length) return null;
-    var rows = Math.min(lats.length, lons.length, vals.length);
-    var cols = Array.isArray(lats[0]) ? lats[0].length : 0;
-    if (!rows || !cols) return null;
-    var b = radarVelocityBounds || parseRadarVelocityBounds(raw) || currentRadarVelocityFrame && currentRadarVelocityFrame.bounds;
+
+    var b = radarVelocityBounds || parseRadarVelocityBounds(raw) || (currentRadarVelocityFrame && currentRadarVelocityFrame.bounds);
     if (!b) return null;
-    var south = Number(b[0][0]), west = Number(b[0][1]), north = Number(b[1][0]), east = Number(b[1][1]);
-    var rowGuess = Math.round((north - latlng.lat) / Math.max(1e-9, (north - south)) * (rows - 1));
-    var colGuess = Math.round((latlng.lng - west) / Math.max(1e-9, (east - west)) * (cols - 1));
-    rowGuess = Math.max(0, Math.min(rows - 1, rowGuess));
-    colGuess = Math.max(0, Math.min(cols - 1, colGuess));
-    var best = null, bestD = Infinity, win = 10;
-    for (var r = Math.max(0, rowGuess - win); r <= Math.min(rows - 1, rowGuess + win); r++){
-      var latRow = lats[r], lonRow = lons[r], valRow = vals[r];
-      if (!Array.isArray(latRow) || !Array.isArray(lonRow) || !Array.isArray(valRow)) continue;
-      for (var c = Math.max(0, colGuess - win); c <= Math.min(cols - 1, colGuess + win); c++){
-        var v = valRow[c];
-        if (v == null || !isFinite(v)) continue;
-        var plat = Number(latRow[c]), plon = Number(lonRow[c]);
-        if (!isFinite(plat) || !isFinite(plon)) continue;
-        var d = map.distance(latlng, L.latLng(plat, plon));
-        if (d < bestD){ bestD = d; best = { lat: plat, lon: plon, value: Number(v), unit: 'mph' }; }
+    var latMin = Math.min(b[0][0], b[1][0]), latMax = Math.max(b[0][0], b[1][0]);
+    var lonMin = Math.min(b[0][1], b[1][1]), lonMax = Math.max(b[0][1], b[1][1]);
+    if (latlng.lat < latMin || latlng.lat > latMax || latlng.lng < lonMin || latlng.lng > lonMax) return null;
+
+    // Format A: 2-D arrays
+    var lats = raw.latitude, lons = raw.longitude, vals = raw.values_mph || raw.values || raw.velocity_mph || raw.velocity || null;
+    if (Array.isArray(lats) && Array.isArray(lons) && Array.isArray(vals) && lats.length && lons.length && vals.length && Array.isArray(lats[0])) {
+      var rows = Math.min(lats.length, lons.length, vals.length);
+      var cols = Array.isArray(lats[0]) ? lats[0].length : 0;
+      if (!rows || !cols) return null;
+      var best = null;
+      var bestD = Infinity;
+      for (var r=0; r<rows; r++){
+        var latRow = lats[r], lonRow = lons[r], valRow = vals[r];
+        if (!Array.isArray(latRow) || !Array.isArray(lonRow) || !Array.isArray(valRow)) continue;
+        var n = Math.min(latRow.length, lonRow.length, valRow.length, cols);
+        for (var c=0; c<n; c++){
+          var v = valRow[c], la = latRow[c], lo = lonRow[c];
+          if (v == null || !isFinite(v) || !isFinite(la) || !isFinite(lo)) continue;
+          var dLat = la - latlng.lat, dLon = lo - latlng.lng;
+          var d2 = dLat*dLat + dLon*dLon;
+          if (d2 < bestD){
+            bestD = d2;
+            best = { value:Number(v), lat:Number(la), lon:Number(lo), row:r, col:c };
+          }
+        }
       }
+      return best;
+    }
+
+    // Format B: flat arrays with shape, like { mph:[], lat:[], lon:[], shape:[rows, cols] }
+    var flatVals = raw.mph || raw.values_mph || raw.values || raw.velocity_mph || raw.velocity || null;
+    var flatLats = raw.lat || raw.latitude || null;
+    var flatLons = raw.lon || raw.longitude || null;
+    var shape = raw.shape || null;
+
+    if (Array.isArray(flatVals) && Array.isArray(flatLats) && Array.isArray(flatLons) &&
+        flatVals.length && flatLats.length === flatVals.length && flatLons.length === flatVals.length) {
+      var total = Math.min(flatVals.length, flatLats.length, flatLons.length);
+      var bestFlat = null;
+      var bestFlatD = Infinity;
+      for (var i=0; i<total; i++){
+        var v2 = flatVals[i], la2 = flatLats[i], lo2 = flatLons[i];
+        if (v2 == null || !isFinite(v2) || !isFinite(la2) || !isFinite(lo2)) continue;
+        var dLat2 = la2 - latlng.lat, dLon2 = lo2 - latlng.lng;
+        var d22 = dLat2*dLat2 + dLon2*dLon2;
+        if (d22 < bestFlatD){
+          bestFlatD = d22;
+          var cols2 = (Array.isArray(shape) && shape.length > 1 && isFinite(shape[1])) ? Number(shape[1]) : 0;
+          bestFlat = {
+            value:Number(v2),
+            lat:Number(la2),
+            lon:Number(lo2),
+            index:i,
+            row:(cols2 ? Math.floor(i / cols2) : null),
+            col:(cols2 ? (i % cols2) : null)
+          };
+        }
+      }
+      return bestFlat;
+    }
+
+    return null;
+  }
     }
     if (!best){
       var v0 = vals[rowGuess] && vals[rowGuess][colGuess];
