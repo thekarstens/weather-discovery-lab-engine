@@ -5992,6 +5992,8 @@ if (window.createMetarsModule) {
   var radarVelocityPoints = null;
   var radarVelocityLoadPromise = null;
   var radarVelocityPointsPromise = null;
+  var radarVelocityPointsFileLoaded = '';
+  var radarVelocityPointsLoadToken = 0;
   var currentRadarVelocityFrame = null;
   window.radarVelocityEnabled = radarVelocityEnabled;
   window.radarVelocityLayer = radarVelocityLayer;
@@ -6146,17 +6148,25 @@ if (window.createMetarsModule) {
     return radarVelocityLoadPromise;
   }
   async function loadRadarVelocityPointsIfNeeded(){
-    if (radarVelocityPoints) return radarVelocityPoints;
-    if (radarVelocityPointsPromise) return radarVelocityPointsPromise;
     if (!currentRadarVelocityFrame || !currentRadarVelocityFrame.points) return null;
-    var pointsUrl = _isAbsUrl(currentRadarVelocityFrame.points) ? currentRadarVelocityFrame.points : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.points);
+
+    var pointsUrl = _isAbsUrl(currentRadarVelocityFrame.points)
+      ? currentRadarVelocityFrame.points
+      : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.points);
+
+    if (radarVelocityPoints && radarVelocityPointsFileLoaded === pointsUrl) return radarVelocityPoints;
+    if (radarVelocityPointsPromise && radarVelocityPointsFileLoaded === pointsUrl) return radarVelocityPointsPromise;
+
+    var myToken = ++radarVelocityPointsLoadToken;
     radarVelocityPointsPromise = fetch(pointsUrl + (pointsUrl.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' })
       .then(function(r){
         if (!r.ok) throw new Error('Velocity points HTTP ' + r.status + ': ' + pointsUrl);
         return r.json();
       })
       .then(function(raw){
+        if (myToken !== radarVelocityPointsLoadToken) return radarVelocityPoints;
         radarVelocityPoints = raw || null;
+        radarVelocityPointsFileLoaded = pointsUrl;
         window.radarVelocityPoints = radarVelocityPoints;
 
         var inferred = inferRadarVelocityBoundsFromPoints(radarVelocityPoints);
@@ -6171,10 +6181,13 @@ if (window.createMetarsModule) {
         return radarVelocityPoints;
       })
       .catch(function(err){
+        if (myToken === radarVelocityPointsLoadToken){
+          radarVelocityPointsPromise = null;
+          radarVelocityPoints = null;
+          radarVelocityPointsFileLoaded = '';
+          window.radarVelocityPoints = null;
+        }
         console.error('Velocity points load failed:', err);
-        radarVelocityPointsPromise = null;
-        radarVelocityPoints = null;
-        window.radarVelocityPoints = null;
         throw err;
       });
     return radarVelocityPointsPromise;
@@ -6200,6 +6213,8 @@ if (window.createMetarsModule) {
     if (window.__lastRadarVelocityPointsFile__ !== nextPoints){
       radarVelocityPoints = null;
       radarVelocityPointsPromise = null;
+      radarVelocityPointsFileLoaded = '';
+      radarVelocityPointsLoadToken++;
       window.radarVelocityPoints = null;
       window.__lastRadarVelocityPointsFile__ = nextPoints;
     }
