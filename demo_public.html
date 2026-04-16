@@ -150,22 +150,22 @@
     ></iframe>
 
     <div class="hero-card">
-      <div class="hero-bar"></div>
+      <div class="hero-bar" id="heroBar"></div>
       <div class="hero-inner">
         <div style="display:flex; align-items:flex-start; gap:12px;">
-          <div style="width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:900 20px/1 Lato, Arial, sans-serif; color:#fff; background:rgba(12,45,88,.92); flex:0 0 auto;">4</div>
+          <div id="stepBubble" style="width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:900 20px/1 Lato, Arial, sans-serif; color:#fff; background:rgba(12,45,88,.92); flex:0 0 auto;">4</div>
           <div style="min-width:0;">
-        <div class="kicker">Interactive Severe Weather Demo</div>
-        <div class="title">May 12, 2022 Derecho</div>
-        <div class="sub">
-          A first look at a real severe weather event using live-style radar, warnings, and storm reports.
+            <div class="kicker" id="heroKicker">THE WOW MOMENT</div>
+            <div class="title" id="heroTitle">May 12, 2022 Derecho</div>
+            <div class="sub" id="heroSub">A first look at a real severe weather event using live-style radar, warnings, and storm reports.</div>
+            <div class="lookfor" id="heroLookfor"><b>Look for:</b> the fast-moving radar line, active warnings, and how the storm fills the map around <span id="demoTimeLabel">4:45 PM</span>.</div>
+          </div>
         </div>
-        <div class="lookfor">
-          <b>Look for:</b> the fast-moving radar line, active warnings, and how the storm fills the map around <span id="demoTimeLabel">4:45 PM</span>.
-        </div>
-                </div>
         <div class="demo-controls">
-          <button class="demo-btn" id="refreshSceneBtn" type="button">Refresh Scene</button>
+          <button class="demo-btn secondary" id="prevCardBtn" type="button">Previous</button>
+          <button class="demo-btn" id="nextCardBtn" type="button">Next</button>
+          <button class="demo-btn" id="dopplerBtn" type="button">LIVE Doppler ON</button>
+          <button class="demo-btn secondary" id="refreshSceneBtn" type="button">Refresh Scene</button>
           <button class="demo-btn secondary" id="toggleCaptionBtn" type="button">Hide Caption</button>
         </div>
       </div>
@@ -180,15 +180,94 @@
       var statusEl = document.getElementById('demoStatus');
       var refreshBtn = document.getElementById('refreshSceneBtn');
       var toggleCaptionBtn = document.getElementById('toggleCaptionBtn');
+      var prevCardBtn = document.getElementById('prevCardBtn');
+      var nextCardBtn = document.getElementById('nextCardBtn');
+      var dopplerBtn = document.getElementById('dopplerBtn');
       var heroCard = document.querySelector('.hero-card');
-      var DEMO_TIME_ISO = '2022-05-12T21:45:00Z';
-      var DEMO_TIME_LABEL = '4:45 PM';
+      var heroBar = document.getElementById('heroBar');
+      var stepBubble = document.getElementById('stepBubble');
+      var heroKicker = document.getElementById('heroKicker');
+      var heroTitle = document.getElementById('heroTitle');
+      var heroSub = document.getElementById('heroSub');
+      var heroLookfor = document.getElementById('heroLookfor');
       var attemptTimer = null;
       var attemptCount = 0;
       var maxAttempts = 60;
+      var cardIndex = 3;
+
+      var cards = [
+        {
+          step: 1,
+          kicker: 'SETUP',
+          title: 'A Dangerous Setup Is Forming',
+          sub: 'Warm, humid air was spreading north while a strong weather system approached the Plains.',
+          lookfor: 'Look for: the fronts and where the warm, unstable air sits compared to the boundaries.',
+          timeIso: '2022-05-12T18:00:00Z',
+          timeLabel: '1:00 PM',
+          theme: 'linear-gradient(90deg, #cf7b1f, #efb22d)',
+          layers: { radar:false, warnings:false, reports:false, lightning:false, sweep:false, spc:false, metars:false, fronts:true }
+        },
+        {
+          step: 2,
+          kicker: 'FORECAST',
+          title: 'Forecasters Saw the Risk Early',
+          sub: 'This region was highlighted for severe weather before storms fully developed.',
+          lookfor: 'Look for: how the forecast risk area lines up with eastern South Dakota and nearby states.',
+          timeIso: '2022-05-12T18:05:00Z',
+          timeLabel: '1:05 PM',
+          theme: 'linear-gradient(90deg, #b53a26, #e4583f)',
+          layers: { radar:false, warnings:false, reports:false, lightning:false, sweep:false, spc:true, metars:false, fronts:false }
+        },
+        {
+          step: 3,
+          kicker: 'ATMOSPHERE',
+          title: 'The Atmosphere Becomes Dangerous',
+          sub: 'Moisture was increasing across the region as the afternoon continued.',
+          lookfor: 'Look for: richer low-level moisture building into the target area.',
+          timeIso: '2022-05-12T18:30:00Z',
+          timeLabel: '1:30 PM',
+          theme: 'linear-gradient(90deg, #2f8c4b, #54b46d)',
+          layers: { radar:false, warnings:false, reports:false, lightning:false, sweep:false, spc:false, metars:true, fronts:false }
+        },
+        {
+          step: 4,
+          kicker: 'THE WOW MOMENT',
+          title: 'Now the Storm Comes Alive',
+          sub: 'Radar, warnings, and reports begin working together as the derecho intensifies.',
+          lookfor: 'Look for: the fast-moving radar line, active warnings, and how the storm fills the map around 4:45 PM.',
+          timeIso: '2022-05-12T21:45:00Z',
+          timeLabel: '4:45 PM',
+          theme: 'linear-gradient(90deg, #cf3f1f, #ef7e2d)',
+          layers: { radar:true, warnings:true, reports:true, lightning:true, sweep:true, spc:false, metars:false, fronts:false }
+        },
+        {
+          step: 5,
+          kicker: 'IMPACT',
+          title: 'Real Impact on the Ground',
+          sub: 'Storm reports connect the weather map to what was happening in towns and counties on the ground.',
+          lookfor: 'Look for: where reports cluster compared with the storm path and warning area.',
+          timeIso: '2022-05-12T22:00:00Z',
+          timeLabel: '5:00 PM',
+          theme: 'linear-gradient(90deg, #6b43b5, #8a63d6)',
+          layers: { radar:false, warnings:false, reports:true, lightning:false, sweep:false, spc:false, metars:false, fronts:false }
+        }
+      ];
 
       function setStatus(msg){
         if (statusEl) statusEl.textContent = msg;
+      }
+
+      function updateCardShell(){
+        var card = cards[cardIndex];
+        if (!card) return;
+        if (heroBar) heroBar.style.background = card.theme;
+        if (stepBubble) stepBubble.textContent = String(card.step);
+        if (heroKicker) heroKicker.textContent = card.kicker;
+        if (heroTitle) heroTitle.textContent = card.title;
+        if (heroSub) heroSub.textContent = card.sub;
+        if (heroLookfor) heroLookfor.innerHTML = '<b>' + card.lookfor.split(':')[0] + ':</b>' + card.lookfor.substring(card.lookfor.indexOf(':') + 1);
+        var t = document.getElementById('demoTimeLabel');
+        if (t) t.textContent = card.timeLabel;
       }
 
       function injectHideCss(doc){
@@ -196,20 +275,26 @@
         var style = doc.createElement('style');
         style.id = 'publicDemoHideCss';
         style.textContent = [
-          '.product-row, .mode-toggle, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn, #storyDopplerBtn { display:none !important; }',
+          '.product-row, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn { display:none !important; }',
           '#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }',
           '#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }',
           '#toolToggleBtn { display:inline-flex !important; }',
+          '#simAlertBox { display:none !important; }',
           '#warningCountBox { top: 18px !important; right: 18px !important; z-index: 100025 !important; }',
           '#simTickerWrap { left: 18px !important; right: 18px !important; bottom: 12px !important; z-index: 100024 !important; }',
-          '#simAlertBox { display:none !important; }',
           '.leaflet-top.leaflet-left, .leaflet-top.leaflet-right { margin-top: 8px !important; }'
-        ].join('\n');
+        ].join('
+');
         doc.head.appendChild(style);
       }
 
-      async function configureScene(){
-        attemptCount += 1;
+      async function setLayer(fnName, value, cw){
+        try {
+          if (typeof cw[fnName] === 'function') await cw[fnName](value);
+        } catch (e) {}
+      }
+
+      async function applyCardToFrame(){
         var cw, doc;
         try {
           cw = frame.contentWindow;
@@ -218,19 +303,18 @@
           setStatus('Waiting for demo frame…');
           return false;
         }
-
         if (!cw || !doc || !doc.body) {
           setStatus('Waiting for simulator page…');
           return false;
         }
 
         injectHideCss(doc);
+        updateCardShell();
 
         if (doc.body) {
           doc.body.classList.add('guide-collapsed');
           doc.body.classList.remove('explore-mode');
         }
-
         try {
           var toolBox = doc.getElementById('toolBox');
           if (toolBox) toolBox.classList.add('is-collapsed');
@@ -241,47 +325,36 @@
           return false;
         }
 
+        var card = cards[cardIndex];
+
+        try { if (typeof cw.pauseSimulator === 'function') cw.pauseSimulator(); } catch (e) {}
+        try { if (typeof cw.setFreeScrubMode === 'function') cw.setFreeScrubMode(true); } catch (e) {}
+
+        await cw.setMasterTime(new Date(card.timeIso));
+
+        await setLayer('setSpcDay1Enabled', !!card.layers.spc, cw);
+        await setLayer('setSatelliteEnabled', false, cw);
+        await setLayer('setMetarsEnabled', !!card.layers.metars, cw);
+        await setLayer('setObsRadarEnabled', !!card.layers.radar, cw);
+        await setLayer('setRadarEnabled', !!card.layers.radar, cw);
+        await setLayer('setWarningsEnabled', !!card.layers.warnings, cw);
+        await setLayer('setReportsEnabled', !!card.layers.reports, cw);
+        await setLayer('setLightningEnabled', !!card.layers.lightning, cw);
+
         try {
-          if (typeof cw.pauseSimulator === 'function') cw.pauseSimulator();
+          if (typeof cw.setFrontsEnabled === 'function') await cw.setFrontsEnabled(!!card.layers.fronts);
         } catch (e) {}
 
         try {
-          if (typeof cw.setFreeScrubMode === 'function') cw.setFreeScrubMode(true);
+          if (typeof cw.toggleSweep === 'function') {
+            if (!!card.layers.sweep && !cw.radarSweepEnabled) cw.toggleSweep();
+            if (!card.layers.sweep && cw.radarSweepEnabled) cw.toggleSweep();
+          }
         } catch (e) {}
 
-        try {
-          if (typeof cw.setSpcDay1Enabled === 'function') await cw.setSpcDay1Enabled(false);
-          if (typeof cw.setSatelliteEnabled === 'function') await cw.setSatelliteEnabled(false);
-          if (typeof cw.setMetarsEnabled === 'function') await cw.setMetarsEnabled(false);
-          if (typeof cw.setHrrrRadarEnabled === 'function') await cw.setHrrrRadarEnabled(false);
-          if (typeof cw.setHrrrWindsEnabled === 'function') await cw.setHrrrWindsEnabled(false);
-          if (typeof cw.setHrrrCapeEnabled === 'function') await cw.setHrrrCapeEnabled(false);
-          if (typeof cw.setHrrrTempEnabled === 'function') await cw.setHrrrTempEnabled(false);
-        } catch (e) {}
-
-        try {
-          await cw.setMasterTime(new Date(DEMO_TIME_ISO));
-        } catch (e) {
-          setStatus('Could not set fixed demo time yet…');
-          return false;
-        }
-
-        try {
-          if (typeof cw.setObsRadarEnabled === 'function') await cw.setObsRadarEnabled(true);
-          if (typeof cw.setRadarEnabled === 'function') await cw.setRadarEnabled(true);
-          if (typeof cw.setWarningsEnabled === 'function') await cw.setWarningsEnabled(true);
-          if (typeof cw.setReportsEnabled === 'function') await cw.setReportsEnabled(true);
-          if (typeof cw.setLightningEnabled === 'function') await cw.setLightningEnabled(true);
-          if (typeof cw.toggleSweep === 'function' && !cw.radarSweepEnabled) cw.toggleSweep();
-        } catch (e) {
-          console.warn('Public demo toggle issue', e);
-        }
-
-        try {
-          cw.updateAll();
-        } catch (e) {}
-
-        setStatus('Public demo scene loaded at ' + DEMO_TIME_LABEL + '. Banner kept. Warning shield removed.');
+        try { cw.updateAll(); } catch (e) {}
+        if (dopplerBtn) dopplerBtn.textContent = cw && cw.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
+        setStatus('Showing step ' + card.step + ' at ' + card.timeLabel + '.');
         return true;
       }
 
@@ -290,7 +363,8 @@
         attemptCount = 0;
         setStatus('Loading public demo scene…');
         attemptTimer = setInterval(async function(){
-          var ok = await configureScene();
+          attemptCount += 1;
+          var ok = await applyCardToFrame();
           if (ok) {
             clearInterval(attemptTimer);
             attemptTimer = null;
@@ -302,12 +376,16 @@
         }, 500);
       }
 
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', function(){
-          runSetupLoop();
-        });
-      }
-
+      if (refreshBtn) refreshBtn.addEventListener('click', function(){ runSetupLoop(); });
+      if (prevCardBtn) prevCardBtn.addEventListener('click', function(){ cardIndex = (cardIndex - 1 + cards.length) % cards.length; runSetupLoop(); });
+      if (nextCardBtn) nextCardBtn.addEventListener('click', function(){ cardIndex = (cardIndex + 1) % cards.length; runSetupLoop(); });
+      if (dopplerBtn) dopplerBtn.addEventListener('click', function(){
+        try {
+          var cw = frame.contentWindow;
+          if (cw && typeof cw.toggleSweep === 'function') cw.toggleSweep();
+          dopplerBtn.textContent = cw && cw.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
+        } catch (e) {}
+      });
       if (toggleCaptionBtn) {
         toggleCaptionBtn.addEventListener('click', function(){
           var hidden = heroCard.style.display === 'none';
@@ -316,11 +394,8 @@
         });
       }
 
-      frame.addEventListener('load', function(){
-        runSetupLoop();
-      });
-
-      document.getElementById('demoTimeLabel').textContent = DEMO_TIME_LABEL;
+      frame.addEventListener('load', function(){ runSetupLoop(); });
+      updateCardShell();
     })();
   </script>
 </body>
