@@ -171,53 +171,54 @@
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
   
-/* ===== PUBLIC DEMO OVERRIDES ===== */
+/* ===== PUBLIC DEMO V2 OVERRIDES ===== */
 .mode-toggle,
 .scrub-wrap,
 .clock-stack,
 .product-row,
 .sim-alert,
 .warning-count-box,
-.ticker-wrap{
+.ticker-wrap,
+.zoom-badge-control{
   display:none !important;
 }
 .tvbanner{
-  min-height:58px !important;
-  box-shadow:0 8px 20px rgba(0,0,0,.20) !important;
+  min-height:96px !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.22) !important;
 }
 .banner-topline{
-  min-height:58px !important;
+  min-height:96px !important;
 }
 #brandLogo{
-  width:180px !important;
-  top:4px !important;
+  width:190px !important;
+  top:6px !important;
 }
 .banner-center{
-  top:8px !important;
-  width:min(760px, calc(100% - 260px)) !important;
+  top:12px !important;
+  width:min(760px, calc(100% - 280px)) !important;
 }
 .brand-line{
-  font-size:26px !important;
+  font-size:28px !important;
 }
 .case-line{
-  margin-top:4px !important;
-  font-size:16px !important;
+  margin-top:5px !important;
+  font-size:17px !important;
 }
 .region-line{
-  margin-top:2px !important;
-  font-size:11px !important;
+  margin-top:3px !important;
+  font-size:12px !important;
 }
 .sim-version{
   display:none !important;
 }
 .storyPanel{
   left:12px !important;
-  top:72px !important;
-  width:420px !important;
-  max-height:calc(100% - 136px) !important;
+  top:112px !important;
+  width:430px !important;
+  max-height:calc(100% - 132px) !important;
 }
 .toolBox{
-  top:76px !important;
+  top:116px !important;
 }
 .toolBox.is-collapsed{
   width:118px !important;
@@ -227,10 +228,11 @@
 }
 @media (max-width: 900px){
   #brandLogo{
-    width:150px !important;
+    width:154px !important;
   }
   .banner-center{
-    width:min(560px, calc(100% - 200px)) !important;
+    top:10px !important;
+    width:min(560px, calc(100% - 210px)) !important;
   }
   .brand-line{
     font-size:22px !important;
@@ -238,14 +240,17 @@
   .case-line{
     font-size:14px !important;
   }
+  .region-line{
+    font-size:11px !important;
+  }
   .storyPanel{
-    width:390px !important;
+    width:392px !important;
   }
 }
 @media (max-width: 640px){
   .tvbanner{
-    min-height:8px !important;
-    height:8px !important;
+    min-height:10px !important;
+    height:10px !important;
     overflow:hidden !important;
     border-bottom:none !important;
     box-shadow:none !important;
@@ -259,24 +264,54 @@
     display:none !important;
   }
   .storyPanel{
-    left:10px !important;
-    right:10px !important;
+    left:0 !important;
+    right:0 !important;
     width:auto !important;
-    top:10px !important;
-    max-height:42vh !important;
-    transform:scale(.92);
-    transform-origin:top left;
+    top:auto !important;
+    bottom:0 !important;
+    max-height:34vh !important;
+    border-radius:18px 18px 0 0 !important;
+    box-shadow:0 -10px 24px rgba(0,0,0,.22) !important;
+  }
+  body.story-mobile-collapsed .storyPanel{
+    max-height:128px !important;
+  }
+  body.story-mobile-collapsed .story-content{
+    display:none !important;
+  }
+  .story-shell-header{
+    cursor:pointer;
+    padding:10px 12px 12px !important;
+  }
+  .story-station-chip{
+    width:56px !important;
+    height:56px !important;
+    font-size:22px !important;
   }
   .story-title{
-    font-size:28px !important;
-    line-height:1.0 !important;
+    font-size:24px !important;
+    line-height:1 !important;
+  }
+  .story-shell-kicker,
+  .story-step{
+    font-size:11px !important;
   }
   .story-body{
-    font-size:15px !important;
-    line-height:1.35 !important;
+    font-size:14px !important;
+    line-height:1.3 !important;
   }
   .story-shell-footer{
-    padding:8px 12px 12px !important;
+    padding:8px 10px 10px !important;
+  }
+  .story-footer-row{
+    gap:8px !important;
+  }
+  .story-actions-right{
+    width:100%;
+    justify-content:flex-end;
+  }
+  .story-nav{
+    gap:8px !important;
   }
   .story-action,
   .story-nav-btn{
@@ -284,13 +319,13 @@
     font-size:14px !important;
   }
   .toolBox{
-    top:10px !important;
+    top:12px !important;
     right:8px !important;
     transform:scale(.92);
     transform-origin:top right;
   }
   .zoom-corner{
-    bottom:16px !important;
+    bottom:14px !important;
   }
 }
 
@@ -1210,6 +1245,28 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     var toolBox = document.getElementById('toolBox');
     if (toolBox) toolBox.classList.add('is-collapsed');
+  }catch(e){}
+
+  function syncMobileStoryMode(){
+    try{
+      var isPhone = window.innerWidth <= 640;
+      document.body.classList.toggle('story-mobile-collapsed', isPhone);
+    }catch(e){}
+  }
+
+  syncMobileStoryMode();
+  window.addEventListener('resize', syncMobileStoryMode);
+
+  try{
+    var storyHeader = document.querySelector('.story-shell-header');
+    if (storyHeader){
+      storyHeader.addEventListener('click', function(ev){
+        if (window.innerWidth > 640) return;
+        var t = ev.target;
+        if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('#storyCollapseBtn') || t.closest('#storyDopplerBtn'))) return;
+        document.body.classList.toggle('story-mobile-collapsed');
+      });
+    }
   }catch(e){}
 });
 </script>
