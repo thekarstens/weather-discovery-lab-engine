@@ -39,52 +39,54 @@
     .hero-card {
       position: absolute;
       left: 18px;
-      top: 18px;
+      top: 176px;
       z-index: 20;
-      width: min(420px, calc(100vw - 36px));
+      width: min(430px, calc(100vw - 36px));
       border-radius: 22px;
-      background: linear-gradient(180deg, rgba(10,26,44,.94), rgba(7,19,31,.88));
-      border: 1px solid var(--panelBorder);
-      box-shadow: 0 14px 34px rgba(0,0,0,.34);
-      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(16,36,58,.10);
+      box-shadow: 0 18px 34px rgba(0,0,0,.22);
       overflow: hidden;
     }
     .hero-bar {
-      height: 4px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      height: 10px;
+      background: linear-gradient(90deg, #cf3f1f, #ef7e2d);
     }
     .hero-inner {
-      padding: 16px 18px 18px;
+      padding: 14px 16px 18px;
+      color: #10253d;
     }
     .kicker {
       font-size: 11px;
       font-weight: 900;
-      letter-spacing: 1.4px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
-      color: rgba(255,255,255,.72);
+      color: rgba(16,37,61,.62);
     }
     .title {
       margin-top: 8px;
       font-size: 28px;
       line-height: 1.02;
       font-weight: 900;
+      color: #10253d;
     }
     .sub {
       margin-top: 10px;
       font-size: 15px;
       line-height: 1.4;
-      color: var(--muted);
+      color: rgba(16,37,61,.78);
     }
     .lookfor {
       margin-top: 14px;
       padding: 12px 14px;
       border-radius: 16px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(12,45,88,.06);
+      border: 1px solid rgba(16,36,58,.08);
       font-size: 14px;
       line-height: 1.35;
+      color: #10253d;
     }
-    .lookfor b { color: #fff; }
+    .lookfor b { color: #10253d; }
     .demo-controls {
       margin-top: 14px;
       display: flex;
@@ -93,18 +95,18 @@
     }
     .demo-btn {
       appearance: none;
-      border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(180deg, #1b4b7e, #12345a 65%, #0d233d);
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, rgba(7,31,58,.98), rgba(10,42,82,.96));
       color: #fff;
       border-radius: 999px;
       padding: 11px 16px;
       font: 900 13px/1 Arial, sans-serif;
       letter-spacing: .4px;
       cursor: pointer;
-      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+      box-shadow: 0 8px 18px rgba(0,0,0,.20);
     }
     .demo-btn.secondary {
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      background: linear-gradient(180deg, #42566e, #2f4156 65%, #223244);
     }
     .status {
       position: absolute;
@@ -124,7 +126,7 @@
       .hero-card {
         width: calc(100vw - 24px);
         left: 12px;
-        top: 12px;
+        top: 150px;
       }
       .title { font-size: 24px; }
       .sub, .lookfor { font-size: 13px; }
@@ -150,6 +152,9 @@
     <div class="hero-card">
       <div class="hero-bar"></div>
       <div class="hero-inner">
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+          <div style="width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:900 20px/1 Lato, Arial, sans-serif; color:#fff; background:rgba(12,45,88,.92); flex:0 0 auto;">4</div>
+          <div style="min-width:0;">
         <div class="kicker">Interactive Severe Weather Demo</div>
         <div class="title">May 12, 2022 Derecho</div>
         <div class="sub">
@@ -158,6 +163,7 @@
         <div class="lookfor">
           <b>Look for:</b> the fast-moving radar line, active warnings, and how the storm fills the map around <span id="demoTimeLabel">4:45 PM</span>.
         </div>
+                </div>
         <div class="demo-controls">
           <button class="demo-btn" id="refreshSceneBtn" type="button">Refresh Scene</button>
           <button class="demo-btn secondary" id="toggleCaptionBtn" type="button">Hide Caption</button>
@@ -190,13 +196,13 @@
         var style = doc.createElement('style');
         style.id = 'publicDemoHideCss';
         style.textContent = [
-          '.tvbanner, .product-row, .mode-toggle, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn, #storyDopplerBtn { display:none !important; }',
+          '.product-row, .mode-toggle, #openLessonBtn, #exploreBtn, #storyPanel, #topicRail, .topic-rail, #scrubWrap, #playPauseWrap, #simClockBox, #simControlsWrap, #storyCollapseBtn, #storyPrevBtn, #storyNextBtn, #storyDopplerBtn { display:none !important; }',
           '#toolBox { right: 12px !important; top: 12px !important; z-index: 100030 !important; }',
           '#toolBox.is-collapsed .tool-btn, #toolBox.is-collapsed .draw-color-row { display:none !important; }',
           '#toolToggleBtn { display:inline-flex !important; }',
           '#warningCountBox { top: 18px !important; right: 18px !important; z-index: 100025 !important; }',
           '#simTickerWrap { left: 18px !important; right: 18px !important; bottom: 12px !important; z-index: 100024 !important; }',
-          '#simAlertBox { top: 18px !important; right: 18px !important; z-index: 100026 !important; }',
+          '#simAlertBox { display:none !important; }',
           '.leaflet-top.leaflet-left, .leaflet-top.leaflet-right { margin-top: 8px !important; }'
         ].join('\n');
         doc.head.appendChild(style);
@@ -275,7 +281,7 @@
           cw.updateAll();
         } catch (e) {}
 
-        setStatus('Public demo scene loaded at ' + DEMO_TIME_LABEL + '.');
+        setStatus('Public demo scene loaded at ' + DEMO_TIME_LABEL + '. Banner kept. Warning shield removed.');
         return true;
       }
 
