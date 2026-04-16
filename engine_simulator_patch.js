@@ -6023,6 +6023,45 @@ if (window.createMetarsModule) {
     if ([south,north,west,east].every(isFinite)) return [[south, west],[north, east]];
     return null;
   }
+  function inferRadarVelocityBoundsFromPoints(raw){
+    if (!raw) return null;
+
+    // Flat arrays: { lat:[], lon:[], mph:[], shape:[...] }
+    if (Array.isArray(raw.lat) && Array.isArray(raw.lon) && raw.lat.length && raw.lon.length){
+      var minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+      for (var i=0; i<raw.lat.length && i<raw.lon.length; i++){
+        var la = Number(raw.lat[i]), lo = Number(raw.lon[i]);
+        if (!isFinite(la) || !isFinite(lo)) continue;
+        if (la < minLat) minLat = la;
+        if (la > maxLat) maxLat = la;
+        if (lo < minLon) minLon = lo;
+        if (lo > maxLon) maxLon = lo;
+      }
+      if ([minLat,maxLat,minLon,maxLon].every(isFinite)) return [[minLat, minLon],[maxLat, maxLon]];
+    }
+
+    // 2-D arrays
+    if (Array.isArray(raw.latitude) && Array.isArray(raw.longitude) && raw.latitude.length && raw.longitude.length){
+      var minLat2 = Infinity, maxLat2 = -Infinity, minLon2 = Infinity, maxLon2 = -Infinity;
+      for (var r=0; r<raw.latitude.length && r<raw.longitude.length; r++){
+        var latRow = raw.latitude[r], lonRow = raw.longitude[r];
+        if (!Array.isArray(latRow) || !Array.isArray(lonRow)) continue;
+        var n = Math.min(latRow.length, lonRow.length);
+        for (var c=0; c<n; c++){
+          var la2 = Number(latRow[c]), lo2 = Number(lonRow[c]);
+          if (!isFinite(la2) || !isFinite(lo2)) continue;
+          if (la2 < minLat2) minLat2 = la2;
+          if (la2 > maxLat2) maxLat2 = la2;
+          if (lo2 < minLon2) minLon2 = lo2;
+          if (lo2 > maxLon2) maxLon2 = lo2;
+        }
+      }
+      if ([minLat2,maxLat2,minLon2,maxLon2].every(isFinite)) return [[minLat2, minLon2],[maxLat2, maxLon2]];
+    }
+
+    return null;
+  }
+
   function parseRadarVelocityFrames(raw){
     var frames = [];
     if (raw && raw.image){
@@ -6092,6 +6131,16 @@ if (window.createMetarsModule) {
       .then(function(raw){
         radarVelocityPoints = raw || null;
         window.radarVelocityPoints = radarVelocityPoints;
+
+        var inferred = inferRadarVelocityBoundsFromPoints(radarVelocityPoints);
+        if (inferred){
+          radarVelocityBounds = inferred;
+          window.radarVelocityBounds = radarVelocityBounds;
+          if (radarVelocityLayer && radarVelocityLayer.setBounds){
+            try{ radarVelocityLayer.setBounds(radarVelocityBounds); }catch(e){}
+          }
+        }
+
         return radarVelocityPoints;
       })
       .catch(function(err){
@@ -6116,15 +6165,17 @@ if (window.createMetarsModule) {
   async function updateRadarVelocity(){
     await loadRadarVelocityManifestIfNeeded();
     if (!currentRadarVelocityFrame || !currentRadarVelocityFrame.file) throw new Error('Velocity manifest missing frame image');
+
+    if (currentRadarVelocityFrame.points) {
+      try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
+    }
+
     if (!radarVelocityBounds) throw new Error('Velocity manifest missing bounds');
     var imgUrl = _isAbsUrl(currentRadarVelocityFrame.file) ? currentRadarVelocityFrame.file : _joinUrl(radarVelocityManifestBaseUrl, currentRadarVelocityFrame.file);
     clearRadarVelocityLayer();
     radarVelocityLayer = L.imageOverlay(imgUrl, radarVelocityBounds, { opacity: productOpacity.radarVelocity || 0.70, interactive:false });
     radarVelocityLayer.addTo(map);
     window.radarVelocityLayer = radarVelocityLayer;
-    if (currentRadarVelocityFrame.points) {
-      try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
-    }
     setStatus('Velocity test on');
   }
   async function setRadarVelocityEnabled(on){
