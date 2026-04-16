@@ -6066,7 +6066,15 @@ if (window.createMetarsModule) {
   function parseRadarVelocityFrames(raw){
     var frames = [];
     if (raw && raw.image){
-      frames.push({ file: raw.image, points: raw.pointsFile || raw.pointFile || raw.points || null, time: raw.time || raw.utc || raw.scan_time_utc || null, label: raw.label || 'Velocity Test', bounds: parseRadarVelocityBounds(raw) });
+      var t0 = raw.time || raw.utc || raw.scan_time_utc || null;
+      frames.push({
+        file: raw.image,
+        points: raw.pointsFile || raw.pointFile || raw.points || null,
+        time: t0,
+        timeMs: t0 ? Date.parse(t0) : NaN,
+        label: raw.label || 'Velocity Test',
+        bounds: parseRadarVelocityBounds(raw)
+      });
       return frames;
     }
     var src = (raw && (raw.frames || raw.images || raw.files)) || [];
@@ -6076,15 +6084,33 @@ if (window.createMetarsModule) {
       if (!f) return;
       var file = f.file || f.url || f.png || f.image || f.name;
       if (!file) return;
+      var t = f.time || f.utc || f.scan_time_utc || null;
       frames.push({
         file: file,
         points: f.pointsFile || f.pointFile || f.points || raw.pointsFile || raw.pointFile || raw.points || null,
-        time: f.time || f.utc || f.scan_time_utc || null,
+        time: t,
+        timeMs: t ? Date.parse(t) : NaN,
         label: f.label || ('Velocity ' + (i+1)),
         bounds: parseRadarVelocityBounds(f) || parseRadarVelocityBounds(raw)
       });
     });
     return frames;
+  }
+
+  function getNearestRadarVelocityFrame(d){
+    if (!Array.isArray(radarVelocityFrames) || !radarVelocityFrames.length) return null;
+    var target = d && d.getTime ? d.getTime() : Date.now();
+    var best = radarVelocityFrames[0];
+    var bestDelta = isFinite(best.timeMs) ? Math.abs(best.timeMs - target) : Infinity;
+    for (var i=1;i<radarVelocityFrames.length;i++){
+      var f = radarVelocityFrames[i];
+      var delta = isFinite(f.timeMs) ? Math.abs(f.timeMs - target) : Infinity;
+      if (delta < bestDelta){
+        best = f;
+        bestDelta = delta;
+      }
+    }
+    return best;
   }
   async function loadRadarVelocityManifestIfNeeded(){
     if (radarVelocityManifest) return radarVelocityManifest;
@@ -6165,7 +6191,20 @@ if (window.createMetarsModule) {
   }
   async function updateRadarVelocity(){
     await loadRadarVelocityManifestIfNeeded();
+    var nearest = getNearestRadarVelocityFrame(curZ);
+    if (nearest) currentRadarVelocityFrame = nearest;
     if (!currentRadarVelocityFrame || !currentRadarVelocityFrame.file) throw new Error('Velocity manifest missing frame image');
+
+    // clear points cache when frame changes
+    var nextPoints = currentRadarVelocityFrame.points || null;
+    if (window.__lastRadarVelocityPointsFile__ !== nextPoints){
+      radarVelocityPoints = null;
+      radarVelocityPointsPromise = null;
+      window.radarVelocityPoints = null;
+      window.__lastRadarVelocityPointsFile__ = nextPoints;
+    }
+
+    radarVelocityBounds = (currentRadarVelocityFrame && currentRadarVelocityFrame.bounds) || radarVelocityBounds;
 
     if (currentRadarVelocityFrame.points) {
       try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
@@ -6177,7 +6216,7 @@ if (window.createMetarsModule) {
     radarVelocityLayer = L.imageOverlay(imgUrl, radarVelocityBounds, { opacity: productOpacity.radarVelocity || 0.70, interactive:false });
     radarVelocityLayer.addTo(map);
     window.radarVelocityLayer = radarVelocityLayer;
-    setStatus('Velocity test on');
+    setStatus('Velocity: ' + (currentRadarVelocityFrame.label || currentRadarVelocityFrame.time || 'frame'));
   }
   async function setRadarVelocityEnabled(on){
     radarVelocityEnabled = !!on;
@@ -7160,7 +7199,11 @@ window.setWarningsEnabled = setWarningsEnabled;
     try{ window.curZ = new Date(curZ.getTime()); }catch(e){}
     // Keep jet particles in sync with the master banner clock
     if (typeof syncJetParticlesToClock === "function") syncJetParticlesToClock();
-    updateRadar();
+    if (radarVelocityEnabled) {
+      try{ updateRadarVelocity(); }catch(e){}
+    } else {
+      updateRadar();
+    }
     if (typeof updateGfsSnow === "function") updateGfsSnow();
     if (typeof updateEra5Global === "function") updateEra5Global();
     if (typeof updateGoes === "function") updateGoes();
