@@ -6224,15 +6224,6 @@ if (window.createMetarsModule) {
 
     return null;
   }
-    }
-    if (!best){
-      var v0 = vals[rowGuess] && vals[rowGuess][colGuess];
-      var plat0 = lats[rowGuess] && lats[rowGuess][colGuess];
-      var plon0 = lons[rowGuess] && lons[rowGuess][colGuess];
-      if (v0 != null && isFinite(v0) && isFinite(plat0) && isFinite(plon0)) best = { lat:Number(plat0), lon:Number(plon0), value:Number(v0), unit:'mph' };
-    }
-    return best;
-  }
 
   var hrrrManifest = null;
   var hrrrFrames = [];
