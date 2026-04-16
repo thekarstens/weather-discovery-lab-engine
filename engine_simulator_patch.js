@@ -5994,6 +5994,7 @@ if (window.createMetarsModule) {
   var radarVelocityPointsPromise = null;
   var radarVelocityPointsFileLoaded = '';
   var radarVelocityPointsLoadToken = 0;
+  var radarVelocityFixedBounds = null;
   var currentRadarVelocityFrame = null;
   window.radarVelocityEnabled = radarVelocityEnabled;
   window.radarVelocityLayer = radarVelocityLayer;
@@ -6170,8 +6171,9 @@ if (window.createMetarsModule) {
         window.radarVelocityPoints = radarVelocityPoints;
 
         var inferred = inferRadarVelocityBoundsFromPoints(radarVelocityPoints);
-        if (inferred){
-          radarVelocityBounds = inferred;
+        if (inferred && !radarVelocityFixedBounds){
+          radarVelocityFixedBounds = inferred;
+          radarVelocityBounds = radarVelocityFixedBounds;
           window.radarVelocityBounds = radarVelocityBounds;
           if (radarVelocityLayer && radarVelocityLayer.setBounds){
             try{ radarVelocityLayer.setBounds(radarVelocityBounds); }catch(e){}
@@ -6219,7 +6221,11 @@ if (window.createMetarsModule) {
       window.__lastRadarVelocityPointsFile__ = nextPoints;
     }
 
-    radarVelocityBounds = (currentRadarVelocityFrame && currentRadarVelocityFrame.bounds) || radarVelocityBounds;
+    if (!radarVelocityFixedBounds){
+      radarVelocityBounds = (currentRadarVelocityFrame && currentRadarVelocityFrame.bounds) || radarVelocityBounds;
+    } else {
+      radarVelocityBounds = radarVelocityFixedBounds;
+    }
 
     if (currentRadarVelocityFrame.points) {
       try{ await loadRadarVelocityPointsIfNeeded(); }catch(e){ console.warn('Velocity points not loaded:', e); }
@@ -6832,6 +6838,7 @@ function parseHrrrPointsPayload(raw){
       title = "Surface-Based CAPE (J/kg)";
       if (bar) bar.style.background = "linear-gradient(90deg, #f7fcf5 0%, #c7e9c0 18%, #74c476 40%, #31a354 60%, #fdcc8a 78%, #fc8d59 90%, #d7301f 100%)";
       el.style.display = "";
+      radarVelocityFixedBounds = null;
     } else { // temp / future temp
       title = (key === "hrrrTemp") ? "Future 2m Temperature (°F)" : "2m Temperature (°F)";
       // WeatherBell-ish continuous temp ramp (cold blues -> greens -> yellows -> oranges -> reds -> purples)
