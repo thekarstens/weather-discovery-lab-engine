@@ -269,12 +269,12 @@
     width:auto !important;
     top:auto !important;
     bottom:0 !important;
-    max-height:40vh !important;
+    max-height:34vh !important;
     border-radius:18px 18px 0 0 !important;
     box-shadow:0 -10px 24px rgba(0,0,0,.22) !important;
   }
   body.story-mobile-collapsed .storyPanel{
-    max-height:142px !important;
+    max-height:128px !important;
   }
   body.story-mobile-collapsed .story-content{
     display:none !important;
@@ -434,19 +434,6 @@
   <div class="ticker-wrap" id="simTickerWrap"><div class="ticker-label">Weather Alert</div><div class="ticker-marquee"><div class="ticker-marquee-inner" id="simTickerText">Simulator v5 ready • Storyboard now works as time-group topic cards • Advance Timeline moves time forward •</div></div></div>
 
   <script>function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
-  
-<script>
-(function(){
-  try{
-    var u = new URL(window.location.href);
-    if (!u.searchParams.get('lesson')) {
-      u.searchParams.set('lesson', 'derecho-2022-demo');
-      window.location.replace(u.toString());
-    }
-  }catch(e){}
-})();
-</script>
-
   <script src="./simulatorConfig_v5.js"></script>
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
@@ -454,7 +441,7 @@
   <script>
     window.__WDL_SIMPLE_MODE__ = true;
     window.__WDL_STORY_TIME_SYNC_ENABLED__ = false;
-    window.__WDL_SIMULATOR_LOCAL_STORY__ = false;
+    window.__WDL_SIMULATOR_LOCAL_STORY__ = true;
     window.__WDL_FREE_SCRUB__ = true;
   </script>
   <script src="./engine_simulator_patch.js"></script>
@@ -1037,7 +1024,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
       });
 
             window.addEventListener('wdl:storychange', function(ev){ return; });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = false; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); syncSimpleToolStates(); } }, 300);
 
       setInterval(function(){
@@ -1281,6 +1268,62 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     }
   }catch(e){}
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  async function enforceDemoScene(){
+    try{
+      var titleEl = document.getElementById('storyTitle');
+      if (!titleEl) return;
+      var title = (titleEl.textContent || '').trim().toLowerCase();
+
+      if (typeof window.setMasterTime !== 'function') return;
+
+      // Card 3: METAR dew points around 4 PM
+      if (title.indexOf('moisture returns') !== -1 || title.indexOf('dew point') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
+        if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
+        if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
+        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -96.9], 6);
+        if (typeof window.updateAll === 'function') window.updateAll();
+      }
+
+      // Card 4: radar + warnings + lightning + reports + sweep + marquee at 4:45 PM
+      if (title.indexOf('storm comes alive') !== -1 || title.indexOf('wow moment') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
+        if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+        if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+        if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+        if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+        if (typeof window.renderLightningMarquee === 'function') window.renderLightningMarquee();
+        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7);
+        if (typeof window.updateAll === 'function') window.updateAll();
+      }
+
+      // Card 5: reports view
+      if (title.indexOf('storm reports') !== -1 || title.indexOf('ground truth') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.55, -96.73], 6);
+        if (typeof window.updateAll === 'function') window.updateAll();
+      }
+    } catch (e) {}
+  }
+
+  setTimeout(enforceDemoScene, 1200);
+  document.addEventListener('click', function(ev){
+    try{
+      var t = ev.target;
+      if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('.story-card-chip'))) {
+        setTimeout(enforceDemoScene, 500);
+      }
+    } catch (e) {}
+  });
 });
 </script>
 
