@@ -325,7 +325,21 @@
     transform-origin:top right;
   }
   .zoom-corner{
-    bottom:14px !important;
+    display:none !important;
+  }
+  .story-actions-right{
+    width:100%;
+    justify-content:space-between;
+  }
+  .story-nav{
+    width:100%;
+    display:flex;
+    gap:10px;
+  }
+  .story-nav-btn{
+    flex:1 1 0;
+    min-height:50px;
+    font-size:16px !important;
   }
 }
 
@@ -956,8 +970,18 @@
         try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){}
         updateDopplerButton(true);
       });
-      storyPrevBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
-      storyNextBtn.addEventListener('click', function(ev){ ev.preventDefault(); return; });
+      storyPrevBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        if (!topicCards || !topicCards.length) return;
+        currentTopicIndex = Math.max(0, currentTopicIndex - 1);
+        renderCurrentCard();
+      });
+      storyNextBtn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        if (!topicCards || !topicCards.length) return;
+        currentTopicIndex = Math.min(topicCards.length - 1, currentTopicIndex + 1);
+        renderCurrentCard();
+      });
       alertBox.addEventListener('click', function(){ storyTitle.textContent = alertHeadline.textContent; storyBody.innerHTML = '<p>' + alertBody.textContent + '</p>'; });
             if (toolToggleBtn && toolBox) toolToggleBtn.addEventListener('click', function(ev){
         ev.preventDefault(); ev.stopPropagation();
@@ -1255,7 +1279,8 @@ document.addEventListener('DOMContentLoaded', function(){
   function syncMobileStoryMode(){
     try{
       var isPhone = window.innerWidth <= 640;
-      document.body.classList.toggle('story-mobile-collapsed', isPhone);
+      document.body.classList.toggle('story-mobile', isPhone);
+      if (!isPhone) document.body.classList.remove('story-mobile-collapsed');
     }catch(e){}
   }
 
@@ -1286,6 +1311,45 @@ document.addEventListener('DOMContentLoaded', function(){
       var title = (titleEl.textContent || '').trim().toLowerCase();
 
       if (typeof window.setMasterTime !== 'function') return;
+
+      // Card 1: opening scene + auto-start LIVE Doppler sweep
+      if (title.indexOf('setting the stage') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          window.map.setView([44.9, -97.2], 6, { animate:false });
+          setTimeout(function(){
+            try{
+              if (window.map && typeof window.map.stop === 'function') window.map.stop();
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([44.9, -97.2], 6, { animate:false });
+              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+            }catch(e){}
+          }, 180);
+        }
+        try{
+          if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+          if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+        }catch(e){}
+      }
+
+      // Card 2: SPC risk view, slightly wider
+      if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
+        if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          window.map.setView([44.9, -97.2], 4.7, { animate:false });
+          setTimeout(function(){
+            try{
+              if (window.map && typeof window.map.stop === 'function') window.map.stop();
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([44.9, -97.2], 4.7, { animate:false });
+              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+            }catch(e){}
+          }, 180);
+        }
+      }
 
       // Card 3: METAR dew points around 4 PM
       if (title.indexOf('moisture returns') !== -1 || title.indexOf('dew point') !== -1) {
