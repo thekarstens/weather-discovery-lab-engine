@@ -603,7 +603,8 @@
           temps:'Temperatures',
           metar_dewpoint:'Dew Points',
           metar_wind:'Wind Gusts',
-          metar_pressure:'Barometer'
+          metar_pressure:'Barometer',
+          surface_winds:'Surface Winds'
         };
         return map[product] || String(product || 'Map').replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
       }
@@ -661,6 +662,7 @@
           if (typeof window.setHrrrWindsEnabled === 'function') await window.setHrrrWindsEnabled(false);
           if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(false);
           if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+          if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false);
         } catch(e){ console.warn('Product reset issue', e); }
 
         try {
@@ -693,6 +695,9 @@
             }
             if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
           }
+          if (has('surface_winds') || has('surface_wind') || has('surface_particles')) {
+            if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true);
+          }
           if (has('future_radar') || has('hrrr_radar')) {
             if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(true);
           } else if (has('future_winds') || has('hrrr_winds') || has('windgust') || has('future_wind_gusts')) {
@@ -709,7 +714,7 @@
         var p = String(product || '').toLowerCase();
         if (p === 'spc' || p === 'spc_day1' || p === 'watch') return '#f09a00';
         if (p === 'radar' || p === 'live_doppler' || p === 'future_radar') return '#1f6ad1';
-        if (p === 'temps' || p === 'metar_dewpoint' || p === 'metar_wind' || p === 'metar_pressure') return '#009a6b';
+        if (p === 'temps' || p === 'metar_dewpoint' || p === 'metar_wind' || p === 'metar_pressure' || p === 'surface_winds') return '#009a6b';
         if (p === 'lightning') return '#d4b000';
         if (p === 'reports' || p === 'warnings') return '#c73737';
         if (p === 'satellite') return '#6d59c9';
