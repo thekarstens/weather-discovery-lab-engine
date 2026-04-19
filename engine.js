@@ -2934,19 +2934,16 @@ function safeLink(url){
   }
 
   function loadStory(){
-    if (STORYBOARD_JSON) {
-      console.log("📖 Loading JSON storyboard:", STORYBOARD_JSON);
-      return loadJSONStoryboard();
+    console.log("📖 Storyboard disabled for cockpit version");
+    try {
+      window.storyData = null;
+      storyStarted = false;
+      if (storyPanelEl) storyPanelEl.classList.remove("open");
+      if (storyBodyEl) storyBodyEl.innerHTML = "";
+    } catch(e) {
+      console.warn("Storyboard disable cleanup warning:", e);
     }
-    if (STORYBOARD_CSV) {
-      console.log("📖 Loading CSV storyboard:", STORYBOARD_CSV);
-      if (STORYBOARD_OVERRIDE) {
-        console.log("🧭 Story override from URL:", STORYBOARD_OVERRIDE);
-      }
-      return loadCSVStoryboard();
-    }
-    console.log("📖 Loading Google Sheet storyboard:", SHEET_ID, SHEET_TAB);
-    return loadGoogleStoryboard();
+    return Promise.resolve(null);
   }
 
   
