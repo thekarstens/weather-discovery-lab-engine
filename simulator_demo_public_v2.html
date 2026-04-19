@@ -1294,10 +1294,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
-          window.map.setView([43.9, -96.9], 6);
+          if (typeof window.map.stop === 'function') window.map.stop();
+          window.map.setView([43.9, -96.9], 6, { animate:false });
           setTimeout(function(){
             try{
-              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -96.9], 6);
+              if (window.map && typeof window.map.stop === 'function') window.map.stop();
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -96.9], 6, { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
           }, 180);
@@ -1316,10 +1318,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.renderLightningMarquee === 'function') window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
-          window.map.setView([43.45, -96.35], 7);
+          if (typeof window.map.stop === 'function') window.map.stop();
+          window.map.setView([43.45, -96.35], 7.6, { animate:false });
           setTimeout(function(){
             try{
-              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7);
+              if (window.map && typeof window.map.stop === 'function') window.map.stop();
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7.6, { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
           }, 180);
@@ -1332,10 +1336,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
-          window.map.setView([43.55, -96.73], 6);
+          if (typeof window.map.stop === 'function') window.map.stop();
+          window.map.setView([43.45, -96.35], 7.6, { animate:false });
           setTimeout(function(){
             try{
-              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.55, -96.73], 6);
+              if (window.map && typeof window.map.stop === 'function') window.map.stop();
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7.6, { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
           }, 180);
