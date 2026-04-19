@@ -4071,8 +4071,8 @@ function safeLink(url){
     var wantsHrrrCape = _has(layers, ['hrrr_cape','cape']) ||
       productName === 'hrrr_cape' || productName === 'cape';
 
-    var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds']) ||
-      productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1;
+    var wantsJet = _has(layers, ['jet','jet500','500mb','500mb_winds','surface_winds','surface_wind','surface_particles']) ||
+      productName.indexOf('jet') !== -1 || productName.indexOf('500mb') !== -1 || productName.indexOf('surface_wind') !== -1;
 
     var wantsFronts = _has(layers, ['fronts','surface_fronts','surface_map']) ||
       productName.indexOf('front') !== -1;
