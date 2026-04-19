@@ -327,6 +327,41 @@
   .zoom-corner{
     display:none !important;
   }
+  .storyPanel{
+    left:8px !important;
+    right:8px !important;
+    width:auto !important;
+    top:auto !important;
+    bottom:10px !important;
+    max-height:52svh !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  .story-shell-header{
+    padding:10px 12px !important;
+  }
+  .story-title{
+    font-size:26px !important;
+    line-height:1 !important;
+  }
+  .story-content{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    padding-bottom:8px !important;
+  }
+  .story-body{
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .story-shell-footer{
+    position:sticky !important;
+    bottom:0 !important;
+    z-index:4 !important;
+    background:#fbfbfc !important;
+    box-shadow:0 -4px 12px rgba(0,0,0,.08);
+    padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   .story-actions-right{
     width:100%;
     justify-content:space-between;
