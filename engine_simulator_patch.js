@@ -427,6 +427,12 @@ window.jetVelocityLayer = jetVelocityLayer;
 
 function getJetManifestUrl(){
   try{
+    // Prefer lesson-specific surface wind config first
+    var sw = (CFG && CFG.surfaceWinds) ? CFG.surfaceWinds : {};
+    var su = sw.manifest || sw.manifestFile || sw.url || sw.file || '';
+    if (su) return _isAbsUrl(su) ? su : _joinUrl(DATA_BASE, su);
+
+    // Fall back to legacy jet config
     var j = (CFG && (CFG.jet || CFG.upperAir || CFG.upperair)) ? (CFG.jet || CFG.upperAir || CFG.upperair) : {};
     var u = j.manifest || j.manifestFile || j.url || j.file || '';
     if (u) return _isAbsUrl(u) ? u : _joinUrl(DATA_BASE, u);
@@ -475,7 +481,7 @@ async function loadJetManifestIfNeeded(){
     .then(function(raw){
       jetManifest = raw || {};
       jetFrames = parseJetManifestFrames(raw);
-      var b = raw && raw.bounds;
+      var b = raw && (raw.bounds || (raw.grid && raw.grid.bounds));
       if (Array.isArray(b) && b.length === 2 && Array.isArray(b[0]) && Array.isArray(b[1])) jetBounds = b;
       if (!jetFrames.length) throw new Error('Jet manifest has no frames');
       return jetManifest;
@@ -563,27 +569,30 @@ async function updateJetParticles(){
     var data = await res.json();
     clearJetVelocityLayer();
     currentJetVelocityData = data;
+    var velocityTitle = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
+      ? CFG.surfaceWinds.label
+      : '500mb Winds';
+
     jetVelocityLayer = L.velocityLayer({
       data: data,
       displayValues: false,
       displayOptions: {
-        velocityType: '500mb Winds',
+        velocityType: velocityTitle,
         position: 'bottomleft',
         emptyString: 'No data'
       },
-      velocityScale: 0.006,
-      particleAge: 90,
-      lineWidth: 3,
+      velocityScale: 0.0045,
+      particleAge: 75,
+      lineWidth: 2,
       frameRate: 20,
-      maxVelocity: 80,
-      opacity: 0.82,
+      maxVelocity: 35,
+      opacity: 0.72,
       colorScale: [
         '#00ffff',
         '#00ff00',
         '#ffff00',
         '#ff9900',
-        '#ff0000',
-        '#800000'
+        '#ff0000'
       ]
     });
     jetVelocityLayer.addTo(map);
@@ -591,7 +600,10 @@ async function updateJetParticles(){
     if (jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
       try{ map.fitBounds(L.latLngBounds(jetBounds), { padding:[20,20] }); }catch(e){}
     }
-    setStatus('500 mb Winds: ' + (frame.time || frame.label || url));
+    var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
+      ? CFG.surfaceWinds.label
+      : '500 mb Winds';
+    setStatus(layerName + ': ' + (frame.time || frame.label || url));
   }catch(err){
     console.error(err);
     setStatus('500 mb Winds failed');
@@ -603,10 +615,16 @@ async function setJet500Enabled(on){
   window.jet500Enabled = jet500Enabled;
   if (!jet500Enabled){
     clearJetVelocityLayer();
-    setStatus('500 mb Winds off');
+    var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
+      ? CFG.surfaceWinds.label
+      : '500 mb Winds';
+    setStatus(layerName + ' off');
   } else {
     await updateJetParticles();
-    setStatus('500 mb Winds on');
+    var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
+      ? CFG.surfaceWinds.label
+      : '500 mb Winds';
+    setStatus(layerName + ' on');
   }
   try{ updateProductLabel(); }catch(e){}
   try{ updateLegend(); }catch(e){}
@@ -6791,7 +6809,10 @@ function parseHrrrPointsPayload(raw){
   var candidates = [
     { on: (typeof era5Apr10Enabled !== "undefined" && (era5Apr10Enabled || era5Apr11Enabled)), label: "GLOBAL TEMP" },
     { on: (typeof gfsSnowEnabled !== "undefined" && gfsSnowEnabled), label: "SNOW" },
-    { on: (typeof jet500Enabled !== "undefined" && jet500Enabled), label: "500 MB WINDS" },
+    { 
+      on: (typeof jet500Enabled !== "undefined" && jet500Enabled),
+      label: ((CFG && CFG.surfaceWinds && CFG.surfaceWinds.label) ? CFG.surfaceWinds.label.toUpperCase() : "500 MB WINDS")
+    },
     { on: (typeof goesEnabled !== "undefined" && goesEnabled), label: "SATELLITE" },
     { on: (typeof lightningEnabled !== "undefined" && lightningEnabled), label: "LIGHTNING" },
     { on: (typeof spcDay1Enabled !== "undefined" && spcDay1Enabled), label: "SPC DAY 1" },
