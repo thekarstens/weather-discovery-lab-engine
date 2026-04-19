@@ -420,6 +420,7 @@ var jetBounds = null;
 var jetCurrentFrameIndex = 0;
 var jetVelocityLayer = null;
 var currentJetVelocityData = null;
+var jetCurrentUrl = null;
 var jetLoadPromise = null;
 var JET_DEFAULT_MANIFEST = 'jet/jet_manifest.json';
 window.jet500Enabled = jet500Enabled;
@@ -444,6 +445,7 @@ function clearJetVelocityLayer(){
   try{ if (jetVelocityLayer && map && map.hasLayer && map.hasLayer(jetVelocityLayer)) map.removeLayer(jetVelocityLayer); }catch(e){}
   jetVelocityLayer = null;
   currentJetVelocityData = null;
+  jetCurrentUrl = null;
   window.jetVelocityLayer = null;
 }
 
@@ -564,11 +566,20 @@ async function updateJetParticles(){
     var frame = getNearestJetFrame(curZ);
     if (!frame) return;
     var url = jetFrameUrl(frame);
+
+    // For single-frame demo effects, do not tear down and recreate the same
+    // velocity layer over and over. Leaflet-velocity can throw null errors
+    // when repeatedly removed/re-added during rapid story updates.
+    if (jetVelocityLayer && jetCurrentUrl === url) {
+      return;
+    }
+
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('Jet frame HTTP ' + res.status + ': ' + url);
     var data = await res.json();
     clearJetVelocityLayer();
     currentJetVelocityData = data;
+    jetCurrentUrl = url;
     var velocityTitle = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
       ? CFG.surfaceWinds.label
       : '500mb Winds';
