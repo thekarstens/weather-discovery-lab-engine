@@ -835,7 +835,7 @@
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
         storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
-        sceneLead.textContent = (card.topicLabel || 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (card.topicLabel || 'Current Topic');
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
@@ -916,7 +916,7 @@
         var span = Math.max(1, max - min);
         var pct = clamp01((val - min) / span);
         updateClockAndScrubber(pct);
-        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic');
       }
 
       scrubber.addEventListener('mousedown', beginScrub);
@@ -940,7 +940,7 @@
 
         displayPercent = pct;
         clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
-        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic') + ' • ' + formatDisplayClock(displayMsFromPercent(displayPercent));
+        sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic');
       });
       storyCollapseBtn.addEventListener('click', function(ev){
         ev.preventDefault();
@@ -1292,8 +1292,16 @@ document.addEventListener('DOMContentLoaded', function(){
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
         if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
-        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -96.9], 6);
         if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          window.map.setView([43.9, -96.9], 6);
+          setTimeout(function(){
+            try{
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -96.9], 6);
+              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+            }catch(e){}
+          }, 180);
+        }
       }
 
       // Card 4: radar + warnings + lightning + reports + sweep + marquee at 4:45 PM
@@ -1306,16 +1314,32 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
         if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
         if (typeof window.renderLightningMarquee === 'function') window.renderLightningMarquee();
-        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7);
         if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          window.map.setView([43.45, -96.35], 7);
+          setTimeout(function(){
+            try{
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.45, -96.35], 7);
+              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+            }catch(e){}
+          }, 180);
+        }
       }
 
       // Card 5: reports view
       if (title.indexOf('storm reports') !== -1 || title.indexOf('ground truth') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
-        if (window.map && typeof window.map.setView === 'function') window.map.setView([43.55, -96.73], 6);
         if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          window.map.setView([43.55, -96.73], 6);
+          setTimeout(function(){
+            try{
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.55, -96.73], 6);
+              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+            }catch(e){}
+          }, 180);
+        }
       }
     } catch (e) {}
   }
