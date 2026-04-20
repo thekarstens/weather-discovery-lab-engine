@@ -1363,6 +1363,8 @@ document.addEventListener('DOMContentLoaded', function(){
           }, 180);
         }
         try{
+          if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+          if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
           if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
           if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
         }catch(e){}
@@ -1375,11 +1377,11 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          window.map.setView([45.3, -98.8], 5.4, { animate:false });
+          window.map.setView([45.5, -99.0], 6.0, { animate:false });
           setTimeout(function(){
             try{
               if (window.map && typeof window.map.stop === 'function') window.map.stop();
-              if (window.map && typeof window.map.setView === 'function') window.map.setView([45.3, -98.8], 5.4, { animate:false });
+              if (window.map && typeof window.map.setView === 'function') window.map.setView([45.5, -99.0], 6.0, { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
           }, 180);
@@ -1389,19 +1391,25 @@ document.addEventListener('DOMContentLoaded', function(){
       // Card 3: METAR dew points around 4 PM
       if (title.indexOf('moisture returns') !== -1 || title.indexOf('dew point') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
+        if (window.map && typeof window.map.setView === 'function') {
+          try{
+            if (typeof window.map.stop === 'function') window.map.stop();
+            window.map.setView([43.9, -97.2], 6.7, { animate:false });
+          }catch(e){}
+        }
         if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
-          if (typeof window.map.stop === 'function') window.map.stop();
-          window.map.setView([43.9, -97.2], 6.3, { animate:false });
-          setTimeout(function(){
-            try{
-              if (window.map && typeof window.map.stop === 'function') window.map.stop();
-              if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -97.2], 6.3, { animate:false });
-              if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
-            }catch(e){}
-          }, 180);
+          [120, 420, 900].forEach(function(delay){
+            setTimeout(function(){
+              try{
+                if (window.map && typeof window.map.stop === 'function') window.map.stop();
+                if (window.map && typeof window.map.setView === 'function') window.map.setView([43.9, -97.2], 6.7, { animate:false });
+                if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+              }catch(e){}
+            }, delay);
+          });
         }
       }
 
@@ -1414,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
         if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-        if (typeof window.renderLightningMarquee === 'function') window.renderLightningMarquee();
+        if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
