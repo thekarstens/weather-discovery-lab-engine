@@ -896,6 +896,20 @@
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
         storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
+        try{
+          var __headerEl = document.querySelector('.story-shell-header');
+          var __chipEl = storyStationChip;
+          var __themes = [
+            'linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00)',
+            'linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300)',
+            'linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38)',
+            'linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5)',
+            'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)'
+          ];
+          var __themeBg = __themes[Math.max(0, Math.min(__themes.length - 1, currentTopicIndex || 0))];
+          if (__headerEl) __headerEl.style.background = __themeBg;
+          if (__chipEl) __chipEl.style.background = 'rgba(255,255,255,.24)';
+        }catch(e){}
         sceneLead.textContent = (card.topicLabel || 'Current Topic');
         storyBody.innerHTML = (card.narrative || ['No discussion notes added yet.']).map(function(line){
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
@@ -910,6 +924,12 @@
           } else {
             var baseMode = card.product || 'radar';
             var baseLayers = card.layers || [card.product || 'radar'];
+            if (window.innerWidth > 640 && /moisture returns|dew point/i.test(String(card.title || card.topicLabel || ''))) {
+              baseLayers = baseLayers.filter(function(v){
+                var s = String(v || '').toLowerCase();
+                return ['surface_winds','surface_wind','surface_particles'].indexOf(s) === -1;
+              });
+            }
             applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
           }
         }
@@ -1379,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{
           if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
           if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-          [0, 250, 700].forEach(function(delay){
+          [0, 250, 700, 1400].forEach(function(delay){
             setTimeout(function(){
               try{
                 if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true);
@@ -1399,12 +1419,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.4, -98.9, 6.5];
+          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
           setTimeout(function(){
             try{
               if (window.map && typeof window.map.stop === 'function') window.map.stop();
-              if (window.map && typeof window.map.setView === 'function') var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.4, -98.9, 6.5];
+              if (window.map && typeof window.map.setView === 'function') var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
@@ -1425,6 +1445,11 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
         if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.innerWidth > 640 && typeof window.setJet500Enabled === 'function') {
+          setTimeout(function(){
+            try{ window.setJet500Enabled(true); }catch(e){}
+          }, 260);
+        }
         if (window.map && typeof window.map.setView === 'function') {
           [120, 420, 900, 1500, 2400].forEach(function(delay){
             setTimeout(function(){
