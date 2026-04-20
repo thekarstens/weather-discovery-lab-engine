@@ -881,6 +881,18 @@
         var chipText = String((currentTopicIndex || 0) + 1);
         storyStationChip.textContent = chipText;
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
+        var cardThemes = [
+          { header:'linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00)', chip:'rgba(255,255,255,.24)' }, /* 1 yellow */
+          { header:'linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300)', chip:'rgba(255,255,255,.24)' }, /* 2 orange */
+          { header:'linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38)', chip:'rgba(255,255,255,.24)' }, /* 3 green */
+          { header:'linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5)', chip:'rgba(255,255,255,.24)' }, /* 4 blue */
+          { header:'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)', chip:'rgba(255,255,255,.24)' }  /* 5 red */
+        ];
+        var theme = cardThemes[Math.max(0, Math.min(cardThemes.length - 1, currentTopicIndex || 0))];
+        try{
+          if (typeof storyHeader !== 'undefined' && storyHeader) storyHeader.style.background = theme.header;
+          if (storyStationChip) storyStationChip.style.background = theme.chip;
+        }catch(e){}
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
         storyStep.textContent = 'Topic ' + ((currentTopicIndex || 0) + 1) + ' of ' + topicCards.length;
@@ -1367,8 +1379,16 @@ document.addEventListener('DOMContentLoaded', function(){
         try{
           if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
           if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-          if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-          if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+          [0, 250, 700].forEach(function(delay){
+            setTimeout(function(){
+              try{
+                if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true);
+                if (typeof window.setRadarEnabled === 'function') window.setRadarEnabled(true);
+                if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+                if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+              }catch(e){}
+            }, delay);
+          });
         }catch(e){}
       }
 
@@ -1379,12 +1399,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.5, -99.0, 6.0];
+          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.4, -98.9, 6.5];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
           setTimeout(function(){
             try{
               if (window.map && typeof window.map.stop === 'function') window.map.stop();
-              if (window.map && typeof window.map.setView === 'function') var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.5, -99.0, 6.0];
+              if (window.map && typeof window.map.setView === 'function') var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.4, -98.9, 6.5];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
@@ -1406,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
-          [120, 420, 900].forEach(function(delay){
+          [120, 420, 900, 1500, 2400].forEach(function(delay){
             setTimeout(function(){
               try{
                 if (window.map && typeof window.map.stop === 'function') window.map.stop();
@@ -1432,12 +1452,12 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v4 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.35, -97.15, 7.6];
+          var __v4 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
           window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
           setTimeout(function(){
             try{
               if (window.map && typeof window.map.stop === 'function') window.map.stop();
-              if (window.map && typeof window.map.setView === 'function') var __v4 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.35, -97.15, 7.6];
+              if (window.map && typeof window.map.setView === 'function') var __v4 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
           window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
               if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
             }catch(e){}
