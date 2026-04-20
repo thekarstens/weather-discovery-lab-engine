@@ -378,6 +378,18 @@
   }
 }
 
+  
+    .story-shell-header[data-topic="1"]{ background:linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00) !important; }
+    .story-shell-header[data-topic="2"]{ background:linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300) !important; }
+    .story-shell-header[data-topic="3"]{ background:linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38) !important; }
+    .story-shell-header[data-topic="4"]{ background:linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5) !important; }
+    .story-shell-header[data-topic="5"]{ background:linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515) !important; }
+    .story-station-chip[data-topic="1"],
+    .story-station-chip[data-topic="2"],
+    .story-station-chip[data-topic="3"],
+    .story-station-chip[data-topic="4"],
+    .story-station-chip[data-topic="5"]{ background:rgba(255,255,255,.24) !important; }
+
   </style>
 </head>
 <body>
@@ -881,6 +893,12 @@
         var chipText = String((currentTopicIndex || 0) + 1);
         storyStationChip.textContent = chipText;
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
+        try{
+          var __topicNum = String((currentTopicIndex || 0) + 1);
+          var __header = document.querySelector('.story-shell-header');
+          if (__header) __header.setAttribute('data-topic', __topicNum);
+          if (storyStationChip) storyStationChip.setAttribute('data-topic', __topicNum);
+        }catch(e){}
         var cardThemes = [
           { header:'linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00)', chip:'rgba(255,255,255,.24)' }, /* 1 yellow */
           { header:'linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300)', chip:'rgba(255,255,255,.24)' }, /* 2 orange */
@@ -1414,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', function(){
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         if (typeof window.updateAll === 'function') window.updateAll();
         applySceneView([44.7, -98.6, 6.5], [43.8, -98.6, 5.5], [0, 180]);
-        forceSweepOn([0, 250, 700, 1400]);
+        forceSweepOn([0, 250, 700, 1400, 2400, 3600]);
       }
 
       // Card 2
@@ -1448,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
-        forceSweepOn([0]);
+        forceSweepOn([0, 250, 700, 1400, 2400]);
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
         applySceneView([43.30, -97.05, 8.0], [42.95, -97.15, 7.6], [0, 180]);
