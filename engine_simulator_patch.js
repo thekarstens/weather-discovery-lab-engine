@@ -608,7 +608,8 @@ async function updateJetParticles(){
     });
     jetVelocityLayer.addTo(map);
     window.jetVelocityLayer = jetVelocityLayer;
-    if (jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
+    var isSurfaceWindDemo = !!(CFG && CFG.surfaceWinds);
+    if (!isSurfaceWindDemo && jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
       try{ map.fitBounds(L.latLngBounds(jetBounds), { padding:[20,20] }); }catch(e){}
     }
     var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
