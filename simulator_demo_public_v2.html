@@ -1432,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', function(){
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         if (typeof window.updateAll === 'function') window.updateAll();
         applySceneView([44.7, -98.6, 6.5], [41.6, -98.6, 4.5], [0, 180]);
-        forceSweepOn([0, 250, 700, 1400, 2400, 3600, 5200]);
+        forceSweepOn(window.innerWidth <= 640 ? [1800, 3000, 4500, 6500] : [0, 250, 700, 1400, 2400, 3600, 5200]);
       }
 
       // Card 2
@@ -1465,11 +1465,11 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
         if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
         if (window.innerWidth > 640 && typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
-        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(window.innerWidth > 640);
         forceSweepOn([0, 250, 700, 1400, 2400, 3600]);
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([43.30, -97.05, 8.0], [42.95, -97.15, 7.6], [0, 180]);
+        applySceneView([43.30, -97.05, 8.0], [43.55, -96.73, 9.0], [0, 180]);
       }
 
       // Card 5
