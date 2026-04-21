@@ -1431,8 +1431,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if (title.indexOf('setting the stage') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([44.7, -98.6, 6.5], [43.8, -98.6, 5.5], [0, 180]);
-        forceSweepOn([0, 250, 700, 1400, 2400, 3600]);
+        applySceneView([44.7, -98.6, 6.5], [41.6, -98.6, 4.5], [0, 180]);
+        forceSweepOn([0, 250, 700, 1400, 2400, 3600, 5200]);
       }
 
       // Card 2
@@ -1440,13 +1440,13 @@ document.addEventListener('DOMContentLoaded', function(){
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([45.25, -98.75, 6.9], [43.8, -99.0, 5.0], [0, 180]);
+        applySceneView([45.25, -98.75, 6.9], [40.9, -99.0, 5.0], [0, 180]);
       }
 
       // Card 3
       if (title.indexOf('moisture returns') !== -1 || title.indexOf('dew point') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
-        applySceneView([43.9, -97.2, 6.7], [43.55, -97.15, 6.2], [0]);
+        applySceneView([43.9, -97.2, 6.7], [42.1, -97.15, 6.2], [0]);
         if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
         if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
         if (typeof window.updateAll === 'function') window.updateAll();
@@ -1455,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', function(){
             try{ window.setJet500Enabled(true); }catch(e){}
           }, 260);
         }
-        applySceneView([43.9, -97.2, 6.7], [43.55, -97.15, 6.2], [120, 420, 900, 1500, 2400]);
+        applySceneView([43.9, -97.2, 6.7], [42.1, -97.15, 6.2], [120, 420, 900, 1500, 2400]);
       }
 
       // Card 4
@@ -1464,9 +1464,9 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
         if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
         if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
-        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (window.innerWidth > 640 && typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
-        forceSweepOn([0, 250, 700, 1400, 2400]);
+        forceSweepOn([0, 250, 700, 1400, 2400, 3600]);
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
         applySceneView([43.30, -97.05, 8.0], [42.95, -97.15, 7.6], [0, 180]);
@@ -1477,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', function(){
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([43.75, -98.0, 7.0], [43.35, -98.0, 7.0], [0, 180]);
+        applySceneView([43.75, -98.0, 7.0], [42.25, -98.0, 7.0], [0, 180]);
       }
     } catch (e) {
       console.warn('enforceDemoScene failed', e);
