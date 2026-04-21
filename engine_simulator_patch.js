@@ -3748,7 +3748,7 @@ var CITIES_TIER3 = [
   ["Pierre", 44.3683, -100.3509],
 
   // Zoom 8 targets
-  ["Parkston", 43.3943, -97.9873],
+  ["Parkston", 43.3975, -97.1364],
   ["Beresford", 43.0805, -96.7737],
   ["Lake Andes", 43.1564, -98.5409],
   ["Chamberlain", 43.8108, -99.3307],
@@ -4958,23 +4958,26 @@ function ensureWarningDetailModal(){
   wrap.className = 'wdl-warning-modal';
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
-  wrap.addEventListener('click', function(ev){
+  function __handleWarningModalAction(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
     var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
     if (ev.target === wrap || act === 'close') {
-      ev.preventDefault();
-      ev.stopPropagation();
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       wrap.classList.remove('visible');
       wrap.classList.remove('fullscreen');
-      return;
+      return true;
     }
     if (act === 'full') {
-      ev.preventDefault();
-      ev.stopPropagation();
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       wrap.classList.toggle('fullscreen');
-      return;
+      return true;
     }
-  }, true);
+    return false;
+  }
+  wrap.addEventListener('pointerdown', function(ev){ __handleWarningModalAction(ev); }, true);
+  wrap.addEventListener('click', function(ev){ __handleWarningModalAction(ev); }, true);
   warningDetailModal = wrap;
   return wrap;
 }
@@ -7224,23 +7227,26 @@ function ensureWarningDetailModal(){
   wrap.className = 'wdl-warning-modal';
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
-  wrap.addEventListener('click', function(ev){
+  function __handleWarningModalAction(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
     var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
     if (ev.target === wrap || act === 'close') {
-      ev.preventDefault();
-      ev.stopPropagation();
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       wrap.classList.remove('visible');
       wrap.classList.remove('fullscreen');
-      return;
+      return true;
     }
     if (act === 'full') {
-      ev.preventDefault();
-      ev.stopPropagation();
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       wrap.classList.toggle('fullscreen');
-      return;
+      return true;
     }
-  }, true);
+    return false;
+  }
+  wrap.addEventListener('pointerdown', function(ev){ __handleWarningModalAction(ev); }, true);
+  wrap.addEventListener('click', function(ev){ __handleWarningModalAction(ev); }, true);
   warningDetailModal = wrap;
   return wrap;
 }
