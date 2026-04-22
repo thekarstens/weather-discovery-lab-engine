@@ -378,18 +378,6 @@
   }
 }
 
-  
-    .story-shell-header[data-topic="1"]{ background:linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00) !important; }
-    .story-shell-header[data-topic="2"]{ background:linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300) !important; }
-    .story-shell-header[data-topic="3"]{ background:linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38) !important; }
-    .story-shell-header[data-topic="4"]{ background:linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5) !important; }
-    .story-shell-header[data-topic="5"]{ background:linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515) !important; }
-    .story-station-chip[data-topic="1"],
-    .story-station-chip[data-topic="2"],
-    .story-station-chip[data-topic="3"],
-    .story-station-chip[data-topic="4"],
-    .story-station-chip[data-topic="5"]{ background:rgba(255,255,255,.24) !important; }
-
   </style>
 </head>
 <body>
@@ -724,6 +712,8 @@
           if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(false);
           if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
           if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false);
+          if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+          if (typeof window.setMediaEnabled === 'function') await window.setMediaEnabled(false);
         } catch(e){ console.warn('Product reset issue', e); }
 
         try {
@@ -756,8 +746,14 @@
             }
             if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
           }
+          if (has('fronts') || has('surface_fronts') || has('surface_map')) {
+            if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true);
+          }
           if (has('surface_winds') || has('surface_wind') || has('surface_particles')) {
             if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true);
+          }
+          if (has('media') || has('photos') || has('videos')) {
+            if (typeof window.setMediaEnabled === 'function') await window.setMediaEnabled(true);
           }
           if (has('future_radar') || has('hrrr_radar')) {
             if (typeof window.setHrrrRadarEnabled === 'function') await window.setHrrrRadarEnabled(true);
@@ -893,24 +889,18 @@
         var chipText = String((currentTopicIndex || 0) + 1);
         storyStationChip.textContent = chipText;
         storyStationChip.classList.toggle('compact', chipText.length >= 3);
-        try{
-          var __topicNum = String((currentTopicIndex || 0) + 1);
-          var __header = document.querySelector('.story-shell-header');
-          if (__header) __header.setAttribute('data-topic', __topicNum);
-          if (storyStationChip) storyStationChip.setAttribute('data-topic', __topicNum);
-        }catch(e){}
         var cardThemes = [
           { header:'linear-gradient(180deg,#f5cf3d,#e6b21f 58%,#c78d00)', chip:'rgba(255,255,255,.24)' }, /* 1 yellow */
           { header:'linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300)', chip:'rgba(255,255,255,.24)' }, /* 2 orange */
           { header:'linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38)', chip:'rgba(255,255,255,.24)' }, /* 3 green */
           { header:'linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5)', chip:'rgba(255,255,255,.24)' }, /* 4 blue */
-          { header:'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)', chip:'rgba(255,255,255,.24)' }  /* 5 red */
+          { header:'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)', chip:'rgba(255,255,255,.24)' }, /* 5 red */
+          { header:'linear-gradient(180deg,#8c5de8,#6b3dd2 58%,#4b23aa)', chip:'rgba(255,255,255,.24)' }  /* 6 purple */
         ];
         var theme = cardThemes[Math.max(0, Math.min(cardThemes.length - 1, currentTopicIndex || 0))];
         try{
           if (typeof storyHeader !== 'undefined' && storyHeader) storyHeader.style.background = theme.header;
           if (storyStationChip) storyStationChip.style.background = theme.chip;
-          document.documentElement.style.setProperty('--wdl-topic-theme', theme.header);
         }catch(e){}
         storyShellKicker.textContent = card.kicker || 'Topic';
         storyTitle.textContent = card.title || card.topicLabel || 'Topic';
@@ -923,7 +913,8 @@
             'linear-gradient(180deg,#f8aa2b,#ef8102 58%,#d66300)',
             'linear-gradient(180deg,#31b86b,#15904a 58%,#0f6f38)',
             'linear-gradient(180deg,#2d7dff,#165ad7 58%,#1043a5)',
-            'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)'
+            'linear-gradient(180deg,#ef4a4a,#d92e2e 58%,#b31515)',
+            'linear-gradient(180deg,#8c5de8,#6b3dd2 58%,#4b23aa)'
           ];
           var __themeBg = __themes[Math.max(0, Math.min(__themes.length - 1, currentTopicIndex || 0))];
           if (__headerEl) __headerEl.style.background = __themeBg;
@@ -943,12 +934,6 @@
           } else {
             var baseMode = card.product || 'radar';
             var baseLayers = card.layers || [card.product || 'radar'];
-            if (window.innerWidth > 640 && /moisture returns|dew point/i.test(String(card.title || card.topicLabel || ''))) {
-              baseLayers = baseLayers.filter(function(v){
-                var s = String(v || '').toLowerCase();
-                return ['surface_winds','surface_wind','surface_particles'].indexOf(s) === -1;
-              });
-            }
             applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
           }
         }
@@ -1357,131 +1342,239 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-  try{
-    var toolBox = document.getElementById('toolBox');
-    if (toolBox) toolBox.classList.add('is-collapsed');
-  }catch(e){}
-
-  function syncMobileStoryMode(){
+  async function ensureSweepOn(){
     try{
-      var isPhone = window.innerWidth <= 640;
-      document.body.classList.toggle('story-mobile', isPhone);
-      if (!isPhone) document.body.classList.remove('story-mobile-collapsed');
+      if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+      if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
     }catch(e){}
   }
 
-  syncMobileStoryMode();
-  window.addEventListener('resize', syncMobileStoryMode);
+  async function enforceDemoScene(){
+    try{
+      var titleEl = document.getElementById('storyTitle');
+      if (!titleEl) return;
+      var title = (titleEl.textContent || '').trim().toLowerCase();
+      if (typeof window.setMasterTime !== 'function') return;
 
-  try{
-    var storyHeader = document.querySelector('.story-shell-header');
-    if (storyHeader){
-      storyHeader.addEventListener('click', function(ev){
-        if (window.innerWidth > 640) return;
-        var t = ev.target;
-        if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('#storyCollapseBtn') || t.closest('#storyDopplerBtn'))) return;
-        document.body.classList.toggle('story-mobile-collapsed');
-      });
-    }
-  }catch(e){}
+      if (title.indexOf('setting the stage') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
+          window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
+        }
+        [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
+      }
+
+      if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
+        if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
+          window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
+        }
+      }
+
+      if (title.indexOf('surface setup') !== -1 || title.indexOf('model temperatures') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true);
+        if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true);
+        if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v3 = (window.innerWidth <= 640) ? [43.75, -97.7, 6.1] : [44.3, -98.1, 6.6];
+          window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
+          [180, 700, 1400].forEach(function(delay){
+            setTimeout(function(){
+              try{
+                if (window.map && typeof window.map.stop === 'function') window.map.stop();
+                if (window.map && typeof window.map.setView === 'function') window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
+              }catch(e){}
+            }, delay);
+          });
+        }
+      }
+
+      if (title === 'dew point' || title.indexOf('dew point') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false);
+        if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+        if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
+        if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint');
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v4 = (window.innerWidth <= 640) ? [43.55, -97.15, 6.2] : [43.9, -97.2, 6.7];
+          window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
+        }
+      }
+
+      if (title.indexOf('storm comes alive') !== -1 || title.indexOf('wow moment') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
+        if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+        if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+        if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+        if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+        if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
+          window.map.setView([__v5[0], __v5[1]], __v5[2], { animate:false });
+        }
+      }
+
+      if (title.indexOf('storm reports') !== -1 || title.indexOf('ground truth') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v6 = (window.innerWidth <= 640) ? [43.35, -98.0, 7.0] : [43.75, -98.0, 7.0];
+          window.map.setView([__v6[0], __v6[1]], __v6[2], { animate:false });
+        }
+      }
+    } catch (e) {}
+  }
+
+  setTimeout(enforceDemoScene, 1200);
+  document.addEventListener('click', function(ev){
+    try{
+      var t = ev.target;
+      if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('.story-card-chip'))) {
+        setTimeout(enforceDemoScene, 500);
+      }
+    } catch (e) {}
+  });
 });
 </script>
 
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+  async function ensureSweepOn(){
+    try{
+      if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
+      if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
+      if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+      if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+    }catch(e){}
+  }
+
   async function enforceDemoScene(){
     try{
       var titleEl = document.getElementById('storyTitle');
       if (!titleEl) return;
       var title = (titleEl.textContent || '').trim().toLowerCase();
-
       if (typeof window.setMasterTime !== 'function') return;
 
-      function applySceneView(desktopView, mobileView, delays){
-        try{
-          if (!window.map || typeof window.map.setView !== 'function') return;
-          var v = (window.innerWidth <= 640) ? mobileView : desktopView;
-          (delays || [0]).forEach(function(delay){
-            setTimeout(function(){
-              try{
-                if (window.map && typeof window.map.stop === 'function') window.map.stop();
-                if (window.map && typeof window.map.setView === 'function') window.map.setView([v[0], v[1]], v[2], { animate:false });
-                if (window.map && typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
-              }catch(e){}
-            }, delay);
-          });
-        }catch(e){}
-      }
-
-      function forceSweepOn(delays){
-        (delays || [0]).forEach(function(delay){
-          setTimeout(function(){
-            try{
-              if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true);
-              if (typeof window.setRadarEnabled === 'function') window.setRadarEnabled(true);
-              if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-              if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
-            }catch(e){}
-          }, delay);
-        });
-      }
-
-      // Card 1
       if (title.indexOf('setting the stage') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([44.7, -98.6, 6.5], [41.6, -98.6, 4.5], [0, 180]);
-        forceSweepOn(window.innerWidth <= 640 ? [1800, 3000, 4500, 6500] : [0, 250, 700, 1400, 2400, 3600, 5200]);
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
+          window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
+        }
+        [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
       }
 
-      // Card 2
       if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([45.25, -98.75, 6.9], [40.9, -99.0, 5.0], [0, 180]);
-      }
-
-      // Card 3
-      if (title.indexOf('moisture returns') !== -1 || title.indexOf('dew point') !== -1) {
-        await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
-        applySceneView([43.9, -97.2, 6.7], [42.1, -97.15, 6.2], [0]);
-        if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
-        if (typeof window.setMetarDisplayMode === 'function') await window.setMetarDisplayMode('dewpoint');
-        if (typeof window.updateAll === 'function') window.updateAll();
-        if (window.innerWidth > 640 && typeof window.setJet500Enabled === 'function') {
-          setTimeout(function(){
-            try{ window.setJet500Enabled(true); }catch(e){}
-          }, 260);
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
+          window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
         }
-        applySceneView([43.9, -97.2, 6.7], [42.1, -97.15, 6.2], [120, 420, 900, 1500, 2400]);
       }
 
-      // Card 4
+      if (title.indexOf('surface setup') !== -1 || title.indexOf('model temperatures') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true);
+        if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true);
+        if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v3 = (window.innerWidth <= 640) ? [43.75, -97.7, 6.1] : [44.3, -98.1, 6.6];
+          window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
+          [180, 700, 1400].forEach(function(delay){
+            setTimeout(function(){
+              try{
+                if (window.map && typeof window.map.stop === 'function') window.map.stop();
+                if (window.map && typeof window.map.setView === 'function') window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
+              }catch(e){}
+            }, delay);
+          });
+        }
+      }
+
+      if (title === 'dew point' || title.indexOf('dew point') !== -1) {
+        await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false);
+        if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false);
+        if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true);
+        if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint');
+        if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v4 = (window.innerWidth <= 640) ? [43.55, -97.15, 6.2] : [43.9, -97.2, 6.7];
+          window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
+        }
+      }
+
       if (title.indexOf('storm comes alive') !== -1 || title.indexOf('wow moment') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
         if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
         if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
         if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true);
-        if (window.innerWidth > 640 && typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
-        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(window.innerWidth > 640);
-        forceSweepOn([0, 250, 700, 1400, 2400, 3600]);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
+        if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([43.30, -97.05, 8.0], [43.55, -96.73, 9.0], [0, 180]);
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
+          window.map.setView([__v5[0], __v5[1]], __v5[2], { animate:false });
+        }
       }
 
-      // Card 5
       if (title.indexOf('storm reports') !== -1 || title.indexOf('ground truth') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
         if (typeof window.updateAll === 'function') window.updateAll();
-        applySceneView([43.75, -98.0, 7.0], [42.25, -98.0, 7.0], [0, 180]);
+        if (window.map && typeof window.map.setView === 'function') {
+          if (typeof window.map.stop === 'function') window.map.stop();
+          var __v6 = (window.innerWidth <= 640) ? [43.35, -98.0, 7.0] : [43.75, -98.0, 7.0];
+          window.map.setView([__v6[0], __v6[1]], __v6[2], { animate:false });
+        }
       }
-    } catch (e) {
-      console.warn('enforceDemoScene failed', e);
-    }
+    } catch (e) {}
   }
 
   setTimeout(enforceDemoScene, 1200);
