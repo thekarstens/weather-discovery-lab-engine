@@ -1196,8 +1196,10 @@ document.addEventListener('click', function(ev){
   var lightningMarqueeControl = null;
   var lightningMarqueeDom = null;
   var lightningStylesInjected = false;
-  var lightningFreshWindowMs = 12 * 60 * 1000;
-  var lightningRecentWindowMs = 18 * 60 * 1000;
+  var lightningFreshWindowMs = 15 * 60 * 1000;
+  var lightningRecentWindowMs = 60 * 60 * 1000;
+  var lightningNewestSvgFile = 'lightning/lightning_newest_yellow.svg';
+  var lightningOlderSvgFile = 'lightning/lightning_older_blue.svg';
   var lightningCounterWindowMs = 12 * 60 * 1000;
   var lightningJumpWindowMs = 10 * 60 * 1000;
   var lightningSoundEnabled = false;
@@ -1241,7 +1243,7 @@ document.addEventListener('click', function(ev){
         filter:
           drop-shadow(0 0 0.45px rgba(20,20,20,.78))
           drop-shadow(0 0 1.0px rgba(24,24,24,.52))
-          drop-shadow(0 0 4px rgba(255,232,122,.28));
+          drop-shadow(0 0 4px rgba(var(--bolt-glow-rgb,255,232,122),.30));
         animation: wdlLightningBlink var(--flash-ms,2800ms) steps(1,end) infinite;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
@@ -1250,7 +1252,13 @@ document.addEventListener('click', function(ev){
         filter:
           drop-shadow(0 0 0.6px rgba(18,18,18,.82))
           drop-shadow(0 0 1.3px rgba(24,24,24,.60))
-          drop-shadow(0 0 7px rgba(255,238,130,.42));
+          drop-shadow(0 0 7px rgba(var(--bolt-glow-rgb,255,238,130),.42));
+      }
+      .wdl-lightning-icon .wdl-lightning-bolt.is-older{
+        filter:
+          drop-shadow(0 0 0.45px rgba(20,20,20,.72))
+          drop-shadow(0 0 1.0px rgba(24,24,24,.48))
+          drop-shadow(0 0 5px rgba(var(--bolt-glow-rgb,88,185,255),.34));
       }
       .wdl-lightning-recent{
         box-shadow: none;
@@ -1406,14 +1414,17 @@ document.addEventListener('click', function(ev){
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(2200, Math.min(4200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3000)));
-    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
-    var newest = (d && d.__isNewest) ? ' is-newest' : '';
-    var scale = d && d.__isNewest ? (1.10 + strength * 0.13) : (0.90 + strength * 0.09);
+    var isOlder = !!(d && d.__ageBucket === 'older');
+    var boltFile = isOlder ? lightningOlderSvgFile : lightningNewestSvgFile;
+    var boltUrl = "url('" + _joinUrl(DATA_BASE, boltFile) + "')";
+    var extraClass = (d && d.__isNewest) ? ' is-newest' : (isOlder ? ' is-older' : '');
+    var glowRgb = isOlder ? '88,185,255' : '255,232,122';
+    var scale = isOlder ? (0.92 + strength * 0.08) : ((d && d.__isNewest) ? (1.10 + strength * 0.13) : (0.94 + strength * 0.10));
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt' + newest + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
-      iconSize: d && d.__isNewest ? [34,34] : [22,22],
-      iconAnchor: d && d.__isNewest ? [17,17] : [11,11],
+      html: '<div class="wdl-lightning-bolt' + extraClass + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms;--bolt-glow-rgb:' + glowRgb + ';"></div>',
+      iconSize: (d && d.__isNewest) ? [34,34] : (isOlder ? [24,24] : [24,24]),
+      iconAnchor: (d && d.__isNewest) ? [17,17] : [12,12],
       popupAnchor: [0,-10]
     });
   }
@@ -1671,7 +1682,14 @@ document.addEventListener('click', function(ev){
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(k){
       var m = lightningRecentMarkerIndex[k];
-      try{ if (m && m.setStyle) m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) }); }catch(e){}
+      try{
+        if (m && m.getElement) {
+          var el = m.getElement();
+          if (el) el.style.opacity = String(Math.max(0.30, productOpacity.lightning * 0.92));
+        } else if (m && m.setStyle) {
+          m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) });
+        }
+      }catch(e){}
     });
   }
   window.setLightningOpacity = setLightningOpacity;
@@ -1713,16 +1731,21 @@ document.addEventListener('click', function(ev){
     if (!lightningRecentLayer){ lightningRecentLayer = L.layerGroup().addTo(map); }
     recent.forEach(function(d){
       seen[d.id] = true;
+      d.__ageBucket = 'older';
+      d.__isNewest = false;
       var marker = lightningRecentMarkerIndex[d.id];
-      var style = getLightningRecentStyle(d);
       if (!marker){
-        marker = L.circleMarker([d.lat, d.lon], style);
+        marker = L.marker([d.lat, d.lon], { icon:createLightningIcon(d), keyboard:false, interactive:true });
         marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
+        marker.__iconSig = 'older';
         lightningRecentMarkerIndex[d.id] = marker;
         lightningRecentLayer.addLayer(marker);
       } else {
         marker.setLatLng([d.lat, d.lon]);
-        marker.setStyle(style);
+        if (marker.__iconSig !== 'older'){
+          marker.setIcon(createLightningIcon(d));
+          marker.__iconSig = 'older';
+        }
       }
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(id){
@@ -1790,9 +1813,9 @@ document.addEventListener('click', function(ev){
       .then(async function(manifest){
         lightningManifest = manifest || {};
         var style = lightningManifest.style || {};
-        lightningFreshWindowMs = Math.max(2 * 60 * 1000, Math.min(18 * 60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 12 * 60 * 1000)));
-        lightningRecentWindowMs = Math.max(6 * 60 * 1000, Math.min(30 * 60 * 1000, Number(style.recentMinutes || 22) * 60 * 1000));
-        lightningCounterWindowMs = Math.max(8 * 60 * 1000, Math.min(24 * 60 * 1000, Number(style.counterWindowMinutes || 12) * 60 * 1000));
+        lightningFreshWindowMs = Math.max(5 * 60 * 1000, Math.min(30 * 60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 15 * 60 * 1000)));
+        lightningRecentWindowMs = Math.max(lightningFreshWindowMs + (60 * 1000), Math.min(180 * 60 * 1000, Number(style.recentMinutes || 60) * 60 * 1000));
+        lightningCounterWindowMs = Math.max(8 * 60 * 1000, Math.min(24 * 60 * 1000, Number(style.counterWindowMinutes || 15) * 60 * 1000));
         var files = Array.isArray(lightningManifest.files) ? lightningManifest.files : [];
         if (!files.length || !files[0].file) throw new Error('Lightning manifest missing files[0].file');
         var folder = url.split('/').slice(0,-1).join('/') + '/';
@@ -1864,8 +1887,15 @@ document.addEventListener('click', function(ev){
       }
     });
     lightningLastFreshIds = currentIds;
-    fresh.forEach(function(d){ d.__isNewest = (d.id === newestId); });
-    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.length + '|' + (lightningHistoryVisible ? 'history1' : 'history0');
+    fresh.forEach(function(d){
+      d.__ageBucket = 'newest';
+      d.__isNewest = (d.id === newestId);
+    });
+    recent.forEach(function(d){
+      d.__ageBucket = 'older';
+      d.__isNewest = false;
+    });
+    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.map(function(d){ return d.id; }).join(',') + '|' + (lightningHistoryVisible ? 'history1' : 'history0');
     var isNewFrame = stamp !== lightningLastRenderedStamp;
     if (!isNewFrame) return;
     lightningLastRenderedStamp = stamp;
