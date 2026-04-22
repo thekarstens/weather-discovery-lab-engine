@@ -1196,10 +1196,8 @@ document.addEventListener('click', function(ev){
   var lightningMarqueeControl = null;
   var lightningMarqueeDom = null;
   var lightningStylesInjected = false;
-  var lightningFreshWindowMs = 15 * 60 * 1000;
-  var lightningRecentWindowMs = 60 * 60 * 1000;
-  var lightningNewestSvgFile = 'lightning/lightning_newest_yellow.svg';
-  var lightningOlderSvgFile = 'lightning/lightning_older_blue.svg';
+  var lightningFreshWindowMs = 12 * 60 * 1000;
+  var lightningRecentWindowMs = 18 * 60 * 1000;
   var lightningCounterWindowMs = 12 * 60 * 1000;
   var lightningJumpWindowMs = 10 * 60 * 1000;
   var lightningSoundEnabled = false;
@@ -1234,37 +1232,25 @@ document.addEventListener('click', function(ev){
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:28px; height:28px; pointer-events:none;
-        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
+        position:relative; width:24px; height:24px; pointer-events:none;
+        transform: translate(-3px,-3px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
-        background-size: 100% 100%;
+        background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
         filter:
-          drop-shadow(0 0 0.35px rgba(255,255,255,.98))
-          drop-shadow(0 0 1.8px rgba(var(--bolt-glow-rgb,255,232,122),.90))
-          drop-shadow(0 0 5px rgba(var(--bolt-glow-rgb,255,232,122),.62))
-          drop-shadow(0 0 10px rgba(var(--bolt-glow-rgb,255,232,122),.28));
+          drop-shadow(0 0 0.45px rgba(20,20,20,.78))
+          drop-shadow(0 0 1.0px rgba(24,24,24,.52))
+          drop-shadow(0 0 4px rgba(255,232,122,.28));
         animation: wdlLightningBlink var(--flash-ms,2800ms) steps(1,end) infinite;
-        will-change: transform, opacity;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
-        width:42px; height:42px;
-        transform: translate(-9px,-9px) scale(calc(var(--bolt-scale,1) * 1.14));
+        width:34px; height:34px;
+        transform: translate(-7px,-7px) scale(calc(var(--bolt-scale,1) * 1.18));
         filter:
-          drop-shadow(0 0 0.45px rgba(255,255,255,.98))
-          drop-shadow(0 0 2.4px rgba(var(--bolt-glow-rgb,255,238,130),.98))
-          drop-shadow(0 0 7px rgba(var(--bolt-glow-rgb,255,238,130),.72))
-          drop-shadow(0 0 14px rgba(var(--bolt-glow-rgb,255,238,130),.34));
-      }
-      .wdl-lightning-icon .wdl-lightning-bolt.is-older{
-        width:30px; height:30px;
-        transform: translate(-5px,-5px) scale(calc(var(--bolt-scale,1) * 1.02));
-        filter:
-          drop-shadow(0 0 0.35px rgba(255,255,255,.96))
-          drop-shadow(0 0 2.0px rgba(var(--bolt-glow-rgb,88,185,255),.92))
-          drop-shadow(0 0 5.5px rgba(var(--bolt-glow-rgb,88,185,255),.66))
-          drop-shadow(0 0 11px rgba(var(--bolt-glow-rgb,88,185,255),.30));
+          drop-shadow(0 0 0.6px rgba(18,18,18,.82))
+          drop-shadow(0 0 1.3px rgba(24,24,24,.60))
+          drop-shadow(0 0 7px rgba(255,238,130,.42));
       }
       .wdl-lightning-recent{
         box-shadow: none;
@@ -1420,17 +1406,14 @@ document.addEventListener('click', function(ev){
   function createLightningIcon(d){
     var strength = lightningStrengthFor(d);
     var flashMs = Math.max(2200, Math.min(4200, Number((lightningManifest && lightningManifest.style && lightningManifest.style.flashMs) || 3000)));
-    var isOlder = !!(d && d.__ageBucket === 'older');
-    var boltFile = isOlder ? lightningOlderSvgFile : lightningNewestSvgFile;
-    var boltUrl = "url('" + _joinUrl(DATA_BASE, boltFile) + "')";
-    var extraClass = (d && d.__isNewest) ? ' is-newest' : (isOlder ? ' is-older' : '');
-    var glowRgb = isOlder ? '0,208,255' : '255,242,0';
-    var scale = isOlder ? (0.92 + strength * 0.08) : ((d && d.__isNewest) ? (1.10 + strength * 0.13) : (0.94 + strength * 0.10));
+    var boltUrl = "url('" + _joinUrl(DATA_BASE, 'lightning/lightning_final_flipped.svg') + "')";
+    var newest = (d && d.__isNewest) ? ' is-newest' : '';
+    var scale = d && d.__isNewest ? (1.10 + strength * 0.13) : (0.90 + strength * 0.09);
     return L.divIcon({
       className: 'wdl-lightning-icon',
-      html: '<div class="wdl-lightning-bolt' + extraClass + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms;--bolt-glow-rgb:' + glowRgb + ';"></div>',
-      iconSize: (d && d.__isNewest) ? [42,42] : (isOlder ? [30,30] : [30,30]),
-      iconAnchor: (d && d.__isNewest) ? [21,21] : [15,15],
+      html: '<div class="wdl-lightning-bolt' + newest + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms"></div>',
+      iconSize: d && d.__isNewest ? [34,34] : [22,22],
+      iconAnchor: d && d.__isNewest ? [17,17] : [11,11],
       popupAnchor: [0,-10]
     });
   }
@@ -1564,14 +1547,6 @@ document.addEventListener('click', function(ev){
     return;
   }
 
-  function lightningHudAllowed(){
-    try{
-      return !(window && window.innerWidth <= 640);
-    }catch(e){
-      return true;
-    }
-  }
-
   function hideLightningCounter(){
     try{
       ensureLightningMarquee();
@@ -1584,12 +1559,7 @@ document.addEventListener('click', function(ev){
     try{
       ensureLightningMarquee();
       var m = lightningMarqueeDom;
-      if (!m) return;
-      if (!lightningHudAllowed()){
-        m.style.display = 'none';
-        return;
-      }
-      m.style.display = '';
+      if (m) m.style.display = '';
     }catch(e){}
   }
 
@@ -1602,10 +1572,6 @@ document.addEventListener('click', function(ev){
     ensureLightningMarquee();
     var div = lightningMarqueeDom;
     if (!div) return;
-    if (!lightningHudAllowed()){
-      div.style.display = 'none';
-      return;
-    }
     div.style.display = '';
     if (!div.dataset.moved){
       div.style.top = '182px';
@@ -1688,14 +1654,7 @@ document.addEventListener('click', function(ev){
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(k){
       var m = lightningRecentMarkerIndex[k];
-      try{
-        if (m && m.getElement) {
-          var el = m.getElement();
-          if (el) el.style.opacity = String(Math.max(0.30, productOpacity.lightning * 0.92));
-        } else if (m && m.setStyle) {
-          m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) });
-        }
-      }catch(e){}
+      try{ if (m && m.setStyle) m.setStyle({ opacity: Math.max(0.25, productOpacity.lightning * 0.7), fillOpacity: Math.max(0.12, productOpacity.lightning * 0.45) }); }catch(e){}
     });
   }
   window.setLightningOpacity = setLightningOpacity;
@@ -1737,21 +1696,16 @@ document.addEventListener('click', function(ev){
     if (!lightningRecentLayer){ lightningRecentLayer = L.layerGroup().addTo(map); }
     recent.forEach(function(d){
       seen[d.id] = true;
-      d.__ageBucket = 'older';
-      d.__isNewest = false;
       var marker = lightningRecentMarkerIndex[d.id];
+      var style = getLightningRecentStyle(d);
       if (!marker){
-        marker = L.marker([d.lat, d.lon], { icon:createLightningIcon(d), keyboard:false, interactive:true });
+        marker = L.circleMarker([d.lat, d.lon], style);
         marker.bindPopup(buildLightningPopup(d), { className:'hrrr-popup' });
-        marker.__iconSig = 'older';
         lightningRecentMarkerIndex[d.id] = marker;
         lightningRecentLayer.addLayer(marker);
       } else {
         marker.setLatLng([d.lat, d.lon]);
-        if (marker.__iconSig !== 'older'){
-          marker.setIcon(createLightningIcon(d));
-          marker.__iconSig = 'older';
-        }
+        marker.setStyle(style);
       }
     });
     Object.keys(lightningRecentMarkerIndex).forEach(function(id){
@@ -1819,9 +1773,9 @@ document.addEventListener('click', function(ev){
       .then(async function(manifest){
         lightningManifest = manifest || {};
         var style = lightningManifest.style || {};
-        lightningFreshWindowMs = Math.max(5 * 60 * 1000, Math.min(30 * 60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 15 * 60 * 1000)));
-        lightningRecentWindowMs = Math.max(lightningFreshWindowMs + (60 * 1000), Math.min(180 * 60 * 1000, Number(style.recentMinutes || 60) * 60 * 1000));
-        lightningCounterWindowMs = Math.max(8 * 60 * 1000, Math.min(24 * 60 * 1000, Number(style.counterWindowMinutes || 15) * 60 * 1000));
+        lightningFreshWindowMs = Math.max(2 * 60 * 1000, Math.min(18 * 60 * 1000, Number(style.flashWindowMs || style.freshWindowMs || 12 * 60 * 1000)));
+        lightningRecentWindowMs = Math.max(6 * 60 * 1000, Math.min(30 * 60 * 1000, Number(style.recentMinutes || 22) * 60 * 1000));
+        lightningCounterWindowMs = Math.max(8 * 60 * 1000, Math.min(24 * 60 * 1000, Number(style.counterWindowMinutes || 12) * 60 * 1000));
         var files = Array.isArray(lightningManifest.files) ? lightningManifest.files : [];
         if (!files.length || !files[0].file) throw new Error('Lightning manifest missing files[0].file');
         var folder = url.split('/').slice(0,-1).join('/') + '/';
@@ -1893,15 +1847,8 @@ document.addEventListener('click', function(ev){
       }
     });
     lightningLastFreshIds = currentIds;
-    fresh.forEach(function(d){
-      d.__ageBucket = 'newest';
-      d.__isNewest = (d.id === newestId);
-    });
-    recent.forEach(function(d){
-      d.__ageBucket = 'older';
-      d.__isNewest = false;
-    });
-    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.map(function(d){ return d.id; }).join(',') + '|' + (lightningHistoryVisible ? 'history1' : 'history0');
+    fresh.forEach(function(d){ d.__isNewest = (d.id === newestId); });
+    var stamp = String(nowMs) + '|' + fresh.map(function(d){ return d.id; }).join(',') + '|' + recent.length + '|' + (lightningHistoryVisible ? 'history1' : 'history0');
     var isNewFrame = stamp !== lightningLastRenderedStamp;
     if (!isNewFrame) return;
     lightningLastRenderedStamp = stamp;
@@ -2875,11 +2822,40 @@ function setDrawMode(on){
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
 
+    // Prefer HRRR/model probing first when the model temperature layer is active.
+    // This keeps Topic 3 probing focused on temperatures instead of the wind particles.
+    try{
+      if ((typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
+        var best = null;
+        var bestD = Infinity;
+        for (var i=0; i<hrrrPoints.length; i++){
+          var p = hrrrPoints[i];
+          if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+          var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
+          if (d < bestD){ bestD = d; best = p; }
+        }
+        if (best){
+          var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
+          var probeUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
+          var probeValue = (typeof best.value === "number") ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
+          var probeText = (probeValue == null || !isFinite(probeValue)) ? "—" : (Math.round(probeValue) + probeUnit);
+          var content =
+            "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + probeTitle + "</div>" +
+            "<div style='font:900 30px/1.05 Arial,sans-serif'>" + probeText + "</div>";
+          L.popup({ closeButton:true, className:"hrrr-popup" })
+            .setLatLng([best.lat, best.lon])
+            .setContent(content)
+            .openOn(map);
+          return;
+        }
+      }
+    }catch(_){ }
+
     if (jet500Enabled && currentJetVelocityData){
       var jetProbe = getJetWindAtLatLng(e.latlng);
       if (jetProbe){
         var jetContent =
-          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>500 mb Winds</div>" +
+          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Surface Winds</div>" +
           "<div style='font:900 30px/1.05 Arial,sans-serif'>" + Math.round(jetProbe.speedMph) + " mph</div>" +
           "<div style='font:900 14px/1.05 Arial,sans-serif;opacity:.9'>u=" + jetProbe.u.toFixed(1) + ", v=" + jetProbe.v.toFixed(1) + " m/s</div>";
 
@@ -4994,26 +4970,23 @@ function ensureWarningDetailModal(){
   wrap.className = 'wdl-warning-modal';
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
-  function __handleWarningModalAction(ev){
+  wrap.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
     var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
     if (ev.target === wrap || act === 'close') {
-      if (ev && ev.preventDefault) ev.preventDefault();
-      if (ev && ev.stopPropagation) ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       wrap.classList.remove('visible');
       wrap.classList.remove('fullscreen');
-      return true;
+      return;
     }
     if (act === 'full') {
-      if (ev && ev.preventDefault) ev.preventDefault();
-      if (ev && ev.stopPropagation) ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       wrap.classList.toggle('fullscreen');
-      return true;
+      return;
     }
-    return false;
-  }
-  wrap.addEventListener('pointerdown', function(ev){ __handleWarningModalAction(ev); }, true);
-  wrap.addEventListener('click', function(ev){ __handleWarningModalAction(ev); }, true);
+  }, true);
   warningDetailModal = wrap;
   return wrap;
 }
@@ -5913,6 +5886,37 @@ if (window.createMetarsModule) {
         payload = await fetchSpcTextPayload(product, detailsFile);
       }catch(err){
         payload = null;
+      }
+      if (!payload && !isWatch && cat === 'MDT'){
+        payload = {
+          title: 'Day 1 Convective Outlook',
+          issued: '0753 AM CDT Thu May 12 2022',
+          category: 'Moderate Risk',
+          summary: 'Severe thunderstorm gusts (some near 75 mph), large hail and a few tornadoes are expected today over parts of the eastern Dakotas, eastern Nebraska, western Iowa, and central/southern Minnesota.',
+          hazards: ['Damaging winds to near 75 mph', 'Large hail', 'A few tornadoes'],
+          official_text: 'Day 1 Convective Outlook
+NWS Storm Prediction Center Norman OK
+0753 AM CDT Thu May 12 2022
+
+Valid 121300Z - 131200Z
+
+...THERE IS A MODERATE RISK OF SEVERE THUNDERSTORMS OVER PORTIONS OF EASTERN SOUTH DAKOTA...PARTS OF WESTERN MINNESOTA AND SOUTHEASTERN NORTH DAKOTA...
+
+...SUMMARY...
+Severe thunderstorm gusts (some near 75 mph), large hail and a few tornadoes are expected today over parts of the eastern Dakotas, eastern Nebraska, western Iowa, and central/southern Minnesota.
+
+...Synopsis...
+The mid/upper-level pattern will feature mean troughing over the western CONUS, a lengthy but weakening ridge from west-central MX across the Arklatex to southern ON, and a broad/retrograding Atlantic cyclone, forecast to move westward and ashore over much of the southeastern Atlantic Coast overnight. Within the southwest-flow field preceding the western larger-scale trough, an intense shortwave trough is apparent in moisture-channel imagery from near the ID/WY border across eastern UT. This perturbation, with a negative tilt and embedded low apparent near the southwest corner of WY -- is expected to eject northeastward through the period, reaching southeastern MT, western SD and the NE Panhandle by 00Z. By 12Z tomorrow, a well-defined 500-mb low should be apparent near the ND/SK/MB border confluence, with trough southeastward over southeastern SD.
+
+The 11Z surface analysis depicted a surface low over southwestern NE, with cold front across northern CO, and warm front over southeastern SD, extreme southern MN, and southern WI. The low should move northeastward to a frontal triple point over northeastern SD by 00Z, with an occluded low developing farther northwest and near the mid/upper cyclone center over northwestern SD/southwestern ND. By then, the warm front -- likely reinforced by outflow from earlier/morning convection to its north -- should extend from the triple point across southeastern ND, north-central MN, northern WI and the western U.P. of MI. The cold front should extend across eastern SD (likely behind a line of convection), south-central NE, western KS, and southeastern CO. A dryline will intersect the front over west-central KS, extending south-southwestward over the eastern TX Panhandle, the Permian Basin and the Big Bend region with isolated strong-severe convection possible late this afternoon. By 12Z, the triple-point low should lose definition, as the western low deepens and becomes nearly stacked with its midlevel counterpart. The cold front should extend across northern, central and southwestern MN, northwestern IA, southeastern NE, central KS, northwestern OK, the southern TX Panhandle, and southeastern NM.
+
+...North-central Plains/Upper Midwest...
+Scattered to numerous thunderstorms are expected to develop in an arc near the surface low and cold front by mid/late afternoon, from eastern SD across central/eastern NE and into at least northern KS. A brief interval, early in the convective cycle, may support discrete to semi-discrete supercells before the convection becomes quasi-linear, and that accounts for potential for significant-severe hail in western parts of the outlook area. However, the most common severe type should evolve quickly to thunderstorm gusts -- some of which may be significant (65+ kt) strength, especially from parts of eastern SD and southeastern ND into western MN.
+
+The addition of the significant-wind area technically triggers a "moderate" categorical level, though the overall scenario hasn't changed in a major way from that discussed in the previous outlook. A few tornadoes also are possible -- especially near the surface warm front, where large buoyancy, backed near-surface winds and enlarged hodographs/SRH will yield the most favorable parameter space. The main uncertainty regarding the density and intensity of the tornado threat involves convective mode, which may be largely to entirely quasi-linear by the time activity encounters the largest combination of low-level buoyancy/shear with surface-based inflow parcels.
+
+The warm sector is forecast to destabilize throughout the day, with a combination of at least weak large-scale ascent (increasing northward), diurnal heating and related lift from below, and ultimately frontal convergence, eliminating a basal EML inversion and supporting convection initiation. Activity is expected to intensify quickly as it impinges on a narrow but very favorable prefrontal corridor where 60s to near 70 F surface dewpoints contribute to MLCAPE in the 3500-4500 J/kg range in and near the "moderate" area, decreasing gradually with southward extent as more low-level moisture is mixed out. Low-level and deep shear will be greatest near the triple point and warm front, with 300-500 J/kg effective SRH and 45-55-kt effective-shear magnitudes, also decreasing southward toward KS. A substantial component of mid/upper winds parallel to the axis of convective forcing indicates potential for fairly fast merging of early discrete and sporadically supercellular convection, forming a QLCS. Surges of wind from resulting LEWP/bowing segments will pose the greatest overall severe hazard, with line-embedded mesovortices and perhaps a few associated tornadoes also possible. With the warm sector's not being very broad, the convective event should diminish late this evening into early overnight hours as it outruns the most favorable instability.'
+        };
       }
 
       var summary = payload && payload.summary ? String(payload.summary) : "This highlighted area shows where forecasters expected the most concerning severe weather threat.";
@@ -7263,26 +7267,23 @@ function ensureWarningDetailModal(){
   wrap.className = 'wdl-warning-modal';
   wrap.innerHTML = '<div class="wdl-warning-modal-card"><div class="wdl-warning-modal-head"><div class="wdl-warning-modal-title">Warning Details</div><div class="wdl-warning-modal-actions"><button type="button" class="wdl-warning-modal-btn" data-act="full">Full Screen</button><button type="button" class="wdl-warning-modal-btn" data-act="close">Close</button></div></div><div class="wdl-warning-modal-body"></div></div>';
   document.body.appendChild(wrap);
-  function __handleWarningModalAction(ev){
+  wrap.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
     var act = btn && btn.getAttribute ? btn.getAttribute('data-act') : null;
     if (ev.target === wrap || act === 'close') {
-      if (ev && ev.preventDefault) ev.preventDefault();
-      if (ev && ev.stopPropagation) ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       wrap.classList.remove('visible');
       wrap.classList.remove('fullscreen');
-      return true;
+      return;
     }
     if (act === 'full') {
-      if (ev && ev.preventDefault) ev.preventDefault();
-      if (ev && ev.stopPropagation) ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       wrap.classList.toggle('fullscreen');
-      return true;
+      return;
     }
-    return false;
-  }
-  wrap.addEventListener('pointerdown', function(ev){ __handleWarningModalAction(ev); }, true);
-  wrap.addEventListener('click', function(ev){ __handleWarningModalAction(ev); }, true);
+  }, true);
   warningDetailModal = wrap;
   return wrap;
 }
