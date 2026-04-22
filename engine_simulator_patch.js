@@ -1234,31 +1234,37 @@ document.addEventListener('click', function(ev){
     style.textContent = `
       .wdl-lightning-icon{ background:transparent; border:0; }
       .wdl-lightning-icon .wdl-lightning-bolt{
-        position:relative; width:24px; height:24px; pointer-events:none;
-        transform: translate(-3px,-3px) scale(var(--bolt-scale,1));
+        position:relative; width:28px; height:28px; pointer-events:none;
+        transform: translate(-4px,-4px) scale(var(--bolt-scale,1));
         background-image: var(--bolt-url);
-        background-size: contain;
+        background-size: 100% 100%;
         background-repeat: no-repeat;
         background-position: center;
         filter:
-          drop-shadow(0 0 0.45px rgba(20,20,20,.78))
-          drop-shadow(0 0 1.0px rgba(24,24,24,.52))
-          drop-shadow(0 0 4px rgba(var(--bolt-glow-rgb,255,232,122),.30));
+          drop-shadow(0 0 0.35px rgba(255,255,255,.98))
+          drop-shadow(0 0 1.8px rgba(var(--bolt-glow-rgb,255,232,122),.90))
+          drop-shadow(0 0 5px rgba(var(--bolt-glow-rgb,255,232,122),.62))
+          drop-shadow(0 0 10px rgba(var(--bolt-glow-rgb,255,232,122),.28));
         animation: wdlLightningBlink var(--flash-ms,2800ms) steps(1,end) infinite;
+        will-change: transform, opacity;
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-newest{
-        width:34px; height:34px;
-        transform: translate(-7px,-7px) scale(calc(var(--bolt-scale,1) * 1.18));
+        width:42px; height:42px;
+        transform: translate(-9px,-9px) scale(calc(var(--bolt-scale,1) * 1.14));
         filter:
-          drop-shadow(0 0 0.6px rgba(18,18,18,.82))
-          drop-shadow(0 0 1.3px rgba(24,24,24,.60))
-          drop-shadow(0 0 7px rgba(var(--bolt-glow-rgb,255,238,130),.42));
+          drop-shadow(0 0 0.45px rgba(255,255,255,.98))
+          drop-shadow(0 0 2.4px rgba(var(--bolt-glow-rgb,255,238,130),.98))
+          drop-shadow(0 0 7px rgba(var(--bolt-glow-rgb,255,238,130),.72))
+          drop-shadow(0 0 14px rgba(var(--bolt-glow-rgb,255,238,130),.34));
       }
       .wdl-lightning-icon .wdl-lightning-bolt.is-older{
+        width:30px; height:30px;
+        transform: translate(-5px,-5px) scale(calc(var(--bolt-scale,1) * 1.02));
         filter:
-          drop-shadow(0 0 0.45px rgba(20,20,20,.72))
-          drop-shadow(0 0 1.0px rgba(24,24,24,.48))
-          drop-shadow(0 0 5px rgba(var(--bolt-glow-rgb,88,185,255),.34));
+          drop-shadow(0 0 0.35px rgba(255,255,255,.96))
+          drop-shadow(0 0 2.0px rgba(var(--bolt-glow-rgb,88,185,255),.92))
+          drop-shadow(0 0 5.5px rgba(var(--bolt-glow-rgb,88,185,255),.66))
+          drop-shadow(0 0 11px rgba(var(--bolt-glow-rgb,88,185,255),.30));
       }
       .wdl-lightning-recent{
         box-shadow: none;
@@ -1418,13 +1424,13 @@ document.addEventListener('click', function(ev){
     var boltFile = isOlder ? lightningOlderSvgFile : lightningNewestSvgFile;
     var boltUrl = "url('" + _joinUrl(DATA_BASE, boltFile) + "')";
     var extraClass = (d && d.__isNewest) ? ' is-newest' : (isOlder ? ' is-older' : '');
-    var glowRgb = isOlder ? '88,185,255' : '255,232,122';
+    var glowRgb = isOlder ? '0,208,255' : '255,242,0';
     var scale = isOlder ? (0.92 + strength * 0.08) : ((d && d.__isNewest) ? (1.10 + strength * 0.13) : (0.94 + strength * 0.10));
     return L.divIcon({
       className: 'wdl-lightning-icon',
       html: '<div class="wdl-lightning-bolt' + extraClass + '" style="--bolt-url:' + boltUrl + ';--bolt-scale:' + scale.toFixed(2) + ';--flash-ms:' + flashMs + 'ms;--bolt-glow-rgb:' + glowRgb + ';"></div>',
-      iconSize: (d && d.__isNewest) ? [34,34] : (isOlder ? [24,24] : [24,24]),
-      iconAnchor: (d && d.__isNewest) ? [17,17] : [12,12],
+      iconSize: (d && d.__isNewest) ? [42,42] : (isOlder ? [30,30] : [30,30]),
+      iconAnchor: (d && d.__isNewest) ? [21,21] : [15,15],
       popupAnchor: [0,-10]
     });
   }
