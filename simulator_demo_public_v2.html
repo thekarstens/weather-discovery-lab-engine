@@ -1346,8 +1346,16 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-      if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-      if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+      [0, 350, 1100, 2200].forEach(function(delay){
+        setTimeout(function(){
+          try{
+            if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true);
+            if (typeof window.setRadarEnabled === 'function') window.setRadarEnabled(true);
+            if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+            if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+          }catch(e){}
+        }, delay);
+      });
     }catch(e){}
   }
 
@@ -1471,8 +1479,16 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-      if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-      if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+      [0, 350, 1100, 2200].forEach(function(delay){
+        setTimeout(function(){
+          try{
+            if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true);
+            if (typeof window.setRadarEnabled === 'function') window.setRadarEnabled(true);
+            if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+            if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
+          }catch(e){}
+        }, delay);
+      });
     }catch(e){}
   }
 
