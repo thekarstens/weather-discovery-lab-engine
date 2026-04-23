@@ -463,7 +463,7 @@
     <div class="story-shell-footer"><div class="story-footer-row"><div class="story-step" id="storyStep">3 PM topics</div><div class="story-actions-right"><button class="story-action story-doppler-inline pulsing" id="storyDopplerBtn" type="button">LIVE Doppler OFF</button></div></div><div class="story-nav"><button class="story-nav-btn" id="storyPrevBtn" type="button">◀ Topic</button><button class="story-nav-btn" id="storyNextBtn" type="button">Topic ▶</button></div></div>
   </div>
 
-  <div class="toolBox is-collapsed" id="toolBox"><div class="tool-head"><button class="tool-head-pill" id="toolToggleBtn" type="button">Tools ▸</button></div>
+  <div class="toolBox" id="toolBox"><div class="tool-head"><button class="tool-head-pill" id="toolToggleBtn" type="button">Tools ▾</button></div>
     <button class="tool-btn" id="toolMeasure" type="button">Ruler</button>
     <button class="tool-btn" id="toolProbe" type="button">Probe</button>
     <button class="tool-btn" id="toolStormTrack" type="button">Track</button>
@@ -1036,24 +1036,9 @@
       storyDopplerBtn.addEventListener('click', async function(ev){
         ev.preventDefault();
         ev.stopPropagation();
-        var __storyTitle = '';
-        try{ __storyTitle = ((storyTitle && storyTitle.textContent) || '').trim().toLowerCase(); }catch(e){}
-        var __forceOnCard = (__storyTitle.indexOf('setting the stage') !== -1 || __storyTitle.indexOf('storm comes alive') !== -1 || __storyTitle.indexOf('wow moment') !== -1);
         try { if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false); } catch(e){}
-        try {
-          if (__forceOnCard && typeof window.ensureStorySweepOn === 'function') {
-            await window.ensureStorySweepOn();
-          } else if (typeof window.setRadarEnabled === 'function' && !window.obsRadarEnabled) {
-            await window.setRadarEnabled(true);
-          }
-        } catch(e){}
-        try {
-          if (__forceOnCard) {
-            if (!window.radarSweepEnabled && typeof window.ensureStorySweepOn === 'function') await window.ensureStorySweepOn();
-          } else if (typeof window.toggleSweep === 'function') {
-            window.toggleSweep();
-          }
-        } catch(e){}
+        try { if (typeof window.setRadarEnabled === 'function' && !window.obsRadarEnabled) await window.setRadarEnabled(true); } catch(e){}
+        try { if (typeof window.toggleSweep === 'function') window.toggleSweep(); } catch(e){}
         updateDopplerButton(true);
       });
       storyPrevBtn.addEventListener('click', function(ev){
@@ -1074,10 +1059,6 @@
         toolBox.classList.toggle('is-collapsed');
         toolToggleBtn.textContent = toolBox.classList.contains('is-collapsed') ? 'Tools ▸' : 'Tools ▾';
       });
-      try{
-        if (toolBox) toolBox.classList.add('is-collapsed');
-        if (toolToggleBtn) toolToggleBtn.textContent = 'Tools ▸';
-      }catch(e){}
 if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleMeasureMode) window.toggleMeasureMode(); else if (window.setMeasureMode) window.setMeasureMode(true); }catch(e){} refreshToolStates(); toolMeasure.classList.add('active'); });
       if (toolProbe) toolProbe.addEventListener('click', function(){ clearTrackLocal(); try{ if (window.toggleProbeMode) window.toggleProbeMode(); else if (window.setProbeMode) window.setProbeMode(true); }catch(e){} syncSimpleToolStates(); toolProbe.classList.add('active'); });
       function syncSimpleToolStates(){
@@ -1369,7 +1350,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
     }catch(e){}
   }
-  window.ensureStorySweepOn = ensureSweepOn;
 
   async function enforceDemoScene(){
     try{
@@ -1387,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
+          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 6.4] : [43.55, -96.73, 6.4];
           window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
         }
         [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
@@ -1400,7 +1380,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
+          var __v2 = (window.innerWidth <= 640) ? [42.6, -99.0, 5.0] : [45.25, -98.75, 6.9];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
         }
       }
@@ -1413,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v3 = (window.innerWidth <= 640) ? [43.75, -97.7, 6.1] : [44.3, -98.1, 6.6];
+          var __v3 = (window.innerWidth <= 640) ? [42.9, -97.7, 6.1] : [44.3, -98.1, 5.7];
           window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
           [180, 700, 1400].forEach(function(delay){
             setTimeout(function(){
@@ -1436,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v4 = (window.innerWidth <= 640) ? [43.55, -97.15, 6.2] : [43.9, -97.2, 6.7];
+          var __v4 = (window.innerWidth <= 640) ? [42.9, -97.15, 6.2] : [43.9, -97.2, 6.7];
           window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
         }
       }
@@ -1453,7 +1433,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
+          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 7.0];
           window.map.setView([__v5[0], __v5[1]], __v5[2], { animate:false });
         }
       }
@@ -1465,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v6 = (window.innerWidth <= 640) ? [43.35, -98.0, 7.0] : [43.75, -98.0, 7.0];
+          var __v6 = (window.innerWidth <= 640) ? [42.8, -98.0, 7.0] : [42.8, -98.0, 7.0];
           window.map.setView([__v6[0], __v6[1]], __v6[2], { animate:false });
         }
       }
@@ -1495,7 +1475,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
     }catch(e){}
   }
-  window.ensureStorySweepOn = ensureSweepOn;
 
   async function enforceDemoScene(){
     try{
@@ -1513,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
+          var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 6.4] : [43.55, -96.73, 6.4];
           window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
         }
         [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
@@ -1526,7 +1505,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v2 = (window.innerWidth <= 640) ? [43.8, -99.0, 5.0] : [45.25, -98.75, 6.9];
+          var __v2 = (window.innerWidth <= 640) ? [42.6, -99.0, 5.0] : [45.25, -98.75, 6.9];
           window.map.setView([__v2[0], __v2[1]], __v2[2], { animate:false });
         }
       }
@@ -1539,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v3 = (window.innerWidth <= 640) ? [43.75, -97.7, 6.1] : [44.3, -98.1, 6.6];
+          var __v3 = (window.innerWidth <= 640) ? [42.9, -97.7, 6.1] : [44.3, -98.1, 5.7];
           window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
           [180, 700, 1400].forEach(function(delay){
             setTimeout(function(){
@@ -1562,7 +1541,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v4 = (window.innerWidth <= 640) ? [43.55, -97.15, 6.2] : [43.9, -97.2, 6.7];
+          var __v4 = (window.innerWidth <= 640) ? [42.9, -97.15, 6.2] : [43.9, -97.2, 6.7];
           window.map.setView([__v4[0], __v4[1]], __v4[2], { animate:false });
         }
       }
@@ -1579,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
+          var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 7.0];
           window.map.setView([__v5[0], __v5[1]], __v5[2], { animate:false });
         }
       }
@@ -1591,7 +1570,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v6 = (window.innerWidth <= 640) ? [43.35, -98.0, 7.0] : [43.75, -98.0, 7.0];
+          var __v6 = (window.innerWidth <= 640) ? [42.8, -98.0, 7.0] : [42.8, -98.0, 7.0];
           window.map.setView([__v6[0], __v6[1]], __v6[2], { animate:false });
         }
       }
