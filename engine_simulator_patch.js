@@ -608,7 +608,7 @@ async function updateJetParticles(){
     });
     jetVelocityLayer.addTo(map);
     window.jetVelocityLayer = jetVelocityLayer;
-    if (jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
+    if (false && jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
       try{ map.fitBounds(L.latLngBounds(jetBounds), { padding:[20,20] }); }catch(e){}
     }
     var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
@@ -847,31 +847,22 @@ function pointLayerForReport(feature, latlng){
 }
 
 function buildReportPopup(p, type){
-  var rawTitle = String((p.type || p.typetext || p.event || 'Storm Report') || '');
-  var parsedMs = Date.parse(p.valid || p.utc_valid || p.time || p.datetime || p.timestamp || '');
-  var when = isFinite(parsedMs) ? formatCentralLabel(new Date(parsedMs)) : escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
+  var title = escapeHtml((p.type || p.typetext || p.event || 'Storm Report'));
+  var when = escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
   var city = escapeHtml(p.city || p.town || p.location || '');
   var state = escapeHtml(p.state || '');
   var source = escapeHtml(p.source || p.office || '');
   var mag = escapeHtml(p.magnitude || p.mag || p.size || '');
   var remark = escapeHtml(p.remark || p.comments || p.text || p.narrative || '');
-  var header = 'Damage Report';
-  if (type === 'tornado') header = 'Tornado Report';
-  else if (type === 'hail') header = 'Hail Report';
-  else if (type === 'flood') header = 'Flood Report';
 
   var parts = [
-    "<div style='min-width:220px'>",
-    "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:1.1px;text-transform:uppercase;color:#9ec9ff;opacity:.92'>Ground Truth</div>",
-    "<div style='font:900 20px/1.05 Lato,Arial,sans-serif;margin-top:4px;color:#ffffff'>" + header + "</div>",
-    "<div style='font:900 13px/1.15 Lato,Arial,sans-serif;margin-top:6px;color:#ffe08a'>" + escapeHtml(rawTitle) + "</div>"
+    "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + title + "</div>"
   ];
-  if (when) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:8px'><b>Time:</b> " + when + "</div>");
-  if (city || state) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
-  if (mag) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Magnitude:</b> " + mag + "</div>");
-  if (source) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Source:</b> " + source + "</div>");
-  if (remark) parts.push("<div style='font:800 12px/1.35 Arial,sans-serif;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.14)'>" + remark + "</div>");
-  parts.push("</div>");
+  if (when) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:4px'><b>Time:</b> " + when + "</div>");
+  if (city || state) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
+  if (mag) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Magnitude:</b> " + mag + "</div>");
+  if (source) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Source:</b> " + source + "</div>");
+  if (remark) parts.push("<div style='font:800 12px/1.3 Arial,sans-serif;margin-top:6px'>" + remark + "</div>");
   return parts.join('');
 }
 
@@ -1556,6 +1547,14 @@ document.addEventListener('click', function(ev){
     return;
   }
 
+  function lightningHudAllowed(){
+    try{
+      return !(window && window.innerWidth <= 640);
+    }catch(e){
+      return true;
+    }
+  }
+
   function hideLightningCounter(){
     try{
       ensureLightningMarquee();
@@ -1569,7 +1568,7 @@ document.addEventListener('click', function(ev){
       ensureLightningMarquee();
       var m = lightningMarqueeDom;
       if (!m) return;
-      if (window.innerWidth <= 640){
+      if (!lightningHudAllowed()){
         m.style.display = 'none';
         return;
       }
@@ -1586,7 +1585,7 @@ document.addEventListener('click', function(ev){
     ensureLightningMarquee();
     var div = lightningMarqueeDom;
     if (!div) return;
-    if (window.innerWidth <= 640){
+    if (!lightningHudAllowed()){
       div.style.display = 'none';
       return;
     }
@@ -2840,40 +2839,11 @@ function setDrawMode(on){
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
 
-    // Prefer HRRR/model probing first when the model temperature layer is active.
-    // This keeps Topic 3 probing focused on temperatures instead of the wind particles.
-    try{
-      if ((typeof hrrrTempLayer !== "undefined" && map.hasLayer(hrrrTempLayer) && Array.isArray(hrrrPoints) && hrrrPoints.length)){
-        var best = null;
-        var bestD = Infinity;
-        for (var i=0; i<hrrrPoints.length; i++){
-          var p = hrrrPoints[i];
-          if (!p || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-          var d = map.distance(e.latlng, L.latLng(p.lat, p.lon));
-          if (d < bestD){ bestD = d; best = p; }
-        }
-        if (best){
-          var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
-          var probeUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
-          var probeValue = (typeof best.value === "number") ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
-          var probeText = (probeValue == null || !isFinite(probeValue)) ? "—" : (Math.round(probeValue) + probeUnit);
-          var content =
-            "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + probeTitle + "</div>" +
-            "<div style='font:900 30px/1.05 Arial,sans-serif'>" + probeText + "</div>";
-          L.popup({ closeButton:true, className:"hrrr-popup" })
-            .setLatLng([best.lat, best.lon])
-            .setContent(content)
-            .openOn(map);
-          return;
-        }
-      }
-    }catch(_){ }
-
     if (jet500Enabled && currentJetVelocityData){
       var jetProbe = getJetWindAtLatLng(e.latlng);
       if (jetProbe){
         var jetContent =
-          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>Surface Winds</div>" +
+          "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>500 mb Winds</div>" +
           "<div style='font:900 30px/1.05 Arial,sans-serif'>" + Math.round(jetProbe.speedMph) + " mph</div>" +
           "<div style='font:900 14px/1.05 Arial,sans-serif;opacity:.9'>u=" + jetProbe.u.toFixed(1) + ", v=" + jetProbe.v.toFixed(1) + " m/s</div>";
 
@@ -3778,7 +3748,7 @@ var CITIES_TIER3 = [
   ["Pierre", 44.3683, -100.3509],
 
   // Zoom 8 targets
-  ["Parkston", 43.3943, -97.9873],
+  ["Parkston", 43.3975, -97.1364],
   ["Beresford", 43.0805, -96.7737],
   ["Lake Andes", 43.1564, -98.5409],
   ["Chamberlain", 43.8108, -99.3307],
@@ -5904,39 +5874,6 @@ if (window.createMetarsModule) {
         payload = await fetchSpcTextPayload(product, detailsFile);
       }catch(err){
         payload = null;
-      }
-      if (!payload && !isWatch && cat === 'MDT'){
-        payload = {
-          title: 'Day 1 Convective Outlook',
-          issued: '0753 AM CDT Thu May 12 2022',
-          category: 'Moderate Risk',
-          summary: 'Severe thunderstorm gusts (some near 75 mph), large hail and a few tornadoes are expected today over parts of the eastern Dakotas, eastern Nebraska, western Iowa, and central/southern Minnesota.',
-          hazards: ['Damaging winds to near 75 mph', 'Large hail', 'A few tornadoes'],
-          official_text: `Day 1 Convective Outlook
-NWS Storm Prediction Center Norman OK
-0753 AM CDT Thu May 12 2022
-
-Valid 121300Z - 131200Z
-
-...THERE IS A MODERATE RISK OF SEVERE THUNDERSTORMS OVER PORTIONS OF EASTERN SOUTH DAKOTA...PARTS OF WESTERN MINNESOTA AND SOUTHEASTERN NORTH DAKOTA...
-
-...SUMMARY...
-Severe thunderstorm gusts (some near 75 mph), large hail and a few tornadoes are expected today over parts of the eastern Dakotas, eastern Nebraska, western Iowa, and central/southern Minnesota.
-
-...Synopsis...
-The mid/upper-level pattern will feature mean troughing over the western CONUS, a lengthy but weakening ridge from west-central MX across the Arklatex to southern ON, and a broad/retrograding Atlantic cyclone, forecast to move westward and ashore over much of the southeastern Atlantic Coast overnight. Within the southwest-flow field preceding the western larger-scale trough, an intense shortwave trough is apparent in moisture-channel imagery from near the ID/WY border across eastern UT. This perturbation, with a negative tilt and embedded low apparent near the southwest corner of WY -- is expected to eject northeastward through the period, reaching southeastern MT, western SD and the NE Panhandle by 00Z. By 12Z tomorrow, a well-defined 500-mb low should be apparent near the ND/SK/MB border confluence, with trough southeastward over southeastern SD.
-
-The 11Z surface analysis depicted a surface low over southwestern NE, with cold front across northern CO, and warm front over southeastern SD, extreme southern MN, and southern WI. The low should move northeastward to a frontal triple point over northeastern SD by 00Z, with an occluded low developing farther northwest and near the mid/upper cyclone center over northwestern SD/southwestern ND. By then, the warm front -- likely reinforced by outflow from earlier/morning convection to its north -- should extend from the triple point across southeastern ND, north-central MN, northern WI and the western U.P. of MI. The cold front should extend across eastern SD (likely behind a line of convection), south-central NE, western KS, and southeastern CO. A dryline will intersect the front over west-central KS, extending south-southwestward over the eastern TX Panhandle, the Permian Basin and the Big Bend region with isolated strong-severe convection possible late this afternoon. By 12Z, the triple-point low should lose definition, as the western low deepens and becomes nearly stacked with its midlevel counterpart. The cold front should extend across northern, central and southwestern MN, northwestern IA, southeastern NE, central KS, northwestern OK, the southern TX Panhandle, and southeastern NM.
-
-...North-central Plains/Upper Midwest...
-Scattered to numerous thunderstorms are expected to develop in an arc near the surface low and cold front by mid/late afternoon, from eastern SD across central/eastern NE and into at least northern KS. A brief interval, early in the convective cycle, may support discrete to semi-discrete supercells before the convection becomes quasi-linear, and that accounts for potential for significant-severe hail in western parts of the outlook area. However, the most common severe type should evolve quickly to thunderstorm gusts -- some of which may be significant (65+ kt) strength, especially from parts of eastern SD and southeastern ND into western MN.
-
-The addition of the significant-wind area technically triggers a "moderate" categorical level, though the overall scenario hasn't changed in a major way from that discussed in the previous outlook. A few tornadoes also are possible -- especially near the surface warm front, where large buoyancy, backed near-surface winds and enlarged hodographs/SRH will yield the most favorable parameter space. The main uncertainty regarding the density and intensity of the tornado threat involves convective mode, which may be largely to entirely quasi-linear by the time activity encounters the largest combination of low-level buoyancy/shear with surface-based inflow parcels.
-
-The warm sector is forecast to destabilize throughout the day, with a combination of at least weak large-scale ascent (increasing northward), diurnal heating and related lift from below, and ultimately frontal convergence, eliminating a basal EML inversion and supporting convection initiation. Activity is expected to intensify quickly as it impinges on a narrow but very favorable prefrontal corridor where 60s to near 70 F surface dewpoints contribute to MLCAPE in the 3500-4500 J/kg range in and near the "moderate" area, decreasing gradually with southward extent as more low-level moisture is mixed out. Low-level and deep shear will be greatest near the triple point and warm front, with 300-500 J/kg effective SRH and 45-55-kt effective-shear magnitudes, also decreasing southward toward KS. A substantial component of mid/upper winds parallel to the axis of convective forcing indicates potential for fairly fast merging of early discrete and sporadically supercellular convection, forming a QLCS. Surges of wind from resulting LEWP/bowing segments will pose the greatest overall severe hazard, with line-embedded mesovortices and perhaps a few associated tornadoes also possible. With the warm sector's not being very broad, the convective event should diminish late this evening into early overnight hours as it outruns the most favorable instability.
-
-..Edwards/Gleason.. 05/12/2022`,
-        };
       }
 
       var summary = payload && payload.summary ? String(payload.summary) : "This highlighted area shows where forecasters expected the most concerning severe weather threat.";
