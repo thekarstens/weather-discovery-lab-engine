@@ -847,22 +847,31 @@ function pointLayerForReport(feature, latlng){
 }
 
 function buildReportPopup(p, type){
-  var title = escapeHtml((p.type || p.typetext || p.event || 'Storm Report'));
-  var when = escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
+  var rawTitle = String((p.type || p.typetext || p.event || 'Storm Report') || '');
+  var parsedMs = Date.parse(p.valid || p.utc_valid || p.time || p.datetime || p.timestamp || '');
+  var when = isFinite(parsedMs) ? formatCentralLabel(new Date(parsedMs)) : escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
   var city = escapeHtml(p.city || p.town || p.location || '');
   var state = escapeHtml(p.state || '');
   var source = escapeHtml(p.source || p.office || '');
   var mag = escapeHtml(p.magnitude || p.mag || p.size || '');
   var remark = escapeHtml(p.remark || p.comments || p.text || p.narrative || '');
+  var header = 'Damage Report';
+  if (type === 'tornado') header = 'Tornado Report';
+  else if (type === 'hail') header = 'Hail Report';
+  else if (type === 'flood') header = 'Flood Report';
 
   var parts = [
-    "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + title + "</div>"
+    "<div style='min-width:220px'>",
+    "<div style='font:900 11px/1 Arial,sans-serif;letter-spacing:1.1px;text-transform:uppercase;color:#9ec9ff;opacity:.92'>Ground Truth</div>",
+    "<div style='font:900 20px/1.05 Lato,Arial,sans-serif;margin-top:4px;color:#ffffff'>" + header + "</div>",
+    "<div style='font:900 13px/1.15 Lato,Arial,sans-serif;margin-top:6px;color:#ffe08a'>" + escapeHtml(rawTitle) + "</div>"
   ];
-  if (when) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:4px'><b>Time:</b> " + when + "</div>");
-  if (city || state) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
-  if (mag) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Magnitude:</b> " + mag + "</div>");
-  if (source) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Source:</b> " + source + "</div>");
-  if (remark) parts.push("<div style='font:800 12px/1.3 Arial,sans-serif;margin-top:6px'>" + remark + "</div>");
+  if (when) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:8px'><b>Time:</b> " + when + "</div>");
+  if (city || state) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
+  if (mag) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Magnitude:</b> " + mag + "</div>");
+  if (source) parts.push("<div style='font:800 12px/1.25 Arial,sans-serif;margin-top:4px'><b>Source:</b> " + source + "</div>");
+  if (remark) parts.push("<div style='font:800 12px/1.35 Arial,sans-serif;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.14)'>" + remark + "</div>");
+  parts.push("</div>");
   return parts.join('');
 }
 
@@ -1559,7 +1568,12 @@ document.addEventListener('click', function(ev){
     try{
       ensureLightningMarquee();
       var m = lightningMarqueeDom;
-      if (m) m.style.display = '';
+      if (!m) return;
+      if (window.innerWidth <= 640){
+        m.style.display = 'none';
+        return;
+      }
+      m.style.display = '';
     }catch(e){}
   }
 
@@ -1572,6 +1586,10 @@ document.addEventListener('click', function(ev){
     ensureLightningMarquee();
     var div = lightningMarqueeDom;
     if (!div) return;
+    if (window.innerWidth <= 640){
+      div.style.display = 'none';
+      return;
+    }
     div.style.display = '';
     if (!div.dataset.moved){
       div.style.top = '182px';
@@ -3760,7 +3778,7 @@ var CITIES_TIER3 = [
   ["Pierre", 44.3683, -100.3509],
 
   // Zoom 8 targets
-  ["Parkston", 43.3975, -97.1364],
+  ["Parkston", 43.3943, -97.9873],
   ["Beresford", 43.0805, -96.7737],
   ["Lake Andes", 43.1564, -98.5409],
   ["Chamberlain", 43.8108, -99.3307],
