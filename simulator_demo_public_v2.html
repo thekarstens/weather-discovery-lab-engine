@@ -799,10 +799,10 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:39.95, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
-        2: { mobile:{ lat:41.65, lon:-99.0,  zoom:5.0 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
-        3: { mobile:{ lat:40.30, lon:-97.20, zoom:6.8 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
-        4: { mobile:{ lat:40.30, lon:-97.15, zoom:6.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
+        1: { mobile:{ lat:38.50, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        2: { mobile:{ lat:40.20, lon:-99.0,  zoom:5.0 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
+        3: { mobile:{ lat:38.85, lon:-97.20, zoom:6.8 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
+        4: { mobile:{ lat:38.85, lon:-97.15, zoom:6.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
         5: { mobile:{ lat:43.55, lon:-96.73, zoom:8.8 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.6 } },
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
@@ -810,7 +810,7 @@
       function getCardView(cardId){
         var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
         if (!bucket) return null;
-        return (window.innerWidth <= 640) ? bucket.mobile : bucket.desktop;
+        return ((window.innerWidth || document.documentElement.clientWidth || 0) <= 900) ? bucket.mobile : bucket.desktop;
       }
 
       function applyCardView(cardId){
@@ -818,8 +818,9 @@
           var v = getCardView(cardId);
           if (!v || !window.map || typeof window.map.setView !== 'function') return;
           if (typeof window.map.stop === 'function') window.map.stop();
+          window.__wdlLastCardView = { cardId: cardId, lat: v.lat, lon: v.lon, zoom: v.zoom, width: (window.innerWidth || document.documentElement.clientWidth || 0) };
           window.map.setView([v.lat, v.lon], v.zoom, { animate:false });
-          if (typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+          if (typeof window.map.invalidateSize === 'function') window.map.invalidateSize(false);
         }catch(e){}
       }
 
@@ -1529,6 +1530,8 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   setTimeout(enforceDemoScene, 1200);
+  window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120]); }catch(e){} });
+  window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120, 450]); }catch(e){} }, 50); });
   document.addEventListener('click', function(ev){
     try{
       var t = ev.target;
