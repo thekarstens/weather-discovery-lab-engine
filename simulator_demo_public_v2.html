@@ -501,6 +501,7 @@
 
       var playBtn = document.getElementById('simPlayPauseBtn'), scrubber = document.getElementById('cbScrubber'), modeToggleBtn = document.getElementById('modeToggleBtn'), alertBox = document.getElementById('simAlertBox'), alertKicker = document.getElementById('simAlertKicker'), alertHeadline = document.getElementById('simAlertHeadline'), alertBody = document.getElementById('simAlertBody'), sceneLead = document.getElementById('simSceneLead'), clockReadout = document.getElementById('simClockReadout'), clockLabel = document.getElementById('simClockLabel'), storyCollapseBtn = document.getElementById('storyCollapseBtn'), storyDopplerBtn = document.getElementById('storyDopplerBtn'), storyPrevBtn = document.getElementById('storyPrevBtn'), storyNextBtn = document.getElementById('storyNextBtn'), tickerText = document.getElementById('simTickerText'), productButtons = Array.prototype.slice.call(document.querySelectorAll('.sim-product-btn')), storyCardRow = document.getElementById('storyCardRow'), topicRail = document.getElementById('topicRail'), storyBody = document.getElementById('storyBody'), storyTitle = document.getElementById('storyTitle'), storyStep = document.getElementById('storyStep'), storyStationChip = document.getElementById('storyStationChip'), storyShellKicker = document.getElementById('storyShellKicker'), productLabel = document.getElementById('productLabel'), drawColorDots = Array.prototype.slice.call(document.querySelectorAll('[data-draw-color]')), simAlertCloseBtn = document.getElementById('simAlertCloseBtn');
       var toolMeasure = document.getElementById('toolMeasure'), toolProbe = document.getElementById('toolProbe'), toolStormTrack = document.getElementById('toolStormTrack'), toolDraw = document.getElementById('toolDraw'), toolErase = document.getElementById('toolErase'), toolClear = document.getElementById('toolClear'), toolHome = document.getElementById('toolHome'), toolToggleBtn = document.getElementById('toolToggleBtn'), toolBox = document.getElementById('toolBox');
+      try{ if (toolBox) toolBox.classList.add('is-collapsed'); if (toolToggleBtn) toolToggleBtn.textContent = 'Tools ▸'; }catch(e){}
       var storyboardSteps = [], timeGroups = [], topicCards = [], currentGroupIndex = 0, currentCardIndex = 0, currentTopicIndex = 0, animating = false, animationFrame = null, alertTimer = null, displayPercent = 0, triggeredEvents = Object.create(null), manualClockMode = false, isScrubbing = false, manualProductMode = null, manualProductLayers = null, manualProductLabel = '';
       var lastRenderedCardKey = '';
       var lastAppliedProductSignature = '';
@@ -1375,13 +1376,13 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v1 = (window.innerWidth <= 640) ? [41.75, -96.73, 7.0] : [43.55, -96.73, 7.4];
+          var __v1 = (window.innerWidth <= 640) ? [39.6, -96.73, 7.0] : [43.55, -96.73, 7.4];
           window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
         }
         if (typeof updateDopplerButton === 'function') updateDopplerButton(false);
       }
 
-      if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) !== -1 || title.indexOf('moderate risk') !== -1) {
+      if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true);
         if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
@@ -1400,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false); }catch(e){}
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
-          var __v3 = (window.innerWidth <= 640) ? [41.55, -97.7, 6.1] : [44.3, -98.1, 6.6];
+          var __v3 = (window.innerWidth <= 640) ? [41.55, -97.2, 6.8] : [43.9, -97.2, 6.8];
           window.map.setView([__v3[0], __v3[1]], __v3[2], { animate:false });
           [250, 900, 1800].forEach(function(delay){
             setTimeout(function(){
@@ -1441,8 +1442,10 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true);
         if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true);
         if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+        try{ if (window.innerWidth <= 640 && typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){}
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
+        if (window.innerWidth <= 640){ [150, 600, 1200].forEach(function(delay){ setTimeout(function(){ try{ if (typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){} }, delay); }); }
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
           var __v5 = (window.innerWidth <= 640) ? [42.95, -97.15, 7.6] : [43.30, -97.05, 8.0];
