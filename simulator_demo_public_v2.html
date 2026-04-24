@@ -799,10 +799,10 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
-        2: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
-        3: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
-        4: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
+        1: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        2: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
+        3: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
+        4: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
         5: { mobile:{ lat:43.55, lon:-96.73, zoom:8.8 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.6 } },
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
@@ -810,10 +810,7 @@
       function getCardView(cardId){
         var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
         if (!bucket) return null;
-        var ua = (navigator.userAgent || "").toLowerCase();
-        var isTouch = ('ontouchstart' in window) || ((navigator.maxTouchPoints || 0) > 0);
-        var isPhoneLike = /android|iphone|ipad|ipod|mobile/.test(ua) || isTouch || window.matchMedia("(max-width: 1100px)").matches;
-        return isPhoneLike ? bucket.mobile : bucket.desktop;
+        return ((window.innerWidth || document.documentElement.clientWidth || 0) <= 900) ? bucket.mobile : bucket.desktop;
       }
 
       function applyCardView(cardId){
@@ -836,12 +833,18 @@
 
       function getActiveCardIndex(){
         try{
-          var idx = Number(window.currentTopicIndex);
-          if (isFinite(idx) && idx >= 0) return idx + 1;
+          if (typeof currentTopicIndex !== 'undefined') {
+            var localIdx = Number(currentTopicIndex);
+            if (isFinite(localIdx) && localIdx >= 0) return localIdx + 1;
+          }
+        }catch(e){}
+        try{
+          var winIdx = Number(window.currentTopicIndex);
+          if (isFinite(winIdx) && winIdx >= 0) return winIdx + 1;
         }catch(e){}
         try{
           var stepText = (document.getElementById('storyStep') || {}).textContent || '';
-          var m = stepText.match(/Topic\s+(\d+)/i);
+          var m = stepText.match(/(?:Topic|STEP)\s*(\d+)/i);
           if (m) return Number(m[1]);
         }catch(e){}
         return 0;
@@ -957,6 +960,7 @@
         renderTopicRail();
       }
       function renderCurrentCard(){
+        try{ window.currentTopicIndex = Number(currentTopicIndex) || 0; }catch(e){}
         if (!topicCards.length) {
           lastRenderedCardKey = '';
           storyTitle.textContent = 'No Topics';
@@ -965,6 +969,7 @@
         }
 
         currentTopicIndex = Math.max(0, Math.min(topicCards.length - 1, Number(currentTopicIndex) || 0));
+        try{ window.currentTopicIndex = currentTopicIndex; }catch(e){}
         var card = topicCards[currentTopicIndex] || null;
         if (!card) {
           lastRenderedCardKey = '';
@@ -1532,6 +1537,7 @@ document.addEventListener('DOMContentLoaded', function(){
     } catch (e) {}
   }
 
+  try{ window.currentTopicIndex = Number(currentTopicIndex) || 0; }catch(e){}
   setTimeout(enforceDemoScene, 1200);
   window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120]); }catch(e){} });
   window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120, 450]); }catch(e){} }, 50); });
