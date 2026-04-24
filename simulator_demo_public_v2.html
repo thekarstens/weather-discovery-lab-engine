@@ -833,9 +833,9 @@
           var lon = Number(card.view.lon);
           var zoom = Number(card.view.zoom);
           if (isMobile) {
-            if (Number(cardId) === 1) lat = lat - 1.35;
+            if (Number(cardId) === 1) lat = lat - 1.80;
             if (Number(cardId) === 2) zoom = zoom - 1.2;
-            if (Number(cardId) === 3) zoom = zoom - 0.7;
+            if (Number(cardId) === 3) zoom = zoom - 1.10;
           }
           return { lat: lat, lon: lon, zoom: zoom };
         }
