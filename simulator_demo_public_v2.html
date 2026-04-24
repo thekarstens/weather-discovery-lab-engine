@@ -799,10 +799,10 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:41.75, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
-        2: { mobile:{ lat:43.45, lon:-99.0,  zoom:5.0 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
-        3: { mobile:{ lat:42.10, lon:-97.20, zoom:6.8 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
-        4: { mobile:{ lat:42.10, lon:-97.15, zoom:6.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
+        1: { mobile:{ lat:39.95, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        2: { mobile:{ lat:41.65, lon:-99.0,  zoom:5.0 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
+        3: { mobile:{ lat:40.30, lon:-97.20, zoom:6.8 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
+        4: { mobile:{ lat:40.30, lon:-97.15, zoom:6.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
         5: { mobile:{ lat:43.55, lon:-96.73, zoom:8.8 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.6 } },
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
@@ -828,6 +828,19 @@
         (delays || []).forEach(function(delay){
           setTimeout(function(){ applyCardView(cardId); }, delay);
         });
+      }
+
+      function getActiveCardIndex(){
+        try{
+          var idx = Number(window.currentTopicIndex);
+          if (isFinite(idx) && idx >= 0) return idx + 1;
+        }catch(e){}
+        try{
+          var stepText = (document.getElementById('storyStep') || {}).textContent || '';
+          var m = stepText.match(/Topic\s+(\d+)/i);
+          if (m) return Number(m[1]);
+        }catch(e){}
+        return 0;
       }
 
       async function setCardSweepState(shouldEnable){
@@ -1427,13 +1440,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
   async function enforceDemoScene(){
     try{
-      var titleEl = document.getElementById('storyTitle');
-      if (!titleEl) return;
-      var title = (titleEl.textContent || '').trim().toLowerCase();
-      if (typeof window.setMasterTime !== 'function') return;
+      var idx = getActiveCardIndex();
+      if (!idx || typeof window.setMasterTime !== 'function') return;
 
-      // Card 1: radar image only at load, sweep OFF until user clicks
-      if (title.indexOf('setting the stage') !== -1) {
+      if (idx === 1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         try{ if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(false); }catch(e){}
@@ -1447,44 +1457,40 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(1, [200, 700]);
         updateDopplerButton(false);
+        return;
       }
 
-      // Card 2: SPC only
-      if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
+      if (idx === 2) {
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(2, [180]);
+        lockCardView(2, [180, 700]);
+        return;
       }
 
-      // Card 3: surface setup + HRRR temps + surface winds, lock camera hard
-      if (title.indexOf('surface setup') !== -1 || title.indexOf('model temperatures') !== -1) {
+      if (idx === 3) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
-        try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false); }catch(e){}
-        try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false); }catch(e){}
+        try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false); }catch(e){}
+        try{ if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(false); }catch(e){}
+        try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false); }catch(e){}
+        try{ if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false); }catch(e){}
+        try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
+        try{ window.hrrrProductMode = 'temp'; }catch(e){}
+        try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
+        try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(3, [150, 500, 1200, 2200]);
-        setTimeout(async function(){
-          try{
-            window.hrrrProductMode = 'temp';
-            if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true);
-          }catch(e){}
-          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
-          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
+        lockCardView(3, [150, 700, 1600, 2600]);
+        setTimeout(function(){
+          try{ window.hrrrProductMode = 'temp'; }catch(e){}
+          try{ if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-          lockCardView(3, [150, 700, 1600, 2600]);
-          setTimeout(async function(){
-            try{ window.hrrrProductMode = 'temp'; }catch(e){}
-            try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
-            try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-          }, 900);
-        }, 220);
+        }, 900);
+        return;
       }
 
-      // Card 4: dew points only
-      if (title === 'dew point' || title.indexOf('dew point') !== -1) {
+      if (idx === 4) {
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false); }catch(e){}
@@ -1492,11 +1498,11 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint'); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(4, [180]);
+        lockCardView(4, [180, 700]);
+        return;
       }
 
-      // Card 5: hero radar scene
-      if (title.indexOf('storm comes alive') !== -1 || title.indexOf('wow moment') !== -1) {
+      if (idx === 5) {
         await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
         try{ if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true); }catch(e){}
         try{ if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true); }catch(e){}
@@ -1508,15 +1514,16 @@ document.addEventListener('DOMContentLoaded', function(){
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(5, [180]);
         updateDopplerButton(true);
+        return;
       }
 
-      // Card 6: reports
-      if (title.indexOf('storm reports') !== -1 || title.indexOf('ground truth') !== -1) {
+      if (idx === 6) {
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(6, [180]);
+        return;
       }
     } catch (e) {}
   }
