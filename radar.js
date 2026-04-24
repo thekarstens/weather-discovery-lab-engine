@@ -20,6 +20,8 @@ window.createRadarModule = function(opts){
   var radarSweepBeamCtx = null;
   var radarSweepImage = null;
   var radarSweepImageUrl = "";
+  var radarSweepPrevImage = null;
+  var radarSweepPrevImageUrl = "";
   var radarSweepAnim = 0;
   var radarSweepAngle = 0;
   var radarSweepLastTs = 0;
@@ -228,6 +230,11 @@ function updateSweepUi(){
     var ds = getRadarSweepDrawState();
     if (!(ds.w > 0 && ds.h > 0)) return;
 
+    var underlay = radarSweepPrevImage || radarSweepImage;
+    if (underlay){
+      radarSweepCtx.drawImage(underlay, ds.x, ds.y, ds.w, ds.h);
+    }
+
     if (radarSweepCompleted){
       radarSweepCtx.drawImage(radarSweepImage, ds.x, ds.y, ds.w, ds.h);
       return;
@@ -259,13 +266,16 @@ function updateSweepUi(){
     }
   }
 
-  function startRadarSweep(){
+  function startRadarSweep(opts){
+    opts = opts || {};
     ensureRadarSweepCanvas();
     if (!radarSweepEnabled || !radarSweepImage || !radarSweepCtx || !obsRadarEnabled) return;
     radarSweepCanvas.style.display = 'block';
     if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
     stopRadarSweep();
-    resetRadarSweepState();
+    if (opts.reset !== false){
+      resetRadarSweepState();
+    }
     renderRadarSweepCurrentState();
 
     function frame(ts){
@@ -282,6 +292,8 @@ function updateSweepUi(){
       renderRadarSweepCurrentState();
 
       if (radarSweepCompleted){
+        radarSweepPrevImage = null;
+        radarSweepPrevImageUrl = "";
         stopRadarSweep();
         return;
       }
@@ -321,15 +333,6 @@ function updateSweepUi(){
       return;
     }
 
-    if (radarSweepEnabled && url === radarSweepImageUrl && radarSweepImage){
-      ensureRadarSweepCanvas();
-      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      startRadarSweep();
-      updateSweepUi();
-      return;
-    }
-
     if (url === radarLastRequestedUrl){
       return;
     }
@@ -342,6 +345,8 @@ function updateSweepUi(){
     img.onload = function(){
       if (myToken !== radarLoadToken) return;
 
+      var previousSweepImage = radarSweepImage;
+      var previousSweepUrl = radarSweepImageUrl;
       radarSweepImage = img;
       radarSweepImageUrl = url;
       radarLastGoodUrl = url;
@@ -360,7 +365,9 @@ function updateSweepUi(){
         obsRadarOverlay = null;
         ensureRadarSweepCanvas();
         radarSweepCanvas.style.opacity = String(op);
-        startRadarSweep();
+        radarSweepPrevImage = (previousSweepUrl && previousSweepUrl !== url && previousSweepImage) ? previousSweepImage : null;
+        radarSweepPrevImageUrl = radarSweepPrevImage ? previousSweepUrl : "";
+        startRadarSweep({ reset:true });
         updateSweepUi();
         setStatus("Radar sweep: " + url);
         return;
@@ -412,9 +419,9 @@ function updateSweepUi(){
     ensureRadarSweepCanvas();
 
     if (radarSweepImage){
-      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      startRadarSweep();
+      radarSweepPrevImage = null;
+      radarSweepPrevImageUrl = "";
+      startRadarSweep({ reset:true });
       setStatus("Radar sweep on");
     } else {
       updateRadar();
@@ -440,6 +447,9 @@ function syncSweepButton(){
         if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
         if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
         renderRadarSweepCurrentState();
+        if (!radarSweepAnim && !radarSweepCompleted){
+          startRadarSweep({ reset:false });
+        }
       }
     });
   }
