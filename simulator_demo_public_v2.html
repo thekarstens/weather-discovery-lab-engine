@@ -799,7 +799,7 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        1: { mobile:{ lat:43.00, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.2 } },
         2: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
         3: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
         4: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
@@ -1474,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         await setCardSweepState(false);
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(1, [200, 700]);
+        lockCardView(1, [150, 500]);
         updateDopplerButton(false);
         return;
       }
@@ -1484,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(2, [180, 700]);
+        /* card 2: preserve current viewer map view */
         return;
       }
 
@@ -1500,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(3, [150, 700, 1600, 2600]);
+        /* card 3: preserve current viewer map view */
         setTimeout(function(){
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
           try{ if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true); }catch(e){}
@@ -1517,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint'); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(4, [180, 700]);
+        /* card 4: preserve current viewer map view */
         return;
       }
 
@@ -1531,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (window.innerWidth <= 640 && typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){}
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(5, [180]);
+        /* card 5: preserve current viewer map view */
         updateDopplerButton(true);
         return;
       }
@@ -1541,7 +1541,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(6, [180]);
+        /* card 6: preserve current viewer map view */
         return;
       }
     } catch (e) {}
@@ -1549,8 +1549,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
   try{ window.currentTopicIndex = Number(currentTopicIndex) || 0; }catch(e){}
   setTimeout(enforceDemoScene, 1200);
-  window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120]); }catch(e){} });
-  window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120, 450]); }catch(e){} }, 50); });
+  window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx === 1) lockCardView(1, [120]); }catch(e){} });
+  window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx === 1) lockCardView(1, [120, 450]); }catch(e){} }, 50); });
   document.addEventListener('click', function(ev){
     try{
       var t = ev.target;
