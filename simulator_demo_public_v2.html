@@ -378,7 +378,50 @@
   }
 }
 
-  </style>
+  
+/* Lighter Lato topic-card readability pass */
+.storyPanel,
+.storyPanel *,
+.story-shell-header,
+.story-shell-kicker,
+.story-title,
+.sim-scene-lead,
+.story-body,
+.story-step,
+.story-action,
+.story-nav-btn,
+#storyCollapseBtn,
+#storyDopplerBtn,
+#storyPrevBtn,
+#storyNextBtn,
+#storyTitle,
+#storyShellKicker,
+#storyBody,
+#storyStep,
+#simSceneLead {
+  font-family: "Lato", Arial, sans-serif !important;
+}
+.story-shell-kicker,
+.story-step,
+.sim-scene-lead {
+  font-weight: 800 !important;
+}
+.story-title {
+  font-weight: 800 !important;
+  letter-spacing: -0.25px !important;
+}
+.story-body {
+  font-weight: 700 !important;
+  line-height: 1.48 !important;
+}
+.story-action,
+.story-nav-btn,
+#storyCollapseBtn,
+#storyDopplerBtn {
+  font-weight: 800 !important;
+}
+
+</style>
 </head>
 <body>
   <div id="map"></div>
@@ -1347,32 +1390,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
       if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-      if (window.radarSweepCanvas) window.radarSweepCanvas.style.display = 'block';
-      if (window.radarSweepBeamCanvas) window.radarSweepBeamCanvas.style.display = 'block';
-      if (typeof window.renderRadarSweepCurrentState === 'function' && window.radarSweepEnabled) {
-        try{ window.renderRadarSweepCurrentState(); }catch(e){}
-      }
       if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
     }catch(e){}
-  }
-
-  function startTopic1RadarOnly(){
-    try{
-      if (typeof window.setStoryOverlayEnabled === 'function') window.setStoryOverlayEnabled(false);
-      if (typeof window.setJet500Enabled === 'function') window.setJet500Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') window.setSpcDay1Enabled(false);
-      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
-      if (typeof window.setReportsEnabled === 'function') window.setReportsEnabled(false);
-      if (typeof window.setLightningEnabled === 'function') window.setLightningEnabled(false);
-      if (typeof window.setStatesEnabled === 'function') window.setStatesEnabled(false);
-      if (typeof window.setCountiesEnabled === 'function') window.setCountiesEnabled(false);
-      if (typeof window.updateAll === 'function') window.updateAll();
-    }catch(e){}
-    [450, 900, 1500, 2200].forEach(function(delay){
-      setTimeout(function(){ ensureSweepOn(); }, delay);
-    });
   }
 
   async function enforceDemoScene(){
@@ -1384,12 +1403,17 @@ document.addEventListener('DOMContentLoaded', function(){
 
       if (title.indexOf('setting the stage') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
+        if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
           var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
           window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
         }
-        startTopic1RadarOnly();
+        [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
       }
 
       if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
@@ -1491,32 +1515,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
       if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
-      if (window.radarSweepCanvas) window.radarSweepCanvas.style.display = 'block';
-      if (window.radarSweepBeamCanvas) window.radarSweepBeamCanvas.style.display = 'block';
-      if (typeof window.renderRadarSweepCurrentState === 'function' && window.radarSweepEnabled) {
-        try{ window.renderRadarSweepCurrentState(); }catch(e){}
-      }
       if (typeof updateDopplerButton === 'function') updateDopplerButton(true);
     }catch(e){}
-  }
-
-  function startTopic1RadarOnly(){
-    try{
-      if (typeof window.setStoryOverlayEnabled === 'function') window.setStoryOverlayEnabled(false);
-      if (typeof window.setJet500Enabled === 'function') window.setJet500Enabled(false);
-      if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(false);
-      if (typeof window.setMetarsEnabled === 'function') window.setMetarsEnabled(false);
-      if (typeof window.setSpcDay1Enabled === 'function') window.setSpcDay1Enabled(false);
-      if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
-      if (typeof window.setReportsEnabled === 'function') window.setReportsEnabled(false);
-      if (typeof window.setLightningEnabled === 'function') window.setLightningEnabled(false);
-      if (typeof window.setStatesEnabled === 'function') window.setStatesEnabled(false);
-      if (typeof window.setCountiesEnabled === 'function') window.setCountiesEnabled(false);
-      if (typeof window.updateAll === 'function') window.updateAll();
-    }catch(e){}
-    [450, 900, 1500, 2200].forEach(function(delay){
-      setTimeout(function(){ ensureSweepOn(); }, delay);
-    });
   }
 
   async function enforceDemoScene(){
@@ -1528,12 +1528,17 @@ document.addEventListener('DOMContentLoaded', function(){
 
       if (title.indexOf('setting the stage') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+        if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false);
+        if (typeof window.setWarningsEnabled === 'function') window.setWarningsEnabled(false);
+        if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false);
+        if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(false);
+        if (typeof window.updateAll === 'function') window.updateAll();
         if (window.map && typeof window.map.setView === 'function') {
           if (typeof window.map.stop === 'function') window.map.stop();
           var __v1 = (window.innerWidth <= 640) ? [43.2, -96.73, 7.0] : [43.55, -96.73, 7.4];
           window.map.setView([__v1[0], __v1[1]], __v1[2], { animate:false });
         }
-        startTopic1RadarOnly();
+        [0, 250, 700, 1400].forEach(function(delay){ setTimeout(function(){ ensureSweepOn(); }, delay); });
       }
 
       if (title.indexOf('forecasters saw the risk early') !== -1 || title.indexOf('moderate risk') !== -1) {
