@@ -7065,10 +7065,6 @@ function parseHrrrPointsPayload(raw){
     if (radarSweepEnabled && (url === radarSweepImageUrl || url === radarPendingUrl)) {
       ensureRadarSweepCanvas();
       radarSweepCanvas.style.opacity = String(op);
-      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-      try{ startRadarSweep(); }catch(e){}
-      try{ updateSweepUi(); }catch(e){}
       return;
     }
 
@@ -7575,36 +7571,21 @@ function syncSweepButton(){
     radarSweepEnabled = target;
     try{ if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true); }catch(e){}
     syncSweepButton();
-    try{ updateSweepUi(); }catch(e){}
     if (!target){
-      try{ stopRadarSweep(); }catch(e){}
       try{ if (typeof hideRadarSweepCanvas === 'function') hideRadarSweepCanvas(); }catch(e){}
       try{ updateRadar(); }catch(e){}
       return radarSweepEnabled;
     }
-    try{
-      if (radarSweepImage) {
-        ensureRadarSweepCanvas();
-        if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
-        if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-        startRadarSweep();
-      } else {
-        updateRadar();
-      }
-    }catch(e){ try{ updateRadar(); }catch(_e){} }
+    try{ updateRadar(); }catch(e){}
     setTimeout(function(){
       if (!radarSweepEnabled) return;
-      try{
-        if (radarSweepImage) startRadarSweep();
-        else updateRadar();
-      }catch(e){}
+      try{ updateRadar(); }catch(e){}
+      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
     }, 120);
     setTimeout(function(){
       if (!radarSweepEnabled) return;
-      try{
-        if (radarSweepImage) startRadarSweep();
-        else updateRadar();
-      }catch(e){}
+      try{ updateRadar(); }catch(e){}
+      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
     }, 360);
     return radarSweepEnabled;
   };
@@ -7618,7 +7599,7 @@ function syncSweepButton(){
     if (radarSweepEnabled && radarSweepImage){
       if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
       if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
-      try{ startRadarSweep(); }catch(e){ try{ renderRadarSweepCurrentState(); }catch(_e){} }
+      renderRadarSweepCurrentState();
     }
   });
 
