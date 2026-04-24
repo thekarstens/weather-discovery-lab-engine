@@ -799,10 +799,10 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
-        2: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
-        3: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
-        4: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
+        1: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        2: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
+        3: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
+        4: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
         5: { mobile:{ lat:43.55, lon:-96.73, zoom:8.8 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.6 } },
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
@@ -1548,10 +1548,12 @@ document.addEventListener('DOMContentLoaded', function(){
     }catch(e){}
   }
 
-  setTimeout(function(){ enforceDemoScene(); forceMobileCameraLock(); }, 1200);
+  setTimeout(function(){ enforceDemoScene(); forceMobileCameraLock(); }, 250);
+  setTimeout(function(){ enforceDemoScene(); forceMobileCameraLock(); }, 800);
   setTimeout(function(){ forceMobileCameraLock(); }, 1800);
   setTimeout(function(){ forceMobileCameraLock(); }, 3000);
   setTimeout(function(){ forceMobileCameraLock(); }, 4500);
+  setTimeout(function(){ forceMobileCameraLock(); }, 6500);
   window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120]); forceMobileCameraLock(); }catch(e){} });
   window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120, 450]); forceMobileCameraLock(); }catch(e){} }, 50); });
   document.addEventListener('click', function(ev){
