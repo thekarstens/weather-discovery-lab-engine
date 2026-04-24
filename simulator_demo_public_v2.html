@@ -810,14 +810,7 @@
       function getCardView(cardId){
         var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
         if (!bucket) return null;
-        var ww = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0, screen.width || 0);
-        var wh = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, screen.height || 0);
-        var touchLike = (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0 || (navigator.msMaxTouchPoints || 0) > 0);
-        var coarse = false;
-        try { coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(e){}
-        var mobileLike = !!(document.body && document.body.classList.contains('story-mobile')) || coarse || (touchLike && Math.min(ww, wh) <= 1100) || (ww <= 1100);
-        try { window.__wdlMobileCardViewDebug = { ww: ww, wh: wh, touchLike: touchLike, coarse: coarse, mobileLike: mobileLike, cardId: cardId }; } catch(e){}
-        return mobileLike ? bucket.mobile : bucket.desktop;
+        return ((window.innerWidth || document.documentElement.clientWidth || 0) <= 900) ? bucket.mobile : bucket.desktop;
       }
 
       function applyCardView(cardId){
@@ -836,6 +829,19 @@
         (delays || []).forEach(function(delay){
           setTimeout(function(){ applyCardView(cardId); }, delay);
         });
+      }
+
+      function postStoryRenderLock(cardId){
+        try{
+          var holdDelays = [0, 120, 320, 700, 1400, 2400, 3600];
+          holdDelays.forEach(function(delay){
+            setTimeout(function(){
+              try{
+                if (getActiveCardIndex() === Number(cardId)) applyCardView(cardId);
+              }catch(e){}
+            }, delay);
+          });
+        }catch(e){}
       }
 
       function getActiveCardIndex(){
@@ -1031,6 +1037,7 @@
             var baseLayers = card.layers || [card.product || 'radar'];
             applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
           }
+          try{ postStoryRenderLock((currentTopicIndex || 0) + 1); }catch(e){}
         }
       }
 
@@ -1219,7 +1226,7 @@ if (toolMeasure) toolMeasure.addEventListener('click', function(){ clearTrackLoc
       });
 
             window.addEventListener('wdl:storychange', function(ev){ return; });
-      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; try{ applyCardView(1); }catch(e){} if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
+      window.addEventListener('load', async function(){ setBannerText(); setManualClockMode(true); try{ window.__WDL_STORY_TIME_SYNC_ENABLED__ = false; window.__WDL_SIMPLE_MODE__ = true; window.__WDL_SIMULATOR_LOCAL_STORY__ = true; }catch(e){} updateModeToggleUi(); await loadStoryboardSteps(); var d = getDisplayWindow(); document.getElementById('scrubStartLabel').textContent = formatScrubEdge(d.start); document.getElementById('scrubEndLabel').textContent = formatScrubEdge(d.end); setTicker((cfg.defaultTicker || []).slice()); updateClockAndScrubber(0); currentGroupIndex = 0; currentCardIndex = 0; currentTopicIndex = 0; if (storyCardRow){ storyCardRow.style.display='none'; storyCardRow.setAttribute('aria-hidden','true'); } if (topicRail){ topicRail.style.display='none'; topicRail.setAttribute('aria-hidden','true'); } renderCurrentCard(); syncSimpleToolStates(); console.log('Simulator v5 active config:', cfg); });
       setInterval(function(){ if (!animating) { updateClockAndScrubber(); updateDopplerButton(!!((topicCards[currentTopicIndex] || currentCard() || {}) .showDoppler)); syncSimpleToolStates(); } }, 300);
 
       setInterval(function(){
@@ -1463,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         await setCardSweepState(false);
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(1, [200, 700]);
+        lockCardView(1, [0, 120, 320, 700, 1400, 2400, 3600]);
         updateDopplerButton(false);
         return;
       }
@@ -1473,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(2, [180, 700]);
+        lockCardView(2, [0, 120, 320, 700, 1400, 2400, 3600]);
         return;
       }
 
@@ -1489,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(3, [150, 700, 1600, 2600]);
+        lockCardView(3, [0, 120, 320, 700, 1400, 2400, 3600]);
         setTimeout(function(){
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
           try{ if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true); }catch(e){}
@@ -1506,7 +1513,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint'); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        lockCardView(4, [180, 700]);
+        lockCardView(4, [0, 120, 320, 700, 1400, 2400, 3600]);
         return;
       }
 
@@ -1536,8 +1543,6 @@ document.addEventListener('DOMContentLoaded', function(){
     } catch (e) {}
   }
 
-  setTimeout(enforceDemoScene, 150);
-  setTimeout(enforceDemoScene, 600);
   setTimeout(enforceDemoScene, 1200);
   window.addEventListener('resize', function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120]); }catch(e){} });
   window.addEventListener('orientationchange', function(){ setTimeout(function(){ try{ var idx = getActiveCardIndex(); if (idx) lockCardView(idx, [120, 450]); }catch(e){} }, 50); });
