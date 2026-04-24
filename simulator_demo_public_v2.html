@@ -517,6 +517,21 @@
     window.__WDL_SIMULATOR_LOCAL_STORY__ = true; window.__WDL_DEMO_CAMERA_LOCK__ = true;
     window.__WDL_FREE_SCRUB__ = true;
   </script>
+    <script>
+    (function(){
+      function qstring(name){
+        try { return new URLSearchParams(window.location.search).get(name); }
+        catch(e){ return null; }
+      }
+      var lessonParam = (qstring('lesson') || 'derecho-2022-demo').trim();
+      window.WDL_SIM_CONFIG = window.WDL_SIM_CONFIG || {};
+      window.WDL_SIM_CONFIG.lessonId = lessonParam;
+      window.WDL_SIM_CONFIG.storyboardUrl = 'storyboard/storyboard.json';
+      if (!window.WDL_SIM_CONFIG.dataPackBase) {
+        window.WDL_SIM_CONFIG.dataPackBase = 'https://thekarstens.github.io/wdl-data-derecho-2022/';
+      }
+    })();
+  </script>
   <script src="./engine_simulator_patch.js"></script>
   <script>
     (function(){
@@ -817,15 +832,9 @@
           var lat = Number(card.view.lat);
           var lon = Number(card.view.lon);
           var zoom = Number(card.view.zoom);
-
           if (isMobile) {
-            // Card 1 still needs to move farther south on mobile.
             if (Number(cardId) === 1) lat = lat - 0.95;
-
-            // Card 2 is too zoomed-in on mobile; pull it back.
             if (Number(cardId) === 2) zoom = zoom - 0.8;
-
-            // Card 3 also needs to pull back a bit on mobile.
             if (Number(cardId) === 3) zoom = zoom - 0.5;
           }
           return { lat: lat, lon: lon, zoom: zoom };
