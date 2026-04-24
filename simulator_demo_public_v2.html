@@ -799,10 +799,10 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
-        2: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
-        3: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
-        4: { mobile:{ lat:42.10, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
+        1: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
+        2: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
+        3: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
+        4: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
         5: { mobile:{ lat:43.55, lon:-96.73, zoom:8.8 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.6 } },
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
@@ -977,6 +977,16 @@
           storyBody.innerHTML = '<p>No topic cards loaded for this simulator.</p>';
           return;
         }
+
+        try{
+          var __viewCardId = currentTopicIndex + 1;
+          var __view = getCardView(__viewCardId);
+          if (__view && window.map && typeof window.map.setView === 'function'){
+            if (typeof window.map.stop === 'function') window.map.stop();
+            window.__wdlRenderCurrentCardView = { cardId: __viewCardId, lat: __view.lat, lon: __view.lon, zoom: __view.zoom };
+            window.map.setView([__view.lat, __view.lon], __view.zoom, { animate:false });
+          }
+        }catch(e){}
 
         var cardKey = 'topic:' + currentTopicIndex + ':' + (card.id || card.title || '');
         var cardChanged = cardKey !== lastRenderedCardKey;
