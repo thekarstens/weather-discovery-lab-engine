@@ -609,7 +609,7 @@ async function updateJetParticles(){
     jetVelocityLayer.addTo(map);
     window.jetVelocityLayer = jetVelocityLayer;
     if (jetBounds && Array.isArray(jetBounds) && jetBounds.length === 2){
-      try{ map.fitBounds(L.latLngBounds(jetBounds), { padding:[20,20] }); }catch(e){}
+      try{ /* surface-wind/jet auto-fit disabled to keep story card view locked */ }catch(e){}
     }
     var layerName = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
       ? CFG.surfaceWinds.label
@@ -1547,6 +1547,14 @@ document.addEventListener('click', function(ev){
     return;
   }
 
+  function lightningHudAllowed(){
+    try{
+      return !(window && window.innerWidth <= 640);
+    }catch(e){
+      return true;
+    }
+  }
+
   function hideLightningCounter(){
     try{
       ensureLightningMarquee();
@@ -1559,7 +1567,12 @@ document.addEventListener('click', function(ev){
     try{
       ensureLightningMarquee();
       var m = lightningMarqueeDom;
-      if (m) m.style.display = '';
+      if (!m) return;
+      if (!lightningHudAllowed()){
+        m.style.display = 'none';
+        return;
+      }
+      m.style.display = '';
     }catch(e){}
   }
 
@@ -1572,6 +1585,10 @@ document.addEventListener('click', function(ev){
     ensureLightningMarquee();
     var div = lightningMarqueeDom;
     if (!div) return;
+    if (!lightningHudAllowed()){
+      div.style.display = 'none';
+      return;
+    }
     div.style.display = '';
     if (!div.dataset.moved){
       div.style.top = '182px';
