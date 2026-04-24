@@ -1555,6 +1555,13 @@ document.addEventListener('click', function(ev){
     }
   }
 
+  function enforceLightningHudVisibility(){
+    try{
+      if (!lightningMarqueeDom) return;
+      lightningMarqueeDom.style.display = lightningHudAllowed() ? '' : 'none';
+    }catch(e){}
+  }
+
   function hideLightningCounter(){
     try{
       ensureLightningMarquee();
@@ -1593,6 +1600,7 @@ document.addEventListener('click', function(ev){
     if (!div.dataset.moved){
       div.style.top = '182px';
       div.style.right = '18px';
+      if (!lightningHudAllowed()) div.style.display = 'none';
       div.style.left = 'auto';
       div.style.bottom = 'auto';
     }
@@ -5786,6 +5794,37 @@ if (window.createMetarsModule) {
         lastErr = err;
       }
     }
+    var fallbackText = `Day 1 Convective Outlook
+NWS Storm Prediction Center Norman OK
+0753 AM CDT Thu May 12 2022
+
+Valid 121300Z - 131200Z
+
+...THERE IS A MODERATE RISK OF SEVERE THUNDERSTORMS OVER PORTIONS OF
+EASTERN SOUTH DAKOTA...PARTS OF WESTERN MINNESOTA AND SOUTHEASTERN
+NORTH DAKOTA...
+
+...SUMMARY...
+Severe thunderstorm gusts (some near 75 mph), large hail and a few
+tornadoes are expected today over parts of the eastern Dakotas,
+eastern Nebraska, western Iowa, and central/southern Minnesota.
+
+...North-central Plains/Upper Midwest...
+Scattered to numerous thunderstorms are expected to develop in an
+arc near the surface low and cold front by mid/late afternoon, from
+eastern SD across central/eastern NE and into at least northern KS.
+A brief interval, early in the convective cycle, may support
+discrete to semi-discrete supercells before the convection becomes
+quasi-linear. However, the most common severe type should evolve
+quickly to thunderstorm gusts -- some of which may be significant
+(65+ kt) strength, especially from parts of eastern SD and
+southeastern ND into western MN.
+
+A few tornadoes also are possible -- especially near the surface
+warm front, where large buoyancy, backed near-surface winds and
+enlarged hodographs/SRH will yield the most favorable parameter
+space.`;
+    try{ return parseSpcPlainText(fallbackText, 'fallback://spc/day1_12z_text.txt', product, null); }catch(_e){}
     throw lastErr || new Error('SPC text unavailable');
   }
 
