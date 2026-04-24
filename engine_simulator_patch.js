@@ -7552,20 +7552,41 @@ function syncSweepButton(){
     btn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
     btn.classList.toggle("active", !!radarSweepEnabled);
   }
+  var storyBtn = document.getElementById("storyDopplerBtn");
+  if (storyBtn){
+    storyBtn.textContent = radarSweepEnabled ? "LIVE Doppler ON" : "LIVE Doppler OFF";
+    storyBtn.classList.toggle('active', !!radarSweepEnabled);
+    storyBtn.classList.toggle('pulsing', !radarSweepEnabled);
+  }
 }
   if (_sweepBtn){
     _sweepBtn.onclick = function(){
-      radarSweepEnabled = !radarSweepEnabled;
-      syncSweepButton();
-      updateRadar();
+      window.toggleSweep();
     };
     syncSweepButton();
   }
 
   window.setSweepEnabled = function(on){
-    radarSweepEnabled = !!on;
+    var target = !!on;
+    radarSweepEnabled = target;
+    try{ if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true); }catch(e){}
     syncSweepButton();
-    updateRadar();
+    if (!target){
+      try{ if (typeof hideRadarSweepCanvas === 'function') hideRadarSweepCanvas(); }catch(e){}
+      try{ updateRadar(); }catch(e){}
+      return radarSweepEnabled;
+    }
+    try{ updateRadar(); }catch(e){}
+    setTimeout(function(){
+      if (!radarSweepEnabled) return;
+      try{ updateRadar(); }catch(e){}
+      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
+    }, 120);
+    setTimeout(function(){
+      if (!radarSweepEnabled) return;
+      try{ updateRadar(); }catch(e){}
+      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
+    }, 360);
     return radarSweepEnabled;
   };
 
