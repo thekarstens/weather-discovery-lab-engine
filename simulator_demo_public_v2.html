@@ -698,7 +698,7 @@
           return card;
         });
       }
-      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
+      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler), view: (step.scene && step.scene.view) ? { lat:Number(step.scene.view.lat), lon:Number(step.scene.view.lon), zoom:Number(step.scene.view.zoom) } : null }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
       function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
@@ -808,9 +808,26 @@
       };
 
       function getCardView(cardId){
+        var width = (window.innerWidth || document.documentElement.clientWidth || 0);
+        var isMobile = width <= 900;
+        var idx = Math.max(0, Number(cardId || 1) - 1);
+        var card = (topicCards && topicCards[idx]) ? topicCards[idx] : null;
+
+        if (card && card.view && isFinite(Number(card.view.lat)) && isFinite(Number(card.view.lon)) && isFinite(Number(card.view.zoom))) {
+          var lat = Number(card.view.lat);
+          var lon = Number(card.view.lon);
+          var zoom = Number(card.view.zoom);
+
+          // Mobile-only south shift for the first four cards.
+          if (isMobile && Number(cardId) >= 1 && Number(cardId) <= 4) {
+            lat = lat - 1.35;
+          }
+          return { lat: lat, lon: lon, zoom: zoom };
+        }
+
         var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
         if (!bucket) return null;
-        return ((window.innerWidth || document.documentElement.clientWidth || 0) <= 900) ? bucket.mobile : bucket.desktop;
+        return isMobile ? bucket.mobile : bucket.desktop;
       }
 
       function applyCardView(cardId){
@@ -984,6 +1001,7 @@
           if (__view && window.map && typeof window.map.setView === 'function'){
             if (typeof window.map.stop === 'function') window.map.stop();
             window.__wdlRenderCurrentCardView = { cardId: __viewCardId, lat: __view.lat, lon: __view.lon, zoom: __view.zoom };
+            window.__wdlCardViewSource = ((topicCards && topicCards[currentTopicIndex] && topicCards[currentTopicIndex].view) ? 'storyboard-view' : 'fallback-card-views');
             window.map.setView([__view.lat, __view.lon], __view.zoom, { animate:false });
           }
         }catch(e){}
