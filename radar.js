@@ -321,6 +321,15 @@ function updateSweepUi(){
       return;
     }
 
+    if (radarSweepEnabled && url === radarSweepImageUrl && radarSweepImage){
+      ensureRadarSweepCanvas();
+      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
+      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
+      startRadarSweep();
+      updateSweepUi();
+      return;
+    }
+
     if (url === radarLastRequestedUrl){
       return;
     }
@@ -403,6 +412,8 @@ function updateSweepUi(){
     ensureRadarSweepCanvas();
 
     if (radarSweepImage){
+      if (radarSweepCanvas) radarSweepCanvas.style.display = 'block';
+      if (radarSweepBeamCanvas) radarSweepBeamCanvas.style.display = 'block';
       startRadarSweep();
       setStatus("Radar sweep on");
     } else {
