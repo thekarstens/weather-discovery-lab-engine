@@ -508,6 +508,21 @@
 
   <script>function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
   <script src="./simulatorConfig_v5.js"></script>
+  <script>
+    (function(){
+      function qstring(name){
+        try { return new URLSearchParams(window.location.search).get(name); }
+        catch(e){ return null; }
+      }
+      var lessonParam = (qstring('lesson') || 'derecho-2022-demo').trim();
+      window.WDL_SIM_CONFIG = window.WDL_SIM_CONFIG || {};
+      window.WDL_SIM_CONFIG.lessonId = lessonParam;
+      window.WDL_SIM_CONFIG.storyboardUrl = 'storyboard/storyboard.json';
+      if (!window.WDL_SIM_CONFIG.dataPackBase) {
+        window.WDL_SIM_CONFIG.dataPackBase = 'https://thekarstens.github.io/wdl-data-derecho-2022/';
+      }
+    })();
+  </script>
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
   <script src="./map-ui.js"></script>
