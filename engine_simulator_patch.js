@@ -5574,6 +5574,34 @@ if (window.createMetarsModule) {
 }
   var spcDay1Layer = null;
   var spcDay1Enabled = false;
+  var spcDay1LoadToken = 0;
+
+  function isLikelySpcPathLayer(layer){
+    try{
+      if (!layer || !layer.options) return false;
+      if (layer.__wdlProduct === 'spc_day1' || layer.__wdlSpcDay1) return true;
+      var o = layer.options || {};
+      var fill = String(o.fillColor || '').toUpperCase();
+      var stroke = String(o.color || '').toUpperCase();
+      var spcFills = ['#C1E9C1','#66A366','#FFE066','#FFA366','#E06666','#E066FF'];
+      var spcStrokes = ['#55BB55','#005500','#DDAA00','#FF6600','#CC0000','#CC00CC'];
+      var hasSpcColor = spcFills.indexOf(fill) >= 0 || spcStrokes.indexOf(stroke) >= 0;
+      var hasFill = (o.fill === true || o.fillOpacity != null);
+      return !!(hasSpcColor && hasFill);
+    }catch(e){ return false; }
+  }
+
+  function cleanupSpcDay1Orphans(){
+    try{
+      if (!map || !map._layers) return;
+      Object.keys(map._layers).forEach(function(id){
+        var layer = map._layers[id];
+        if (!isLikelySpcPathLayer(layer)) return;
+        try{ map.removeLayer(layer); }catch(e){}
+      });
+    }catch(e){}
+  }
+  window.cleanupSpcDay1Orphans = cleanupSpcDay1Orphans;
 
   function getSpcDay1Url(){
     var storyUrl = getStorySpcGeoJsonUrl();
@@ -6088,25 +6116,29 @@ if (window.createMetarsModule) {
   }
 
 
-  async function ensureSpcDay1Layer(){
+  async function ensureSpcDay1Layer(token){
     var url = getSpcDay1Url();
     if (spcDay1Layer && spcDay1Layer.__sourceUrl === url) return spcDay1Layer;
     if (spcDay1Layer){
       try{ if (map && map.hasLayer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer); }catch(e){}
       spcDay1Layer = null;
     }
+    cleanupSpcDay1Orphans();
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('SPC Day 1 HTTP ' + res.status + ': ' + url);
+    if (token !== spcDay1LoadToken || !spcDay1Enabled) return null;
     var gj = await res.json();
+    if (token !== spcDay1LoadToken || !spcDay1Enabled) return null;
     if (gj && Array.isArray(gj.features)) {
       gj = {
         type: gj.type || 'FeatureCollection',
         features: gj.features.filter(featureMatchesActiveStory)
       };
     }
-    spcDay1Layer = L.geoJSON(gj, {
+    var made = L.geoJSON(gj, {
       style:spcStyle,
       onEachFeature:function(feature, layer){
+        try{ layer.__wdlProduct = 'spc_day1'; layer.__wdlSpcDay1 = true; }catch(e){}
         layer.on('click', function(ev){
           try{
             var ll = ev && ev.latlng ? ev.latlng : layer.getBounds().getCenter();
@@ -6130,27 +6162,42 @@ if (window.createMetarsModule) {
         });
       }
     });
-    spcDay1Layer.__sourceUrl = url;
+    made.__sourceUrl = url;
+    made.__wdlProduct = 'spc_day1';
+    made.__wdlSpcDay1 = true;
+    try{ made.eachLayer(function(child){ child.__wdlProduct = 'spc_day1'; child.__wdlSpcDay1 = true; }); }catch(e){}
+    if (token !== spcDay1LoadToken || !spcDay1Enabled){
+      try{ made.remove(); }catch(e){}
+      return null;
+    }
+    spcDay1Layer = made;
     return spcDay1Layer;
   }
 
   async function setSpcDay1Enabled(on){
+    var token = ++spcDay1LoadToken;
     spcDay1Enabled = !!on;
     window.spcDay1Enabled = spcDay1Enabled;
     if (spcDay1Enabled){
       try{
-        var lyr = await ensureSpcDay1Layer();
+        var lyr = await ensureSpcDay1Layer(token);
+        if (token !== spcDay1LoadToken || !spcDay1Enabled || !lyr) return;
         if (!map.hasLayer(lyr)) lyr.addTo(map);
         if (lyr.bringToFront) lyr.bringToFront();
         setStatus('SPC Day 1 on');
       } catch(err){
-        spcDay1Enabled = false;
-        window.spcDay1Enabled = false;
-        setStatus('SPC Day 1 failed');
+        if (token === spcDay1LoadToken){
+          spcDay1Enabled = false;
+          window.spcDay1Enabled = false;
+          cleanupSpcDay1Orphans();
+          setStatus('SPC Day 1 failed');
+        }
         console.error(err);
       }
     } else {
       if (spcDay1Layer && map.hasLayer(spcDay1Layer)) map.removeLayer(spcDay1Layer);
+      spcDay1Layer = null;
+      cleanupSpcDay1Orphans();
       setStatus('SPC Day 1 off');
     }
     try{ updateProductLabel(); }catch(e){}
