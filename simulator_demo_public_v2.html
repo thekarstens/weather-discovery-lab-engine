@@ -1720,7 +1720,9 @@ document.addEventListener('DOMContentLoaded', function(){
       var title = (titleEl.textContent || '').trim().toLowerCase();
       if (typeof window.setMasterTime !== 'function') return;
 
-      // Card 1: radar image only at load, sweep OFF until user clicks
+      // Card 1: force the correct opening Doppler frame before anything else can win.
+      // Mobile was briefly showing an older radar frame before the 3 PM frame settled in,
+      // so we set the master time first, then turn radar/sweep on with a few mobile-safe retries.
       if (title.indexOf('setting the stage') !== -1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
@@ -1731,10 +1733,27 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false); }catch(e){}
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false); }catch(e){}
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
-        await setCardSweepState(false);
+
+        var mobileOpening = window.innerWidth <= 640;
+        await setCardSweepState(mobileOpening ? true : false);
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(1, [200, 700]);
         updateDopplerButton(false);
+
+        // On phones the engine can finish one early radar request after the page layout settles.
+        // These retries reassert the 3 PM clock and the intended sweep state without touching desktop.
+        if (mobileOpening) {
+          [250, 900, 1700].forEach(function(delay){
+            setTimeout(async function(){
+              try{
+                await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
+                await setCardSweepState(true);
+                if (typeof window.updateAll === 'function') window.updateAll();
+                updateDopplerButton(false);
+              }catch(e){}
+            }, delay);
+          });
+        }
       }
 
       // Card 2: SPC only
@@ -1803,7 +1822,9 @@ document.addEventListener('DOMContentLoaded', function(){
     } catch (e) {}
   }
 
-  setTimeout(enforceDemoScene, 1200);
+  // Run an early pass as soon as the story title exists so mobile does not briefly
+  // show the engine's default/older radar frame before Card 1 director timing takes over.
+  [120, 420, 1200].forEach(function(delay){ setTimeout(enforceDemoScene, delay); });
   document.addEventListener('click', function(ev){
     try{
       var t = ev.target;
