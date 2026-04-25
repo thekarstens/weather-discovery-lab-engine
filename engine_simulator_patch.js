@@ -350,8 +350,8 @@ var storyStarted = false; // do not auto-open storyboard
   window.__WDL_CFG__ = CFG;
   await loadRadarManifestIfNeeded();
 // ---------- Map ----------
-  var initView = (CFG && CFG.map && CFG.map.initialView) ? CFG.map.initialView : { lat: 43.20, lon: -96.73, zoom: 7.4 };
-  var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.20, initView.lon || -96.73], initView.zoom || 7.4);
+  var initView = (CFG && CFG.map && CFG.map.initialView) ? CFG.map.initialView : { lat: 43.55, lon: -96.73, zoom: 6 };
+  var map = L.map("map", { zoomControl:true }).setView([initView.lat || 43.55, initView.lon || -96.73], initView.zoom || 6);
   window.map = map;
 
 // ---------- Zoom badge + label transition settings ----------
@@ -2965,7 +2965,7 @@ if (toolMeasureBtn) toolMeasureBtn.onclick = function(){
   if (toolHomeBtn) toolHomeBtn.onclick = function(){
     setMeasureMode(false); setProbeMode(false); setDrawMode(false); setTrackMode(false);
     clearMeasureGraphics();
-    map.setView([43.20, -96.73], 7.4);
+    map.setView([43.55, -96.73], 6);
   };
 
   // OPEN LESSON button in banner toggles the storyteller panel
