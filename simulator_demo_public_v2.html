@@ -847,6 +847,7 @@
       window.__WDL_CAMERA_USER_MOVED = false;
       window.__WDL_CAMERA_ACTIVE_CARD = null;
 
+      window.__WDL_CAMERA_VALUES_VERSION = 'applied-priority-2026-04-25-v2';
       const CARD_VIEWS = {
         1: { mobile:{ lat:42.4424, lon:-96.7566, zoom:7 }, desktop:{ lat:43.5744, lon:-97.8662, zoom:8 } },
         2: { mobile:{ lat:41.8750, lon:-97.0825, zoom:6 }, desktop:{ lat:44.5083, lon:-99.2615, zoom:7 } },
@@ -919,13 +920,17 @@
       }
 
       function getCardView(cardId, card){
+        // IMPORTANT FOR TUNING:
+        // Use the locally tuned CARD_VIEWS first. The loaded storyboard may also
+        // contain scene.view values, and those were overriding the new numbers.
+        // Once the shots are final, these same values can be moved into storyboard.json.
+        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
+        if (bucket) return isMobileCamera() ? bucket.mobile : bucket.desktop;
+
         card = card || getTopicCardByNumber(cardId);
         var fromStoryboard = cameraFromCard(card);
         if (fromStoryboard) return fromStoryboard;
-
-        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
-        if (!bucket) return null;
-        return isMobileCamera() ? bucket.mobile : bucket.desktop;
+        return null;
       }
 
       function ensureCameraBadge(){
@@ -949,7 +954,7 @@
           var device = isMobileCamera() ? 'mobile' : 'desktop';
           var cardNum = cardId || ((currentTopicIndex || 0) + 1);
           el.innerHTML =
-            '<b>Card ' + cardNum + '</b> • ' + device + '<br>' +
+            '<b>Card ' + cardNum + '</b> • ' + device + ' • tuned v2<br>' +
             'lat: ' + c.lat.toFixed(4) + ' &nbsp; lon: ' + c.lng.toFixed(4) + '<br>' +
             'zoom: ' + Number(z).toFixed(2) + (shot ? ' <span style="opacity:.72">locked</span>' : '');
         }catch(e){}
