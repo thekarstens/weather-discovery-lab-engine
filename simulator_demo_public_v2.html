@@ -827,9 +827,22 @@
         } catch(e){ console.warn('Product toggle issue', e); }
       }
       function updateDopplerButton(showDoppler){
+        // Final demo cleanup: only show the inline LIVE Doppler button on
+        // cards that actually use the radar/Doppler experience. In the
+        // storyboard, showDoppler is true on Cards 1 and 5, and false on
+        // Cards 2, 3, 4, and 6. This keeps the SPC and Reports cards cleaner.
+        if (!storyDopplerBtn) return;
+        if (!showDoppler) {
+          storyDopplerBtn.classList.remove('active', 'pulsing');
+          storyDopplerBtn.style.display = 'none';
+          storyDopplerBtn.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        storyDopplerBtn.style.display = '';
+        storyDopplerBtn.removeAttribute('aria-hidden');
         storyDopplerBtn.classList.remove('active', 'pulsing');
         if (window.radarSweepEnabled) storyDopplerBtn.classList.add('active');
-        else if (showDoppler) storyDopplerBtn.classList.add('pulsing');
+        else storyDopplerBtn.classList.add('pulsing');
         storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
       }
 
@@ -840,7 +853,7 @@
       //   card.view.desktop / card.view.mobile from storyboard.json
       // Fallbacks below keep the current demo working until we tune every card.
       window.WDL_MOBILE_BREAKPOINT = window.WDL_MOBILE_BREAKPOINT || 700;
-      window.WDL_SHOW_CAMERA_BADGE = (window.WDL_SHOW_CAMERA_BADGE !== false);
+      window.WDL_SHOW_CAMERA_BADGE = false; // camera tuning badge removed for final demo
       // Tuning mode prevents delayed camera locks from snapping back after you manually pan/zoom.
       // Leave this true while collecting desktop/mobile camera values. Later, production can set it false.
       window.WDL_CAMERA_TUNING_MODE = false; // production/director mode: apply tuned values instead of tuning manually
@@ -849,7 +862,7 @@
       window.WDL_DIRECTOR_CAMERA_LOCK = true;
       window.__WDL_DIRECTOR_CAMERA_READY = false;
 
-      window.__WDL_CAMERA_VALUES_VERSION = 'storyboard-director-camera-v5-final-cleanup';
+      window.__WDL_CAMERA_VALUES_VERSION = 'storyboard-director-camera-v6-camera-badge-off';
       // Production camera values now live in storyboard/storyboard.json under scene.view.desktop and scene.view.mobile.
       // Keep this table empty unless you need an emergency local override while testing.
       const CARD_VIEWS = {};
@@ -1708,7 +1721,9 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true);
       if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true);
-      if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+      if (typeof window.setSweepEnabled === 'function') window.setSweepEnabled(true);
+      else if (typeof window.toggleSweep === 'function' && !window.radarSweepEnabled) window.toggleSweep();
+      if (typeof window.__forceLiveDopplerSweepRestart === 'function') window.__forceLiveDopplerSweepRestart();
       if (typeof updateDopplerButton === 'function') updateDopplerButton(false);
     }catch(e){}
   }
@@ -1736,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
         var mobileOpening = window.innerWidth <= 640;
         await setCardSweepState(mobileOpening ? true : false);
+        if (mobileOpening && typeof window.__forceLiveDopplerSweepRestart === 'function') window.__forceLiveDopplerSweepRestart();
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(1, [200, 700]);
         updateDopplerButton(false);
@@ -1748,6 +1764,7 @@ document.addEventListener('DOMContentLoaded', function(){
               try{
                 await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
                 await setCardSweepState(true);
+                if (typeof window.__forceLiveDopplerSweepRestart === 'function') window.__forceLiveDopplerSweepRestart();
                 if (typeof window.updateAll === 'function') window.updateAll();
                 updateDopplerButton(false);
               }catch(e){}
@@ -1804,7 +1821,6 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false); }catch(e){}
         try{ if (typeof window.setLightningEnabled === 'function') await window.setLightningEnabled(true); }catch(e){}
         try{ if (window.innerWidth <= 640 && typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){}
-        if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
         lockCardView(5, [180]);
         updateDopplerButton(true);
