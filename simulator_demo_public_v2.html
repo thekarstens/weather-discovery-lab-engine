@@ -680,7 +680,9 @@
   <div class="warning-count-box" id="warningCountBox"><div class="label">Warnings in Effect</div><div class="count" id="warningCountValue">0</div></div>
   <div class="ticker-wrap" id="simTickerWrap"><div class="ticker-label">Weather Alert</div><div class="ticker-marquee"><div class="ticker-marquee-inner" id="simTickerText">Simulator v5 ready • Storyboard now works as time-group topic cards • Advance Timeline moves time forward •</div></div></div>
 
-  <script>function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
+  <script>
+window.__WDL_FORCE_HRRR_TEMP_PROBE = false;
+function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
   <script src="./simulatorConfig_v5.js"></script>
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
@@ -982,6 +984,15 @@
             if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
           } else if (has('cape') || has('hrrr_cape')) {
             if (typeof window.setHrrrCapeEnabled === 'function') await window.setHrrrCapeEnabled(true);
+          }
+
+          // Card 3 uses surface wind particles as a visual layer, but the probe
+          // target should remain HRRR temperature.
+          if ((has('model_temp') || has('hrrr_temp') || has('future_temp')) && (has('surface_winds') || has('surface_wind') || has('surface_particles'))) {
+            window.__WDL_FORCE_HRRR_TEMP_PROBE = true;
+            try { window.hrrrProductMode = 'temp'; } catch(e){}
+            if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true);
+            else if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true);
           }
         } catch(e){ console.warn('Product toggle issue', e); }
       }
@@ -1888,6 +1899,9 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   async function enforceDemoScene(){
+        // Final demo: default probe behavior is normal unless Card 3 turns this on.
+        window.__WDL_FORCE_HRRR_TEMP_PROBE = false;
+
     try{
       var titleEl = document.getElementById('storyTitle');
       if (!titleEl) return;
@@ -1945,6 +1959,7 @@ document.addEventListener('DOMContentLoaded', function(){
       // Do NOT turn HRRR/velocity off and back on here; that caused the visible flash
       // and the leaflet-velocity null errors during the Card 3 transition.
       if (title.indexOf('surface setup') !== -1 || title.indexOf('model temperatures') !== -1) {
+        window.__WDL_FORCE_HRRR_TEMP_PROBE = true;
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
