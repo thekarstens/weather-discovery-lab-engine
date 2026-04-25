@@ -915,6 +915,30 @@ function formatReportTimeFriendly(raw){
   return { big:txt, small:'Report time' };
 }
 
+
+function ensureWdlReportPopupStyle(){
+  try{
+    if (document.getElementById('wdlReportPopupFinalStyle')) return;
+    var style = document.createElement('style');
+    style.id = 'wdlReportPopupFinalStyle';
+    style.textContent = `
+      .wdl-report-popup{min-width:310px;max-width:380px;font-family:"Lato",Arial,sans-serif;}
+      .wdl-report-popup .wdl-report-type{font-size:18px!important;line-height:1.05!important;}
+      .wdl-report-popup .wdl-report-time{font-size:24px!important;line-height:1.05!important;letter-spacing:.2px!important;}
+      .wdl-report-popup .wdl-report-detail{font-size:15px!important;line-height:1.25!important;}
+      .wdl-report-popup .wdl-report-remarks{font-size:15px!important;line-height:1.32!important;}
+      @media (max-width:700px){
+        .wdl-report-popup{min-width:285px;max-width:330px;}
+        .wdl-report-popup .wdl-report-type{font-size:17px!important;}
+        .wdl-report-popup .wdl-report-time{font-size:22px!important;}
+        .wdl-report-popup .wdl-report-detail,.wdl-report-popup .wdl-report-remarks{font-size:14px!important;}
+      }
+    `;
+    document.head.appendChild(style);
+  }catch(e){}
+}
+ensureWdlReportPopupStyle();
+
 function buildReportPopup(p, type){
   p = p || {};
   var normalizedType = String(type || normalizeReportType({properties:p}) || 'other').toUpperCase();
