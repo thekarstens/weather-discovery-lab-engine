@@ -1496,6 +1496,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 2) {
+        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
@@ -1505,6 +1506,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 3) {
+        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
@@ -1517,20 +1519,29 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        setTimeout(function(){
-          try{ if (typeof window.setSpcDay1Enabled === 'function') window.setSpcDay1Enabled(false); }catch(e){}
+        setTimeout(async function(){
+          try{ await hardResetForCardSwitch(); }catch(e){}
+          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
+          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
-          try{ if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true); }catch(e){}
+          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
+          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
         }, 180);
-        setTimeout(function(){
-          try{ if (typeof window.setSpcDay1Enabled === 'function') window.setSpcDay1Enabled(false); }catch(e){}
+        setTimeout(async function(){
+          try{ await hardResetForCardSwitch(); }catch(e){}
+          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
+          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
+          try{ window.hrrrProductMode = 'temp'; }catch(e){}
+          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
+          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
         }, 700);
         return;
       }
 
       if (idx === 4) {
+        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
@@ -1544,6 +1555,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 5) {
+        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true); }catch(e){}
@@ -1560,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 6) {
+        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true); }catch(e){}
@@ -1579,7 +1592,7 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       var t = ev.target;
       if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('.story-card-chip'))) {
-        setTimeout(enforceDemoScene, 500);
+        setTimeout(enforceDemoScene, 120); setTimeout(enforceDemoScene, 500);
       }
     } catch (e) {}
   });
