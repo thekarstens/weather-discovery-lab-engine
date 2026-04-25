@@ -871,23 +871,85 @@ function pointLayerForReport(feature, latlng){
   });
 }
 
+function getReportRawTime(p){
+  p = p || {};
+  return p.valid || p.utc_valid || p.time || p.datetime || p.timestamp || '';
+}
+
+function formatReportTimeFriendly(raw){
+  if (!raw) return { big:'TIME N/A', small:'' };
+  var d = new Date(raw);
+  if (!isNaN(d)){
+    var big = '';
+    var small = '';
+    try{
+      big = d.toLocaleTimeString('en-US', {
+        hour:'numeric',
+        minute:'2-digit',
+        hour12:true,
+        timeZone:'America/Chicago'
+      }).replace(' AM',' AM').replace(' PM',' PM');
+      small = d.toLocaleDateString('en-US', {
+        weekday:'short',
+        month:'short',
+        day:'numeric',
+        timeZone:'America/Chicago'
+      }) + ' • Central Time';
+    }catch(e){
+      big = String(raw);
+      small = '';
+    }
+    return { big:big, small:small };
+  }
+
+  // Some LSR files use compact numeric strings. Keep this readable even if
+  // Date.parse cannot understand the raw value.
+  var txt = String(raw).trim();
+  var m = txt.match(/(\d{1,2})(\d{2})\s*(AM|PM|am|pm)?/);
+  if (m){
+    var hour = String(Number(m[1]));
+    var min = m[2];
+    var ap = m[3] ? (' ' + m[3].toUpperCase()) : '';
+    return { big:hour + ':' + min + ap, small:'Report time' };
+  }
+  return { big:txt, small:'Report time' };
+}
+
 function buildReportPopup(p, type){
+  p = p || {};
+  var normalizedType = String(type || normalizeReportType({properties:p}) || 'other').toUpperCase();
   var title = escapeHtml((p.type || p.typetext || p.event || 'Storm Report'));
-  var when = escapeHtml(p.valid || p.utc_valid || p.time || p.datetime || '');
+  var rawTime = getReportRawTime(p);
+  var friendlyTime = formatReportTimeFriendly(rawTime);
   var city = escapeHtml(p.city || p.town || p.location || '');
   var state = escapeHtml(p.state || '');
   var source = escapeHtml(p.source || p.office || '');
   var mag = escapeHtml(p.magnitude || p.mag || p.size || '');
   var remark = escapeHtml(p.remark || p.comments || p.text || p.narrative || '');
+  var typeColor = reportColor(String(type || '').toLowerCase());
 
-  var parts = [
-    "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + title + "</div>"
-  ];
-  if (when) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:4px'><b>Time:</b> " + when + "</div>");
-  if (city || state) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Location:</b> " + [city, state].filter(Boolean).join(', ') + "</div>");
-  if (mag) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Magnitude:</b> " + mag + "</div>");
-  if (source) parts.push("<div style='font:800 12px/1.2 Arial,sans-serif;margin-top:3px'><b>Source:</b> " + source + "</div>");
-  if (remark) parts.push("<div style='font:800 12px/1.3 Arial,sans-serif;margin-top:6px'>" + remark + "</div>");
+  var where = [city, state].filter(Boolean).join(', ');
+  var parts = [];
+  parts.push(
+    "<div style='min-width:238px;max-width:330px;font-family:Lato,Arial,sans-serif;color:#101820'>" +
+      "<div style='border-radius:14px;overflow:hidden;border:2px solid #111;background:#fff;box-shadow:0 8px 18px rgba(0,0,0,.22)'>" +
+        "<div style='background:linear-gradient(180deg,#1b2e49,#0b1728);color:#fff;padding:8px 11px;display:flex;align-items:center;gap:8px'>" +
+          "<div style='width:12px;height:12px;border-radius:50%;background:" + typeColor + ";box-shadow:0 0 10px " + typeColor + "'></div>" +
+          "<div style='font:900 12px/1 Lato,Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase'>Storm Report</div>" +
+        "</div>" +
+        "<div style='padding:10px 12px 11px;background:linear-gradient(180deg,#ffffff,#f2f5f8)'>" +
+          "<div style='font:900 22px/1 Lato,Arial,sans-serif;color:#b31414;letter-spacing:.2px'>" + escapeHtml(friendlyTime.big) + "</div>" +
+          (friendlyTime.small ? "<div style='margin-top:3px;font:900 10px/1.15 Lato,Arial,sans-serif;color:#526579;letter-spacing:.7px;text-transform:uppercase'>" + escapeHtml(friendlyTime.small) + "</div>" : "") +
+          "<div style='height:1px;background:rgba(16,36,58,.15);margin:9px 0'></div>" +
+          "<div style='font:900 16px/1.1 Lato,Arial,sans-serif;text-transform:uppercase;color:#0b1728'>" + title + "</div>" +
+          (where ? "<div style='margin-top:7px;font:900 13px/1.2 Lato,Arial,sans-serif;color:#1d3551'><span style='opacity:.68'>LOCATION:</span> " + escapeHtml(where) + "</div>" : "") +
+          (mag ? "<div style='margin-top:5px;font:900 13px/1.2 Lato,Arial,sans-serif;color:#1d3551'><span style='opacity:.68'>MAGNITUDE:</span> " + mag + "</div>" : "") +
+          (source ? "<div style='margin-top:5px;font:900 12px/1.2 Lato,Arial,sans-serif;color:#3e5874'><span style='opacity:.68'>SOURCE:</span> " + source + "</div>" : "") +
+          (remark ? "<div style='margin-top:9px;padding:8px 9px;border-radius:10px;background:#e9eef5;font:800 13px/1.28 Lato,Arial,sans-serif;color:#1b2e49'>" + remark + "</div>" : "") +
+        "</div>" +
+      "</div>" +
+    "</div>"
+  );
   return parts.join('');
 }
 
