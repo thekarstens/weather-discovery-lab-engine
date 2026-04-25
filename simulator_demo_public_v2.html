@@ -843,11 +843,13 @@
       window.WDL_SHOW_CAMERA_BADGE = (window.WDL_SHOW_CAMERA_BADGE !== false);
       // Tuning mode prevents delayed camera locks from snapping back after you manually pan/zoom.
       // Leave this true while collecting desktop/mobile camera values. Later, production can set it false.
-      window.WDL_CAMERA_TUNING_MODE = (window.WDL_CAMERA_TUNING_MODE !== false);
+      window.WDL_CAMERA_TUNING_MODE = false; // production/director mode: apply tuned values instead of tuning manually
       window.__WDL_CAMERA_USER_MOVED = false;
       window.__WDL_CAMERA_ACTIVE_CARD = null;
+      window.WDL_DIRECTOR_CAMERA_LOCK = true;
+      window.__WDL_DIRECTOR_CAMERA_READY = false;
 
-      window.__WDL_CAMERA_VALUES_VERSION = 'applied-priority-2026-04-25-v2';
+      window.__WDL_CAMERA_VALUES_VERSION = 'director-camera-force-v3';
       const CARD_VIEWS = {
         1: { mobile:{ lat:42.4424, lon:-96.7566, zoom:7 }, desktop:{ lat:43.5744, lon:-97.8662, zoom:8 } },
         2: { mobile:{ lat:41.8750, lon:-97.0825, zoom:6 }, desktop:{ lat:44.5083, lon:-99.2615, zoom:7 } },
@@ -985,8 +987,9 @@
           if (!v || !window.map || typeof window.map.setView !== 'function') return;
           withCameraAutomation(function(){
             if (typeof window.map.stop === 'function') window.map.stop();
-            if (typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
-            window.map.setView([v.lat, v.lon], v.zoom, { animate:false });
+            if (typeof window.map.invalidateSize === 'function') window.map.invalidateSize({ pan:false, animate:false });
+            window.map.setView([v.lat, v.lon], v.zoom, { animate:false, reset:true });
+            window.__WDL_DIRECTOR_CAMERA_READY = true;
           });
           setTimeout(function(){ try{ if (window.map && window.map.invalidateSize) window.map.invalidateSize(); updateCameraBadge(cardId, v); }catch(e){} }, 60);
         }catch(e){}
@@ -998,6 +1001,7 @@
         if (changedCard) {
           window.__WDL_CAMERA_ACTIVE_CARD = cardId;
           window.__WDL_CAMERA_USER_MOVED = false;
+          window.__WDL_DIRECTOR_CAMERA_READY = false;
         } else if (window.WDL_CAMERA_TUNING_MODE && window.__WDL_CAMERA_USER_MOVED) {
           // This is the key tuning fix. enforceDemoScene() and late layer updates can call
           // lockCardView() again on the same card. Once you manually pan/zoom, ignore them.
@@ -1033,7 +1037,9 @@
       };
       window.__setCameraTuningMode = function(on){
         window.WDL_CAMERA_TUNING_MODE = (on !== false);
+        window.WDL_DIRECTOR_CAMERA_LOCK = !window.WDL_CAMERA_TUNING_MODE;
         window.__WDL_CAMERA_USER_MOVED = false;
+        window.__WDL_DIRECTOR_CAMERA_READY = false;
         console.log('Camera tuning mode:', window.WDL_CAMERA_TUNING_MODE ? 'ON' : 'OFF');
         updateCameraBadge();
         return window.WDL_CAMERA_TUNING_MODE;
@@ -1051,9 +1057,12 @@
             var original = window.map[name].bind(window.map);
             window.map['__wdlOriginal_' + name] = original;
             window.map[name] = function(){
-              if (window.WDL_CAMERA_TUNING_MODE && window.__WDL_CAMERA_USER_MOVED && !window.__WDL_ALLOW_CAMERA_AUTOMATION) {
+              if (!window.__WDL_ALLOW_CAMERA_AUTOMATION && (
+                  (window.WDL_CAMERA_TUNING_MODE && window.__WDL_CAMERA_USER_MOVED) ||
+                  (window.WDL_DIRECTOR_CAMERA_LOCK && window.__WDL_DIRECTOR_CAMERA_READY)
+                )) {
                 updateCameraBadge();
-                try{ console.log('Camera tuning blocked automatic map.' + name + '()'); }catch(e){}
+                try{ console.log('Director camera blocked automatic map.' + name + '()'); }catch(e){}
                 return window.map;
               }
               return original.apply(null, arguments);
@@ -1256,6 +1265,12 @@
         }).join('');
         renderModelTimeControls(card);
         try{ updateCameraBadge((currentTopicIndex || 0) + 1); }catch(e){}
+
+        // Apply the tuned director camera immediately when the visible story card changes.
+        // This is earlier and more reliable than waiting for enforceDemoScene() title matching.
+        if (cardChanged && typeof lockCardView === 'function') {
+          try{ lockCardView((currentTopicIndex || 0) + 1, [120, 500, 1200]); }catch(e){}
+        }
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
