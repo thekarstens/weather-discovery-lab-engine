@@ -2089,7 +2089,7 @@ document.addEventListener('click', function(ev){
     }).catch(function(err){ console.error(err); setStatus('Satellite failed'); });
   }
   if (RADAR_MANIFEST && Array.isArray(RADAR_MANIFEST.leaflet_bounds) && RADAR_MANIFEST.leaflet_bounds.length === 2){
-    try { /* demo: radar manifest auto-fit disabled to prevent camera override */ } catch(e){}
+    try { map.fitBounds(L.latLngBounds(RADAR_MANIFEST.leaflet_bounds), { padding:[20,20] }); } catch(e){}
   }
 
   // Custom lower-right zoom buttons
@@ -4320,13 +4320,13 @@ function safeLink(url){
 
     if (storyStarted) { storyOpen(); }
 
-    applyStoryScene(item);    if (panTo && item.lat != null && item.lon != null) {
-      if (!(window.__WDL_SIMULATOR_LOCAL_STORY__ || window.__WDL_DEMO_CAMERA_LOCK__)) {
-        if (item.zoom != null && isFinite(item.zoom)) {
-          map.setView([item.lat, item.lon], item.zoom, { animate:true });
-        } else {
-          map.panTo([item.lat, item.lon], { animate:true });
-        }
+    applyStoryScene(item);
+
+    if (panTo && item.lat != null && item.lon != null) {
+      if (item.zoom != null && isFinite(item.zoom)) {
+        map.setView([item.lat, item.lon], item.zoom, { animate:true });
+      } else {
+        map.panTo([item.lat, item.lon], { animate:true });
       }
     }
   }
