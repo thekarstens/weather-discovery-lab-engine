@@ -6597,6 +6597,7 @@ if (window.createMetarsModule) {
   var hrrrLoadPromise = null;
   var hrrrLoadToken = 0;
   var hrrrDisplayedUrl = '';
+  var hrrrDisplayedBoundsKey = '';
   var hrrrPendingUrl = '';
   var hrrrTempEnabled = false;
   var hrrrTempLayer = null;
@@ -6699,13 +6700,58 @@ var hrrrProductMode = 'temp';
   }
   function parseHrrrBounds(raw){
     if (!raw) return null;
-    var b = raw.bounds || raw.bbox || raw.leaflet_bounds || raw;
-    var south = Number(b.south ?? b.min_latitude ?? b.minLat ?? (Array.isArray(b) ? b[0]?.[0] : NaN));
-    var north = Number(b.north ?? b.max_latitude ?? b.maxLat ?? (Array.isArray(b) ? b[1]?.[0] : NaN));
-    var west  = _normLon(b.west ?? b.min_longitude ?? b.minLon ?? (Array.isArray(b) ? b[0]?.[1] : NaN));
-    var east  = _normLon(b.east ?? b.max_longitude ?? b.maxLon ?? (Array.isArray(b) ? b[1]?.[1] : NaN));
-    if (![south,north,west,east].every(isFinite)) return null;
-    return [[south, west],[north, east]];
+
+    // HRRR manifests have been created in a few slightly different formats.
+    // Normalize them all to Leaflet's [[south, west], [north, east]] form.
+    // This prevents image overlays from "floating" or shifting when desktop/mobile
+    // camera views change.
+    var b = raw.bounds || raw.bbox || raw.leaflet_bounds || raw.leafletBounds || raw.imageBounds || raw.extent || raw;
+
+    function validLat(v){ v = Number(v); return isFinite(v) && Math.abs(v) <= 90; }
+    function validLon(v){ v = Number(v); return isFinite(v) && Math.abs(v) <= 360; }
+    function makeBounds(south, west, north, east){
+      south = Number(south); north = Number(north);
+      west = _normLon(Number(west)); east = _normLon(Number(east));
+      if (![south, north, west, east].every(isFinite)) return null;
+      if (!validLat(south) || !validLat(north) || !validLon(west) || !validLon(east)) return null;
+      var s = Math.min(south, north);
+      var n = Math.max(south, north);
+      var w = Math.min(west, east);
+      var e = Math.max(west, east);
+      return [[s, w], [n, e]];
+    }
+
+    // Object formats
+    if (!Array.isArray(b) && typeof b === 'object') {
+      return makeBounds(
+        b.south ?? b.min_latitude ?? b.minLat ?? b.ymin ?? b.minY,
+        b.west  ?? b.min_longitude ?? b.minLon ?? b.xmin ?? b.minX,
+        b.north ?? b.max_latitude ?? b.maxLat ?? b.ymax ?? b.maxY,
+        b.east  ?? b.max_longitude ?? b.maxLon ?? b.xmax ?? b.maxX
+      );
+    }
+
+    // Four-number array. Could be [south, west, north, east] or [west, south, east, north].
+    if (Array.isArray(b) && b.length === 4 && b.every(function(v){ return isFinite(Number(v)); })) {
+      var a = b.map(Number);
+      if (Math.abs(a[0]) > 90 && Math.abs(a[1]) <= 90) {
+        return makeBounds(a[1], a[0], a[3], a[2]); // lon/lat/lon/lat
+      }
+      return makeBounds(a[0], a[1], a[2], a[3]); // lat/lon/lat/lon
+    }
+
+    // Two-corner array. Could be [[south, west], [north, east]] or [[west, south], [east, north]].
+    if (Array.isArray(b) && b.length >= 2 && Array.isArray(b[0]) && Array.isArray(b[1])) {
+      var p0 = b[0].map(Number), p1 = b[1].map(Number);
+      if (p0.length >= 2 && p1.length >= 2) {
+        if (Math.abs(p0[0]) > 90 && Math.abs(p0[1]) <= 90) {
+          return makeBounds(p0[1], p0[0], p1[1], p1[0]); // lon/lat pair format
+        }
+        return makeBounds(p0[0], p0[1], p1[0], p1[1]); // lat/lon pair format
+      }
+    }
+
+    return null;
   }
   function parseHrrrFrames(raw){
     var frames = [];
@@ -6719,7 +6765,14 @@ var hrrrProductMode = 'temp';
       var tRaw = f.time || f.valid || f.utc || f.datetime || f.ts || null;
       var t = tRaw ? new Date(tRaw) : null;
       var timeMs = (t && !isNaN(t)) ? t.getTime() : NaN;
-      frames.push({ file:file, label:f.label || f.name || ('F' + String(i).padStart(2,'0')), time:tRaw || null, timeMs:timeMs, points:f.points || f.pointFile || f.pointsFile || raw.points || raw.pointFile || raw.pointsFile || null });
+      frames.push({
+        file:file,
+        label:f.label || f.name || ('F' + String(i).padStart(2,'0')),
+        time:tRaw || null,
+        timeMs:timeMs,
+        points:f.points || f.pointFile || f.pointsFile || raw.points || raw.pointFile || raw.pointsFile || null,
+        bounds:parseHrrrBounds(f) || null
+      });
     });
     return frames;
   }
@@ -6740,8 +6793,10 @@ var hrrrProductMode = 'temp';
       window.__HRRR_FRAMES__ = hrrrFrames;
       window.__HRRR_MANIFEST_URL__ = hrrrManifestUrl;
       window.__HRRR_MANIFEST_BASE_URL__ = hrrrManifestBaseUrl;
+      if (!hrrrBounds && hrrrFrames.length && hrrrFrames[0].bounds) hrrrBounds = hrrrFrames[0].bounds;
       if (!hrrrBounds) throw new Error('HRRR manifest missing bounds');
       if (!hrrrFrames.length) throw new Error('HRRR manifest has no frames');
+      try{ console.log('✅ HRRR bounds:', hrrrBounds, 'manifest:', hrrrManifestUrl); }catch(e){}
       setStatus('HRRR loaded: ' + hrrrFrames.length + ' frames');
       return raw;
     }).catch(function(err){
@@ -6917,13 +6972,16 @@ function parseHrrrPointsPayload(raw){
     if (!hrrrTempEnabled){
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
       hrrrPendingUrl = '';
+      hrrrDisplayedBoundsKey = '';
       return;
     }
     var frame = currentHrrrFrame();
-    if (!frame || !hrrrBounds) return;
+    var activeBounds = (frame && frame.bounds) ? frame.bounds : hrrrBounds;
+    if (!frame || !activeBounds) return;
     var url = hrrrFrameUrl(frame);
     if (!url) return;
-    if (url === hrrrDisplayedUrl || url === hrrrPendingUrl) return;
+    var boundsKey = JSON.stringify(activeBounds);
+    if ((url === hrrrDisplayedUrl && boundsKey === hrrrDisplayedBoundsKey) || url === hrrrPendingUrl) return;
     hrrrPendingUrl = url;
     var token = ++hrrrLoadToken;
     var img = new Image();
@@ -6932,10 +6990,12 @@ function parseHrrrPointsPayload(raw){
       if (token !== hrrrLoadToken) return;
       hrrrPendingUrl = '';
       hrrrDisplayedUrl = url;
+      hrrrDisplayedBoundsKey = boundsKey;
+      try{ if (map && map.invalidateSize) map.invalidateSize(false); }catch(e){}
       if (hrrrTempLayer && map.hasLayer(hrrrTempLayer)) map.removeLayer(hrrrTempLayer);
       var activeKey = (hrrrProductMode === 'radar') ? 'hrrrRadar' : ((hrrrProductMode === 'winds') ? 'hrrrWinds' : ((hrrrProductMode === 'cape') ? 'hrrrCape' : 'hrrrTemp'));
       var op = productOpacity[activeKey] || 0.70;
-      hrrrTempLayer = L.imageOverlay(url, hrrrBounds, { opacity: op, interactive:false });
+      hrrrTempLayer = L.imageOverlay(url, activeBounds, { opacity: op, interactive:false });
       window.hrrrTempLayer = hrrrTempLayer;
       hrrrTempLayer.addTo(map);
       applyActiveOpacity();
@@ -7006,6 +7066,16 @@ function parseHrrrPointsPayload(raw){
   window.setHrrrRadarEnabled = setHrrrRadarEnabled;
   window.setHrrrWindsEnabled = setHrrrWindsEnabled;
   window.setHrrrCapeEnabled = setHrrrCapeEnabled;
+  window.__debugHrrrBounds = function(){
+    return {
+      product: hrrrProductMode,
+      manifestUrl: hrrrManifestUrl,
+      manifestBounds: hrrrBounds,
+      frame: currentHrrrFrame(),
+      displayedUrl: hrrrDisplayedUrl,
+      displayedBoundsKey: hrrrDisplayedBoundsKey
+    };
+  };
 
   async function setSatelliteEnabled(on){
     goesEnabled = !!on;
