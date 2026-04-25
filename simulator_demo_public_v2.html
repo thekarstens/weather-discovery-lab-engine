@@ -535,92 +535,35 @@
   <script src="./engine_simulator_patch.js"></script>
   <script>
     (function(){
-      function absUrl(base, rel){
-        if (!rel) return '';
-        if (/^https?:\/\//i.test(rel)) return rel;
-        var b = String(base || '');
-        var r = String(rel).replace(/^\.\//,'').replace(/^\//,'');
-        return (b.endsWith('/') ? b : (b + '/')) + r;
-      }
-
-      var localOverlayLayer = null;
-      async function clearLocalOverlay(){
-        try{
-          if (localOverlayLayer && window.map && window.map.hasLayer && window.map.hasLayer(localOverlayLayer)) {
-            window.map.removeLayer(localOverlayLayer);
-          }
-        }catch(e){}
-        localOverlayLayer = null;
-        try{
-          if (window.storyOverlayLayer && window.map && window.map.hasLayer && window.map.hasLayer(window.storyOverlayLayer)) {
-            window.map.removeLayer(window.storyOverlayLayer);
-          }
-        }catch(e){}
-        try{ window.storyOverlayLayer = null; }catch(e){}
-      }
-
-      function getLocalOverlayUrl(){
-        try{
-          var rel = String(window.__WDL_LOCAL_OVERLAY_URL_OVERRIDE || '');
-          if (!rel) return '';
-          return absUrl(window.DATA_BASE || '', rel);
-        }catch(e){ return ''; }
-      }
-
-      var waitForEngine = function(){
-        if (typeof window.setStoryOverlayEnabled !== 'function' || !window.map) {
-          setTimeout(waitForEngine, 120);
+      function waitForStoryOverlayHook(){
+        if (typeof window.setStoryOverlayEnabled !== 'function') {
+          setTimeout(waitForStoryOverlayHook, 120);
           return;
         }
         if (window.__wdlOriginalSetStoryOverlayEnabled) return;
 
         window.__wdlOriginalSetStoryOverlayEnabled = window.setStoryOverlayEnabled;
+        window.__WDL_SUPPRESS_STORY_OVERLAY = false;
+        window.__WDL_FORCE_STORY_OVERLAY_RELOAD = false;
 
         window.setStoryOverlayEnabled = async function(on){
-          var localUrl = getLocalOverlayUrl();
-
-          if (!on){
-            try{ await window.__wdlOriginalSetStoryOverlayEnabled(false); }catch(e){}
-            await clearLocalOverlay();
-            return;
+          if (!on || window.__WDL_SUPPRESS_STORY_OVERLAY) {
+            try { return await window.__wdlOriginalSetStoryOverlayEnabled(false); }
+            catch(e){ return; }
           }
 
-          if (!localUrl){
-            try{ await window.__wdlOriginalSetStoryOverlayEnabled(false); }catch(e){}
-            await clearLocalOverlay();
-            return;
+          if (window.__WDL_FORCE_STORY_OVERLAY_RELOAD) {
+            try { if (typeof clearFrontDecorators === 'function') clearFrontDecorators(); } catch(e){}
+            try { if (typeof clearStoryOverlay === 'function') clearStoryOverlay(); } catch(e){}
+            try { storyOverlaySourceUrl = ''; } catch(e){}
+            try { window.storyOverlayLayer = null; } catch(e){}
+            window.__WDL_FORCE_STORY_OVERLAY_RELOAD = false;
           }
 
-          // Use the card's local overlay URL as the source of truth for public-demo card scenes.
-          try{ await window.__wdlOriginalSetStoryOverlayEnabled(false); }catch(e){}
-          await clearLocalOverlay();
-
-          try{
-            var res = await fetch(localUrl + (localUrl.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
-            if (!res.ok) throw new Error('Overlay HTTP ' + res.status + ': ' + localUrl);
-            var gj = await res.json();
-            localOverlayLayer = L.geoJSON(gj, {
-              pane: 'lines',
-              style: function(feature){
-                var p = (feature && feature.properties) ? feature.properties : {};
-                var ftype = String(p.front || p.FRONT || p.kind || p.type || '').toLowerCase();
-                var color = '#111';
-                if (ftype.indexOf('cold') !== -1) color = '#1e88e5';
-                else if (ftype.indexOf('warm') !== -1) color = '#e53935';
-                else if (ftype.indexOf('occluded') !== -1) color = '#8e24aa';
-                else if (ftype.indexOf('stationary') !== -1) color = '#43a047';
-                else if (ftype.indexOf('dryline') !== -1) color = '#d08a21';
-                return { pane:'lines', color: color, weight: 3, opacity: 0.95 };
-              }
-            }).addTo(window.map);
-            window.storyOverlayLayer = localOverlayLayer;
-          }catch(err){
-            console.error('Local overlay wrapper failed:', err);
-            await clearLocalOverlay();
-          }
+          return await window.__wdlOriginalSetStoryOverlayEnabled(true);
         };
-      };
-      waitForEngine();
+      }
+      waitForStoryOverlayHook();
     })();
   </script>
   <script>
@@ -803,7 +746,7 @@
           return card;
         });
       }
-      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler, overlayUrl: c.overlayUrl || null }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler), overlayUrl: (step.scene && (step.scene.overlayUrl || step.scene.geojson || step.scene.url || step.scene.dataUrl)) || null }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
+      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
       function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
@@ -1136,7 +1079,6 @@
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
         renderModelTimeControls(card);
-        try{ window.__WDL_LOCAL_OVERLAY_URL_OVERRIDE = (card && card.overlayUrl) ? String(card.overlayUrl) : ''; }catch(e){}
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
@@ -1587,18 +1529,20 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 2) {
-        try{ window.__WDL_LOCAL_OVERLAY_URL_OVERRIDE = ''; }catch(e){}
+        try{ window.__WDL_SUPPRESS_STORY_OVERLAY = true; }catch(e){}
+        try{ window.__WDL_FORCE_STORY_OVERLAY_RELOAD = false; }catch(e){}
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        /* card 2: preserve current viewer map view */
+        /* card 2: SPC product only, no story overlay handoff */
         return;
       }
 
       if (idx === 3) {
-        try{ var __c3 = (Array.isArray(topicCards) && topicCards[2]) ? topicCards[2] : null; window.__WDL_LOCAL_OVERLAY_URL_OVERRIDE = (__c3 && __c3.overlayUrl) ? String(__c3.overlayUrl) : ''; }catch(e){}
+        try{ window.__WDL_SUPPRESS_STORY_OVERLAY = false; }catch(e){}
+        try{ window.__WDL_FORCE_STORY_OVERLAY_RELOAD = true; }catch(e){}
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
@@ -1634,6 +1578,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 4) {
+        try{ window.__WDL_SUPPRESS_STORY_OVERLAY = false; }catch(e){}
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
@@ -1648,6 +1593,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 5) {
+        try{ window.__WDL_SUPPRESS_STORY_OVERLAY = false; }catch(e){}
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
@@ -1665,6 +1611,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 6) {
+        try{ window.__WDL_SUPPRESS_STORY_OVERLAY = false; }catch(e){}
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
