@@ -2986,6 +2986,47 @@ function setDrawMode(on){
   map.on("mousemove", moveTrackDrag);
   map.on("mouseup", endTrackDrag);
 
+
+// WDL final demo: Card 3 should probe HRRR model temperatures, not the surface-wind particles.
+function __wdlForceHrrrTempProbeActive(){
+  try { return !!window.__WDL_FORCE_HRRR_TEMP_PROBE; } catch(e) { return false; }
+}
+function __wdlGetForcedTempProbeValue(point){
+  if (!point) return NaN;
+  var candidates = [
+    point.tF,
+    point.tempF,
+    point.temperatureF,
+    point.temp_f,
+    point.tmpf,
+    point.temp,
+    point.temperature,
+    point["2_meter_temperature"]
+  ];
+  for (var i=0; i<candidates.length; i++){
+    var v = Number(candidates[i]);
+    if (isFinite(v)) return v;
+  }
+  // Only use generic value if this is not a wind/CAPE point.
+  if (point.mph == null && point.cape == null && point.unit !== 'mph' && point.unit !== ' J/kg'){
+    var gv = Number(point.value);
+    if (isFinite(gv)) return gv;
+  }
+  return NaN;
+}
+function __wdlShowTempProbeLoadingPopup(latlng){
+  try{
+    L.popup({ closeButton:true, className:"hrrr-popup" })
+      .setLatLng(latlng)
+      .setContent(
+        "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>HRRR Temperature Probe</div>" +
+        "<div style='font:900 20px/1.15 Arial,sans-serif'>Temperature data is still loading.</div>" +
+        "<div style='font:800 13px/1.25 Arial,sans-serif;opacity:.82;margin-top:5px'>Try again in a moment.</div>"
+      )
+      .openOn(map);
+  }catch(e){}
+}
+
   // ----- Probe click handler (HRRR temp nearest point) -----
   function handleProbeClick(e){
     if (!e || !e.latlng) return;
@@ -3002,9 +3043,14 @@ function setDrawMode(on){
           if (d < bestD){ bestD = d; best = p; }
         }
         if (best){
-          var probeTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
-          var probeUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
-          var probeValue = (typeof best.value === "number") ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
+          var forceTempProbe = __wdlForceHrrrTempProbeActive();
+          var probeTitle = forceTempProbe ? 'HRRR Temperature' : ((window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature'));
+          var probeUnit = forceTempProbe ? '°F' : (best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F')));
+          var probeValue = forceTempProbe ? __wdlGetForcedTempProbeValue(best) : ((typeof best.value === "number") ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF)));
+          if (forceTempProbe && !isFinite(probeValue)){
+            __wdlShowTempProbeLoadingPopup(e.latlng);
+            return;
+          }
           var probeText = (probeValue == null || !isFinite(probeValue)) ? "—" : (Math.round(probeValue) + probeUnit);
           var content =
             "<div style='font:900 14px/1 Arial,sans-serif;opacity:.9'>" + probeTitle + "</div>" +
@@ -3017,6 +3063,11 @@ function setDrawMode(on){
         }
       }
     }catch(_){}
+
+    if (__wdlForceHrrrTempProbeActive()){
+      __wdlShowTempProbeLoadingPopup(e.latlng);
+      return;
+    }
 
     if (jet500Enabled && currentJetVelocityData){
       var jetProbe = getJetWindAtLatLng(e.latlng);
@@ -4895,9 +4946,11 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
         }
       }
       if (!best) return;
-      var popupTitle = (window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature');
-      var popupUnit = best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F'));
-      var popupValue = (typeof best.value === 'number') ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF));
+      var forceTempProbe = __wdlForceHrrrTempProbeActive();
+      var popupTitle = forceTempProbe ? 'HRRR Temperature' : ((window.hrrrProductMode === 'winds') ? 'Max Surface Wind Gust' : ((window.hrrrProductMode === 'cape') ? 'Surface-Based CAPE' : 'Temperature'));
+      var popupUnit = forceTempProbe ? '°F' : (best.unit || ((window.hrrrProductMode === 'winds') ? 'mph' : ((window.hrrrProductMode === 'cape') ? ' J/kg' : '°F')));
+      var popupValue = forceTempProbe ? __wdlGetForcedTempProbeValue(best) : ((typeof best.value === 'number') ? best.value : ((window.hrrrProductMode === 'winds') ? best.mph : ((window.hrrrProductMode === 'cape') ? best.cape : best.tF)));
+      if (forceTempProbe && !isFinite(popupValue)){ __wdlShowTempProbeLoadingPopup(e.latlng); return; }
       var popupText = (popupValue == null || !isFinite(popupValue)) ? "—" : (Math.round(popupValue) + popupUnit);
       L.popup({
         className: "hrrr-popup",
