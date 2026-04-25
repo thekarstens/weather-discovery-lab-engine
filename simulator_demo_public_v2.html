@@ -1,20 +1,4 @@
-<!D
-
-  function removeAnonymousOverlayVectors(){
-    try{
-      if (!window.map || !window.map.eachLayer) return;
-      var doomed = [];
-      window.map.eachLayer(function(layer){
-        try{
-          var pane = String(layer.options && layer.options.pane || '');
-          var hasSub = !!(layer.getLayers || layer._layers);
-          var count = layer.getLayers ? layer.getLayers().length : (layer._layers ? Object.keys(layer._layers).length : 0);
-          if ((pane === 'overlayPane' || pane === 'lines') && hasSub && count > 0) doomed.push(layer);
-        }catch(e){}
-      });
-      doomed.forEach(function(layer){ try { window.map.removeLayer(layer); } catch(e) {} });
-    }catch(e){}
-  }OCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -265,13 +249,11 @@
 }
 @media (max-width: 640px){
   .tvbanner{
-    display:none !important;
-    min-height:0 !important;
-    height:0 !important;
+    min-height:10px !important;
+    height:10px !important;
     overflow:hidden !important;
-    border:none !important;
+    border-bottom:none !important;
     box-shadow:none !important;
-    background:transparent !important;
   }
   .tvbanner::before{
     display:none !important;
@@ -526,21 +508,6 @@
 
   <script>function resolveJetFrameUrl(u){ if (!u) return u; const dir=(typeof JET_ANIM_DIR!=="undefined")?JET_ANIM_DIR:"jet_anim"; if(!u.includes("/")&&!u.startsWith("http")) return dir+"/"+u; return u; }</script>
   <script src="./simulatorConfig_v5.js"></script>
-  <script>
-    (function(){
-      function qstring(name){
-        try { return new URLSearchParams(window.location.search).get(name); }
-        catch(e){ return null; }
-      }
-      var lessonParam = (qstring('lesson') || 'derecho-2022-demo').trim();
-      window.WDL_SIM_CONFIG = window.WDL_SIM_CONFIG || {};
-      window.WDL_SIM_CONFIG.lessonId = lessonParam;
-      window.WDL_SIM_CONFIG.storyboardUrl = 'storyboard/storyboard.json';
-      if (!window.WDL_SIM_CONFIG.dataPackBase) {
-        window.WDL_SIM_CONFIG.dataPackBase = 'https://thekarstens.github.io/wdl-data-derecho-2022/';
-      }
-    })();
-  </script>
   <script src="./radar.js"></script>
   <script src="./metars.js"></script>
   <script src="./map-ui.js"></script>
@@ -550,7 +517,26 @@
     window.__WDL_SIMULATOR_LOCAL_STORY__ = true; window.__WDL_DEMO_CAMERA_LOCK__ = true;
     window.__WDL_FREE_SCRUB__ = true;
   </script>
+  
+  <script>
+    (function(){
+      function qstring(name){
+        try { return new URLSearchParams(window.location.search).get(name); }
+        catch(e){ return null; }
+      }
+      var lessonParam = (qstring('lesson') || 'derecho-2022-demo').trim();
+      window.WDL_SIM_CONFIG = window.WDL_SIM_CONFIG || {};
+      // Force the local topic-card/story loader to use the same demo lesson/storyboard as the engine.
+      window.WDL_SIM_CONFIG.lessonId = lessonParam;
+      window.WDL_SIM_CONFIG.storyboardUrl = 'storyboard/storyboard.json';
+      // Keep existing dataPackBase if present; otherwise set the shared demo data root.
+      if (!window.WDL_SIM_CONFIG.dataPackBase) {
+        window.WDL_SIM_CONFIG.dataPackBase = 'https://thekarstens.github.io/wdl-data-derecho-2022/';
+      }
+    })();
+  </script>
   <script src="./engine_simulator_patch.js"></script>
+
   <script>
     (function(){
       var cfg = window.WDL_SIM_CONFIG || {};
@@ -688,7 +674,7 @@
         return false;
       }
       function jumpToActualMs(ms){ if (!isFinite(ms)) return; var pct = percentFromActualMs(ms); try { if (typeof window.setMasterTime === 'function') window.setMasterTime(new Date(ms)); else syncEngineToPercent(pct); } catch(e){} updateClockAndScrubber(pct); }
-      async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/storyboard.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
+      async function loadStoryboardSteps(){ try { var base = String(cfg.dataPackBase || 'https://thekarstens.github.io/wdl-data-derecho-2022/'); if (!base.endsWith('/')) base += '/'; var lessonId = (qstring('lesson') || cfg.lessonId || 'derecho-2022').trim(); var rel = String(cfg.storyboardUrl || 'storyboard/simulator_storyboard_v5.json').replace(/^\.\//,''); var url = /^https?:\/\//i.test(rel) ? rel : (base + 'lessons/' + encodeURIComponent(lessonId) + '/' + rel); console.log('Simulator v5 loading storyboard:', url); var res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' }); if (!res.ok) throw new Error('Storyboard HTTP ' + res.status); var data = await res.json(); storyboardSteps = Array.isArray(data.steps) ? data.steps : []; buildTimeGroups(data); } catch(e){ console.warn('Simulator storyboard load failed', e); storyboardSteps = []; timeGroups = []; } }
       function hourBucketLabel(ms){ var d = new Date(ms); try { return new Intl.DateTimeFormat('en-US', { hour:'numeric', hour12:true, timeZone:'America/Chicago' }).format(d); } catch(e){ return 'Time'; } }
       function normalizeProductLabel(product){
         var map = {
@@ -832,7 +818,7 @@
       }
 
       const CARD_VIEWS = {
-        1: { mobile:{ lat:42.60, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.2 } },
+        1: { mobile:{ lat:43.00, lon:-96.73, zoom:7.4 }, desktop:{ lat:43.55, lon:-96.73, zoom:8.2 } },
         2: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
         3: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.8 } },
         4: { mobile:{ lat:43.15, lon:-96.73, zoom:7.2 }, desktop:{ lat:43.90, lon:-97.20, zoom:6.7 } },
@@ -1497,7 +1483,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
       if (idx === 1) {
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
-        try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         try{ if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(false); }catch(e){}
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(false); }catch(e){}
@@ -1514,7 +1499,6 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 2) {
-        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
@@ -1524,9 +1508,7 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
       if (idx === 3) {
-        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
-        try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false); }catch(e){}
         try{ if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(false); }catch(e){}
@@ -1537,50 +1519,29 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-
-        // The user's manual console test proved the sticky SPC graphic is an orphaned anonymous vector layer.
-        // Remove those after the new card scene exists, then rebuild the intended card 3 layers.
-        setTimeout(async function(){
-          try{ removeAnonymousOverlayVectors(); }catch(e){}
-          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
-          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
+        /* card 3: preserve current viewer map view */
+        setTimeout(function(){
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
-          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
-          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
+          try{ if (typeof window.setHrrrTempEnabled === 'function') window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-        }, 120);
-
-        setTimeout(async function(){
-          try{ removeAnonymousOverlayVectors(); }catch(e){}
-          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
-          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
-          try{ window.hrrrProductMode = 'temp'; }catch(e){}
-          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
-          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
-          try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-        }, 420);
+        }, 900);
         return;
       }
 
       if (idx === 4) {
-        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:00:00Z'));
-        try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(false); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(false); }catch(e){}
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint'); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 4: preserve current viewer map view */
         return;
       }
 
       if (idx === 5) {
-        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T21:45:00Z'));
-        try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setObsRadarEnabled === 'function') await window.setObsRadarEnabled(true); }catch(e){}
         try{ if (typeof window.setRadarEnabled === 'function') await window.setRadarEnabled(true); }catch(e){}
         try{ if (typeof window.setWarningsEnabled === 'function') await window.setWarningsEnabled(true); }catch(e){}
@@ -1589,20 +1550,16 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (window.innerWidth <= 640 && typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){}
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
-        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 5: preserve current viewer map view */
         updateDopplerButton(true);
         return;
       }
 
       if (idx === 6) {
-        await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T22:00:00Z'));
-        try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
-        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 6: preserve current viewer map view */
         return;
       }
@@ -1617,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       var t = ev.target;
       if (t && (t.closest('#storyPrevBtn') || t.closest('#storyNextBtn') || t.closest('.story-card-chip'))) {
-        setTimeout(enforceDemoScene, 120); setTimeout(enforceDemoScene, 500);
+        setTimeout(enforceDemoScene, 500);
       }
     } catch (e) {}
   });
