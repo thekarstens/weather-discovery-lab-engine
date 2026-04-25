@@ -849,15 +849,10 @@
       window.WDL_DIRECTOR_CAMERA_LOCK = true;
       window.__WDL_DIRECTOR_CAMERA_READY = false;
 
-      window.__WDL_CAMERA_VALUES_VERSION = 'director-camera-force-v3';
-      const CARD_VIEWS = {
-        1: { mobile:{ lat:42.4424, lon:-96.7566, zoom:7 }, desktop:{ lat:43.5744, lon:-97.8662, zoom:8 } },
-        2: { mobile:{ lat:41.8750, lon:-97.0825, zoom:6 }, desktop:{ lat:44.5083, lon:-99.2615, zoom:7 } },
-        3: { mobile:{ lat:41.8750, lon:-97.0825, zoom:6 }, desktop:{ lat:43.9434, lon:-98.2178, zoom:8 } },
-        4: { mobile:{ lat:41.4372, lon:-96.7529, zoom:6 }, desktop:{ lat:43.7215, lon:-97.3444, zoom:8 } },
-        5: { mobile:{ lat:42.8209, lon:-96.8921, zoom:8 }, desktop:{ lat:43.5237, lon:-97.1301, zoom:9 } },
-        6: { mobile:{ lat:42.1797, lon:-97.1265, zoom:7 }, desktop:{ lat:43.4619, lon:-97.5723, zoom:9 } }
-      };
+      window.__WDL_CAMERA_VALUES_VERSION = 'storyboard-director-camera-v4';
+      // Production camera values now live in storyboard/storyboard.json under scene.view.desktop and scene.view.mobile.
+      // Keep this table empty unless you need an emergency local override while testing.
+      const CARD_VIEWS = {};
 
       function isMobileCamera(){
         return window.innerWidth <= Number(window.WDL_MOBILE_BREAKPOINT || 700);
@@ -922,16 +917,14 @@
       }
 
       function getCardView(cardId, card){
-        // IMPORTANT FOR TUNING:
-        // Use the locally tuned CARD_VIEWS first. The loaded storyboard may also
-        // contain scene.view values, and those were overriding the new numbers.
-        // Once the shots are final, these same values can be moved into storyboard.json.
-        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
-        if (bucket) return isMobileCamera() ? bucket.mobile : bucket.desktop;
-
+        // Production priority: storyboard director camera first.
+        // CARD_VIEWS is intentionally empty unless an emergency local override is needed.
         card = card || getTopicCardByNumber(cardId);
         var fromStoryboard = cameraFromCard(card);
         if (fromStoryboard) return fromStoryboard;
+
+        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
+        if (bucket) return isMobileCamera() ? bucket.mobile : bucket.desktop;
         return null;
       }
 
@@ -956,9 +949,9 @@
           var device = isMobileCamera() ? 'mobile' : 'desktop';
           var cardNum = cardId || ((currentTopicIndex || 0) + 1);
           el.innerHTML =
-            '<b>Card ' + cardNum + '</b> • ' + device + ' • tuned v2<br>' +
+            '<b>Card ' + cardNum + '</b> • ' + device + ' • storyboard v4<br>' +
             'lat: ' + c.lat.toFixed(4) + ' &nbsp; lon: ' + c.lng.toFixed(4) + '<br>' +
-            'zoom: ' + Number(z).toFixed(2) + (shot ? ' <span style="opacity:.72">locked</span>' : '');
+            'zoom: ' + Number(z).toFixed(2) + (shot ? ' <span style="opacity:.72">storyboard locked</span>' : '');
         }catch(e){}
       }
 
