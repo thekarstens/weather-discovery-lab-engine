@@ -7301,6 +7301,13 @@ function parseHrrrPointsPayload(raw){
     if (radarSweepEnabled && (url === radarSweepImageUrl || url === radarPendingUrl)) {
       ensureRadarSweepCanvas();
       radarSweepCanvas.style.opacity = String(op);
+      if (obsRadarOverlay){ try{ map.removeLayer(obsRadarOverlay); }catch(e){} obsRadarOverlay = null; }
+      // Mobile can enable LIVE Doppler after the radar image is already cached/loaded.
+      // In that case the old code returned here and only drew a stationary 0-degree beam.
+      // If we already have the image, explicitly restart the sweep animation.
+      if (radarSweepImage && !radarSweepAnim){
+        try{ startRadarSweep(); }catch(e){}
+      }
       return;
     }
 
@@ -7805,6 +7812,7 @@ function syncSweepButton(){
   window.setSweepEnabled = function(on){
     var target = !!on;
     radarSweepEnabled = target;
+    window.radarSweepEnabled = radarSweepEnabled;
     try{ if (typeof window.setObsRadarEnabled === 'function') window.setObsRadarEnabled(true); }catch(e){}
     syncSweepButton();
     if (!target){
@@ -7812,22 +7820,39 @@ function syncSweepButton(){
       try{ updateRadar(); }catch(e){}
       return radarSweepEnabled;
     }
+
+    // When entering LIVE Doppler, remove the full static radar overlay immediately so
+    // phones do not show a full image first and then a frozen beam.
+    try{ if (obsRadarOverlay){ map.removeLayer(obsRadarOverlay); obsRadarOverlay = null; } }catch(e){}
+
     try{ updateRadar(); }catch(e){}
-    setTimeout(function(){
-      if (!radarSweepEnabled) return;
-      try{ updateRadar(); }catch(e){}
-      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
-    }, 120);
-    setTimeout(function(){
-      if (!radarSweepEnabled) return;
-      try{ updateRadar(); }catch(e){}
-      try{ if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState(); }catch(e){}
-    }, 360);
+    try{ if (radarSweepImage) startRadarSweep(); }catch(e){}
+
+    [120, 360, 900].forEach(function(delay){
+      setTimeout(function(){
+        if (!radarSweepEnabled) return;
+        try{ updateRadar(); }catch(e){}
+        try{
+          if (radarSweepImage && !radarSweepAnim) startRadarSweep();
+          else if (typeof renderRadarSweepCurrentState === 'function') renderRadarSweepCurrentState();
+        }catch(e){}
+      }, delay);
+    });
     return radarSweepEnabled;
   };
 
   window.toggleSweep = function(){
     return window.setSweepEnabled(!radarSweepEnabled);
+  };
+
+  window.__forceLiveDopplerSweepRestart = function(){
+    radarSweepEnabled = true;
+    window.radarSweepEnabled = true;
+    try{ syncSweepButton(); }catch(e){}
+    try{ if (obsRadarOverlay){ map.removeLayer(obsRadarOverlay); obsRadarOverlay = null; } }catch(e){}
+    try{ updateRadar(); }catch(e){}
+    try{ if (radarSweepImage) startRadarSweep(); }catch(e){}
+    return true;
   };
 
   map.on('zoom move resize', function(){
