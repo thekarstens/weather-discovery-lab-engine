@@ -1,4 +1,39 @@
-<!DOCTYPE html>
+<!D
+
+  function clearAnonymousSceneVectors(){
+    try{
+      if (!window.map || typeof window.map.eachLayer !== 'function') return;
+      var doomed = [];
+      window.map.eachLayer(function(layer){
+        try{
+          if (!layer) return;
+          if (window.spcDay1Layer && layer === window.spcDay1Layer) return;
+          if (window.storyOverlayLayer && layer === window.storyOverlayLayer) return;
+          if (window.reportsLayer && layer === window.reportsLayer) return;
+          if (window.mediaLayer && layer === window.mediaLayer) return;
+          if (window.lightningFreshLayer && layer === window.lightningFreshLayer) return;
+          if (window.lightningRecentLayer && layer === window.lightningRecentLayer) return;
+          if (window.lightningHistoryLayer && layer === window.lightningHistoryLayer) return;
+          if (window.jetVelocityLayer && layer === window.jetVelocityLayer) return;
+          var pane = String((layer.options && layer.options.pane) || '');
+          var hasSub = !!(layer.getLayers || layer._layers);
+          var count = 0;
+          try{
+            if (layer.getLayers) count = layer.getLayers().length;
+            else if (layer._layers) count = Object.keys(layer._layers).length;
+          }catch(e){}
+          if ((pane === 'overlayPane' || pane === 'lines') && hasSub && count > 0){
+            doomed.push(layer);
+          }
+        }catch(e){}
+      });
+      doomed.forEach(function(layer){ try{ window.map.removeLayer(layer); }catch(e){} });
+      try{ if (typeof clearFrontDecorators === 'function') clearFrontDecorators(); }catch(e){}
+      try{ if (typeof clearStoryOverlay === 'function') clearStoryOverlay(); }catch(e){}
+      try{ window.storyOverlayLayer = null; }catch(e){}
+      try{ window.spcDay1Layer = null; }catch(e){}
+    }catch(e){}
+  }OCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -1051,14 +1086,11 @@
 
         if (cardChanged) {
           try{
-            if (typeof renderStory === 'function') renderStory(currentTopicIndex, false);
+            manualProductMode = null;
+            manualProductLayers = null;
+            manualProductLabel = '';
           }catch(e){}
-
-          // Do not let stale manual product state re-assert the previous card's scene.
-          manualProductMode = null;
-          manualProductLayers = null;
-          manualProductLabel = '';
-
+          try{ clearAnonymousSceneVectors(); }catch(e){}
           var baseMode = card.product || 'radar';
           var baseLayers = card.layers || [card.product || 'radar'];
           applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
@@ -1503,7 +1535,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if (idx === 2) {
         await hardResetForCardSwitch();
         await window.setMasterTime(new Date('2022-05-12T20:05:00Z'));
-        try{ if (typeof renderStory === 'function') renderStory(1, false); }catch(e){}
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
@@ -1513,8 +1544,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
       if (idx === 3) {
         await hardResetForCardSwitch();
+        try{ clearAnonymousSceneVectors(); }catch(e){}
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
-        try{ if (typeof renderStory === 'function') renderStory(2, false); }catch(e){}
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(false); }catch(e){}
@@ -1527,23 +1558,14 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
         setTimeout(async function(){
-          try{ await hardResetForCardSwitch(); }catch(e){}
+          try{ clearAnonymousSceneVectors(); }catch(e){}
           try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
           try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
           try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
           try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-        }, 180);
-        setTimeout(async function(){
-          try{ await hardResetForCardSwitch(); }catch(e){}
-          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
-          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
-          try{ window.hrrrProductMode = 'temp'; }catch(e){}
-          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
-          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
-          try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-        }, 700);
+        }, 220);
         return;
       }
 
