@@ -787,10 +787,14 @@ async function loadReportsManifest(){
 }
 
 function getFilteredReports(){
+  var showAllReports = false;
+  try{ showAllReports = !!window.__WDL_REPORTS_SHOW_ALL; }catch(e){}
   var now = curZ.getTime();
   return reportsFeatures.filter(function(f){
-    var t = getReportTime(f);
-    if (!isFinite(t) || t > now) return false;
+    if (!showAllReports){
+      var t = getReportTime(f);
+      if (!isFinite(t) || t > now) return false;
+    }
     if (!reportsFilter || reportsFilter === 'all') return true;
     return normalizeReportType(f) === reportsFilter;
   });
@@ -968,6 +972,38 @@ async function setReportsFilter(filter){
 window.setReportsEnabled = setReportsEnabled;
 window.toggleReports = toggleReports;
 window.setReportsFilter = setReportsFilter;
+window.setReportsShowAll = function(on){
+  try{ window.__WDL_REPORTS_SHOW_ALL = !!on; }catch(e){}
+  try{ if (reportsEnabled) updateReportsLayer(); }catch(e){}
+};
+window.__debugReports = function(){
+  var now = (curZ && curZ.toISOString) ? curZ.toISOString() : String(curZ);
+  var total = Array.isArray(reportsFeatures) ? reportsFeatures.length : 0;
+  var displayed = 0;
+  try{ displayed = getFilteredReports().length; }catch(e){}
+  var timed = 0, future = 0, invalid = 0;
+  var nowMs = curZ && curZ.getTime ? curZ.getTime() : NaN;
+  try{
+    (reportsFeatures || []).forEach(function(f){
+      var t = getReportTime(f);
+      if (!isFinite(t)) invalid++;
+      else if (isFinite(nowMs) && t > nowMs) future++;
+      else timed++;
+    });
+  }catch(e){}
+  var out = {
+    reportFileFeaturesLoaded: total,
+    currentlyDisplayed: displayed,
+    simulatorTime: now,
+    showAllReports: !!window.__WDL_REPORTS_SHOW_ALL,
+    reportsFilter: reportsFilter || 'all',
+    atOrBeforeSimulatorTime: timed,
+    afterSimulatorTimeHiddenUnlessShowAll: future,
+    invalidOrMissingTimeHiddenUnlessShowAll: invalid
+  };
+  if (console && console.table) console.table(out); else console.log(out);
+  return out;
+};
 
 // ---------- Story UI polish + media scene ----------
 var mediaManifest = null;
@@ -1277,7 +1313,7 @@ document.addEventListener('click', function(ev){
         box-shadow: none;
       }
       .lightning-marquee{
-        position:fixed !important; top:184px; right:18px; left:auto !important; bottom:auto !important; z-index:100140; display:block;
+        position:fixed !important; top:auto !important; right:18px; left:auto !important; bottom:76px !important; z-index:100140; display:block;
         pointer-events:auto !important;
         min-width:280px; padding:12px 16px 11px;
         border-radius:16px;
@@ -1318,7 +1354,7 @@ document.addEventListener('click', function(ev){
         box-shadow:0 0 10px rgba(255,225,100,.18);
       }
       .lightning-counter{
-        position:fixed !important; top:236px; right:18px; left:auto !important; bottom:auto !important; z-index:100139; display:block;
+        position:fixed !important; top:auto !important; right:18px; left:auto !important; bottom:170px !important; z-index:100139; display:block;
         pointer-events:auto !important;
         background: linear-gradient(180deg, rgba(3,13,32,.96), rgba(10,22,48,.92));
         color:#f7fbff; padding:14px 16px; border-radius:16px; min-width:248px;
@@ -1619,11 +1655,11 @@ document.addEventListener('click', function(ev){
     }
     div.style.display = '';
     if (!div.dataset.moved){
-      div.style.top = '182px';
+      div.style.top = 'auto';
       div.style.right = '18px';
-      if (!lightningHudAllowed()) div.style.display = 'none';
       div.style.left = 'auto';
-      div.style.bottom = 'auto';
+      div.style.bottom = '76px';
+      if (!lightningHudAllowed()) div.style.display = 'none';
     }
     var btnClass = lightningHistoryVisible ? 'lm-btn is-active' : 'lm-btn';
     var html =
