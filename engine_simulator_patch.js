@@ -442,11 +442,28 @@ function getJetManifestUrl(){
 }
 
 function clearJetVelocityLayer(){
-  try{ if (jetVelocityLayer && map && map.hasLayer && map.hasLayer(jetVelocityLayer)) map.removeLayer(jetVelocityLayer); }catch(e){}
+  var layer = jetVelocityLayer;
+
+  // Clear globals first so delayed velocity callbacks do not keep targeting
+  // a layer that the card transition is trying to remove.
   jetVelocityLayer = null;
   currentJetVelocityData = null;
   jetCurrentUrl = null;
   window.jetVelocityLayer = null;
+
+  if (!layer) return;
+
+  try{ if (layer._windy && typeof layer._windy.stop === 'function') layer._windy.stop(); }catch(e){}
+  try{ if (layer._clearWind && typeof layer._clearWind === 'function') layer._clearWind(); }catch(e){}
+
+  // Leaflet-velocity can leave move/resize handlers alive briefly during a
+  // story-card swap. Unhook the common handlers before removing the layer.
+  try{ if (map && map.off && layer._onLayerDidMove) map.off('moveend', layer._onLayerDidMove, layer); }catch(e){}
+  try{ if (map && map.off && layer._onLayerDidZoom) map.off('zoomstart', layer._onLayerDidZoom, layer); }catch(e){}
+  try{ if (map && map.off && layer._resize) map.off('resize', layer._resize, layer); }catch(e){}
+
+  try{ if (map && map.hasLayer && map.hasLayer(layer)) map.removeLayer(layer); }catch(e){}
+  try{ if (layer._canvas && layer._canvas.parentNode) layer._canvas.parentNode.removeChild(layer._canvas); }catch(e){}
 }
 
 function parseJetManifestFrames(raw){
@@ -561,8 +578,10 @@ async function updateJetParticles(){
     clearJetVelocityLayer();
     return;
   }
+  var requestToken = (window.__jetVelocityRequestToken = (window.__jetVelocityRequestToken || 0) + 1);
   try{
     await loadJetManifestIfNeeded();
+    if (!jet500Enabled || requestToken !== window.__jetVelocityRequestToken) return;
     var frame = getNearestJetFrame(curZ);
     if (!frame) return;
     var url = jetFrameUrl(frame);
@@ -577,7 +596,9 @@ async function updateJetParticles(){
     var res = await fetch(url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(), { cache:'no-store' });
     if (!res.ok) throw new Error('Jet frame HTTP ' + res.status + ': ' + url);
     var data = await res.json();
+    if (!jet500Enabled || requestToken !== window.__jetVelocityRequestToken) return;
     clearJetVelocityLayer();
+    if (!jet500Enabled || requestToken !== window.__jetVelocityRequestToken) return;
     currentJetVelocityData = data;
     jetCurrentUrl = url;
     var velocityTitle = (CFG && CFG.surfaceWinds && CFG.surfaceWinds.label)
