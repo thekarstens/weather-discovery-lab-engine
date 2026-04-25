@@ -1,37 +1,18 @@
 <!D
 
-  function clearAnonymousSceneVectors(){
+  function removeAnonymousOverlayVectors(){
     try{
-      if (!window.map || typeof window.map.eachLayer !== 'function') return;
+      if (!window.map || !window.map.eachLayer) return;
       var doomed = [];
       window.map.eachLayer(function(layer){
         try{
-          if (!layer) return;
-          if (window.spcDay1Layer && layer === window.spcDay1Layer) return;
-          if (window.storyOverlayLayer && layer === window.storyOverlayLayer) return;
-          if (window.reportsLayer && layer === window.reportsLayer) return;
-          if (window.mediaLayer && layer === window.mediaLayer) return;
-          if (window.lightningFreshLayer && layer === window.lightningFreshLayer) return;
-          if (window.lightningRecentLayer && layer === window.lightningRecentLayer) return;
-          if (window.lightningHistoryLayer && layer === window.lightningHistoryLayer) return;
-          if (window.jetVelocityLayer && layer === window.jetVelocityLayer) return;
-          var pane = String((layer.options && layer.options.pane) || '');
+          var pane = String(layer.options && layer.options.pane || '');
           var hasSub = !!(layer.getLayers || layer._layers);
-          var count = 0;
-          try{
-            if (layer.getLayers) count = layer.getLayers().length;
-            else if (layer._layers) count = Object.keys(layer._layers).length;
-          }catch(e){}
-          if ((pane === 'overlayPane' || pane === 'lines') && hasSub && count > 0){
-            doomed.push(layer);
-          }
+          var count = layer.getLayers ? layer.getLayers().length : (layer._layers ? Object.keys(layer._layers).length : 0);
+          if ((pane === 'overlayPane' || pane === 'lines') && hasSub && count > 0) doomed.push(layer);
         }catch(e){}
       });
-      doomed.forEach(function(layer){ try{ window.map.removeLayer(layer); }catch(e){} });
-      try{ if (typeof clearFrontDecorators === 'function') clearFrontDecorators(); }catch(e){}
-      try{ if (typeof clearStoryOverlay === 'function') clearStoryOverlay(); }catch(e){}
-      try{ window.storyOverlayLayer = null; }catch(e){}
-      try{ window.spcDay1Layer = null; }catch(e){}
+      doomed.forEach(function(layer){ try { window.map.removeLayer(layer); } catch(e) {} });
     }catch(e){}
   }OCTYPE html>
 <html lang="en">
@@ -284,11 +265,13 @@
 }
 @media (max-width: 640px){
   .tvbanner{
-    min-height:10px !important;
-    height:10px !important;
+    display:none !important;
+    min-height:0 !important;
+    height:0 !important;
     overflow:hidden !important;
-    border-bottom:none !important;
+    border:none !important;
     box-shadow:none !important;
+    background:transparent !important;
   }
   .tvbanner::before{
     display:none !important;
@@ -1085,15 +1068,13 @@
         if (typeof renderCardChips === 'function') renderCardChips();
 
         if (cardChanged) {
-          try{
-            manualProductMode = null;
-            manualProductLayers = null;
-            manualProductLabel = '';
-          }catch(e){}
-          try{ clearAnonymousSceneVectors(); }catch(e){}
-          var baseMode = card.product || 'radar';
-          var baseLayers = card.layers || [card.product || 'radar'];
-          applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
+          if (manualClockMode && manualProductMode && manualProductLayers && manualProductLayers.length) {
+            applyProductMode(manualProductMode, manualProductLayers, manualProductLabel || normalizeProductLabel(manualProductMode));
+          } else {
+            var baseMode = card.product || 'radar';
+            var baseLayers = card.layers || [card.product || 'radar'];
+            applyProductMode(baseMode, baseLayers, normalizeProductLabel(baseMode));
+          }
         }
       }
 
@@ -1544,7 +1525,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
       if (idx === 3) {
         await hardResetForCardSwitch();
-        try{ clearAnonymousSceneVectors(); }catch(e){}
         await window.setMasterTime(new Date('2022-05-12T20:00:00Z'));
         try{ if (typeof window.setSpcDay1Enabled === 'function') await window.setSpcDay1Enabled(false); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
@@ -1557,15 +1537,28 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
         try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
+
+        // The user's manual console test proved the sticky SPC graphic is an orphaned anonymous vector layer.
+        // Remove those after the new card scene exists, then rebuild the intended card 3 layers.
         setTimeout(async function(){
-          try{ clearAnonymousSceneVectors(); }catch(e){}
+          try{ removeAnonymousOverlayVectors(); }catch(e){}
           try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
           try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
           try{ window.hrrrProductMode = 'temp'; }catch(e){}
           try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
           try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
           try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
-        }, 220);
+        }, 120);
+
+        setTimeout(async function(){
+          try{ removeAnonymousOverlayVectors(); }catch(e){}
+          try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(true); }catch(e){}
+          try{ if (typeof window.setJet500Enabled === 'function') await window.setJet500Enabled(true); }catch(e){}
+          try{ window.hrrrProductMode = 'temp'; }catch(e){}
+          try{ if (typeof window.setHrrrProductEnabled === 'function') await window.setHrrrProductEnabled('temp', true); }catch(e){}
+          try{ if (typeof window.setHrrrTempEnabled === 'function') await window.setHrrrTempEnabled(true); }catch(e){}
+          try{ if (typeof window.updateAll === 'function') window.updateAll(); }catch(e){}
+        }, 420);
         return;
       }
 
@@ -1579,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setMetarsEnabled === 'function') await window.setMetarsEnabled(true); }catch(e){}
         try{ if (typeof window.setMetarDisplayMode === 'function') window.setMetarDisplayMode('dewpoint'); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
+        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 4: preserve current viewer map view */
         return;
       }
@@ -1595,6 +1589,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (window.innerWidth <= 640 && typeof window.hideLightningCounter === 'function') window.hideLightningCounter(); }catch(e){}
         if (typeof window.renderLightningMarquee === 'function' && window.innerWidth > 640) window.renderLightningMarquee();
         if (typeof window.updateAll === 'function') window.updateAll();
+        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 5: preserve current viewer map view */
         updateDopplerButton(true);
         return;
@@ -1607,6 +1602,7 @@ document.addEventListener('DOMContentLoaded', function(){
         try{ if (typeof window.setReportsEnabled === 'function') await window.setReportsEnabled(true); }catch(e){}
         try{ if (typeof window.setStoryOverlayEnabled === 'function') await window.setStoryOverlayEnabled(false); }catch(e){}
         if (typeof window.updateAll === 'function') window.updateAll();
+        setTimeout(function(){ try{ removeAnonymousOverlayVectors(); }catch(e){} }, 120);
         /* card 6: preserve current viewer map view */
         return;
       }
