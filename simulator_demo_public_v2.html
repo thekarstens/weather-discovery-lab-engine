@@ -841,6 +841,11 @@
       // Fallbacks below keep the current demo working until we tune every card.
       window.WDL_MOBILE_BREAKPOINT = window.WDL_MOBILE_BREAKPOINT || 700;
       window.WDL_SHOW_CAMERA_BADGE = (window.WDL_SHOW_CAMERA_BADGE !== false);
+      // Tuning mode prevents delayed camera locks from snapping back after you manually pan/zoom.
+      // Leave this true while collecting desktop/mobile camera values. Later, production can set it false.
+      window.WDL_CAMERA_TUNING_MODE = (window.WDL_CAMERA_TUNING_MODE !== false);
+      window.__WDL_CAMERA_USER_MOVED = false;
+      window.__WDL_CAMERA_ACTIVE_CARD = null;
 
       const CARD_VIEWS = {
         1: { mobile:{ lat:41.75, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
@@ -950,8 +955,15 @@
         }catch(e){}
       }
 
-      function applyCardView(cardId, card){
+      function applyCardView(cardId, card, opts){
         try{
+          opts = opts || {};
+          var sameCard = String(window.__WDL_CAMERA_ACTIVE_CARD || '') === String(cardId || '');
+          if (window.WDL_CAMERA_TUNING_MODE && window.__WDL_CAMERA_USER_MOVED && sameCard && !opts.force) {
+            updateCameraBadge(cardId, null);
+            return;
+          }
+
           var v = getCardView(cardId, card);
           if (!v || !window.map || typeof window.map.setView !== 'function') return;
           if (typeof window.map.stop === 'function') window.map.stop();
@@ -963,7 +975,19 @@
 
       function lockCardView(cardId, delays){
         var card = getTopicCardByNumber(cardId);
-        applyCardView(cardId, card);
+        var changedCard = String(window.__WDL_CAMERA_ACTIVE_CARD || '') !== String(cardId || '');
+        if (changedCard) {
+          window.__WDL_CAMERA_ACTIVE_CARD = cardId;
+          window.__WDL_CAMERA_USER_MOVED = false;
+        }
+
+        // Always set the first director shot when a card loads.
+        applyCardView(cardId, card, { force:true });
+
+        // During tuning, do NOT run delayed snap-back locks. They were useful for fighting
+        // late-loading overlays, but they make it impossible to pan/zoom and copy camera values.
+        if (window.WDL_CAMERA_TUNING_MODE) return;
+
         (delays || []).forEach(function(delay){
           setTimeout(function(){ applyCardView(cardId, card); }, delay);
         });
@@ -983,11 +1007,21 @@
           return out;
         }catch(e){ console.warn(e); return null; }
       };
+      window.__setCameraTuningMode = function(on){
+        window.WDL_CAMERA_TUNING_MODE = (on !== false);
+        window.__WDL_CAMERA_USER_MOVED = false;
+        console.log('Camera tuning mode:', window.WDL_CAMERA_TUNING_MODE ? 'ON' : 'OFF');
+        updateCameraBadge();
+        return window.WDL_CAMERA_TUNING_MODE;
+      };
       window.__applyCardView = applyCardView;
       window.__updateCameraBadge = updateCameraBadge;
 
       try{
         if (window.map && window.map.on) {
+          window.map.on('dragstart zoomstart', function(){
+            if (window.WDL_CAMERA_TUNING_MODE) window.__WDL_CAMERA_USER_MOVED = true;
+          });
           window.map.on('moveend zoomend', function(){ updateCameraBadge(); });
           setTimeout(function(){ updateCameraBadge(); }, 900);
         }
@@ -1269,7 +1303,12 @@
       window.addEventListener('resize', function(){
         clearTimeout(window.__WDL_CAMERA_RESIZE_TIMER__);
         window.__WDL_CAMERA_RESIZE_TIMER__ = setTimeout(function(){
-          try{ lockCardView((currentTopicIndex || 0) + 1, [120]); updateCameraBadge(); }catch(e){}
+          try{
+            if (!(window.WDL_CAMERA_TUNING_MODE && window.__WDL_CAMERA_USER_MOVED)) {
+              lockCardView((currentTopicIndex || 0) + 1, [120]);
+            }
+            updateCameraBadge();
+          }catch(e){}
         }, 220);
       });
 
