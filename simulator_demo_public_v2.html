@@ -402,6 +402,21 @@
     .story-body p{ font-weight:700 !important; }
     .story-step, .sim-scene-lead, .story-shell-kicker{ font-weight:800 !important; }
 
+
+    /* Temporary camera tuning badge: remove or set window.WDL_SHOW_CAMERA_BADGE=false when finished */
+    .camera-tune-badge{
+      position:absolute; left:12px; bottom:148px; z-index:100040;
+      min-width:190px; padding:9px 11px; border-radius:14px;
+      background:rgba(5,13,24,.88); color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+      box-shadow:0 8px 22px rgba(0,0,0,.28);
+      font:800 12px/1.35 "Lato", Arial, sans-serif;
+      pointer-events:none; letter-spacing:.15px;
+    }
+    .camera-tune-badge b{ color:#87d8ff; }
+    @media (max-width: 700px){
+      .camera-tune-badge{ left:8px; bottom:118px; min-width:172px; font-size:11px; padding:8px 10px; }
+    }
   </style>
 </head>
 <body>
@@ -718,7 +733,7 @@
           return card;
         });
       }
-      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler) }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
+      function buildTimeGroups(data){ if (Array.isArray(data.timeGroups) && data.timeGroups.length){ timeGroups = data.timeGroups.map(function(g){ var ms = parseMs(g.utc || g.time); return { utc: g.utc || g.time, ms: ms, label: g.label || hourBucketLabel(ms), cards: (g.cards || []).map(function(c, idx){ return { id: c.id || ('card-' + idx), title: c.title || normalizeProductLabel(c.product), kicker: c.kicker || g.kicker || 'Topic', product: c.product || 'radar', layers: c.layers || [c.product || 'radar'], narrative: c.narrative || ['No discussion notes added yet.'], topicLabel: c.topicLabel || normalizeProductLabel(c.product), showDoppler: !!c.showDoppler, view: c.view || c.camera || null, camera: c.camera || c.view || null, desktopView: c.desktopView || null, mobileView: c.mobileView || null, modelTimes: c.modelTimes || c.times || null }; }) }; }); rebuildTopicCards(); return; } var groupsByHour = {}; storyboardSteps.forEach(function(step){ var ms = parseMs(step.utc); if (!isFinite(ms)) return; var label = hourBucketLabel(ms); groupsByHour[label] = groupsByHour[label] || { utc: step.utc, ms: ms, label: label, cards: [] }; groupsByHour[label].cards.push({ id: step.id || ('step-' + groupsByHour[label].cards.length), title: step.title || normalizeProductLabel(step.scene && step.scene.product), kicker: (step.ui && step.ui.stepKicker) || 'Topic', product: (step.scene && step.scene.product) || 'radar', layers: (step.scene && step.scene.layers) || ['radar'], narrative: step.narrative || ['No discussion notes added yet.'], topicLabel: (step.topicLabel || normalizeProductLabel(step.scene && step.scene.product)), showDoppler: !!(step.interaction && step.interaction.showDoppler), view: (step.scene && (step.scene.view || step.scene.camera)) || step.view || step.camera || null, camera: (step.scene && (step.scene.camera || step.scene.view)) || step.camera || step.view || null, desktopView: step.desktopView || null, mobileView: step.mobileView || null, modelTimes: step.modelTimes || null }); }); timeGroups = Object.keys(groupsByHour).map(function(k){ return groupsByHour[k]; }).sort(function(a,b){ return a.ms - b.ms; }); rebuildTopicCards(); }
       function updatePlayButton(running){ playBtn.classList.toggle('is-running', !!running); playBtn.classList.toggle('is-ready', !running); playBtn.textContent = running ? 'Pause Travel' : 'Advance Timeline'; }
       function stopAnimation(){ animating = false; if (animationFrame) cancelAnimationFrame(animationFrame); animationFrame = null; updatePlayButton(false); }
       function animateToGroup(targetIndex){ if (!timeGroups.length) return; targetIndex = Math.max(0, Math.min(timeGroups.length - 1, targetIndex)); var target = timeGroups[targetIndex]; if (!target || !isFinite(target.ms)) return; stopAnimation(); var startPct = displayPercent, endPct = percentFromActualMs(target.ms), duration = Math.max(900, Number(cfg.nextEventDurationMs || 2200)), t0 = performance.now(); animating = true; updatePlayButton(true); function frame(now){ if (!animating) return; var t = Math.min(1, (now - t0) / duration); var eased = (t < 0.5) ? (2 * t * t) : (1 - Math.pow(-2 * t + 2, 2) / 2); var pct = startPct + ((endPct - startPct) * eased); syncEngineToPercent(pct); updateClockAndScrubber(pct); if (t < 1) animationFrame = requestAnimationFrame(frame); else { stopAnimation(); currentGroupIndex = targetIndex; currentCardIndex = 0; jumpToActualMs(target.ms); } } animationFrame = requestAnimationFrame(frame); }
@@ -818,6 +833,15 @@
         storyDopplerBtn.textContent = window.radarSweepEnabled ? 'LIVE Doppler ON' : 'LIVE Doppler OFF';
       }
 
+      // ------------------------------------------------------------
+      // Director-controlled demo camera shots
+      // ------------------------------------------------------------
+      // The demo should not rely on layer auto-fit. Each topic card can now use:
+      //   card.view.desktop / card.view.mobile from storyboard.json
+      // Fallbacks below keep the current demo working until we tune every card.
+      window.WDL_MOBILE_BREAKPOINT = window.WDL_MOBILE_BREAKPOINT || 700;
+      window.WDL_SHOW_CAMERA_BADGE = (window.WDL_SHOW_CAMERA_BADGE !== false);
+
       const CARD_VIEWS = {
         1: { mobile:{ lat:41.75, lon:-96.73, zoom:7.0 }, desktop:{ lat:43.55, lon:-96.73, zoom:7.4 } },
         2: { mobile:{ lat:43.45, lon:-99.0,  zoom:5.0 }, desktop:{ lat:45.25, lon:-98.75, zoom:6.9 } },
@@ -827,28 +851,147 @@
         6: { mobile:{ lat:41.90, lon:-98.0,  zoom:7.0 }, desktop:{ lat:43.75, lon:-98.0,  zoom:7.0 } }
       };
 
-      function getCardView(cardId){
-        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
-        if (!bucket) return null;
-        return (window.innerWidth <= 640) ? bucket.mobile : bucket.desktop;
+      function isMobileCamera(){
+        return window.innerWidth <= Number(window.WDL_MOBILE_BREAKPOINT || 700);
       }
 
-      function applyCardView(cardId){
+      function normalizeCameraShot(raw){
+        if (!raw) return null;
+        var lat = null, lon = null, zoom = null;
+
+        if (Array.isArray(raw.center) && raw.center.length >= 2) {
+          lat = Number(raw.center[0]);
+          lon = Number(raw.center[1]);
+        } else if (Array.isArray(raw.latlng) && raw.latlng.length >= 2) {
+          lat = Number(raw.latlng[0]);
+          lon = Number(raw.latlng[1]);
+        } else if (Array.isArray(raw) && raw.length >= 2) {
+          lat = Number(raw[0]);
+          lon = Number(raw[1]);
+          if (raw.length >= 3) zoom = Number(raw[2]);
+        } else {
+          lat = Number(raw.lat != null ? raw.lat : raw.latitude);
+          lon = Number(raw.lon != null ? raw.lon : (raw.lng != null ? raw.lng : raw.longitude));
+        }
+
+        if (zoom == null) zoom = Number(raw.zoom);
+        if (!isFinite(lat) || !isFinite(lon) || !isFinite(zoom)) return null;
+        return { lat: lat, lon: lon, zoom: zoom };
+      }
+
+      function cameraFromCard(card){
+        if (!card) return null;
+        var mobile = isMobileCamera();
+        var view = card.view || card.camera || null;
+
+        // Preferred storyboard format:
+        // "view": { "desktop": { "center": [lat, lon], "zoom": 7 }, "mobile": { ... } }
+        if (view && typeof view === 'object' && !Array.isArray(view)) {
+          var chosen = mobile ? (view.mobile || view.phone || view.narrow) : (view.desktop || view.wide);
+          var shot = normalizeCameraShot(chosen);
+          if (shot) return shot;
+          shot = normalizeCameraShot(view);
+          if (shot) return shot;
+        }
+
+        var direct = normalizeCameraShot(mobile ? (card.mobileView || card.mobileCamera) : (card.desktopView || card.desktopCamera));
+        if (direct) return direct;
+
+        return null;
+      }
+
+      function getTopicCardByNumber(cardId){
+        var n = Number(cardId);
+        if (isFinite(n) && topicCards && topicCards[n - 1]) return topicCards[n - 1];
+        if (topicCards && topicCards.length) {
+          var key = String(cardId || '').toLowerCase();
+          for (var i=0; i<topicCards.length; i++) {
+            var c = topicCards[i] || {};
+            if (String(c.id || '').toLowerCase() === key) return c;
+          }
+        }
+        return null;
+      }
+
+      function getCardView(cardId, card){
+        card = card || getTopicCardByNumber(cardId);
+        var fromStoryboard = cameraFromCard(card);
+        if (fromStoryboard) return fromStoryboard;
+
+        var bucket = CARD_VIEWS[String(cardId)] || CARD_VIEWS[cardId];
+        if (!bucket) return null;
+        return isMobileCamera() ? bucket.mobile : bucket.desktop;
+      }
+
+      function ensureCameraBadge(){
+        if (window.WDL_SHOW_CAMERA_BADGE === false) return null;
+        var el = document.getElementById('cameraTuneBadge');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'cameraTuneBadge';
+        el.className = 'camera-tune-badge';
+        el.innerHTML = 'Camera: --';
+        document.body.appendChild(el);
+        return el;
+      }
+
+      function updateCameraBadge(cardId, shot){
         try{
-          var v = getCardView(cardId);
+          var el = ensureCameraBadge();
+          if (!el || !window.map) return;
+          var c = window.map.getCenter();
+          var z = window.map.getZoom();
+          var device = isMobileCamera() ? 'mobile' : 'desktop';
+          var cardNum = cardId || ((currentTopicIndex || 0) + 1);
+          el.innerHTML =
+            '<b>Card ' + cardNum + '</b> • ' + device + '<br>' +
+            'lat: ' + c.lat.toFixed(4) + ' &nbsp; lon: ' + c.lng.toFixed(4) + '<br>' +
+            'zoom: ' + Number(z).toFixed(2) + (shot ? ' <span style="opacity:.72">locked</span>' : '');
+        }catch(e){}
+      }
+
+      function applyCardView(cardId, card){
+        try{
+          var v = getCardView(cardId, card);
           if (!v || !window.map || typeof window.map.setView !== 'function') return;
           if (typeof window.map.stop === 'function') window.map.stop();
-          window.map.setView([v.lat, v.lon], v.zoom, { animate:false });
           if (typeof window.map.invalidateSize === 'function') window.map.invalidateSize();
+          window.map.setView([v.lat, v.lon], v.zoom, { animate:false });
+          setTimeout(function(){ try{ if (window.map && window.map.invalidateSize) window.map.invalidateSize(); updateCameraBadge(cardId, v); }catch(e){} }, 60);
         }catch(e){}
       }
 
       function lockCardView(cardId, delays){
-        applyCardView(cardId);
+        var card = getTopicCardByNumber(cardId);
+        applyCardView(cardId, card);
         (delays || []).forEach(function(delay){
-          setTimeout(function(){ applyCardView(cardId); }, delay);
+          setTimeout(function(){ applyCardView(cardId, card); }, delay);
         });
       }
+
+      // Console helpers while tuning. Pan/zoom until the shot looks right, then run:
+      //   window.__copyCameraView()
+      // Paste the JSON into that card's storyboard view.mobile or view.desktop.
+      window.__copyCameraView = function(cardId){
+        try{
+          var c = window.map.getCenter();
+          var z = window.map.getZoom();
+          var device = isMobileCamera() ? 'mobile' : 'desktop';
+          var out = {};
+          out[device] = { center:[Number(c.lat.toFixed(4)), Number(c.lng.toFixed(4))], zoom:Number(Number(z).toFixed(2)) };
+          console.log(JSON.stringify(out, null, 2));
+          return out;
+        }catch(e){ console.warn(e); return null; }
+      };
+      window.__applyCardView = applyCardView;
+      window.__updateCameraBadge = updateCameraBadge;
+
+      try{
+        if (window.map && window.map.on) {
+          window.map.on('moveend zoomend', function(){ updateCameraBadge(); });
+          setTimeout(function(){ updateCameraBadge(); }, 900);
+        }
+      }catch(e){}
 
       async function setCardSweepState(shouldEnable){
         try{ if (typeof window.setRadarVelocityEnabled === 'function') await window.setRadarVelocityEnabled(false); } catch(e){}
@@ -1019,6 +1162,7 @@
           return '<p>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>';
         }).join('');
         renderModelTimeControls(card);
+        try{ updateCameraBadge((currentTopicIndex || 0) + 1); }catch(e){}
 
         if (typeof renderCardChips === 'function') renderCardChips();
 
@@ -1121,6 +1265,14 @@
         clockReadout.textContent = formatDisplayClock(displayMsFromPercent(displayPercent));
         sceneLead.textContent = (topicCards[currentTopicIndex] ? (topicCards[currentTopicIndex].topicLabel || 'Current Topic') : 'Current Topic');
       });
+
+      window.addEventListener('resize', function(){
+        clearTimeout(window.__WDL_CAMERA_RESIZE_TIMER__);
+        window.__WDL_CAMERA_RESIZE_TIMER__ = setTimeout(function(){
+          try{ lockCardView((currentTopicIndex || 0) + 1, [120]); updateCameraBadge(); }catch(e){}
+        }, 220);
+      });
+
       storyCollapseBtn.addEventListener('click', function(ev){
         ev.preventDefault();
         ev.stopPropagation();
