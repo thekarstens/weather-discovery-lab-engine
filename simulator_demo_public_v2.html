@@ -2475,14 +2475,15 @@ document.addEventListener('DOMContentLoaded', function(){
     }catch(e){}
   }
 
-  // During this temporary tuning pass, prevent late automatic camera snaps
-  // after the user manually moves the map. This does not change layer logic.
+  // During this temporary tuning pass, prevent the most common late auto-fit
+  // snaps, but DO NOT wrap setView. Leaflet uses setView internally for normal
+  // user zooming, so blocking it makes the zoom controls feel broken.
   function patchMapCameraMethods(){
     try{
       if (!window.map || map.__wdlCameraTunePatched) return;
       map.__wdlCameraTunePatched = true;
 
-      ["setView", "fitBounds", "flyTo", "flyToBounds", "panTo"].forEach(function(name){
+      ["fitBounds", "flyTo", "flyToBounds", "panTo"].forEach(function(name){
         if (typeof map[name] !== "function") return;
         var original = map[name].bind(map);
         map["__wdlOriginal_" + name] = original;
@@ -2531,6 +2532,25 @@ document.addEventListener('DOMContentLoaded', function(){
     updateBadge();
     if ((window.map && map.__wdlCameraTunePatched) || tries > 30) clearInterval(t);
   }, 300);
+})();
+</script>
+
+
+<script>
+(function(){
+  window.__restoreCameraTuneZoom = function(){
+    try{
+      if (window.map && map.__wdlOriginal_setView){
+        map.setView = map.__wdlOriginal_setView;
+        delete map.__wdlOriginal_setView;
+        console.log("Restored normal Leaflet setView/zoom behavior for camera tuning.");
+      }
+    }catch(e){}
+  };
+  window.addEventListener("load", function(){
+    setTimeout(window.__restoreCameraTuneZoom, 400);
+    setTimeout(window.__restoreCameraTuneZoom, 1200);
+  });
 })();
 </script>
 
