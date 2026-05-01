@@ -4254,22 +4254,58 @@ function safeLink(url){
   // ---------- Story topic color themes + optional camera presets ----------
   function inferStoryTheme(item){
     item = item || {};
-    var explicit = String(item.stepTheme || item.theme || item.storyTheme || (item.ui && item.ui.stepTheme) || '').trim().toLowerCase();
-    if (explicit) return explicit.replace(/^story-theme-/, '').replace(/_/g, '-');
-    var p = String(item.product || item.layer || '').toLowerCase();
-    var title = String(item.title || item.label || item.stepKicker || '').toLowerCase();
+    function cleanTheme(v){
+      return String(v || '').trim().toLowerCase().replace(/^story-theme-/, '').replace(/_/g, '-');
+    }
+    function asText(v){
+      if (Array.isArray(v)) return v.join(' ');
+      if (v && typeof v === 'object') {
+        try { return JSON.stringify(v); } catch(e) { return ''; }
+      }
+      return String(v || '');
+    }
+
+    // IMPORTANT: content wins over old/default storyboard theme fields.
+    // Earlier builds carried a broad/purple theme into many cards, so we
+    // classify by title/product/layers/narrative first and only use explicit
+    // theme as a fallback when the card content does not tell us enough.
+    var explicit = cleanTheme(item.stepTheme || item.theme || item.storyTheme || (item.ui && item.ui.stepTheme) || '');
+    var validExplicit = {
+      setup:1, spc:1, outlook:1, metar:1, metars:1, radar:1, warning:1, warnings:1,
+      tornado:1, reports:1, report:1, lightning:1, satellite:1, model:1, hrrr:1, analysis:1
+    };
+
+    var p = String(item.product || item.layer || (item.scene && item.scene.product) || '').toLowerCase();
+    var title = String(item.title || item.label || item.topicLabel || item.stepKicker || '').toLowerCase();
+    var kicker = String(item.kicker || item.stepKicker || (item.ui && item.ui.stepKicker) || '').toLowerCase();
+    var narrative = asText(item.narrative || item.text || item.body || '').toLowerCase();
     var layers = Array.isArray(item.layers) ? item.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
-    var hay = [p, title].concat(layers).join(' ');
+    var sceneLayers = (item.scene && Array.isArray(item.scene.layers)) ? item.scene.layers.map(function(v){ return String(v || '').toLowerCase(); }) : [];
+    var hay = [p, title, kicker, narrative].concat(layers).concat(sceneLayers).join(' ');
+    function hasLayer(name){
+      name = String(name || '').toLowerCase();
+      return layers.indexOf(name) !== -1 || sceneLayers.indexOf(name) !== -1;
+    }
+
+    if (hay.indexOf('tornado warning') !== -1) return 'tornado';
+    if (hay.indexOf('damage report') !== -1 || hay.indexOf('storm report') !== -1 || hay.indexOf('local storm report') !== -1 || hay.indexOf('lsr') !== -1 || hasLayer('reports') || p === 'reports') return 'reports';
     if (hay.indexOf('tornado') !== -1) return 'tornado';
-    if (hay.indexOf('warning') !== -1 || hay.indexOf('alert') !== -1) return 'warning';
-    if (hay.indexOf('report') !== -1 || hay.indexOf('lsr') !== -1) return 'reports';
-    if (hay.indexOf('lightning') !== -1) return 'lightning';
-    if (hay.indexOf('satellite') !== -1 || hay.indexOf('goes') !== -1) return 'satellite';
-    if (hay.indexOf('spc') !== -1 || hay.indexOf('outlook') !== -1 || hay.indexOf('watch') !== -1) return 'spc';
-    if (hay.indexOf('metar') !== -1 || hay.indexOf('dew') !== -1 || hay.indexOf('temp') !== -1 || hay.indexOf('pressure') !== -1) return 'metars';
-    if (hay.indexOf('future') !== -1 || hay.indexOf('hrrr') !== -1 || hay.indexOf('cape') !== -1 || hay.indexOf('model') !== -1) return 'model';
-    if (hay.indexOf('radar') !== -1 || hay.indexOf('doppler') !== -1 || hay.indexOf('reflectivity') !== -1) return 'radar';
+    if (hay.indexOf('severe thunderstorm warning') !== -1 || hay.indexOf('warning') !== -1 || hay.indexOf('alert') !== -1 || hasLayer('warnings') || p === 'warnings') return 'warning';
+    if (hay.indexOf('radar') !== -1 || hay.indexOf('doppler') !== -1 || hay.indexOf('reflectivity') !== -1 || p === 'radar' || p === 'live_doppler') return 'radar';
+    if (hay.indexOf('spc') !== -1 || hay.indexOf('outlook') !== -1 || hay.indexOf('watch') !== -1 || p === 'spc' || p === 'watch') return 'spc';
+    if (hay.indexOf('lightning') !== -1 || p === 'lightning') return 'lightning';
+    if (hay.indexOf('satellite') !== -1 || hay.indexOf('goes') !== -1 || p === 'satellite') return 'satellite';
+    if (hay.indexOf('metar') !== -1 || hay.indexOf('dew point') !== -1 || hay.indexOf('dewpoint') !== -1 || hay.indexOf('temperature') !== -1 || hay.indexOf('pressure') !== -1 || hay.indexOf('barometer') !== -1 || hay.indexOf('wind gust') !== -1 || p.indexOf('metar') !== -1 || p === 'temps') return 'metars';
+    if (hay.indexOf('future') !== -1 || hay.indexOf('hrrr') !== -1 || hay.indexOf('cape') !== -1 || hay.indexOf('model') !== -1 || p === 'future_radar') return 'model';
     if (storyIndex === 0 || hay.indexOf('setup') !== -1 || hay.indexOf('intro') !== -1) return 'setup';
+
+    if (explicit && validExplicit[explicit]) {
+      if (explicit === 'outlook') return 'spc';
+      if (explicit === 'report') return 'reports';
+      if (explicit === 'warnings') return 'warning';
+      if (explicit === 'metar') return 'metars';
+      return explicit;
+    }
     return 'analysis';
   }
 
