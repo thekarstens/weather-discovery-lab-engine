@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Weather Discovery Lab — Live Severe Weather Simulator v5</title>
+  <title>Weather Discovery Lab — Live Severe Weather Simulator v6 Layout Test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="./leaflet.css" />
   <link rel="stylesheet" href="./leaflet-velocity.min.css" />
@@ -170,6 +170,138 @@
     .ticker-marquee{ position:relative; flex:1; overflow:hidden; white-space:nowrap; }
     .ticker-marquee-inner{ display:block; width:100%; padding-left:18px; color:#fff8d6; font-size:21px; font-weight:900; text-shadow:0 0 12px rgba(255,255,255,.18), 0 0 18px rgba(255,140,80,.18); font:900 20px/1 "Lato", Arial, sans-serif; letter-spacing:.35px; text-shadow:0 0 10px rgba(255,230,120,.16), 0 0 18px rgba(255,255,255,.10); }
     .town-label{ background:rgba(255,255,255,0.82); border:1px solid rgba(0,0,0,0.24); padding:2px 8px; border-radius:12px; font:900 12px/1 "Lato", Arial, sans-serif; letter-spacing:.2px; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.18); white-space:nowrap; }
+
+    /* =========================================================
+       WDL v6 LAYOUT TEST PATCH — Desktop 100% Chrome sizing
+       Added by ChatGPT 2026-05-01
+       Purpose: preserve simulator logic while shrinking the TV UI
+       for normal browser zoom on laptop/desktop screens.
+       ========================================================= */
+
+    :root{
+      --wdl-banner-h: clamp(118px, 13.5vh, 138px);
+      --wdl-nav-top: clamp(94px, 11.5vh, 112px);
+      --wdl-logo-w: clamp(145px, 11.5vw, 205px);
+      --wdl-clock-w: clamp(230px, 20vw, 330px);
+      --wdl-advance-w: clamp(170px, 14vw, 250px);
+      --wdl-story-w: clamp(360px, 27vw, 430px);
+      --wdl-story-top: clamp(142px, 16.5vh, 168px);
+      --wdl-ticker-h: clamp(44px, 5.6vh, 54px);
+    }
+    .tvbanner{ min-height:var(--wdl-banner-h) !important; height:var(--wdl-banner-h) !important; }
+    .banner-topline{ min-height:var(--wdl-banner-h) !important; height:var(--wdl-banner-h) !important; }
+    #brandLogo{ width:var(--wdl-logo-w) !important; left:10px !important; top:4px !important; max-height:calc(var(--wdl-banner-h) - 16px) !important; object-fit:contain !important; }
+    .banner-center{ top:11px !important; width:min(760px, calc(100% - 620px)) !important; }
+    .brand-line{ font-size:clamp(22px, 2.05vw, 34px) !important; line-height:.98 !important; }
+    .case-line{ margin-top:4px !important; font-size:clamp(13px, 1.2vw, 18px) !important; line-height:1.05 !important; }
+    .region-line{ margin-top:3px !important; font-size:clamp(10px, .85vw, 13px) !important; line-height:1.05 !important; }
+    .sim-version{ left:calc(var(--wdl-logo-w) + 18px) !important; top:54px !important; font-size:9px !important; }
+    .scrub-wrap{ left:calc(var(--wdl-logo-w) + 18px) !important; right:calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 56px) !important; top:72px !important; height:22px !important; gap:8px !important; }
+    .scrub-mini{ min-width:42px !important; font-size:11px !important; }
+    .scrub-shell{ height:14px !important; padding:0 10px !important; }
+    #cbScrubber::-webkit-slider-thumb{ width:17px !important; height:17px !important; margin-top:-4.5px !important; }
+    #cbScrubber::-moz-range-thumb{ width:17px !important; height:17px !important; }
+    .clock-stack{ right:12px !important; top:8px !important; gap:10px !important; align-items:stretch !important; }
+    .sim-clock{ min-width:var(--wdl-clock-w) !important; width:var(--wdl-clock-w) !important; border-radius:16px !important; padding:8px 13px 9px !important; box-sizing:border-box !important; }
+    .sim-clock-label{ font-size:9px !important; letter-spacing:1.15px !important; margin-bottom:5px !important; }
+    .sim-clock .time{ font-size:clamp(32px, 3.2vw, 52px) !important; line-height:.94 !important; }
+    #simPlayPauseBtn{ min-width:var(--wdl-advance-w) !important; width:var(--wdl-advance-w) !important; min-height:84px !important; height:calc(var(--wdl-banner-h) - 22px) !important; border-radius:18px !important; font-size:clamp(15px, 1.25vw, 22px) !important; line-height:1.05 !important; padding:8px 12px !important; }
+    .product-row{ left:calc(var(--wdl-logo-w) + 18px) !important; right:calc(var(--wdl-advance-w) + 24px) !important; top:var(--wdl-nav-top) !important; gap:8px !important; padding-bottom:4px !important; scrollbar-width:thin !important; }
+    .sim-group-toggle,.sim-product-btn{ min-width:118px !important; padding:10px 13px !important; font-size:12px !important; letter-spacing:.45px !important; }
+    .product-menu{ min-width:205px !important; top:calc(100% + 6px) !important; padding:8px !important; }
+    .product-menu .sim-product-btn{ padding:9px 12px !important; font-size:11px !important; }
+    .product-slot{ right:14px !important; top:calc(var(--wdl-banner-h) + 8px) !important; width:clamp(320px, 31vw, 500px) !important; max-width:calc(100% - var(--wdl-story-w) - 90px) !important; }
+    .product-pill{ min-height:46px !important; padding:0 15px !important; border-width:3px !important; font-size:clamp(22px, 2vw, 34px) !important; }
+    .storyPanel{ left:12px !important; top:var(--wdl-story-top) !important; width:var(--wdl-story-w) !important; max-height:calc(100vh - var(--wdl-story-top) - var(--wdl-ticker-h) - 12px) !important; border-radius:18px !important; display:flex !important; flex-direction:column !important; }
+    .story-shell-header{ gap:11px !important; padding:10px 11px 11px !important; flex:0 0 auto !important; }
+    .story-station-chip{ width:62px !important; height:62px !important; font-size:27px !important; border-width:3px !important; }
+    .story-station-chip.compact{ font-size:21px !important; }
+    .story-shell-kicker{ font-size:11px !important; }
+    .story-title{ margin-top:4px !important; font-size:clamp(26px, 2.35vw, 38px) !important; line-height:.96 !important; }
+    #storyCollapseBtn{ border-radius:13px !important; padding:10px 13px !important; font-size:13px !important; }
+    .story-content{ padding:11px 13px 12px !important; overflow-y:auto !important; flex:1 1 auto !important; min-height:0 !important; }
+    .sim-scene-lead{ margin-bottom:10px !important; border-radius:14px !important; padding:10px 12px !important; font-size:14px !important; line-height:1.08 !important; }
+    .story-body{ font-size:clamp(15px, 1.08vw, 17px) !important; line-height:1.38 !important; }
+    .story-body p{ margin-bottom:12px !important; }
+    .story-shell-footer{ padding:9px 12px 12px !important; flex:0 0 auto !important; }
+    .story-step{ font-size:12px !important; }
+    .story-action,.story-nav-btn{ border-radius:14px !important; padding:10px 13px !important; font-size:13px !important; }
+    .story-nav{ margin-top:9px !important; gap:8px !important; }
+    .toolBox{ width:118px !important; right:10px !important; top:calc(var(--wdl-banner-h) + 76px) !important; border-radius:20px !important; padding:8px 7px 10px !important; }
+    .toolBox.is-collapsed{ width:108px !important; }
+    .tool-head-pill{ min-width:86px !important; padding:9px 10px !important; font-size:13px !important; }
+    .tool-btn{ margin-top:5px !important; border-radius:16px !important; padding:10px 7px !important; font-size:13px !important; }
+    .ticker-wrap{ height:var(--wdl-ticker-h) !important; }
+    .ticker-label{ padding:0 15px !important; font-size:16px !important; }
+    .ticker-marquee-inner{ font-size:clamp(16px, 1.25vw, 20px) !important; }
+    .warning-count-box{ right:10px !important; bottom:calc(var(--wdl-ticker-h) + 8px) !important; min-width:124px !important; padding:8px 11px !important; border-radius:14px !important; }
+    .warning-count-box .label{ font-size:9px !important; letter-spacing:1px !important; }
+    .warning-count-box .count{ font-size:25px !important; }
+    .sim-alert{ bottom:calc(var(--wdl-ticker-h) + 10px) !important; width:min(460px, calc(100vw - 28px)) !important; }
+    .sim-alert-headline{ font-size:26px !important; }
+    .sim-alert-body{ font-size:15px !important; }
+    .zoom-corner{ bottom:calc(var(--wdl-ticker-h) + 18px) !important; }
+    .zoom-corner-btn{ width:46px !important; height:46px !important; border-radius:14px !important; font-size:26px !important; }
+
+    @media (max-height: 820px){
+      :root{ --wdl-banner-h:112px; --wdl-nav-top:88px; --wdl-logo-w:155px; --wdl-story-top:132px; --wdl-ticker-h:44px; }
+      .banner-center{ top:8px !important; }
+      .brand-line{ font-size:26px !important; }
+      .case-line{ font-size:14px !important; margin-top:3px !important; }
+      .region-line{ font-size:10px !important; }
+      .scrub-wrap{ top:63px !important; }
+      .sim-version{ top:47px !important; }
+      .sim-clock{ padding:7px 12px 8px !important; }
+      .sim-clock .time{ font-size:38px !important; }
+      #simPlayPauseBtn{ min-height:76px !important; }
+      .sim-group-toggle,.sim-product-btn{ padding:9px 12px !important; }
+      .product-pill{ min-height:42px !important; }
+      .story-station-chip{ width:58px !important; height:58px !important; font-size:25px !important; }
+      .story-title{ font-size:30px !important; }
+      .story-body{ font-size:15px !important; line-height:1.34 !important; }
+      .toolBox{ top:calc(var(--wdl-banner-h) + 68px) !important; }
+    }
+
+    @media (max-width: 1180px){
+      :root{ --wdl-logo-w:130px; --wdl-clock-w:205px; --wdl-advance-w:150px; --wdl-story-w:340px; }
+      .banner-center{ width:min(560px, calc(100% - 500px)) !important; }
+      .brand-line{ font-size:22px !important; }
+      .case-line{ font-size:13px !important; }
+      .region-line{ display:none !important; }
+      .sim-clock .time{ font-size:32px !important; }
+      #simPlayPauseBtn{ font-size:14px !important; }
+      .product-slot{ display:none !important; }
+    }
+
+    @media (max-width: 760px){
+      :root{ --wdl-banner-h:86px; --wdl-nav-top:88px; --wdl-logo-w:92px; --wdl-clock-w:128px; --wdl-advance-w:104px; --wdl-story-w:calc(100vw - 20px); --wdl-story-top:auto; --wdl-ticker-h:42px; }
+      .tvbanner,.banner-topline{ height:var(--wdl-banner-h) !important; min-height:var(--wdl-banner-h) !important; }
+      #brandLogo{ width:var(--wdl-logo-w) !important; top:5px !important; }
+      .banner-center{ left:49% !important; top:8px !important; width:calc(100% - 235px) !important; }
+      .brand-line{ font-size:17px !important; }
+      .case-line{ font-size:10px !important; line-height:1.05 !important; }
+      .region-line,.sim-version{ display:none !important; }
+      .clock-stack{ right:6px !important; top:7px !important; gap:5px !important; }
+      .sim-clock{ width:var(--wdl-clock-w) !important; min-width:var(--wdl-clock-w) !important; padding:6px 7px !important; border-radius:13px !important; }
+      .sim-clock-label{ font-size:7px !important; letter-spacing:.6px !important; }
+      .sim-clock .time{ font-size:24px !important; }
+      #simPlayPauseBtn{ width:var(--wdl-advance-w) !important; min-width:var(--wdl-advance-w) !important; height:70px !important; min-height:70px !important; border-radius:14px !important; font-size:11px !important; }
+      .scrub-wrap{ left:102px !important; right:238px !important; top:58px !important; height:18px !important; }
+      .scrub-mini{ display:none !important; }
+      .product-row{ left:6px !important; right:6px !important; top:calc(var(--wdl-banner-h) + 4px) !important; }
+      .sim-group-toggle,.sim-product-btn{ min-width:102px !important; padding:8px 10px !important; font-size:11px !important; }
+      .product-slot{ display:none !important; }
+      .storyPanel{ left:10px !important; right:10px !important; top:auto !important; bottom:calc(var(--wdl-ticker-h) + 8px) !important; width:calc(100vw - 20px) !important; max-height:42vh !important; }
+      .story-shell-header{ padding:8px 9px !important; }
+      .story-station-chip{ width:48px !important; height:48px !important; font-size:21px !important; }
+      .story-title{ font-size:23px !important; }
+      .story-body{ font-size:14px !important; line-height:1.3 !important; }
+      .toolBox{ width:96px !important; right:7px !important; top:calc(var(--wdl-banner-h) + 52px) !important; }
+      .toolBox:not(.is-collapsed) .tool-btn{ display:none; }
+      .warning-count-box{ display:none !important; }
+      .ticker-label{ font-size:13px !important; padding:0 10px !important; }
+      .ticker-marquee-inner{ font-size:14px !important; }
+    }
   </style>
 </head>
 <body>
@@ -199,7 +331,7 @@
       <img id="brandLogo" src="./storm_science_lab_logo.png" alt="Weather Workshops logo" />
       <div class="banner-center"><div class="brand-line" id="simBrandLine">Weather Discovery Lab</div><div class="case-line" id="simCaseLine">Live Severe Weather Simulator — May 12, 2022 Derecho</div><div class="region-line" id="simRegionLine">Eastern South Dakota • Western Minnesota • Northwestern Iowa</div></div>
       <button id="modeToggleBtn" class="mode-toggle" type="button">Simulator Mode</button>
-      <div class="sim-version">Simulator v5 • Topic Cards</div>
+      <div class="sim-version">Simulator v6 Layout Test • Desktop 100% Patch</div>
       <div class="scrub-wrap" id="scrubWrap"><span class="scrub-mini" id="scrubStartLabel">3 PM</span><div class="scrub-shell"><input id="cbScrubber" type="range" min="0" max="100" step="0.1" value="0" /></div><span class="scrub-mini" id="scrubEndLabel">7 PM</span></div>
       <div class="clock-stack"><div class="sim-clock" id="simClockBox"><div class="sim-clock-label" id="simClockLabel">Master Simulator Clock</div><div class="time" id="simClockReadout">3:00 PM</div></div><button id="simPlayPauseBtn" class="is-ready" type="button">Advance Timeline</button></div>
       <div class="product-row" id="simProductRow">
