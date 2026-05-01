@@ -181,8 +181,8 @@
     :root{
       --wdl-banner-h: clamp(118px, 13.5vh, 138px);
       --wdl-nav-top: clamp(94px, 11.5vh, 112px);
-      --wdl-logo-w: clamp(145px, 11.5vw, 205px);
-      --wdl-clock-w: clamp(230px, 20vw, 330px);
+      --wdl-logo-w: clamp(158px, 12.5vw, 225px);
+      --wdl-clock-w: clamp(190px, 15vw, 265px);
       --wdl-advance-w: clamp(170px, 14vw, 250px);
       --wdl-story-w: clamp(360px, 27vw, 430px);
       --wdl-story-top: clamp(142px, 16.5vh, 168px);
@@ -202,11 +202,11 @@
     #cbScrubber::-webkit-slider-thumb{ width:17px !important; height:17px !important; margin-top:-4.5px !important; }
     #cbScrubber::-moz-range-thumb{ width:17px !important; height:17px !important; }
     .clock-stack{ right:12px !important; top:8px !important; gap:10px !important; align-items:stretch !important; }
-    .sim-clock{ min-width:var(--wdl-clock-w) !important; width:var(--wdl-clock-w) !important; border-radius:16px !important; padding:8px 13px 9px !important; box-sizing:border-box !important; }
-    .sim-clock-label{ font-size:9px !important; letter-spacing:1.15px !important; margin-bottom:5px !important; }
-    .sim-clock .time{ font-size:clamp(32px, 3.2vw, 52px) !important; line-height:.94 !important; }
+    .sim-clock{ min-width:var(--wdl-clock-w) !important; width:var(--wdl-clock-w) !important; border-radius:15px !important; padding:7px 10px 8px !important; box-sizing:border-box !important; }
+    .sim-clock-label{ font-size:8px !important; letter-spacing:.9px !important; margin-bottom:4px !important; }
+    .sim-clock .time{ font-size:clamp(28px, 2.55vw, 43px) !important; line-height:.94 !important; }
     #simPlayPauseBtn{ min-width:var(--wdl-advance-w) !important; width:var(--wdl-advance-w) !important; min-height:84px !important; height:calc(var(--wdl-banner-h) - 22px) !important; border-radius:18px !important; font-size:clamp(15px, 1.25vw, 22px) !important; line-height:1.05 !important; padding:8px 12px !important; }
-    .product-row{ left:calc(var(--wdl-logo-w) + 18px) !important; right:calc(var(--wdl-advance-w) + 24px) !important; top:var(--wdl-nav-top) !important; gap:8px !important; padding-bottom:4px !important; scrollbar-width:thin !important; }
+    .product-row{ left:calc(var(--wdl-logo-w) + 18px) !important; right:calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 48px) !important; top:var(--wdl-nav-top) !important; gap:8px !important; padding-bottom:4px !important; scrollbar-width:thin !important; }
     .sim-group-toggle,.sim-product-btn{ min-width:118px !important; padding:10px 13px !important; font-size:12px !important; letter-spacing:.45px !important; }
     .product-menu{ min-width:205px !important; top:calc(100% + 6px) !important; padding:8px !important; }
     .product-menu .sim-product-btn{ padding:9px 12px !important; font-size:11px !important; }
@@ -372,7 +372,92 @@
       animation:none !important;
     }
 
-  </style>
+  
+
+    /* =========================================================
+       WDL COSMETIC PASS 2 — stronger desktop clock/logo override
+       Place late in the stylesheet so it wins over earlier rules.
+       ========================================================= */
+    @media (min-width: 761px){
+      :root{
+        --wdl-logo-w: clamp(195px, 15vw, 285px);
+        --wdl-clock-w: clamp(150px, 10.5vw, 190px);
+        --wdl-advance-w: clamp(160px, 12vw, 205px);
+      }
+
+      #brandLogo{
+        width: var(--wdl-logo-w) !important;
+        max-width: var(--wdl-logo-w) !important;
+        max-height: calc(var(--wdl-banner-h) - 6px) !important;
+        left: 6px !important;
+        top: 0 !important;
+        object-fit: contain !important;
+      }
+
+      .banner-center{
+        width: min(720px, calc(100% - 640px)) !important;
+      }
+
+      .clock-stack{
+        right: 10px !important;
+        top: 8px !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+      }
+
+      #simClockBox.sim-clock,
+      .clock-stack .sim-clock{
+        width: var(--wdl-clock-w) !important;
+        min-width: var(--wdl-clock-w) !important;
+        max-width: var(--wdl-clock-w) !important;
+        height: 58px !important;
+        min-height: 58px !important;
+        max-height: 58px !important;
+        padding: 5px 8px 6px !important;
+        border-radius: 13px !important;
+        box-sizing: border-box !important;
+      }
+
+      #simClockBox .sim-clock-label,
+      #simClockLabel{
+        font-size: 6.5px !important;
+        line-height: 1 !important;
+        letter-spacing: .55px !important;
+        margin-bottom: 3px !important;
+        white-space: nowrap !important;
+      }
+
+      #simClockBox .time,
+      #simClockReadout{
+        font-size: clamp(24px, 2vw, 31px) !important;
+        line-height: .92 !important;
+        letter-spacing: .2px !important;
+      }
+
+      #simPlayPauseBtn{
+        width: var(--wdl-advance-w) !important;
+        min-width: var(--wdl-advance-w) !important;
+        max-width: var(--wdl-advance-w) !important;
+        height: 72px !important;
+        min-height: 72px !important;
+        max-height: 72px !important;
+        font-size: clamp(13px, 1vw, 16px) !important;
+        padding: 8px 10px !important;
+        border-radius: 16px !important;
+        line-height: 1.05 !important;
+      }
+
+      .product-row{
+        left: calc(var(--wdl-logo-w) + 18px) !important;
+        right: calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 72px) !important;
+      }
+
+      .scrub-wrap{
+        left: calc(var(--wdl-logo-w) + 18px) !important;
+        right: calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 80px) !important;
+      }
+    }
+</style>
 </head>
 <body>
   <div id="map"></div>
