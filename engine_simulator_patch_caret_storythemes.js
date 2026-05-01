@@ -5235,9 +5235,63 @@ if (goesResetBtn) goesResetBtn.onclick = function(){
 });
 
 
-var warningCoreBbox = { minLon:-100.2, maxLon:-94.0, minLat:42.5, maxLat:46.7 };
+
+// =========================================================
+// WDL Warning Focus Filter v1
+// Map display is polygon-only. County names are used only to decide
+// whether warning text/polygons belong in the teaching-focus area.
+// =========================================================
+window.WDL_WARNING_FOCUS = window.WDL_WARNING_FOCUS || {
+  enabled: true,
+  filterTimelineAlerts: true,
+  filterWarningPolygons: true,
+  showPolygonWarnings: true,
+  showCountyWarnings: false,
+  allowedCountyTokens: [
+    'Minnehaha','Lincoln','Turner','McCook','Lake','Moody','Brookings','Kingsbury','Miner','Sanborn','Davison','Hanson','Hutchinson','Bon Homme','Yankton','Clay','Union','Beadle','Jerauld','Aurora','Charles Mix','Douglas','Hamlin','Clark','Spink','Deuel','Grant',
+    'Rock','Nobles','Jackson','Pipestone','Murray','Cottonwood','Lyon',
+    'Sioux','Plymouth','Osceola',"O'Brien",'Cherokee','Woodbury',
+    'Cedar','Dixon','Dakota','Wayne','Thurston','Knox'
+  ],
+  blockedCountyTokens: [
+    'Aitkin','Itasca','Cass','Stearns','Kandiyohi','Meeker','Sibley','McLeod','Renville','Pope','Swift','Traverse','Otter Tail','Wilkin','Redwood','Yellow Medicine','Big Stone','Marshall','Roberts','Day','Brown','Dickey','Holt','Boyd','Wheeler','Keya Paha','Pierce','Antelope','Cuming','Burt'
+  ]
+};
+function wdlWarningWordHit(text, token){
+  token = String(token || '').trim();
+  if (!token) return false;
+  var esc = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var re = new RegExp('(^|[^A-Za-z])' + esc + '([^A-Za-z]|$)', 'i');
+  return re.test(String(text || ''));
+}
+function wdlWarningFeatureText(feature){
+  var p = (feature && feature.properties) ? feature.properties : {};
+  return [p.event, p.type, p.areaDesc, p.area, p.counties, p.geocode, p.headline, p.description, p.instruction, p.text, p.bulletinText].join(' ');
+}
+function wdlWarningFeatureMatchesFocus(feature){
+  var focus = window.WDL_WARNING_FOCUS || {};
+  if (!focus.enabled || focus.filterWarningPolygons === false) return true;
+  var text = wdlWarningFeatureText(feature);
+  var blocked = Array.isArray(focus.blockedCountyTokens) ? focus.blockedCountyTokens : [];
+  for (var b=0; b<blocked.length; b++){
+    if (wdlWarningWordHit(text, blocked[b])) return false;
+  }
+  var allowed = Array.isArray(focus.allowedCountyTokens) ? focus.allowedCountyTokens : [];
+  if (!allowed.length) return true;
+  for (var i=0; i<allowed.length; i++){
+    if (wdlWarningWordHit(text, allowed[i])) return true;
+  }
+  // If a warning polygon has no readable county/area text, fall back to the geographic box below.
+  return !String(text || '').trim();
+}
+
+var warningCoreBbox = { minLon:-99.6, maxLon:-94.8, minLat:42.25, maxLat:45.35 };
 function warningFeatureInCoreArea(feature){
   try{
+    if (!wdlWarningFeatureMatchesFocus(feature)) return false;
+    var focus = window.WDL_WARNING_FOCUS || {};
+    // Keep polygon warnings only. County-fill layers are intentionally not used.
+    if (focus.showPolygonWarnings === false) return false;
     var g = feature && feature.geometry;
     if (!g) return true;
     var pts = [];
@@ -5253,7 +5307,6 @@ function warningFeatureInCoreArea(feature){
     return lon >= warningCoreBbox.minLon && lon <= warningCoreBbox.maxLon && lat >= warningCoreBbox.minLat && lat <= warningCoreBbox.maxLat;
   }catch(e){ return true; }
 }
-
 var alertsGeoJson = null;
 var alertsLoadPromise = null;
 var alertsBlinkOn = true;
