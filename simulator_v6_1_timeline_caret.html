@@ -510,7 +510,121 @@
         max-width: clamp(210px, 16vw, 300px) !important;
       }
     }
-</style>
+
+
+/* =========================================================
+   WDL BUTTON/DROPDOWN + COLLAPSED STORY PANEL PASS
+   Keeps top product dropdowns visible and moves collapsed story
+   header out of the upper-left product-menu zone.
+   ========================================================= */
+
+/* Let Radar / Current Conditions dropdowns open downward instead of
+   being clipped by the horizontal product row. */
+.product-row,
+#simProductRow{
+  overflow: visible !important;
+  z-index: 100060 !important;
+}
+.product-group{
+  position: relative !important;
+  z-index: 100061 !important;
+}
+.product-group.is-open{
+  z-index: 100080 !important;
+}
+.product-menu{
+  z-index: 100090 !important;
+  pointer-events: auto !important;
+  box-shadow: 0 18px 36px rgba(0,0,0,.36) !important;
+}
+.product-menu .sim-product-btn{
+  pointer-events: auto !important;
+}
+
+/* The map product label should never sit above the button menus. */
+.product-slot{
+  z-index: 100015 !important;
+  pointer-events: none !important;
+}
+
+/* When the story card is hidden/collapsed, move the whole remaining
+   header badge to the lower-left so it does not cover Radar / Current
+   Conditions dropdown choices. */
+body.story-collapsed .storyPanel,
+body.story-collapsed #storyPanel{
+  left: 78px !important;
+  top: auto !important;
+  bottom: 74px !important;
+  width: min(360px, calc(100vw - 110px)) !important;
+  max-height: 96px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  z-index: 100018 !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,.28) !important;
+}
+body.story-collapsed .story-shell-header{
+  min-height: 68px !important;
+  padding: 10px 12px !important;
+  gap: 10px !important;
+}
+body.story-collapsed .story-station-chip{
+  width: 52px !important;
+  height: 52px !important;
+  font-size: 22px !important;
+  border-width: 2px !important;
+}
+body.story-collapsed .story-shell-kicker{
+  font-size: 10px !important;
+  letter-spacing: .8px !important;
+}
+body.story-collapsed .story-title{
+  margin-top: 4px !important;
+  font-size: 20px !important;
+  line-height: 1.02 !important;
+  letter-spacing: -.3px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+body.story-collapsed #storyCollapseBtn{
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  min-width: 78px !important;
+}
+
+/* Put the zoom buttons in a predictable lower-left stack that does not
+   sit directly under the collapsed story badge. */
+body.story-collapsed .zoom-corner,
+body.story-collapsed #zoomCorner{
+  left: 12px !important;
+  bottom: 74px !important;
+  z-index: 100031 !important;
+}
+body.story-collapsed .zoom-corner-btn{
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  font-size: 28px !important;
+}
+
+@media (max-width: 768px){
+  body.story-collapsed .storyPanel,
+  body.story-collapsed #storyPanel{
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 58px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  body.story-collapsed .zoom-corner,
+  body.story-collapsed #zoomCorner{
+    display: none !important;
+  }
+}
+
+  </style>
 </head>
 <body>
   <div id="map"></div>
