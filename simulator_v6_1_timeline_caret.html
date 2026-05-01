@@ -457,6 +457,59 @@
         right: calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 80px) !important;
       }
     }
+
+    /* =========================================================
+       WDL COSMETIC PASS 3 - product row clearance fix
+       The clock stack is now shorter and sits above the product row,
+       so the product buttons can safely use the right side again.
+       This keeps Warnings and Roads OFF visible instead of clipping them.
+       ========================================================= */
+    @media (min-width: 761px){
+      .product-row,
+      #simProductRow{
+        left: calc(var(--wdl-logo-w) + 18px) !important;
+        right: 10px !important;
+        top: 108px !important;
+        gap: 7px !important;
+        overflow-x: visible !important;
+        padding-bottom: 0 !important;
+      }
+
+      .sim-group-toggle,
+      .sim-product-btn{
+        min-width: 112px !important;
+        padding: 10px 13px !important;
+        font-size: 12px !important;
+        letter-spacing: .35px !important;
+      }
+
+      .product-group .sim-group-toggle{
+        min-width: 122px !important;
+      }
+
+      #roadsToggleBtn{
+        min-width: 104px !important;
+        padding-left: 11px !important;
+        padding-right: 11px !important;
+      }
+
+      .scrub-wrap,
+      #scrubWrap{
+        left: calc(var(--wdl-logo-w) + 18px) !important;
+        right: calc(var(--wdl-clock-w) + var(--wdl-advance-w) + 80px) !important;
+      }
+
+      .product-slot{
+        top: 146px !important;
+        right: 16px !important;
+        z-index: 100018 !important;
+      }
+
+      #brandLogo{
+        width: clamp(210px, 16vw, 300px) !important;
+        max-width: clamp(210px, 16vw, 300px) !important;
+      }
+    }
 </style>
 </head>
 <body>
