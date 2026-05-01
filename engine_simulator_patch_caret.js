@@ -2425,6 +2425,11 @@ document.addEventListener('click', function(ev){
     add(typeof CITIES_TIER1 !== "undefined" ? CITIES_TIER1 : []);
     add(typeof CITIES_TIER2 !== "undefined" ? CITIES_TIER2 : []);
     add(typeof CITIES_TIER3 !== "undefined" ? CITIES_TIER3 : []);
+    // Include the tight local/bubble-city list too. This is where towns like
+    // Hartford, Garretson, Canton, Freeman, Olivet, Inwood, etc. live.
+    // Without this tier the tracker can draw across visible bubble cities
+    // but still say "No nearby cities on this track."
+    add(typeof CITIES_TIER4 !== "undefined" ? CITIES_TIER4 : []);
     add(typeof NATIONAL_CITIES !== "undefined" ? NATIONAL_CITIES : []);
     return out;
   }
@@ -2477,7 +2482,16 @@ document.addEventListener('click', function(ev){
       if (t <= 0 || t > 1.05) continue;
       var projx = p1.x + dx * t, projy = p1.y + dy * t;
       var cross = Math.sqrt(Math.pow(pc.x - projx, 2) + Math.pow(pc.y - projy, 2));
-      if (cross > 26) continue;
+
+      // Use the actual TV cone width instead of a tiny fixed centerline buffer.
+      // The fan is drawn with a 12-degree half-angle, so the allowed distance
+      // from the centerline widens farther down the track. Add a small label
+      // cushion so a city bubble just inside the cone is counted.
+      var halfAngleRad = 12 * Math.PI / 180;
+      var coneHalfWidthPx = Math.tan(halfAngleRad) * Math.sqrt(len2) * Math.max(0.08, t);
+      var allowedCrossPx = Math.max(30, coneHalfWidthPx + 14);
+      if (cross > allowedCrossPx) continue;
+
       hits.push({
         name: c[0],
         lat: c[1],
@@ -2517,10 +2531,14 @@ document.addEventListener('click', function(ev){
       document.body.classList.remove("measure-active");
       document.body.classList.remove("probe-active");
       document.body.classList.remove("draw-active");
+      // Hard-stop the telestrator state before tracking. This prevents a stale
+      // draw gesture from starting when switching quickly from Draw to Track.
+      try{ drawing = false; currentLine = null; }catch(_){ }
       setToolActive(toolTrackBtn, true);
       setToolActive(toolMeasureBtn, false);
       setToolActive(toolProbeBtn, false);
       setToolActive(toolDrawBtn, false);
+      setToolActive(toolEraseBtn, false);
       try{ map.dragging.disable(); }catch(e){}
       try{ map.boxZoom.disable(); }catch(e){}
       try{ map.doubleClickZoom.disable(); }catch(e){}
@@ -2783,20 +2801,14 @@ document.addEventListener('click', function(ev){
 
   window.clearStormTrackGraphics = clearStormTrackGraphics;
   window.clearStormTrack = clearStormTrackGraphics;
-  window.setTrackMode = function(on){
-    try{
-      document.body.classList.toggle("track-active", !!on);
-      if (on){
-        document.body.classList.remove("measure-active");
-        document.body.classList.remove("probe-active");
-        document.body.classList.remove("draw-active");
-      }
-      if (toolTrackBtn) setToolActive(toolTrackBtn, !!on);
-    }catch(e){}
-  };
+  // Expose the full tracker mode function, not a lightweight class toggle.
+  // Some simulator/demo hooks call window.setTrackMode directly; using the
+  // real function keeps Draw/Probe/Ruler mutually exclusive and prevents the
+  // Track button from accidentally behaving like the telestrator.
+  window.setTrackMode = setTrackMode;
   window.toggleStormTrackMode = function(){
     var on = !document.body.classList.contains("track-active");
-    window.setTrackMode(on);
+    setTrackMode(on);
   };
 
 
@@ -2985,6 +2997,9 @@ function setDrawMode(on){
   map.on("mousedown", startTrackDrag);
   map.on("mousemove", moveTrackDrag);
   map.on("mouseup", endTrackDrag);
+  map.on("touchstart", startTrackDrag);
+  map.on("touchmove", moveTrackDrag);
+  map.on("touchend", endTrackDrag);
 
 
 // WDL final demo: Card 3 should probe HRRR model temperatures, not the surface-wind particles.
