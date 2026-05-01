@@ -909,6 +909,60 @@ body.story-collapsed .zoom-corner-btn{
       var tickerRotationLines = [];
       var pendingAlertQueue = [];
       var alertShowing = false;
+      // =========================================================
+      // WDL Warning Focus Filter v1
+      // Keeps warning text/ticker/counts focused on the Derecho teaching area.
+      // The map warning layer remains polygon-only; counties are used only for filtering text.
+      // =========================================================
+      window.WDL_WARNING_FOCUS = window.WDL_WARNING_FOCUS || {
+        enabled: true,
+        filterTimelineAlerts: true,
+        showPolygonWarnings: true,
+        showCountyWarnings: false,
+        allowedCountyTokens: [
+          // Eastern / southeastern South Dakota focus
+          'Minnehaha','Lincoln','Turner','McCook','Lake','Moody','Brookings','Kingsbury','Miner','Sanborn','Davison','Hanson','Hutchinson','Bon Homme','Yankton','Clay','Union','Beadle','Jerauld','Aurora','Charles Mix','Douglas','Hamlin','Clark','Spink','Deuel','Grant',
+          // Southwest Minnesota / far western Minnesota focus
+          'Rock','Nobles','Jackson','Pipestone','Murray','Cottonwood','Lyon',
+          // Northwest Iowa focus
+          'Sioux','Plymouth','Osceola',"O'Brien",'Cherokee','Woodbury',
+          // Immediate northeast Nebraska focus
+          'Cedar','Dixon','Dakota','Wayne','Thurston','Knox'
+        ],
+        blockedCountyTokens: [
+          'Aitkin','Itasca','Cass','Stearns','Kandiyohi','Meeker','Sibley','McLeod','Renville','Pope','Swift','Traverse','Otter Tail','Wilkin','Redwood','Yellow Medicine','Big Stone','Marshall','Roberts','Day','Brown','Dickey','Holt','Boyd','Wheeler','Keya Paha','Pierce','Antelope','Cuming','Burt'
+        ]
+      };
+      function wdlWarningEventText(ev){
+        if (!ev) return '';
+        var parts = [ev.id, ev.kind, ev.type, ev.kicker, ev.headline, ev.message, ev.detailsHint];
+        if (Array.isArray(ev.ticker)) parts.push(ev.ticker.join(' '));
+        else parts.push(ev.ticker || '');
+        return parts.join(' ');
+      }
+      function wdlWordHit(text, token){
+        token = String(token || '').trim();
+        if (!token) return false;
+        var esc = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var re = new RegExp('(^|[^A-Za-z])' + esc + '([^A-Za-z]|$)', 'i');
+        return re.test(String(text || ''));
+      }
+      function wdlWarningEventInFocus(ev){
+        var focus = window.WDL_WARNING_FOCUS || {};
+        if (!focus.enabled || !focus.filterTimelineAlerts) return true;
+        if (!ev || ev.kind !== 'warning') return true;
+        var text = wdlWarningEventText(ev);
+        var blocked = Array.isArray(focus.blockedCountyTokens) ? focus.blockedCountyTokens : [];
+        for (var b=0; b<blocked.length; b++){
+          if (wdlWordHit(text, blocked[b])) return false;
+        }
+        var allowed = Array.isArray(focus.allowedCountyTokens) ? focus.allowedCountyTokens : [];
+        if (!allowed.length) return true;
+        for (var i=0; i<allowed.length; i++){
+          if (wdlWordHit(text, allowed[i])) return true;
+        }
+        return false;
+      }
       function setTicker(lines){
         tickerRotationLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
         tickerRotationIndex = 0;
@@ -919,6 +973,7 @@ body.story-collapsed .zoom-corner-btn{
         var activeLines = [];
         events.forEach(function(ev, idx){
           if (!ev || !ev.displayTime || !Array.isArray(ev.ticker) || !ev.ticker.length) return;
+          if (ev.kind === 'warning' && !wdlWarningEventInFocus(ev)) return;
           var startPct = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime);
           if (!isFinite(startPct)) return;
           var durMin = Number(ev.activeMinutes || ((ev.kind === 'report') ? 12 : 30));
@@ -960,12 +1015,13 @@ body.story-collapsed .zoom-corner-btn{
         pendingAlertQueue.push(eventData);
         dequeueAndShowAlert();
       }
-      function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || ev.kind !== 'warning' || !ev.displayTime) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
+      function computeWarningCount(pct){ var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : []; var count = 0; events.forEach(function(ev){ if (!ev || ev.kind !== 'warning' || !ev.displayTime) return; if (!wdlWarningEventInFocus(ev)) return; var startPct = displayPercentFromDisplayTime(ev.displayTime); if (!isFinite(startPct)) return; var durMin = Number(ev.activeMinutes || 30); var d = getDisplayWindow(); var durationPct = ((durMin * 60 * 1000) / Math.max(1, (d.end - d.start))); if (pct >= startPct && pct <= (startPct + durationPct)) count += 1; }); return count; }
       function updateWarningCount(pct){ document.getElementById('warningCountValue').textContent = String(computeWarningCount(pct)); }
       function maybeFireTimedEvents(pct){
         var events = Array.isArray(cfg.timelineEvents) ? cfg.timelineEvents : [];
         var due = [];
         events.forEach(function(ev, idx){
+          if (ev && ev.kind === 'warning' && !wdlWarningEventInFocus(ev)) return;
           var threshold = isFinite(Number(ev.percent)) ? clamp01(Number(ev.percent)) : displayPercentFromDisplayTime(ev.displayTime);
           if (!isFinite(threshold)) return;
           var key = String(ev.id || idx);
