@@ -561,23 +561,8 @@
             <button class="sim-product-btn" data-product="metar_pressure">Pressure</button>
           </div>
         </div>
-        <div class="product-group">
-          <button class="sim-group-toggle" type="button">SPC ▾</button>
-          <div class="product-menu">
-            <button class="sim-product-btn" data-product="spc">Day 1 Outlook</button>
-            <button class="sim-product-btn" data-product="watch">Watch</button>
-            <button class="sim-product-btn is-disabled" type="button">Meso (next)</button>
-          </div>
-        </div>
-        <div class="product-group">
-          <button class="sim-group-toggle" type="button">Reports ▾</button>
-          <div class="product-menu">
-            <button class="sim-product-btn" data-product="reports">All Reports</button>
-            <button class="sim-product-btn is-disabled" type="button">Wind (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Hail (next)</button>
-            <button class="sim-product-btn is-disabled" type="button">Tornado (next)</button>
-          </div>
-        </div>
+        <button class="sim-product-btn" data-product="spc" type="button">SPC OUTLOOK</button>
+        <button class="sim-product-btn" data-product="reports" type="button">REPORTS</button>
         <button class="sim-product-btn" data-product="lightning">Lightning</button>
         <button class="sim-product-btn" data-product="satellite">Satellite</button>
         <button class="sim-product-btn" data-product="warnings">Warnings</button>
@@ -1201,6 +1186,35 @@
         }catch(e){}
         setLocalTrackMode(false);
       }
+
+      // Top product dropdowns: keep Radar and Current Conditions usable.
+      // SPC and Reports are now simple one-click buttons above, but this listener
+      // preserves the remaining dropdown behavior.
+      document.querySelectorAll('.product-group .sim-group-toggle').forEach(function(toggle){
+        toggle.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          var group = toggle.closest ? toggle.closest('.product-group') : null;
+          if (!group) return;
+          var wasOpen = group.classList.contains('is-open');
+          document.querySelectorAll('.product-group').forEach(function(g){
+            g.classList.remove('is-open');
+            var t = g.querySelector('.sim-group-toggle');
+            if (t) t.classList.remove('is-open');
+          });
+          if (!wasOpen) {
+            group.classList.add('is-open');
+            toggle.classList.add('is-open');
+          }
+        });
+      });
+      document.addEventListener('click', function(){
+        document.querySelectorAll('.product-group').forEach(function(g){
+          g.classList.remove('is-open');
+          var t = g.querySelector('.sim-group-toggle');
+          if (t) t.classList.remove('is-open');
+        });
+      });
 
       productButtons.forEach(function(btn){ btn.addEventListener('click', function(ev){
         if (btn.classList.contains('is-disabled') || !btn.getAttribute('data-product')) return;
