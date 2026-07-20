@@ -13,124 +13,54 @@
       --panel:#f7f9fc;
       --ink:#10253d;
       --blue:#0f67d8;
-      --blue2:#073e88;
       --line:#d8e1ec;
       --gold:#f4b632;
+      --purple:#6744c7;
     }
     *{box-sizing:border-box;}
     html,body{height:100%;margin:0;overflow:hidden;background:var(--navy);font-family:"Lato",Arial,sans-serif;}
     #simFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
-
     .lab-panel{
-      position:absolute;
-      z-index:30;
-      left:10px;
-      top:170px;
-      bottom:58px;
-      width:370px;
-      display:flex;
-      flex-direction:column;
-      border-radius:22px;
-      overflow:hidden;
-      background:rgba(247,249,252,.98);
-      color:var(--ink);
-      box-shadow:0 18px 40px rgba(0,0,0,.30);
-      border:1px solid rgba(255,255,255,.65);
+      position:absolute;z-index:30;left:10px;top:170px;bottom:58px;width:382px;
+      display:flex;flex-direction:column;border-radius:22px;overflow:hidden;
+      background:rgba(247,249,252,.98);color:var(--ink);
+      box-shadow:0 18px 40px rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.65);
       transition:transform .22s ease;
     }
     .lab-panel.is-collapsed{transform:translateX(calc(-100% - 18px));}
-    .panel-head{
-      padding:15px 16px 13px;
-      color:#fff;
-      background:linear-gradient(180deg,#176fda,#0b4d9f 65%,#073675);
-      border-bottom:4px solid var(--gold);
-    }
+    .panel-head{padding:15px 16px 13px;color:#fff;background:linear-gradient(180deg,#176fda,#0b4d9f 65%,#073675);border-bottom:4px solid var(--gold);}
     .eyebrow{font:900 10px/1 "Lato",Arial,sans-serif;letter-spacing:1.2px;text-transform:uppercase;opacity:.88;}
     h1{font:900 22px/1.03 "Lato",Arial,sans-serif;margin:7px 0 6px;}
     .subhead{font:800 12px/1.3 "Lato",Arial,sans-serif;opacity:.92;}
     .panel-scroll{padding:12px 12px 18px;overflow:auto;}
-    .intro{
-      margin:0 0 10px;
-      padding:11px 12px;
-      border-radius:15px;
-      background:#eaf2fd;
-      border-left:6px solid var(--blue);
-      font:800 12px/1.4 "Lato",Arial,sans-serif;
-    }
+    .intro{margin:0 0 10px;padding:11px 12px;border-radius:15px;background:#eaf2fd;border-left:6px solid var(--blue);font:800 12px/1.4 "Lato",Arial,sans-serif;}
     .task-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 0 11px;}
     .task-btn{
-      border:1px solid #bdd0e8;
-      border-radius:13px;
-      padding:10px 8px;
-      min-height:46px;
-      cursor:pointer;
-      background:#fff;
-      color:#183b63;
-      font:900 11px/1.15 "Lato",Arial,sans-serif;
-      text-transform:uppercase;
-      letter-spacing:.35px;
-      box-shadow:0 4px 10px rgba(15,50,90,.08);
+      border:1px solid #bdd0e8;border-radius:13px;padding:10px 8px;min-height:46px;cursor:pointer;
+      background:#fff;color:#183b63;font:900 11px/1.15 "Lato",Arial,sans-serif;text-transform:uppercase;
+      letter-spacing:.35px;box-shadow:0 4px 10px rgba(15,50,90,.08);
     }
     .task-btn:hover{filter:brightness(.98);transform:translateY(-1px);}
     .task-btn.is-active{background:linear-gradient(180deg,#1877e8,#0b56b5);color:#fff;border-color:#0b56b5;box-shadow:0 0 0 3px rgba(15,103,216,.17);}
-    .question-card{
-      border-radius:17px;
-      background:#fff;
-      border:1px solid var(--line);
-      box-shadow:0 7px 18px rgba(15,50,90,.09);
-      overflow:hidden;
-    }
+    .task-btn.advanced{border-color:#b7a7e6;color:#4d348e;background:#f3efff;}
+    .task-btn.advanced.is-active{background:linear-gradient(180deg,#8162dc,#5835b1);color:#fff;border-color:#5835b1;}
+    .question-card{border-radius:17px;background:#fff;border:1px solid var(--line);box-shadow:0 7px 18px rgba(15,50,90,.09);overflow:hidden;}
     .question-top{padding:9px 12px;background:#173d68;color:#fff;font:900 11px/1 "Lato",Arial,sans-serif;text-transform:uppercase;letter-spacing:.8px;}
     .question-body{padding:12px 13px 13px;}
     #taskTitle{margin:0 0 7px;font:900 18px/1.1 "Lato",Arial,sans-serif;color:#123f72;}
     #taskQuestion{margin:0;font:800 13px/1.45 "Lato",Arial,sans-serif;color:#213b59;}
-    .reasoning{
-      margin-top:10px;
-      padding:10px 11px;
-      border-radius:13px;
-      background:#fff7df;
-      border-left:5px solid var(--gold);
-      color:#533b00;
-      font:800 12px/1.4 "Lato",Arial,sans-serif;
-    }
+    .reasoning{margin-top:10px;padding:10px 11px;border-radius:13px;background:#fff7df;border-left:5px solid var(--gold);color:#533b00;font:800 12px/1.4 "Lato",Arial,sans-serif;}
+    .layer-status{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding:8px 10px;border-radius:12px;background:#edf3fa;color:#38536f;font:800 11px/1.25 "Lato",Arial,sans-serif;}
+    .retry-btn{border:none;border-radius:999px;padding:7px 9px;cursor:pointer;background:#d7e5f5;color:#173d68;font:900 10px/1 "Lato",Arial,sans-serif;text-transform:uppercase;white-space:nowrap;}
     .journal-note{margin:11px 2px 0;color:#536a82;font:800 11px/1.35 "Lato",Arial,sans-serif;}
-    .panel-toggle{
-      position:absolute;
-      z-index:31;
-      left:388px;
-      top:184px;
-      width:42px;
-      height:42px;
-      border:none;
-      border-radius:0 13px 13px 0;
-      cursor:pointer;
-      background:#0b56b5;
-      color:#fff;
-      font:900 20px/1 "Lato",Arial,sans-serif;
-      box-shadow:0 8px 18px rgba(0,0,0,.24);
-      transition:left .22s ease;
-    }
+    .panel-toggle{position:absolute;z-index:31;left:400px;top:184px;width:42px;height:42px;border:none;border-radius:0 13px 13px 0;cursor:pointer;background:#0b56b5;color:#fff;font:900 20px/1 "Lato",Arial,sans-serif;box-shadow:0 8px 18px rgba(0,0,0,.24);transition:left .22s ease;}
     .panel-toggle.is-collapsed{left:0;}
-    .status-pill{
-      position:absolute;
-      z-index:29;
-      right:16px;
-      bottom:58px;
-      padding:8px 12px;
-      border-radius:999px;
-      color:#fff;
-      background:rgba(6,40,79,.92);
-      border:1px solid rgba(255,255,255,.25);
-      box-shadow:0 8px 20px rgba(0,0,0,.24);
-      font:900 11px/1 "Lato",Arial,sans-serif;
-      letter-spacing:.45px;
-      text-transform:uppercase;
-    }
+    .status-pill{position:absolute;z-index:29;right:16px;bottom:58px;padding:8px 12px;border-radius:999px;color:#fff;background:rgba(6,40,79,.92);border:1px solid rgba(255,255,255,.25);box-shadow:0 8px 20px rgba(0,0,0,.24);font:900 11px/1 "Lato",Arial,sans-serif;letter-spacing:.45px;text-transform:uppercase;}
+    .status-pill.advanced{background:rgba(77,52,142,.94);}
     @media (max-width:800px){
       .lab-panel{left:7px;right:7px;width:auto;top:164px;bottom:54px;}
       .panel-toggle{left:auto;right:7px;top:170px;border-radius:13px;}
       .panel-toggle.is-collapsed{left:auto;right:7px;}
-      .task-grid{grid-template-columns:1fr 1fr;}
       .status-pill{display:none;}
     }
   </style>
@@ -142,10 +72,10 @@
     <div class="panel-head">
       <div class="eyebrow">Weather Discovery Lab</div>
       <h1>Pre-Storm Environment</h1>
-      <div class="subhead">May 12, 2022 • 3:00 p.m. CDT • Evidence before the derecho</div>
+      <div class="subhead">May 12, 2022 • Core observations near 3:00 p.m. CDT</div>
     </div>
     <div class="panel-scroll">
-      <p class="intro">Work like a forecaster. Examine one piece of evidence at a time, record what you observe, and then explain what the evidence suggests.</p>
+      <p class="intro">Work like a forecaster. Examine one piece of evidence at a time. Steps 1–7 are the core lab; Step 8 is an optional advanced model question.</p>
 
       <div class="task-grid" id="taskGrid">
         <button class="task-btn is-active" data-task="spc" type="button">1. SPC Outlook</button>
@@ -154,7 +84,8 @@
         <button class="task-btn" data-task="metar_wind" type="button">4. Winds</button>
         <button class="task-btn" data-task="metar_pressure" type="button">5. Pressure</button>
         <button class="task-btn" data-task="satellite" type="button">6. Satellite</button>
-        <button class="task-btn" data-task="radar" type="button">7. 3 PM Radar</button>
+        <button class="task-btn" data-task="radar" type="button">7. Radar 3:12 PM</button>
+        <button class="task-btn advanced" data-task="cape" type="button">8. Advanced: CAPE</button>
       </div>
 
       <section class="question-card">
@@ -163,6 +94,7 @@
           <h2 id="taskTitle">SPC Outlook</h2>
           <p id="taskQuestion">Which risk area covers eastern South Dakota? What does that tell you—and what does it not tell you—about where the most dangerous storms will actually occur?</p>
           <div class="reasoning" id="reasoningPrompt"><strong>Reasoning:</strong> Start with the broad forecast, but do not treat the outlook as a precise storm-location map.</div>
+          <div class="layer-status"><span id="layerStatus">Preparing the map…</span><button class="retry-btn" id="retryBtn" type="button">Reload layer</button></div>
         </div>
       </section>
 
@@ -171,9 +103,14 @@
   </aside>
 
   <button class="panel-toggle" id="panelToggle" type="button" aria-label="Hide investigation guide">‹</button>
-  <div class="status-pill">Student view • Locked at 3:00 PM</div>
+  <div class="status-pill" id="statusPill">Student view • Observations near 3 PM</div>
 
   <script>
+    const OBS_TIME = new Date("2022-05-12T20:00:00Z");
+    const CAPE_TIME = new Date("2022-05-12T21:00:00Z");
+    const RADAR_URL = "https://thekarstens.github.io/wdl-data-derecho-2022/lessons/derecho-2022/radar/kfsd/frames/KFSD_201222.png";
+    const RADAR_BOUNDS = [[40.8467,-100.4542],[46.2427,-93.0046]];
+
     const TASKS = {
       spc: {
         title: "SPC Outlook",
@@ -182,7 +119,7 @@
       },
       temps: {
         title: "Temperature Pattern",
-        question: "Where is the warmest air at 3:00 p.m.? Describe the temperature pattern from west to east and identify any sharp changes.",
+        question: "Where is the warmest air near 3:00 p.m.? Describe the temperature pattern from west to east and identify any sharp changes.",
         reasoning: "A temperature gradient can help reveal air-mass boundaries, but temperature alone cannot prove where storms will form."
       },
       metar_dewpoint: {
@@ -206,80 +143,166 @@
         reasoning: "Separate existing cloud cover from the air mass that may feed later storms. Note both location and shape."
       },
       radar: {
-        title: "Early Radar at 3 PM",
-        question: "Where are thunderstorms already present at 3:00 p.m.? Are they isolated, clustered, or beginning to organize into a line?",
-        reasoning: "Use radar as the final check. Explain how the observed storms relate to the boundaries and moisture you found earlier."
+        title: "Early Radar — 3:12 PM",
+        question: "Where are thunderstorms already present by 3:12 p.m.? Are they isolated, clustered, or beginning to organize?",
+        reasoning: "Use radar as the final observational check. Explain how the storms relate to the boundaries and moisture you found earlier."
+      },
+      cape: {
+        title: "Advanced: 4 PM CAPE Forecast",
+        question: "Where does the model forecast the greatest CAPE at 4:00 p.m.? Compare that area with the dew-point corridor. Why does high CAPE increase concern without guaranteeing severe storms?",
+        reasoning: "CAPE estimates potential buoyancy. Storms still need lift, suitable wind shear, and a way to overcome any cap."
       }
     };
 
     const frame = document.getElementById("simFrame");
     const panel = document.getElementById("labPanel");
     const toggle = document.getElementById("panelToggle");
+    const layerStatus = document.getElementById("layerStatus");
+    const statusPill = document.getElementById("statusPill");
     let simDoc = null;
+    let simWin = null;
+    let studentRadarOverlay = null;
+    let currentTask = "spc";
+    let requestToken = 0;
+
+    const radarPreload = new Image();
+    radarPreload.src = RADAR_URL;
 
     function hide(el){ if(el) el.style.setProperty("display","none","important"); }
+    function setLayerStatus(message){ layerStatus.textContent = message; }
+
+    async function callWindow(name, value){
+      try{
+        const fn = simWin && simWin[name];
+        if(typeof fn === "function") await Promise.resolve(fn(value));
+      }catch(error){ console.warn(name + " failed", error); }
+    }
+
+    function setEngineTime(date){
+      try{
+        if(simWin && typeof simWin.setMasterTime === "function") simWin.setMasterTime(new Date(date.getTime()));
+        else if(simWin) simWin.curZ = new Date(date.getTime());
+      }catch(error){ console.warn("Time change failed", error); }
+    }
+
+    function clearStudentRadar(){
+      try{
+        if(studentRadarOverlay && simWin && simWin.map && simWin.map.hasLayer(studentRadarOverlay)) simWin.map.removeLayer(studentRadarOverlay);
+      }catch(error){}
+      studentRadarOverlay = null;
+    }
+
+    async function resetLayers(){
+      clearStudentRadar();
+      await callWindow("setSpcDay1Enabled", false);
+      await callWindow("setObsRadarEnabled", false);
+      await callWindow("setRadarEnabled", false);
+      await callWindow("setWarningsEnabled", false);
+      await callWindow("setReportsEnabled", false);
+      await callWindow("setLightningEnabled", false);
+      await callWindow("setSatelliteEnabled", false);
+      await callWindow("setMetarsEnabled", false);
+      await callWindow("setHrrrRadarEnabled", false);
+      await callWindow("setHrrrWindsEnabled", false);
+      await callWindow("setHrrrCapeEnabled", false);
+      await callWindow("setHrrrTempEnabled", false);
+    }
+
+    async function showFixedRadar(token){
+      if(!simWin || !simWin.L || !simWin.map) throw new Error("Map is not ready");
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = RADAR_URL + "?v=2";
+      });
+      if(token !== requestToken) return;
+      studentRadarOverlay = simWin.L.imageOverlay(RADAR_URL, RADAR_BOUNDS, {opacity:.76, interactive:false});
+      studentRadarOverlay.addTo(simWin.map);
+      if(studentRadarOverlay.bringToFront) studentRadarOverlay.bringToFront();
+    }
+
+    async function showTaskLayer(taskId){
+      const token = ++requestToken;
+      setLayerStatus("Loading " + TASKS[taskId].title + "…");
+      await resetLayers();
+      if(token !== requestToken) return;
+
+      if(taskId === "cape"){
+        setEngineTime(CAPE_TIME);
+        statusPill.textContent = "Advanced forecast • 4 PM CAPE";
+        statusPill.classList.add("advanced");
+        const clockLabel = simDoc.getElementById("simClockLabel");
+        if(clockLabel) clockLabel.textContent = "Model Valid Time";
+        await callWindow("setHrrrCapeEnabled", true);
+        if(token === requestToken) setLayerStatus("4 PM CAPE forecast requested. It may take a few seconds to draw.");
+        return;
+      }
+
+      setEngineTime(OBS_TIME);
+      statusPill.textContent = taskId === "radar" ? "Radar scan • 3:12 PM" : "Student view • Observations near 3 PM";
+      statusPill.classList.remove("advanced");
+      const clockLabel = simDoc.getElementById("simClockLabel");
+      if(clockLabel) clockLabel.textContent = taskId === "radar" ? "Radar Scan Time" : "Observation Time";
+
+      if(taskId === "spc") await callWindow("setSpcDay1Enabled", true);
+      else if(taskId === "satellite") await callWindow("setSatelliteEnabled", true);
+      else if(taskId === "radar") await showFixedRadar(token);
+      else {
+        const mode = taskId === "temps" ? "temp" : taskId.replace("metar_", "");
+        try{ if(typeof simWin.setMetarUseMasterScrubber === "function") simWin.setMetarUseMasterScrubber(true); }catch(error){}
+        try{ if(typeof simWin.setMetarDisplayMode === "function") simWin.setMetarDisplayMode(mode); }catch(error){}
+        await callWindow("setMetarsEnabled", true);
+      }
+
+      if(token === requestToken){
+        setLayerStatus(taskId === "radar" ? "Fixed 3:12 PM radar scan loaded." : "Layer loaded. Examine the full pattern before answering.");
+      }
+    }
 
     function prepareStudentView(){
       try{
         simDoc = frame.contentDocument || frame.contentWindow.document;
-        if(!simDoc || !simDoc.body) return false;
+        simWin = frame.contentWindow;
+        if(!simDoc || !simDoc.body || !simWin || !simWin.map) return false;
 
-        hide(simDoc.getElementById("simPlayPauseBtn"));
-        hide(simDoc.getElementById("scrubWrap"));
-        hide(simDoc.getElementById("storyPanel"));
-        hide(simDoc.getElementById("topicRail"));
-        hide(simDoc.getElementById("toolBox"));
-        hide(simDoc.getElementById("warningCountBox"));
-        hide(simDoc.getElementById("simTickerWrap"));
-        hide(simDoc.getElementById("roadsToggleBtn"));
-        hide(simDoc.getElementById("wdlModelPadInlineToggle"));
-        hide(simDoc.getElementById("wdlModelPadInlineBody"));
-
-        ["reports","lightning","warnings","future_radar","live_doppler"].forEach(product => {
-          hide(simDoc.querySelector('[data-product="' + product + '"]'));
-        });
+        ["simPlayPauseBtn","scrubWrap","storyPanel","topicRail","toolBox","warningCountBox","simTickerWrap","roadsToggleBtn","wdlModelPadInlineToggle","wdlModelPadInlineBody","simProductRow"].forEach(id => hide(simDoc.getElementById(id)));
+        hide(simDoc.querySelector(".product-slot"));
+        hide(simDoc.querySelector(".sim-alert"));
 
         const version = simDoc.querySelector(".sim-version");
         if(version) version.textContent = "Student Mini-Lab • Pre-Storm Environment";
         const caseLine = simDoc.getElementById("simCaseLine");
         if(caseLine) caseLine.textContent = "Pre-Storm Environment — May 12, 2022";
-        const clockLabel = simDoc.getElementById("simClockLabel");
-        if(clockLabel) clockLabel.textContent = "Observation Time — Locked";
-
-        const productRow = simDoc.getElementById("simProductRow");
-        if(productRow) productRow.style.right = "18px";
-
         simDoc.body.classList.add("story-collapsed");
-        selectProduct("spc");
+
+        showTaskLayer(currentTask);
         return true;
-      }catch(err){
-        console.warn("Student view setup failed", err);
+      }catch(error){
+        console.warn("Student view setup failed", error);
         return false;
       }
-    }
-
-    function selectProduct(product){
-      if(!simDoc) return;
-      const target = simDoc.querySelector('[data-product="' + product + '"]');
-      if(target) target.click();
     }
 
     function setTask(taskId){
       const task = TASKS[taskId];
       if(!task) return;
-      document.querySelectorAll(".task-btn").forEach(btn => {
-        btn.classList.toggle("is-active", btn.dataset.task === taskId);
-      });
+      currentTask = taskId;
+      document.querySelectorAll(".task-btn").forEach(btn => btn.classList.toggle("is-active", btn.dataset.task === taskId));
       document.getElementById("taskTitle").textContent = task.title;
       document.getElementById("taskQuestion").textContent = task.question;
       document.getElementById("reasoningPrompt").innerHTML = "<strong>Reasoning:</strong> " + task.reasoning;
-      selectProduct(taskId);
+      showTaskLayer(taskId).catch(error => {
+        console.warn("Layer load failed", error);
+        setLayerStatus("That layer did not load. Press Reload layer once.");
+      });
     }
 
     document.getElementById("taskGrid").addEventListener("click", event => {
       const btn = event.target.closest(".task-btn");
       if(btn) setTask(btn.dataset.task);
     });
+    document.getElementById("retryBtn").addEventListener("click", () => setTask(currentTask));
 
     toggle.addEventListener("click", () => {
       const collapsed = panel.classList.toggle("is-collapsed");
@@ -292,7 +315,7 @@
       let attempts = 0;
       const timer = setInterval(() => {
         attempts += 1;
-        if(prepareStudentView() || attempts > 25) clearInterval(timer);
+        if(prepareStudentView() || attempts > 45) clearInterval(timer);
       }, 250);
     });
   </script>
