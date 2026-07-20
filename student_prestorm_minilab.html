@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weather Discovery Lab — Pre-Storm Environment Mini-Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --navy:#07131f;
+      --panel:#f7f9fc;
+      --ink:#10253d;
+      --blue:#0f67d8;
+      --blue2:#073e88;
+      --line:#d8e1ec;
+      --gold:#f4b632;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%;margin:0;overflow:hidden;background:var(--navy);font-family:"Lato",Arial,sans-serif;}
+    #simFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
+
+    .lab-panel{
+      position:absolute;
+      z-index:30;
+      left:10px;
+      top:170px;
+      bottom:58px;
+      width:370px;
+      display:flex;
+      flex-direction:column;
+      border-radius:22px;
+      overflow:hidden;
+      background:rgba(247,249,252,.98);
+      color:var(--ink);
+      box-shadow:0 18px 40px rgba(0,0,0,.30);
+      border:1px solid rgba(255,255,255,.65);
+      transition:transform .22s ease;
+    }
+    .lab-panel.is-collapsed{transform:translateX(calc(-100% - 18px));}
+    .panel-head{
+      padding:15px 16px 13px;
+      color:#fff;
+      background:linear-gradient(180deg,#176fda,#0b4d9f 65%,#073675);
+      border-bottom:4px solid var(--gold);
+    }
+    .eyebrow{font:900 10px/1 "Lato",Arial,sans-serif;letter-spacing:1.2px;text-transform:uppercase;opacity:.88;}
+    h1{font:900 22px/1.03 "Lato",Arial,sans-serif;margin:7px 0 6px;}
+    .subhead{font:800 12px/1.3 "Lato",Arial,sans-serif;opacity:.92;}
+    .panel-scroll{padding:12px 12px 18px;overflow:auto;}
+    .intro{
+      margin:0 0 10px;
+      padding:11px 12px;
+      border-radius:15px;
+      background:#eaf2fd;
+      border-left:6px solid var(--blue);
+      font:800 12px/1.4 "Lato",Arial,sans-serif;
+    }
+    .task-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 0 11px;}
+    .task-btn{
+      border:1px solid #bdd0e8;
+      border-radius:13px;
+      padding:10px 8px;
+      min-height:46px;
+      cursor:pointer;
+      background:#fff;
+      color:#183b63;
+      font:900 11px/1.15 "Lato",Arial,sans-serif;
+      text-transform:uppercase;
+      letter-spacing:.35px;
+      box-shadow:0 4px 10px rgba(15,50,90,.08);
+    }
+    .task-btn:hover{filter:brightness(.98);transform:translateY(-1px);}
+    .task-btn.is-active{background:linear-gradient(180deg,#1877e8,#0b56b5);color:#fff;border-color:#0b56b5;box-shadow:0 0 0 3px rgba(15,103,216,.17);}
+    .question-card{
+      border-radius:17px;
+      background:#fff;
+      border:1px solid var(--line);
+      box-shadow:0 7px 18px rgba(15,50,90,.09);
+      overflow:hidden;
+    }
+    .question-top{padding:9px 12px;background:#173d68;color:#fff;font:900 11px/1 "Lato",Arial,sans-serif;text-transform:uppercase;letter-spacing:.8px;}
+    .question-body{padding:12px 13px 13px;}
+    #taskTitle{margin:0 0 7px;font:900 18px/1.1 "Lato",Arial,sans-serif;color:#123f72;}
+    #taskQuestion{margin:0;font:800 13px/1.45 "Lato",Arial,sans-serif;color:#213b59;}
+    .reasoning{
+      margin-top:10px;
+      padding:10px 11px;
+      border-radius:13px;
+      background:#fff7df;
+      border-left:5px solid var(--gold);
+      color:#533b00;
+      font:800 12px/1.4 "Lato",Arial,sans-serif;
+    }
+    .journal-note{margin:11px 2px 0;color:#536a82;font:800 11px/1.35 "Lato",Arial,sans-serif;}
+    .panel-toggle{
+      position:absolute;
+      z-index:31;
+      left:388px;
+      top:184px;
+      width:42px;
+      height:42px;
+      border:none;
+      border-radius:0 13px 13px 0;
+      cursor:pointer;
+      background:#0b56b5;
+      color:#fff;
+      font:900 20px/1 "Lato",Arial,sans-serif;
+      box-shadow:0 8px 18px rgba(0,0,0,.24);
+      transition:left .22s ease;
+    }
+    .panel-toggle.is-collapsed{left:0;}
+    .status-pill{
+      position:absolute;
+      z-index:29;
+      right:16px;
+      bottom:58px;
+      padding:8px 12px;
+      border-radius:999px;
+      color:#fff;
+      background:rgba(6,40,79,.92);
+      border:1px solid rgba(255,255,255,.25);
+      box-shadow:0 8px 20px rgba(0,0,0,.24);
+      font:900 11px/1 "Lato",Arial,sans-serif;
+      letter-spacing:.45px;
+      text-transform:uppercase;
+    }
+    @media (max-width:800px){
+      .lab-panel{left:7px;right:7px;width:auto;top:164px;bottom:54px;}
+      .panel-toggle{left:auto;right:7px;top:170px;border-radius:13px;}
+      .panel-toggle.is-collapsed{left:auto;right:7px;}
+      .task-grid{grid-template-columns:1fr 1fr;}
+      .status-pill{display:none;}
+    }
+  </style>
+</head>
+<body>
+  <iframe id="simFrame" src="./simulator_v6_2_story_themes.html" title="Weather Discovery Lab simulator"></iframe>
+
+  <aside class="lab-panel" id="labPanel" aria-label="Mini-lab investigation guide">
+    <div class="panel-head">
+      <div class="eyebrow">Weather Discovery Lab</div>
+      <h1>Pre-Storm Environment</h1>
+      <div class="subhead">May 12, 2022 • 3:00 p.m. CDT • Evidence before the derecho</div>
+    </div>
+    <div class="panel-scroll">
+      <p class="intro">Work like a forecaster. Examine one piece of evidence at a time, record what you observe, and then explain what the evidence suggests.</p>
+
+      <div class="task-grid" id="taskGrid">
+        <button class="task-btn is-active" data-task="spc" type="button">1. SPC Outlook</button>
+        <button class="task-btn" data-task="temps" type="button">2. Temperature</button>
+        <button class="task-btn" data-task="metar_dewpoint" type="button">3. Dew Points</button>
+        <button class="task-btn" data-task="metar_wind" type="button">4. Winds</button>
+        <button class="task-btn" data-task="metar_pressure" type="button">5. Pressure</button>
+        <button class="task-btn" data-task="satellite" type="button">6. Satellite</button>
+        <button class="task-btn" data-task="radar" type="button">7. 3 PM Radar</button>
+      </div>
+
+      <section class="question-card">
+        <div class="question-top">Current investigation</div>
+        <div class="question-body">
+          <h2 id="taskTitle">SPC Outlook</h2>
+          <p id="taskQuestion">Which risk area covers eastern South Dakota? What does that tell you—and what does it not tell you—about where the most dangerous storms will actually occur?</p>
+          <div class="reasoning" id="reasoningPrompt"><strong>Reasoning:</strong> Start with the broad forecast, but do not treat the outlook as a precise storm-location map.</div>
+        </div>
+      </section>
+
+      <p class="journal-note">Write short observations first. Then make one claim and support it with at least two pieces of map evidence.</p>
+    </div>
+  </aside>
+
+  <button class="panel-toggle" id="panelToggle" type="button" aria-label="Hide investigation guide">‹</button>
+  <div class="status-pill">Student view • Locked at 3:00 PM</div>
+
+  <script>
+    const TASKS = {
+      spc: {
+        title: "SPC Outlook",
+        question: "Which risk area covers eastern South Dakota? What does that tell you—and what does it not tell you—about where the most dangerous storms will actually occur?",
+        reasoning: "Start with the broad forecast, but do not treat the outlook as a precise storm-location map."
+      },
+      temps: {
+        title: "Temperature Pattern",
+        question: "Where is the warmest air at 3:00 p.m.? Describe the temperature pattern from west to east and identify any sharp changes.",
+        reasoning: "A temperature gradient can help reveal air-mass boundaries, but temperature alone cannot prove where storms will form."
+      },
+      metar_dewpoint: {
+        title: "Low-Level Moisture",
+        question: "Where are the highest dew points? Identify the deepest moisture and explain why warm, humid air can provide fuel for strong thunderstorms.",
+        reasoning: "Look for a corridor, not just one station. A repeated pattern is stronger evidence than a single observation."
+      },
+      metar_wind: {
+        title: "Wind and Convergence",
+        question: "Where do wind direction or wind speed change across the map? Is there a zone where air may be coming together?",
+        reasoning: "Converging winds can encourage rising motion. Compare several nearby stations before drawing the boundary."
+      },
+      metar_pressure: {
+        title: "Pressure Pattern",
+        question: "Where is pressure relatively lower? Can you trace a trough or boundary by combining the pressure pattern with winds and dew points?",
+        reasoning: "Pressure is most useful when combined with other evidence. Build a multi-layer explanation."
+      },
+      satellite: {
+        title: "Satellite Clues",
+        question: "Where are clouds increasing or becoming more organized? Where is the warm, humid air still relatively cloud-free?",
+        reasoning: "Separate existing cloud cover from the air mass that may feed later storms. Note both location and shape."
+      },
+      radar: {
+        title: "Early Radar at 3 PM",
+        question: "Where are thunderstorms already present at 3:00 p.m.? Are they isolated, clustered, or beginning to organize into a line?",
+        reasoning: "Use radar as the final check. Explain how the observed storms relate to the boundaries and moisture you found earlier."
+      }
+    };
+
+    const frame = document.getElementById("simFrame");
+    const panel = document.getElementById("labPanel");
+    const toggle = document.getElementById("panelToggle");
+    let simDoc = null;
+
+    function hide(el){ if(el) el.style.setProperty("display","none","important"); }
+
+    function prepareStudentView(){
+      try{
+        simDoc = frame.contentDocument || frame.contentWindow.document;
+        if(!simDoc || !simDoc.body) return false;
+
+        hide(simDoc.getElementById("simPlayPauseBtn"));
+        hide(simDoc.getElementById("scrubWrap"));
+        hide(simDoc.getElementById("storyPanel"));
+        hide(simDoc.getElementById("topicRail"));
+        hide(simDoc.getElementById("toolBox"));
+        hide(simDoc.getElementById("warningCountBox"));
+        hide(simDoc.getElementById("simTickerWrap"));
+        hide(simDoc.getElementById("roadsToggleBtn"));
+        hide(simDoc.getElementById("wdlModelPadInlineToggle"));
+        hide(simDoc.getElementById("wdlModelPadInlineBody"));
+
+        ["reports","lightning","warnings","future_radar","live_doppler"].forEach(product => {
+          hide(simDoc.querySelector('[data-product="' + product + '"]'));
+        });
+
+        const version = simDoc.querySelector(".sim-version");
+        if(version) version.textContent = "Student Mini-Lab • Pre-Storm Environment";
+        const caseLine = simDoc.getElementById("simCaseLine");
+        if(caseLine) caseLine.textContent = "Pre-Storm Environment — May 12, 2022";
+        const clockLabel = simDoc.getElementById("simClockLabel");
+        if(clockLabel) clockLabel.textContent = "Observation Time — Locked";
+
+        const productRow = simDoc.getElementById("simProductRow");
+        if(productRow) productRow.style.right = "18px";
+
+        simDoc.body.classList.add("story-collapsed");
+        selectProduct("spc");
+        return true;
+      }catch(err){
+        console.warn("Student view setup failed", err);
+        return false;
+      }
+    }
+
+    function selectProduct(product){
+      if(!simDoc) return;
+      const target = simDoc.querySelector('[data-product="' + product + '"]');
+      if(target) target.click();
+    }
+
+    function setTask(taskId){
+      const task = TASKS[taskId];
+      if(!task) return;
+      document.querySelectorAll(".task-btn").forEach(btn => {
+        btn.classList.toggle("is-active", btn.dataset.task === taskId);
+      });
+      document.getElementById("taskTitle").textContent = task.title;
+      document.getElementById("taskQuestion").textContent = task.question;
+      document.getElementById("reasoningPrompt").innerHTML = "<strong>Reasoning:</strong> " + task.reasoning;
+      selectProduct(taskId);
+    }
+
+    document.getElementById("taskGrid").addEventListener("click", event => {
+      const btn = event.target.closest(".task-btn");
+      if(btn) setTask(btn.dataset.task);
+    });
+
+    toggle.addEventListener("click", () => {
+      const collapsed = panel.classList.toggle("is-collapsed");
+      toggle.classList.toggle("is-collapsed", collapsed);
+      toggle.textContent = collapsed ? "›" : "‹";
+      toggle.setAttribute("aria-label", collapsed ? "Show investigation guide" : "Hide investigation guide");
+    });
+
+    frame.addEventListener("load", () => {
+      let attempts = 0;
+      const timer = setInterval(() => {
+        attempts += 1;
+        if(prepareStudentView() || attempts > 25) clearInterval(timer);
+      }, 250);
+    });
+  </script>
+</body>
+</html>
